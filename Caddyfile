@@ -1,0 +1,58 @@
+{
+	email {$CADDY_EMAIL:-admin@yourdomain.cz}
+}
+
+{$DOMAIN:-localhost} {
+
+	log {
+		output file /var/log/caddy/access.log {
+			roll_size     100mb
+			roll_keep     5
+			roll_keep_for 720h
+		}
+	}
+
+	header {
+		X-Content-Type-Options    "nosniff"
+		X-Frame-Options           "SAMEORIGIN"
+		X-XSS-Protection          "1; mode=block"
+		Referrer-Policy           "strict-origin-when-cross-origin"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+
+	# Upload limit for file endpoints
+	handle /api/v1/documents/upload {
+		request_body {
+			max_size 25MB
+		}
+		reverse_proxy api:3000
+	}
+
+	handle /api/v1/residents/import/* {
+		request_body {
+			max_size 10MB
+		}
+		reverse_proxy api:3000
+	}
+
+	# API proxy
+	handle /api/* {
+		reverse_proxy api:3000 {
+			health_uri      /api/v1/health
+			health_interval 30s
+			lb_try_duration 5s
+		}
+	}
+
+	# SPA (web)
+	handle {
+		reverse_proxy web:80
+	}
+
+	encode gzip zstd
+}
+
+www.{$DOMAIN:-localhost} {
+	redir https://{$DOMAIN:-localhost}{uri} permanent
+}

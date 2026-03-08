@@ -1,0 +1,53 @@
+:root {
+  /* Sidebar */
+  --sidebar-bg: #1E2533;
+  --sidebar-text: #A0AEC0;
+  --sidebar-active: #2D6EB6;
+  --sidebar-hover: #2A3447;
+  --sidebar-width: 240px;
+
+  /* Content */
+  --content-bg: #F5F6FA;
+  --card-bg: #FFFFFF;
+  --card-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  --card-radius: 8px;
+
+  /* Primary */
+  --primary: #2D6EB6;
+  --primary-hover: #245A96;
+  --primary-light: #E8F0FE;
+
+  /* Status */
+  --success: #22C55E;
+  --success-light: #DCFCE7;
+  --warning: #F59E0B;
+  --warning-light: #FEF3C7;
+  --danger: #EF4444;
+  --danger-light: #FEE2E2;
+  --info: #3B82F6;
+  --info-light: #DBEAFE;
+
+  /* Accent */
+  --accent-blue: #2D6EB6;
+  --accent-green: #22C55E;
+  --accent-orange: #F59E0B;
+  --accent-red: #EF4444;
+  --accent-purple: #8B5CF6;
+
+  /* Text */
+  --text-primary: #1E293B;
+  --text-secondary: #64748B;
+  --text-muted: #94A3B8;
+
+  /* Border */
+  --border: #E2E8F0;
+  --border-hover: #CBD5E1;
+
+  /* Spacing shortcuts */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+}
