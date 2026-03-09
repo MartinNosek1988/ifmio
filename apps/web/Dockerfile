@@ -11,7 +11,7 @@ COPY apps/web/package.json ./apps/web/
 COPY packages/shared-types/package.json ./packages/shared-types/
 COPY packages/validation/package.json ./packages/validation/
 
-RUN npm ci --workspace=ifmio-app --include-workspace-root --ignore-scripts
+RUN npm ci --workspace=ifmio-app --include-workspace-root --ignore-scripts --omit=optional
 
 # Source packages (pure TS, no build)
 COPY packages/ ./packages/
