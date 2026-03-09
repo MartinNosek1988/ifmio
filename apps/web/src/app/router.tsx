@@ -33,12 +33,12 @@ function withBoundary(name: string, Component: React.ComponentType) {
 }
 
 export const router = createBrowserRouter([
+  { path: '/login', element: <LoginPage /> },
   {
     path: '/',
     element: <AppShell />,
     children: [
       { index: true, element: <Navigate to="/dashboard" replace /> },
-      { path: 'login', element: <LoginPage /> },
       { path: 'dashboard', element: withBoundary('Dashboard', DashboardPage) },
       { path: 'properties', element: withBoundary('Nemovitosti', PropertiesPage) },
       { path: 'properties/:id', element: withBoundary('Detail nemovitosti', PropertyDetailPage) },
@@ -46,16 +46,16 @@ export const router = createBrowserRouter([
       { path: 'workorders', element: withBoundary('Work Orders', WorkOrdersPage) },
       { path: 'helpdesk', element: withBoundary('HelpDesk', HelpdeskPage) },
       { path: 'assets', element: withBoundary('Assets', AssetListPage) },
-      { path: 'meters', element: withBoundary('MÄ›Ĺ™idla', MetersPage) },
+      { path: 'meters', element: withBoundary('Měřidla', MetersPage) },
       { path: 'compliance', element: withBoundary('Compliance', CompliancePage) },
       { path: 'contracts', element: withBoundary('Smlouvy', ContractsPage) },
-      { path: 'residents', element: withBoundary('BydlĂ­cĂ­', ResidentsPage) },
+      { path: 'residents', element: withBoundary('Bydlící', ResidentsPage) },
       { path: 'documents', element: withBoundary('Dokumenty', DocumentsPage) },
-      { path: 'contacts', element: withBoundary('AdresĂˇĹ™', DirectoryPage) },
-      { path: 'calendar', element: withBoundary('KalendĂˇĹ™', CalendarPage) },
+      { path: 'contacts', element: withBoundary('Adresář', DirectoryPage) },
+      { path: 'calendar', element: withBoundary('Kalendář', CalendarPage) },
       { path: 'communication', element: withBoundary('Komunikace', CommunicationPage) },
       { path: 'reporting', element: withBoundary('Reporting', ReportingPage) },
-      { path: 'reports', element: withBoundary('VĂ˝kazy', ReportsPage) },
+      { path: 'reports', element: withBoundary('Výkazy', ReportsPage) },
       { path: 'audit', element: withBoundary('Audit log', AuditPage) },
       { path: 'admin', element: withBoundary('Admin', AdminPage) },
     ],
