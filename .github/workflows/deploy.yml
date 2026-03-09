@@ -40,7 +40,7 @@ jobs:
                 echo "âś… API healthy"
                 break
               fi
-              if [ $i -eq 30 ]; then
+              if [ $i -eq 60 ]; then
                 echo "âťŚ API health check failed"
                 docker compose -f docker-compose.prod.yml logs api --tail 30
                 exit 1
