@@ -6,13 +6,14 @@ import type { Column } from '../../shared/components';
 import { useProperty } from './use-properties';
 import type { ApiUnit } from './properties-api';
 import PropertyForm from './PropertyForm';
+import UnitForm from './UnitForm';
 
 export default function PropertyDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { data: property, isLoading, error } = useProperty(id!);
-
+  const { data: property, isLoading, error, refetch } = useProperty(id!);
   const [showEditProp, setShowEditProp] = useState(false);
+  const [showAddUnit, setShowAddUnit] = useState(false);
 
   if (isLoading) return <LoadingState />;
   if (error || !property) {
@@ -47,7 +48,6 @@ export default function PropertyDetailPage() {
       <div style={{ marginBottom: 16 }}>
         <Button icon={<ArrowLeft size={15} />} onClick={() => navigate('/properties')}>Zpět</Button>
       </div>
-
       <div className="page-header">
         <div>
           <h1 className="page-title">{property.name}</h1>
@@ -57,7 +57,7 @@ export default function PropertyDetailPage() {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <Button icon={<Pencil size={15} />} onClick={() => setShowEditProp(true)}>Upravit</Button>
-          <Button variant="primary" icon={<Plus size={15} />} disabled>
+          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowAddUnit(true)}>
             Nová jednotka
           </Button>
         </div>
@@ -71,7 +71,6 @@ export default function PropertyDetailPage() {
       </div>
 
       <h2 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: 12 }}>Jednotky</h2>
-
       {units.length === 0 ? (
         <EmptyState title="Žádné jednotky" description="Zatím zde nejsou žádné jednotky." />
       ) : (
@@ -80,6 +79,13 @@ export default function PropertyDetailPage() {
 
       {showEditProp && (
         <PropertyForm property={property} onClose={() => setShowEditProp(false)} />
+      )}
+      {showAddUnit && (
+        <UnitForm
+          propertyId={property.id}
+          onClose={() => setShowAddUnit(false)}
+          onSuccess={() => { setShowAddUnit(false); refetch(); }}
+        />
       )}
     </div>
   );
