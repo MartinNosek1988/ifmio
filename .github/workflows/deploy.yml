@@ -1,18 +1,14 @@
 ﻿name: Deploy to Production
-
 on:
   push:
     branches: [main]
-
 concurrency:
   group: deploy-production
   cancel-in-progress: false
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -25,28 +21,21 @@ jobs:
           script: |
             set -e
             cd /opt/ifmio
-
-            echo "đź“Ą Pull latest code"
+            echo "Pull latest code"
             git fetch origin main
             git reset --hard origin/main
-
-            echo "đź”¨ Build & restart"
+            echo "Build and restart"
             docker compose -f docker-compose.prod.yml build --no-cache
             docker compose -f docker-compose.prod.yml up -d
-
-            echo "⏳ Wait for API health"
-	sleep 15
-if docker exec ifmio-api-1 node -e "require('http').get('http://localhost:3000/api/v1/health', r => process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))" 2>/dev/null; then
-  echo "✅ API healthy"
-else
-  echo "❌ API health check failed"
-  docker compose -f docker-compose.prod.yml logs api --tail 30
-  exit 1
-fi
-              sleep 3
-            done
-
-            echo "đź§ą Cleanup old images"
+            echo "Wait for API health"
+            sleep 20
+            if docker exec ifmio-api-1 node -e "require('http').get('http://localhost:3000/api/v1/health', r => process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"; then
+              echo "API healthy"
+            else
+              echo "API health check failed"
+              docker compose -f docker-compose.prod.yml logs api --tail 30
+              exit 1
+            fi
+            echo "Cleanup old images"
             docker image prune -f
-
-            echo "âś… Deploy dokonÄŤen â€” $(date)"
+            echo "Deploy done"
