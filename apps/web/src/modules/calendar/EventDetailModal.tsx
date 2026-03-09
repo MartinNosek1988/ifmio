@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Modal, Badge, Button } from '../../shared/components';
 import type { BadgeVariant } from '../../shared/components';
 import { useCalendarStore, type CalendarEvent, type EventTyp } from './calendar-store';
