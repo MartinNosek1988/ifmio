@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+﻿FROM node:20-alpine AS builder
 
 ARG VITE_API_URL=/api/v1
 ENV VITE_API_URL=${VITE_API_URL}
@@ -6,12 +6,12 @@ ENV VITE_API_URL=${VITE_API_URL}
 WORKDIR /app
 
 # Monorepo: root + workspace package files
-COPY package.json package-lock.json ./
+COPY package.json ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/shared-types/package.json ./packages/shared-types/
 COPY packages/validation/package.json ./packages/validation/
 
-RUN npm ci --workspace=ifmio-app --include-workspace-root --ignore-scripts --omit=optional
+RUN npm install --workspace=ifmio-app --include-workspace-root --ignore-scripts
 
 # Source packages (pure TS, no build)
 COPY packages/ ./packages/
@@ -20,7 +20,7 @@ COPY packages/ ./packages/
 COPY apps/web/ ./apps/web/
 RUN cd apps/web && npm run build
 
-# ─── Nginx serve (static only — Caddy handles /api/ proxy) ───
+# â”€â”€â”€ Nginx serve (static only â€” Caddy handles /api/ proxy) â”€â”€â”€
 FROM nginx:alpine
 
 COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
