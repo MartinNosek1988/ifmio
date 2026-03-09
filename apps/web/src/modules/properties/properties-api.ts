@@ -39,6 +39,19 @@ export interface CreatePropertyPayload {
 
 export interface UpdatePropertyPayload extends Partial<CreatePropertyPayload> {}
 
+export interface CreateUnitPayload {
+  name: string;
+  floor?: number;
+  area?: number;
+}
+
+export interface UpdateUnitPayload {
+  name?: string;
+  floor?: number | null;
+  area?: number | null;
+  isOccupied?: boolean;
+}
+
 export const propertiesApi = {
   list: () =>
     apiClient.get<ApiProperty[]>('/properties').then((r) => r.data),
@@ -54,4 +67,14 @@ export const propertiesApi = {
 
   archive: (id: string) =>
     apiClient.delete(`/properties/${id}`),
+
+  // ── Units ──
+  createUnit: (propertyId: string, data: CreateUnitPayload) =>
+    apiClient.post<ApiUnit>(`/properties/${propertyId}/units`, data).then((r) => r.data),
+
+  updateUnit: (propertyId: string, unitId: string, data: UpdateUnitPayload) =>
+    apiClient.put<ApiUnit>(`/properties/${propertyId}/units/${unitId}`, data).then((r) => r.data),
+
+  deleteUnit: (propertyId: string, unitId: string) =>
+    apiClient.delete(`/properties/${propertyId}/units/${unitId}`),
 };
