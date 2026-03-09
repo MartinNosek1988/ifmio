@@ -1,4 +1,4 @@
-name: Deploy to Production
+﻿name: Deploy to Production
 
 on:
   push:
@@ -26,29 +26,29 @@ jobs:
             set -e
             cd /opt/ifmio
 
-            echo "📥 Pull latest code"
+            echo "đź“Ą Pull latest code"
             git fetch origin main
             git reset --hard origin/main
 
-            echo "🔨 Build & restart"
+            echo "đź”¨ Build & restart"
             docker compose -f docker-compose.prod.yml build --no-cache
             docker compose -f docker-compose.prod.yml up -d
 
-            echo "⏳ Wait for API health"
-            for i in $(seq 1 30); do
-              if curl -sf http://localhost:3000/api/v1/health > /dev/null 2>&1; then
-                echo "✅ API healthy"
+            echo "âŹł Wait for API health"
+            for i in $(seq 1 60); do
+              if curl -sf http://localhost:3000/api/v1/health -o /dev/null > /dev/null 2>&1; then
+                echo "âś… API healthy"
                 break
               fi
               if [ $i -eq 30 ]; then
-                echo "❌ API health check failed"
+                echo "âťŚ API health check failed"
                 docker compose -f docker-compose.prod.yml logs api --tail 30
                 exit 1
               fi
-              sleep 2
+              sleep 3
             done
 
-            echo "🧹 Cleanup old images"
+            echo "đź§ą Cleanup old images"
             docker image prune -f
 
-            echo "✅ Deploy dokončen — $(date)"
+            echo "âś… Deploy dokonÄŤen â€” $(date)"
