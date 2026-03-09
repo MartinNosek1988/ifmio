@@ -47,14 +47,14 @@ export default function DashboardPage() {
         marginBottom: 32,
       }}>
         {[
-          { label: 'Nemovitosti',      value: kpi.propertiesCount,       icon: '\u{1F3E2}' },
-          { label: 'Jednotky',         value: kpi.unitsCount,            icon: '\u{1F6AA}' },
-          { label: 'Obsazenost',       value: `${kpi.occupancyRate}%`,   icon: '\u{1F4CA}' },
-          { label: 'Obyvatel\u{00E9}', value: kpi.residentsCount,        icon: '\u{1F465}' },
-          { label: 'Dlu\u{017E}n\u{00ED}ci', value: kpi.debtorsCount,   icon: '\u{26A0}\u{FE0F}',  warn: kpi.debtorsCount > 0 },
-          { label: 'Otev\u{0159}en\u{00E9} tickety', value: kpi.openTickets, icon: '\u{1F3AB}',  warn: kpi.urgentTickets > 0 },
-          { label: 'Aktivn\u{00ED} p\u{0159}edpisy', value: kpi.activePrescriptions, icon: '\u{1F4CB}' },
-          { label: 'Nesp\u{00E1}rovan\u{00E9}', value: kpi.unmatchedTransactions, icon: '\u{1F3E6}', warn: kpi.unmatchedTransactions > 0 },
+          { label: 'Nemovitosti',      value: kpi.propertiesCount,       icon: '🏢' },
+          { label: 'Jednotky',         value: kpi.unitsCount,            icon: '🚪' },
+          { label: 'Obsazenost',       value: `${kpi.occupancyRate}%`,   icon: '📊' },
+          { label: 'Obyvatelé', value: kpi.residentsCount,        icon: '👥' },
+          { label: 'Dlužníci', value: kpi.debtorsCount,   icon: '⚠️',  warn: kpi.debtorsCount > 0 },
+          { label: 'Otevřené tickety', value: kpi.openTickets, icon: '🎫',  warn: kpi.urgentTickets > 0 },
+          { label: 'Aktivní předpisy', value: kpi.activePrescriptions, icon: '📋' },
+          { label: 'Nespárované', value: kpi.unmatchedTransactions, icon: '🏦', warn: kpi.unmatchedTransactions > 0 },
         ].map((item) => (
           <div key={item.label} style={{
             background: item.warn ? '#fffbeb' : '#f9fafb',
@@ -82,10 +82,10 @@ export default function DashboardPage() {
           borderRadius: 12, padding: 20,
         }}>
           <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>
-            Otev\u{0159}en\u{00E9} tickety
+            Otevřené tickety
           </h2>
           {recentTickets.length === 0
-            ? <div style={{ color: '#9ca3af', fontSize: 14 }}>\u{017D}\u{00E1}dn\u{00E9} otev\u{0159}en\u{00E9} tickety</div>
+            ? <div style={{ color: '#9ca3af', fontSize: 14 }}>Žádné otevřené tickety</div>
             : recentTickets.map((t: any) => (
               <div key={t.id} style={{
                 padding: '10px 0',
@@ -107,10 +107,10 @@ export default function DashboardPage() {
           borderRadius: 12, padding: 20,
         }}>
           <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>
-            Posledn\u{00ED} transakce
+            Poslední transakce
           </h2>
           {recentTransactions.length === 0
-            ? <div style={{ color: '#9ca3af', fontSize: 14 }}>\u{017D}\u{00E1}dn\u{00E9} transakce</div>
+            ? <div style={{ color: '#9ca3af', fontSize: 14 }}>Žádné transakce</div>
             : recentTransactions.map((t: any) => (
               <div key={t.id} style={{
                 padding: '10px 0',
@@ -120,7 +120,7 @@ export default function DashboardPage() {
                 justifyContent: 'space-between',
               }}>
                 <div>
-                  <div style={{ fontWeight: 500 }}>{t.description ?? t.counterparty ?? '\u{2014}'}</div>
+                  <div style={{ fontWeight: 500 }}>{t.description ?? t.counterparty ?? '—'}</div>
                   <div style={{ color: '#9ca3af', fontSize: 12, marginTop: 2 }}>
                     {new Date(t.date).toLocaleDateString('cs-CZ')}
                   </div>
@@ -130,7 +130,7 @@ export default function DashboardPage() {
                   color: t.type === 'credit' ? '#10b981' : '#ef4444',
                 }}>
                   {t.type === 'credit' ? '+' : '-'}
-                  {Number(t.amount).toLocaleString('cs-CZ')} K\u{010D}
+                  {Number(t.amount).toLocaleString('cs-CZ')} Kč
                 </div>
               </div>
             ))
