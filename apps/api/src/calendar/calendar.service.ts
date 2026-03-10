@@ -1,24 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
+import type { CalendarEventDto, CalendarStatsDto } from './calendar.dto'
 
 interface AuthUser { id: string; tenantId: string; role: string }
-
-interface CalendarEventDto {
-  id: string
-  source: 'custom' | 'workorder' | 'contract' | 'meter'
-  sourceId?: string
-  title: string
-  eventType: string
-  date: string
-  dateTo?: string | null
-  timeFrom?: string | null
-  timeTo?: string | null
-  propertyId?: string | null
-  propertyName?: string | null
-  location?: string | null
-  description?: string | null
-  attendees?: string[]
-}
 
 function serializeEvent(item: any): CalendarEventDto {
   return {
@@ -179,7 +163,7 @@ export class CalendarService {
     return results
   }
 
-  async getStats(user: AuthUser) {
+  async getStats(user: AuthUser): Promise<CalendarStatsDto> {
     const tenantId = user.tenantId
     const now = new Date()
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)

@@ -8,6 +8,7 @@ import { Roles } from '../common/decorators/roles.decorator'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
 import { AuditAction } from '../common/decorators/audit.decorator'
 import { ROLES_WRITE } from '../common/constants/roles.constants'
+import type { CalendarEventDto, CalendarStatsDto } from './calendar.dto'
 
 interface AuthUser { id: string; tenantId: string; role: string }
 
@@ -25,19 +26,19 @@ export class CalendarController {
     @Query('to') to?: string,
     @Query('eventType') eventType?: string,
     @Query('search') search?: string,
-  ) {
+  ): Promise<CalendarEventDto[]> {
     return this.service.getEvents(user, { from, to, eventType, search })
   }
 
   @Get('stats')
   @ApiOperation({ summary: 'Statistiky kalendáře' })
-  stats(@CurrentUser() user: AuthUser) {
+  stats(@CurrentUser() user: AuthUser): Promise<CalendarStatsDto> {
     return this.service.getStats(user)
   }
 
   @Get('events/:id')
   @ApiOperation({ summary: 'Detail události' })
-  detail(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+  detail(@CurrentUser() user: AuthUser, @Param('id') id: string): Promise<CalendarEventDto> {
     return this.service.getById(user, id)
   }
 
@@ -56,7 +57,7 @@ export class CalendarController {
     location?: string
     description?: string
     attendees?: string[]
-  }) {
+  }): Promise<CalendarEventDto> {
     return this.service.create(user, dto)
   }
 
@@ -79,7 +80,7 @@ export class CalendarController {
       description?: string
       attendees?: string[]
     },
-  ) {
+  ): Promise<CalendarEventDto> {
     return this.service.update(user, id, dto)
   }
 
@@ -87,7 +88,7 @@ export class CalendarController {
   @Roles(...ROLES_WRITE)
   @AuditAction('calendarEvent', 'delete')
   @ApiOperation({ summary: 'Smazat událost' })
-  remove(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+  remove(@CurrentUser() user: AuthUser, @Param('id') id: string): Promise<{ success: boolean }> {
     return this.service.remove(user, id)
   }
 }
