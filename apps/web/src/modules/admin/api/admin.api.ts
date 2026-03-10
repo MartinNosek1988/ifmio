@@ -18,6 +18,8 @@ export const adminApi = {
       apiClient.post('/admin/users', dto).then((r) => r.data),
     updateRole: (id: string, role: string) =>
       apiClient.patch(`/admin/users/${id}/role`, { role }).then((r) => r.data),
+    update:     (id: string, dto: { name?: string; role?: string; isActive?: boolean }) =>
+      apiClient.patch(`/admin/users/${id}`, dto).then((r) => r.data),
     deactivate: (id: string) =>
       apiClient.delete(`/admin/users/${id}`).then((r) => r.data),
   },

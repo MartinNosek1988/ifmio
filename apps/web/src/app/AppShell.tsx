@@ -6,7 +6,7 @@ import {
   Wrench, Headphones, Box, Gauge, FileText, UserCheck,
   ShieldCheck, Wallet, AlertTriangle, TrendingUp,
   MessageSquare, Mail, Settings, BarChart3,
-  ClipboardList, ScrollText,
+  ClipboardList, ScrollText, UsersRound,
 } from 'lucide-react';
 import { LoadingSpinner } from '../shared/components';
 import { GlobalSearch } from '../modules/search/GlobalSearch';
@@ -81,6 +81,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { to: '/reporting', label: 'Reporting', icon: <BarChart3 size={17} /> },
       { to: '/reports', label: 'Výkazy', icon: <ClipboardList size={17} /> },
+      { to: '/team', label: 'Uživatelé & Tým', icon: <UsersRound size={17} /> },
       { to: '/audit', label: 'Audit log', icon: <ScrollText size={17} /> },
       { to: '/admin', label: 'Admin', icon: <Settings size={17} /> },
     ],
@@ -104,6 +105,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/communication': 'Komunikace',
   '/reporting': 'Reporting',
   '/reports': 'Výkazy',
+  '/team': 'Uživatelé & Tým',
   '/audit': 'Audit log',
   '/admin': 'Administrace',
 };

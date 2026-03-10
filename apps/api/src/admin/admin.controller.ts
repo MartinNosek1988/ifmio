@@ -75,6 +75,18 @@ export class AdminController {
     return this.service.updateUserRole(user, id, body.role)
   }
 
+  @Patch('users/:id')
+  @Roles(...ROLES_MANAGE)
+  @AuditAction('User', 'UPDATE')
+  @ApiOperation({ summary: 'Upravit uživatele' })
+  updateUser(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: { name?: string; role?: string; isActive?: boolean },
+  ) {
+    return this.service.updateUser(user, id, dto)
+  }
+
   @Delete('users/:id')
   @Roles(...ROLES_MANAGE)
   @AuditAction('User', 'DEACTIVATE')

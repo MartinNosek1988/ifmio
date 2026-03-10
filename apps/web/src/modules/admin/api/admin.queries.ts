@@ -53,6 +53,15 @@ export function useUpdateUserRole() {
   })
 }
 
+export function useUpdateUser() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, dto }: { id: string; dto: { name?: string; role?: string; isActive?: boolean } }) =>
+      adminApi.users.update(id, dto),
+    onSuccess: () => qc.invalidateQueries({ queryKey: adminKeys.users() }),
+  })
+}
+
 export function useDeactivateUser() {
   const qc = useQueryClient()
   return useMutation({

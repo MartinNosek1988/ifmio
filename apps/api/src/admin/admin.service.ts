@@ -2,12 +2,16 @@ import {
   Injectable, NotFoundException, ConflictException, ForbiddenException,
 } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
+import { EmailService }  from '../email/email.service'
 import * as bcrypt       from 'bcrypt'
 import type { AuthUser } from '@ifmio/shared-types'
 
 @Injectable()
 export class AdminService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private email:  EmailService,
+  ) {}
 
   // ─── TENANT SETTINGS ──────────────────────────────────────────
 
@@ -96,7 +100,54 @@ export class AdminService {
       },
     })
 
+    // Send welcome email
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: user.tenantId },
+      select: { name: true },
+    })
+    await this.email.sendWelcome({
+      to:         dto.email,
+      name:       dto.name,
+      tenantName: tenant?.name ?? 'ifmio',
+      loginUrl:   `${process.env.FRONTEND_URL ?? 'http://localhost:5173'}/login`,
+    })
+
     return created
+  }
+
+  async updateUser(user: AuthUser, targetUserId: string, dto: {
+    name?:     string
+    role?:     string
+    isActive?: boolean
+  }) {
+    if (!['owner', 'admin'].includes(user.role)) {
+      throw new ForbiddenException('Nemáte oprávnění pro tuto akci')
+    }
+    if (targetUserId === user.id && dto.role !== undefined) {
+      throw new ForbiddenException('Nemůžete změnit svou vlastní roli')
+    }
+    if (targetUserId === user.id && dto.isActive === false) {
+      throw new ForbiddenException('Nemůžete deaktivovat sebe')
+    }
+
+    const target = await this.prisma.user.findFirst({
+      where: { id: targetUserId, tenantId: user.tenantId },
+    })
+    if (!target) throw new NotFoundException('Uživatel nenalezen')
+
+    const data: any = {}
+    if (dto.name !== undefined) data.name = dto.name
+    if (dto.role !== undefined) data.role = dto.role
+    if (dto.isActive !== undefined) data.isActive = dto.isActive
+
+    return this.prisma.user.update({
+      where: { id: targetUserId },
+      data,
+      select: {
+        id: true, name: true, email: true,
+        role: true, isActive: true, lastLoginAt: true, createdAt: true,
+      },
+    })
   }
 
   async updateUserRole(user: AuthUser, targetUserId: string, role: string) {
