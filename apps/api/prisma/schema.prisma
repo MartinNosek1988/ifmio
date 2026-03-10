@@ -702,17 +702,56 @@ enum EntityType {
 model TenantSettings {
   id               String   @id @default(uuid())
   tenantId         String   @unique
+
+  // Firma
+  orgName          String?
+  orgStreet        String?
+  orgCity          String?
+  orgZip           String?
+  orgCountry       String?  @default("CZ")
+  orgPhone         String?
+  orgEmail         String?
+  orgWeb           String?
+  companyNumber    String?
+  vatNumber        String?
+
+  // Branding
+  logoBase64       String?  @db.Text
   logoUrl          String?
   primaryColor     String?  @default("#6366f1")
+  themeMode        String?  @default("light")
+
+  // Regional
   timezone         String   @default("Europe/Prague")
   currency         String   @default("CZK")
   language         String   @default("cs")
-  vatNumber        String?
-  companyNumber    String?
-  address          String?
-  invoiceFooter    String?  @db.Text
+  dateFormat       String?  @default("DD.MM.YYYY")
+
+  // Email
   emailFrom        String?
   emailReplyTo     String?
+  emailSignature   String?  @db.Text
+  notifNewTicket   Boolean  @default(true)
+  notifWoAssigned  Boolean  @default(true)
+  notifContractExp Boolean  @default(true)
+  notifMeterDue    Boolean  @default(true)
+  notifPaymentDue  Boolean  @default(true)
+
+  // Invoicing
+  invoicePrefix    String?  @default("FV")
+  contractPrefix   String?  @default("SM")
+  invoiceDueDays   Int      @default(14)
+  defaultVat       Int      @default(21)
+  invoiceFooter    String?  @db.Text
+  bankAccount      String?
+
+  // Reminders
+  reminderDaysBefore Int    @default(7)
+  reminderText1    String?  @db.Text
+  reminderText2    String?  @db.Text
+
+  address          String?
+
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

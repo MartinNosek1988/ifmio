@@ -25,6 +25,7 @@ const ReportsPage = lazy(() => import('../modules/reports/ReportsPage'));
 const AuditPage = lazy(() => import('../modules/audit/AuditPage'));
 const TeamPage = lazy(() => import('../modules/team/TeamPage'));
 const AdminPage = lazy(() => import('../modules/admin/AdminPage'));
+const SettingsPage = lazy(() => import('../modules/settings/SettingsPage'));
 
 function withBoundary(name: string, Component: React.ComponentType) {
   return (
@@ -61,6 +62,7 @@ export const router = createBrowserRouter([
       { path: 'team', element: withBoundary('Tým', TeamPage) },
       { path: 'audit', element: withBoundary('Audit log', AuditPage) },
       { path: 'admin', element: withBoundary('Admin', AdminPage) },
+      { path: 'settings', element: withBoundary('Nastaveni', SettingsPage) },
     ],
   },
 ]);

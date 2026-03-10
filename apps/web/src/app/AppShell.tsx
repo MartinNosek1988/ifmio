@@ -84,6 +84,7 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/team', label: 'Uživatelé & Tým', icon: <UsersRound size={17} /> },
       { to: '/audit', label: 'Audit log', icon: <ScrollText size={17} /> },
       { to: '/admin', label: 'Admin', icon: <Settings size={17} /> },
+      { to: '/settings', label: 'Nastavení', icon: <Settings size={17} /> },
     ],
   },
 ];
@@ -108,6 +109,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/team': 'Uživatelé & Tým',
   '/audit': 'Audit log',
   '/admin': 'Administrace',
+  '/settings': 'Nastavení organizace',
 };
 
 function getPageTitle(pathname: string): string {

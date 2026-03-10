@@ -96,6 +96,24 @@ export class AdminController {
     return this.service.deactivateUser(user, id)
   }
 
+  @Put('settings/logo')
+  @Roles(...ROLES_MANAGE)
+  @AuditAction('TenantSettings', 'LOGO_UPLOAD')
+  @ApiOperation({ summary: 'Nahrát logo organizace (base64)' })
+  uploadLogo(
+    @CurrentUser() user: AuthUser,
+    @Body() body: { logoBase64: string },
+  ) {
+    return this.service.updateSettings(user, { logoBase64: body.logoBase64 })
+  }
+
+  @Get('export')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Export všech dat tenanta do JSON' })
+  exportData(@CurrentUser() user: AuthUser) {
+    return this.service.exportData(user)
+  }
+
   @Post('email/test')
   @Roles(...ROLES_MANAGE)
   @ApiOperation({ summary: 'Test SMTP spojeni a odeslani testovacího emailu' })

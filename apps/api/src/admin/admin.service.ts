@@ -190,6 +190,46 @@ export class AdminService {
     })
   }
 
+  // ─── EXPORT ─────────────────────────────────────────────────
+
+  async exportData(user: AuthUser) {
+    const tenantId = user.tenantId
+    const [
+      tenant, settings, properties, residents, users,
+      leaseAgreements, workOrders, meters, financeTransactions,
+      calendarEvents, documents,
+    ] = await Promise.all([
+      this.prisma.tenant.findUnique({ where: { id: tenantId } }),
+      this.prisma.tenantSettings.findUnique({ where: { tenantId } }),
+      this.prisma.property.findMany({ where: { tenantId } }),
+      this.prisma.resident.findMany({ where: { tenantId } }),
+      this.prisma.user.findMany({ where: { tenantId }, select: {
+        id: true, name: true, email: true, role: true, isActive: true, createdAt: true,
+      }}),
+      this.prisma.leaseAgreement.findMany({ where: { tenantId } }),
+      this.prisma.workOrder.findMany({ where: { tenantId } }),
+      this.prisma.meter.findMany({ where: { tenantId } }),
+      this.prisma.financeTransaction.findMany({ where: { tenantId } }),
+      this.prisma.calendarEvent.findMany({ where: { tenantId } }),
+      this.prisma.document.findMany({ where: { tenantId } }),
+    ])
+
+    return {
+      exportedAt: new Date().toISOString(),
+      tenant,
+      settings,
+      properties,
+      residents,
+      users,
+      leaseAgreements,
+      workOrders,
+      meters,
+      financeTransactions,
+      calendarEvents,
+      documents,
+    }
+  }
+
   // ─── ONBOARDING ──────────────────────────────────────────────
 
   async getOnboardingStatus(user: AuthUser) {

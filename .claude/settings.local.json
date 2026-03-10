@@ -11,7 +11,8 @@
       "Bash(npm install:*)",
       "Bash(code .:*)",
       "Bash(npx vite:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

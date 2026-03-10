@@ -9,7 +9,12 @@ export const adminApi = {
       apiClient.get('/admin/settings').then((r) => r.data),
     update: (dto: any) =>
       apiClient.put('/admin/settings', dto).then((r) => r.data),
+    uploadLogo: (logoBase64: string) =>
+      apiClient.put('/admin/settings/logo', { logoBase64 }).then((r) => r.data),
   },
+
+  exportData: () =>
+    apiClient.get('/admin/export').then((r) => r.data),
 
   users: {
     list:       () =>

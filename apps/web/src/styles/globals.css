@@ -406,3 +406,116 @@ body {
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
+
+/* ─── Settings Page ─────────────────────────────────────────────── */
+.settings-sidenav {
+  display: flex; flex-direction: column; gap: 2px;
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 10px; padding: 8px; position: sticky; top: 80px;
+}
+.settings-sidenav__item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; border-radius: 6px; border: none;
+  background: transparent; cursor: pointer; font-size: .82rem;
+  color: var(--text-secondary); text-align: left; width: 100%;
+  transition: background .15s, color .15s;
+}
+.settings-sidenav__item:hover { background: var(--hover-bg); color: var(--text-primary); }
+.settings-sidenav__item.active { background: var(--accent-bg); color: var(--accent); font-weight: 600; }
+
+.settings-card {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 10px; padding: 20px; margin-bottom: 16px;
+}
+.settings-card__title {
+  font-size: .88rem; font-weight: 700; margin-bottom: 14px;
+  color: var(--text-primary);
+}
+
+.settings-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+@media (max-width: 700px) { .settings-grid { grid-template-columns: 1fr; } }
+
+.settings-label {
+  display: block; font-size: .75rem; font-weight: 600;
+  color: var(--text-secondary); margin-bottom: 4px;
+}
+.settings-input {
+  width: 100%; padding: 7px 10px; border: 1px solid var(--border);
+  border-radius: 6px; font-size: .82rem; background: var(--content-bg);
+  color: var(--text-primary); outline: none; transition: border-color .15s;
+}
+.settings-input:focus { border-color: var(--accent); }
+
+.settings-textarea {
+  width: 100%; padding: 8px 10px; border: 1px solid var(--border);
+  border-radius: 6px; font-size: .82rem; background: var(--content-bg);
+  color: var(--text-primary); outline: none; resize: vertical;
+  font-family: inherit; transition: border-color .15s;
+}
+.settings-textarea:focus { border-color: var(--accent); }
+
+.settings-logo-upload {
+  width: 200px; min-height: 90px; border: 2px dashed var(--border);
+  border-radius: 8px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 6px;
+  cursor: pointer; transition: border-color .15s;
+}
+.settings-logo-upload:hover { border-color: var(--accent); }
+
+.settings-toggle-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; cursor: pointer; font-size: .82rem;
+  border-bottom: 1px solid var(--border);
+}
+.settings-toggle-row:last-child { border-bottom: none; }
+.settings-toggle {
+  width: 36px; height: 20px; border-radius: 10px;
+  background: var(--border); position: relative;
+  cursor: pointer; transition: background .2s; flex-shrink: 0;
+}
+.settings-toggle.active { background: var(--accent); }
+.settings-toggle__thumb {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: #fff; position: absolute; top: 2px; left: 2px;
+  transition: transform .2s;
+}
+.settings-toggle.active .settings-toggle__thumb { transform: translateX(16px); }
+
+.settings-color-preset {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 10px; border: 1px solid var(--border);
+  border-radius: 6px; background: transparent; cursor: pointer;
+  font-size: .75rem; color: var(--text-secondary);
+  transition: border-color .15s;
+}
+.settings-color-preset:hover { border-color: var(--accent); }
+.settings-color-preset.active { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); }
+
+.settings-footer {
+  position: sticky; bottom: 0;
+  background: linear-gradient(0deg, var(--content-bg) 70%, transparent);
+  padding: 14px 0 6px; margin-top: 12px;
+}
+
+.settings-saved-toast {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 14px; background: var(--success-bg, #dcfce7);
+  color: var(--success, #16a34a); border-radius: 8px;
+  font-size: .8rem; font-weight: 600; margin-bottom: 12px;
+  animation: fadeIn .2s;
+}
+
+.settings-danger-zone {
+  background: rgba(239, 68, 68, .06); border: 1px solid rgba(239, 68, 68, .2);
+  border-radius: 10px; padding: 20px; margin-top: 16px;
+}
+.settings-danger-zone h4 {
+  font-size: .85rem; font-weight: 700; color: var(--danger, #ef4444);
+  margin-bottom: 8px;
+}
+
+@media (max-width: 800px) {
+  .settings-sidenav { position: static; }
+}
