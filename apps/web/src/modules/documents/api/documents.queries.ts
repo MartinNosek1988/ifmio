@@ -1,32 +1,44 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { documentsApi } from './documents.api'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { documentsApi } from './documents.api';
 
-export const documentKeys = {
-  list: (p?: any) => ['documents', 'list', p] as const,
+export const docKeys = {
+  all: ['documents'] as const,
+  list: (params?: Record<string, unknown>) => ['documents', 'list', params] as const,
+  stats: () => ['documents', 'stats'] as const,
+};
+
+export function useDocuments(params?: { category?: string; search?: string; tag?: string }) {
+  return useQuery({
+    queryKey: docKeys.list(params as Record<string, unknown>),
+    queryFn: () => documentsApi.list(params),
+  });
 }
 
-export function useDocuments(params?: any) {
+export function useDocStats() {
   return useQuery({
-    queryKey: documentKeys.list(params),
-    queryFn:  () => documentsApi.list(params),
-  })
+    queryKey: docKeys.stats(),
+    queryFn: () => documentsApi.stats(),
+    staleTime: 30_000,
+  });
 }
 
 export function useUploadDocument() {
-  const qc = useQueryClient()
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ file, meta }: { file: File; meta: any }) =>
+    mutationFn: ({ file, meta }: { file: File; meta: Parameters<typeof documentsApi.upload>[1] }) =>
       documentsApi.upload(file, meta),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ['documents'] }),
-  })
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: docKeys.all });
+    },
+  });
 }
 
 export function useDeleteDocument() {
-  const qc = useQueryClient()
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => documentsApi.delete(id),
-    onSuccess:  () =>
-      qc.invalidateQueries({ queryKey: ['documents'] }),
-  })
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: docKeys.all });
+    },
+  });
 }

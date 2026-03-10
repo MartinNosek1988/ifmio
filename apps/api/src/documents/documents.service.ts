@@ -67,6 +67,20 @@ export class DocumentsService {
     }
   }
 
+  async getStats(user: AuthUser) {
+    const tenantId = user.tenantId
+    const [total, contract, invoice, protocol, photo, plan, regulation] = await Promise.all([
+      this.prisma.document.count({ where: { tenantId } }),
+      this.prisma.document.count({ where: { tenantId, category: 'contract' } }),
+      this.prisma.document.count({ where: { tenantId, category: 'invoice' } }),
+      this.prisma.document.count({ where: { tenantId, category: 'protocol' } }),
+      this.prisma.document.count({ where: { tenantId, category: 'photo' } }),
+      this.prisma.document.count({ where: { tenantId, category: 'plan' } }),
+      this.prisma.document.count({ where: { tenantId, category: 'regulation' } }),
+    ])
+    return { total, contract, invoice, protocol, photo, plan, regulation }
+  }
+
   async upload(
     user: AuthUser,
     file: { buffer: Buffer; originalname: string; mimetype: string; size: number },

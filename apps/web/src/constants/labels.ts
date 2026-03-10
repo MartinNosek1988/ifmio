@@ -135,12 +135,13 @@ export const EVENT_TYPE_LABELS: Record<string, string> = {
 };
 
 export const DOC_TYPE_LABELS: Record<string, string> = {
-  smlouva: 'Smlouva',
-  revize: 'Revize',
-  faktura: 'Faktura',
-  pasport: 'Pasport',
-  pojisteni: 'Pojištění',
-  ostatni: 'Ostatní',
+  contract: 'Smlouva',
+  invoice: 'Faktura',
+  protocol: 'Protokol',
+  photo: 'Foto',
+  plan: 'Plán',
+  regulation: 'Nařízení',
+  other: 'Ostatní',
 };
 
 /** Lookup helper — returns label or raw key if not found */

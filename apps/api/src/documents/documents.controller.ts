@@ -28,6 +28,12 @@ export class DocumentsController {
     return this.service.list(user, query)
   }
 
+  @Get('stats')
+  @ApiOperation({ summary: 'Statistiky dokumentů' })
+  stats(@CurrentUser() user: AuthUser) {
+    return this.service.getStats(user)
+  }
+
   @Post('upload')
   @Roles(...ROLES_WRITE)
   @AuditAction('Document', 'UPLOAD')
