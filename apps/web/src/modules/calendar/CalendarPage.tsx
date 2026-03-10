@@ -1,78 +1,133 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus } from 'lucide-react';
 import { KpiCard, Badge, SearchBar, Button } from '../../shared/components';
+import { LoadingState } from '../../shared/components/LoadingState';
+import { ErrorState } from '../../shared/components/ErrorState';
 import type { BadgeVariant } from '../../shared/components';
 import { formatCzDate } from '../../shared/utils/format';
 import { EVENT_TYPE_LABELS, label } from '../../constants/labels';
-import { useCalendarStore, type CalendarEvent, type EventTyp } from './calendar-store';
+import { useCalendarEvents, useCalendarStats } from './api/calendar.queries';
+import type { ApiCalendarEvent } from './api/calendar.api';
 import EventDetailModal from './EventDetailModal';
 import EventForm from './EventForm';
 
 const DAYS_CS = ['Po', 'Ut', 'St', 'Ct', 'Pa', 'So', 'Ne'];
 const MONTHS_CS = ['Leden', 'Unor', 'Brezen', 'Duben', 'Kveten', 'Cerven', 'Cervenec', 'Srpen', 'Zari', 'Rijen', 'Listopad', 'Prosinec'];
 
+const SOURCE_COLOR: Record<string, BadgeVariant> = {
+  workorder: 'blue', contract: 'yellow', meter: 'yellow', custom: 'green',
+};
+const SOURCE_LABEL: Record<string, string> = {
+  workorder: 'Work Order', contract: 'Smlouva', meter: 'Kalibrace', custom: 'Vlastní',
+};
+
 const TYP_COLOR: Record<string, BadgeVariant> = {
   schuze: 'purple', revize: 'yellow', udrzba: 'blue',
   predani: 'green', prohlidka: 'yellow', ostatni: 'muted',
+  workorder: 'blue', contract: 'yellow', meter: 'yellow',
 };
 
 const TYP_HEX: Record<string, string> = {
   schuze: '#8b5cf6', revize: '#f97316', udrzba: '#3b82f6',
   predani: '#22c55e', prohlidka: '#eab308', ostatni: '#6b7280',
+  workorder: '#3b82f6', contract: '#f97316', meter: '#eab308',
 };
 
-const TYPY: EventTyp[] = ['schuze', 'revize', 'udrzba', 'predani', 'prohlidka', 'ostatni'];
+const FILTER_TYPES = [
+  { value: '', label: 'Vse' },
+  { value: 'schuze', label: 'Schůze' },
+  { value: 'revize', label: 'Revize' },
+  { value: 'udrzba', label: 'Údržba' },
+  { value: 'predani', label: 'Předání' },
+  { value: 'prohlidka', label: 'Prohlídka' },
+  { value: 'ostatni', label: 'Ostatní' },
+  { value: 'workorder', label: 'Work Orders' },
+  { value: 'contract', label: 'Smlouvy' },
+  { value: 'meter', label: 'Kalibrace' },
+];
 
 export default function CalendarPage() {
-  const { events, load, getStats } = useCalendarStore();
-  const [view, setView] = useState<'list' | 'month'>('list');
-  const [selected, setSelected] = useState<CalendarEvent | null>(null);
+  const [view, setView] = useState<'list' | 'month' | 'week'>('month');
+  const [selected, setSelected] = useState<ApiCalendarEvent | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [formDefaultDatum, setFormDefaultDatum] = useState('');
+  const [formDefaultDate, setFormDefaultDate] = useState('');
   const [search, setSearch] = useState('');
   const [filterTyp, setFilterTyp] = useState('');
 
   const today = new Date();
   const [calYear, setCalYear] = useState(today.getFullYear());
   const [calMonth, setCalMonth] = useState(today.getMonth());
+  const [weekStart, setWeekStart] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    return d.toISOString().slice(0, 10);
+  });
 
-  useEffect(() => { load(); }, [load]);
+  // Fetch range covers 3 months to handle month navigation
+  const fetchFrom = useMemo(() => {
+    const d = new Date(calYear, calMonth - 1, 1);
+    return d.toISOString().slice(0, 10);
+  }, [calYear, calMonth]);
+  const fetchTo = useMemo(() => {
+    const d = new Date(calYear, calMonth + 2, 0);
+    return d.toISOString().slice(0, 10);
+  }, [calYear, calMonth]);
 
-  const stats = getStats();
+  const apiParams = useMemo(() => ({
+    from: fetchFrom,
+    to: fetchTo,
+    ...(filterTyp ? { eventType: filterTyp } : {}),
+    ...(search ? { search } : {}),
+  }), [fetchFrom, fetchTo, filterTyp, search]);
 
-  const filtered = useMemo(() => {
-    let result = events;
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(e => e.nazev.toLowerCase().includes(q) || (e.popis || '').toLowerCase().includes(q));
-    }
-    if (filterTyp) result = result.filter(e => e.typ === filterTyp);
-    return [...result].sort((a, b) => a.datum.localeCompare(b.datum));
-  }, [events, search, filterTyp]);
+  const { data: events, isLoading, isError, refetch } = useCalendarEvents(apiParams);
+  const { data: stats } = useCalendarStats();
+
+  const items = events ?? [];
 
   // Month view helpers
   const firstDay = new Date(calYear, calMonth, 1);
   const lastDay = new Date(calYear, calMonth + 1, 0);
-  const startDow = (firstDay.getDay() + 6) % 7; // Monday = 0
+  const startDow = (firstDay.getDay() + 6) % 7;
   const daysInMonth = lastDay.getDate();
 
   const monthEvents = useMemo(() =>
-    events.filter(e => {
-      const d = new Date(e.datum);
+    items.filter(e => {
+      const d = new Date(e.date);
       return d.getFullYear() === calYear && d.getMonth() === calMonth;
     }),
-    [events, calYear, calMonth]
+    [items, calYear, calMonth]
   );
 
   const getEventsForDay = (day: number) => {
     const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return monthEvents.filter(e => e.datum === dateStr);
+    return monthEvents.filter(e => e.date === dateStr);
   };
 
-  const handleDayClick = (day: number) => {
+  // Week view helpers
+  const weekDays = useMemo(() => {
+    const start = new Date(weekStart);
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(d.getDate() + i);
+      return d;
+    });
+  }, [weekStart]);
+
+  const weekEvents = useMemo(() => {
+    const startStr = weekDays[0].toISOString().slice(0, 10);
+    const endStr = weekDays[6].toISOString().slice(0, 10);
+    return items.filter(e => e.date >= startStr && e.date <= endStr);
+  }, [items, weekDays]);
+
+  const getWeekDayEvents = (date: Date) => {
+    const dateStr = date.toISOString().slice(0, 10);
+    return weekEvents.filter(e => e.date === dateStr);
+  };
+
+  const handleDayClick = (dateStr: string) => {
     if (selected) return;
-    const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    setFormDefaultDatum(dateStr);
+    setFormDefaultDate(dateStr);
     setShowForm(true);
   };
 
@@ -85,21 +140,41 @@ export default function CalendarPage() {
     else setCalMonth(m => m + 1);
   };
 
+  const prevWeek = () => {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() - 7);
+    setWeekStart(d.toISOString().slice(0, 10));
+  };
+  const nextWeek = () => {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + 7);
+    setWeekStart(d.toISOString().slice(0, 10));
+  };
+
+  if (isLoading) return <LoadingState text="Nacitani kalendare..." />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  const filtered = useMemo(() =>
+    [...items].sort((a, b) => a.date.localeCompare(b.date)),
+    [items]
+  );
+
   return (
     <div>
       <div className="page-header">
         <div>
           <h1 className="page-title">Kalendar</h1>
-          <p className="page-subtitle">{stats.nadchazejici} nadchazejicich udalosti</p>
+          <p className="page-subtitle">{stats?.upcoming ?? 0} nadchazejicich udalosti</p>
         </div>
-        <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setFormDefaultDatum(''); setShowForm(true); }}>Nova udalost</Button>
+        <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setFormDefaultDate(''); setShowForm(true); }}>Nova udalost</Button>
       </div>
 
       {/* KPI */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 24 }}>
-        <KpiCard label="Celkem udalosti" value={String(stats.celkem)} color="var(--accent-blue)" />
-        <KpiCard label="Nadchazejici" value={String(stats.nadchazejici)} color="var(--accent-green)" />
-        <KpiCard label="Tento mesic" value={String(stats.tentoMesic)} color="var(--accent-orange)" />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
+        <KpiCard label="Celkem vlastnich" value={String(stats?.total ?? 0)} color="var(--accent-blue)" />
+        <KpiCard label="Nadchazejici" value={String(stats?.upcoming ?? 0)} color="var(--accent-green)" />
+        <KpiCard label="Tento mesic" value={String(stats?.thisMonth ?? 0)} color="var(--accent-orange)" />
+        <KpiCard label="WO / Smlouvy / Kal." value={`${stats?.workorders ?? 0} / ${stats?.contracts ?? 0} / ${stats?.meters ?? 0}`} color="var(--accent-blue)" />
       </div>
 
       {/* Toolbar */}
@@ -109,18 +184,17 @@ export default function CalendarPage() {
         </div>
         <select value={filterTyp} onChange={e => setFilterTyp(e.target.value)}
           style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}>
-          <option value="">Vse</option>
-          {TYPY.map(t => <option key={t} value={t}>{EVENT_TYPE_LABELS[t]}</option>)}
+          {FILTER_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
         <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }}>
-          {(['list', 'month'] as const).map(v => (
+          {(['list', 'week', 'month'] as const).map(v => (
             <button key={v} onClick={() => setView(v)}
               style={{
                 padding: '7px 14px', border: 'none', cursor: 'pointer', fontSize: '0.85rem',
                 background: view === v ? 'var(--accent)' : 'var(--surface)',
                 color: view === v ? 'var(--bg)' : 'var(--text)',
               }}>
-              {v === 'list' ? 'Seznam' : 'Mesic'}
+              {v === 'list' ? 'Seznam' : v === 'week' ? 'Tyden' : 'Mesic'}
             </button>
           ))}
         </div>
@@ -132,33 +206,36 @@ export default function CalendarPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['Datum', 'Cas', 'Nazev', 'Typ', 'Popis'].map(h => (
+                {['Datum', 'Cas', 'Nazev', 'Typ', 'Zdroj', 'Popis'].map(h => (
                   <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid var(--border)' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 && (
-                <tr><td colSpan={5} style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>Zadne udalosti</td></tr>
+                <tr><td colSpan={6} style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>Zadne udalosti</td></tr>
               )}
               {filtered.map(e => {
-                const isToday = new Date(e.datum).toDateString() === new Date().toDateString();
-                const isPast = new Date(e.datum) < new Date() && !isToday;
+                const isToday = e.date === today.toISOString().slice(0, 10);
+                const isPast = e.date < today.toISOString().slice(0, 10);
                 return (
                   <tr key={e.id}
                     onClick={() => setSelected(e)}
                     style={{ cursor: 'pointer', opacity: isPast ? 0.6 : 1 }}>
                     <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', fontWeight: isToday ? 700 : 400 }}>
-                      {formatCzDate(e.datum)}
+                      {formatCzDate(e.date)}
                       {isToday && <span style={{ marginLeft: 6, fontSize: '0.72rem', color: 'var(--accent-green)', fontWeight: 700 }}>DNES</span>}
                     </td>
-                    <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)' }} className="text-muted">{e.cas || '—'}</td>
-                    <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', fontWeight: 500 }}>{e.nazev}</td>
+                    <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)' }} className="text-muted">{e.timeFrom || '—'}</td>
+                    <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', fontWeight: 500 }}>{e.title}</td>
                     <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)' }}>
-                      <Badge variant={TYP_COLOR[e.typ] || 'muted'}>{label(EVENT_TYPE_LABELS, e.typ)}</Badge>
+                      <Badge variant={TYP_COLOR[e.eventType] || 'muted'}>{label(EVENT_TYPE_LABELS, e.eventType)}</Badge>
                     </td>
-                    <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="text-muted text-sm">
-                      {e.popis || '—'}
+                    <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)' }}>
+                      <Badge variant={SOURCE_COLOR[e.source] || 'muted'}>{SOURCE_LABEL[e.source] || e.source}</Badge>
+                    </td>
+                    <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="text-muted text-sm">
+                      {e.description || '—'}
                     </td>
                   </tr>
                 );
@@ -171,38 +248,34 @@ export default function CalendarPage() {
       {/* MONTH VIEW */}
       {view === 'month' && (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-          {/* Nav */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
             <Button size="sm" onClick={prevMonth}>{'\u2039'}</Button>
             <span style={{ fontWeight: 700, fontSize: '1.05rem' }}>{MONTHS_CS[calMonth]} {calYear}</span>
             <Button size="sm" onClick={nextMonth}>{'\u203A'}</Button>
           </div>
 
-          {/* Weekday headers */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid var(--border)' }}>
             {DAYS_CS.map(d => (
               <div key={d} style={{ padding: '8px 4px', textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{d}</div>
             ))}
           </div>
 
-          {/* Day grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
-            {/* Empty cells */}
             {Array.from({ length: startDow }).map((_, i) => (
               <div key={`e-${i}`} style={{ minHeight: 80, borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)', background: 'var(--surface-2, var(--surface))', opacity: 0.5 }} />
             ))}
 
-            {/* Days */}
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const day = i + 1;
               const dayEvents = getEventsForDay(day);
               const isToday = calYear === today.getFullYear() && calMonth === today.getMonth() && day === today.getDate();
               const col = (startDow + i) % 7;
               const isWeekend = col === 5 || col === 6;
+              const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
               return (
                 <div key={day}
-                  onClick={() => handleDayClick(day)}
+                  onClick={() => handleDayClick(dateStr)}
                   style={{
                     minHeight: 80, padding: '6px 8px',
                     borderRight: '1px solid var(--border)',
@@ -219,28 +292,62 @@ export default function CalendarPage() {
                     {day}
                   </div>
                   {dayEvents.slice(0, 2).map(e => (
-                    <button key={e.id}
-                      onClick={(ev) => {
-                        ev.stopPropagation();
-                        ev.preventDefault();
-                        setSelected(e);
-                      }}
-                      style={{
-                        display: 'block', width: '100%', textAlign: 'left' as const,
-                        fontSize: '0.72rem', padding: '2px 5px', borderRadius: 3, marginBottom: 2,
-                        background: (TYP_HEX[e.typ] || '#6b7280') + '22',
-                        border: 'none',
-                        borderLeft: `3px solid ${TYP_HEX[e.typ] || '#6b7280'}`,
-                        whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis',
-                        cursor: 'pointer', position: 'relative' as const, zIndex: 2,
-                        color: 'var(--text)',
-                      }}>
-                      {e.cas && <span style={{ marginRight: 3, color: 'var(--text-muted)' }}>{e.cas}</span>}
-                      {e.nazev}
-                    </button>
+                    <EventChip key={e.id} event={e} onClick={() => setSelected(e)} />
                   ))}
                   {dayEvents.length > 2 && (
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', paddingLeft: 4 }}>+{dayEvents.length - 2} dalsi</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* WEEK VIEW */}
+      {view === 'week' && (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
+            <Button size="sm" onClick={prevWeek}>{'\u2039'}</Button>
+            <span style={{ fontWeight: 700, fontSize: '1.05rem' }}>
+              {formatCzDate(weekDays[0].toISOString().slice(0, 10))} — {formatCzDate(weekDays[6].toISOString().slice(0, 10))}
+            </span>
+            <Button size="sm" onClick={nextWeek}>{'\u203A'}</Button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+            {weekDays.map((d, i) => {
+              const dateStr = d.toISOString().slice(0, 10);
+              const dayEvts = getWeekDayEvents(d);
+              const isToday = dateStr === today.toISOString().slice(0, 10);
+              const isWeekend = i === 5 || i === 6;
+
+              return (
+                <div key={dateStr}
+                  onClick={() => handleDayClick(dateStr)}
+                  style={{
+                    minHeight: 120, padding: '8px',
+                    borderRight: i < 6 ? '1px solid var(--border)' : undefined,
+                    borderBottom: '1px solid var(--border)',
+                    cursor: 'pointer',
+                    background: isToday ? 'rgba(200,240,80,0.06)' : isWeekend ? 'var(--surface-2, var(--surface))' : 'transparent',
+                  }}>
+                  <div style={{ textAlign: 'center', marginBottom: 8 }}>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>{DAYS_CS[i]}</div>
+                    <div style={{
+                      width: 28, height: 28, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      background: isToday ? 'var(--accent)' : 'transparent',
+                      color: isToday ? 'var(--bg)' : 'var(--text)',
+                      fontSize: '0.9rem', fontWeight: isToday ? 700 : 400,
+                    }}>
+                      {d.getDate()}
+                    </div>
+                  </div>
+                  {dayEvts.map(e => (
+                    <EventChip key={e.id} event={e} onClick={() => setSelected(e)} />
+                  ))}
+                  {dayEvts.length === 0 && (
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>—</div>
                   )}
                 </div>
               );
@@ -254,16 +361,37 @@ export default function CalendarPage() {
         <EventDetailModal
           event={selected}
           onClose={() => setSelected(null)}
-          onUpdated={() => { load(); setSelected(null); }}
+          onUpdated={() => setSelected(null)}
         />
       )}
 
       {showForm && (
         <EventForm
-          defaultDatum={formDefaultDatum}
-          onClose={() => { setShowForm(false); setFormDefaultDatum(''); load(); }}
+          defaultDate={formDefaultDate}
+          onClose={() => { setShowForm(false); setFormDefaultDate(''); }}
         />
       )}
     </div>
+  );
+}
+
+function EventChip({ event, onClick }: { event: ApiCalendarEvent; onClick: () => void }) {
+  const color = TYP_HEX[event.source !== 'custom' ? event.source : event.eventType] || '#6b7280';
+  return (
+    <button
+      onClick={(ev) => { ev.stopPropagation(); ev.preventDefault(); onClick(); }}
+      style={{
+        display: 'block', width: '100%', textAlign: 'left' as const,
+        fontSize: '0.72rem', padding: '2px 5px', borderRadius: 3, marginBottom: 2,
+        background: color + '22',
+        border: 'none',
+        borderLeft: `3px solid ${color}`,
+        whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis',
+        cursor: 'pointer', position: 'relative' as const, zIndex: 2,
+        color: 'var(--text)',
+      }}>
+      {event.timeFrom && <span style={{ marginRight: 3, color: 'var(--text-muted)' }}>{event.timeFrom}</span>}
+      {event.title}
+    </button>
   );
 }

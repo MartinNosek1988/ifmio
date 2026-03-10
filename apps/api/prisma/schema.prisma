@@ -43,6 +43,7 @@ model Tenant {
   leaseAgreements   LeaseAgreement[]
   workOrders        WorkOrder[]
   meters            Meter[]
+  calendarEvents    CalendarEvent[]
 
   @@map("tenants")
 }
@@ -968,4 +969,38 @@ enum MeterType {
   voda_tepla
   plyn
   teplo
+}
+
+// ─── CALENDAR EVENTS ────────────────────────────────────────────
+
+model CalendarEvent {
+  id          String        @id @default(uuid())
+  tenantId    String
+  propertyId  String?
+  title       String
+  eventType   CalEventType  @default(ostatni)
+  date        DateTime
+  dateTo      DateTime?
+  timeFrom    String?
+  timeTo      String?
+  location    String?
+  description String?       @db.Text
+  attendees   String[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, date])
+  @@map("calendar_events")
+}
+
+enum CalEventType {
+  schuze
+  revize
+  udrzba
+  predani
+  prohlidka
+  ostatni
 }

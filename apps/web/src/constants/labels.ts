@@ -132,6 +132,9 @@ export const EVENT_TYPE_LABELS: Record<string, string> = {
   udrzba: 'Údržba',
   prohlidka: 'Prohlídka',
   ostatni: 'Ostatní',
+  workorder: 'Work Order',
+  contract: 'Smlouva',
+  meter: 'Kalibrace',
 };
 
 export const DOC_TYPE_LABELS: Record<string, string> = {
