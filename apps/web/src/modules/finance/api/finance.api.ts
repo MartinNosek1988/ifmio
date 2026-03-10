@@ -97,6 +97,8 @@ export const financeApi = {
       apiClient.get<Paginated<ApiBankTransaction>>('/finance/transactions', { params }).then((r) => r.data),
     create: (dto: Record<string, unknown>) =>
       apiClient.post<ApiBankTransaction>('/finance/transactions', dto).then((r) => r.data),
+    remove: (id: string) =>
+      apiClient.delete(`/finance/transactions/${id}`).then((r) => r.data),
   },
 
   prescriptions: {
@@ -104,6 +106,8 @@ export const financeApi = {
       apiClient.get<Paginated<ApiPrescription>>('/finance/prescriptions', { params }).then((r) => r.data),
     create: (dto: Record<string, unknown>) =>
       apiClient.post<ApiPrescription>('/finance/prescriptions', dto).then((r) => r.data),
+    remove: (id: string) =>
+      apiClient.delete(`/finance/prescriptions/${id}`).then((r) => r.data),
   },
 
   billingPeriods: {

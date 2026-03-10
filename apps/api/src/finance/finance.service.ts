@@ -54,19 +54,21 @@ export class FinanceService {
     query: {
       bankAccountId?: string;
       status?: string;
+      type?: string;
       dateFrom?: string;
       dateTo?: string;
       page?: number;
       limit?: number;
     },
   ) {
-    const { bankAccountId, status, dateFrom, dateTo, page = 1, limit = 50 } = query;
+    const { bankAccountId, status, type, dateFrom, dateTo, page = 1, limit = 50 } = query;
     const skip = (page - 1) * limit;
 
     const where: Prisma.BankTransactionWhereInput = {
       tenantId: user.tenantId,
       ...(bankAccountId ? { bankAccountId } : {}),
       ...(status ? { status: status as Prisma.EnumBankTransactionStatusFilter } : {}),
+      ...(type ? { type: type as Prisma.EnumBankTransactionTypeFilter } : {}),
       ...(dateFrom || dateTo ? {
         date: {
           ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
@@ -137,15 +139,17 @@ export class FinanceService {
     propertyId?: string;
     residentId?: string;
     status?: string;
+    type?: string;
     page?: number;
     limit?: number;
   }) {
-    const { propertyId, residentId, status = 'active', page = 1, limit = 20 } = query;
+    const { propertyId, residentId, status = 'active', type, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
     const where: Prisma.PrescriptionWhereInput = {
       tenantId: user.tenantId,
       status: status as Prisma.EnumPrescriptionStatusFilter,
+      ...(type ? { type: type as Prisma.EnumPrescriptionTypeFilter } : {}),
       ...(propertyId ? { propertyId } : {}),
       ...(residentId ? { residentId } : {}),
     };
@@ -600,5 +604,26 @@ export class FinanceService {
         prescriptionId: prescriptionId,
       },
     })
+  }
+
+  // ─── DELETE ──────────────────────────────────────────────────
+
+  async deletePrescription(user: AuthUser, id: string) {
+    const prescription = await this.prisma.prescription.findFirst({
+      where: { id, tenantId: user.tenantId },
+    })
+    if (!prescription) throw new NotFoundException('Předpis nenalezen')
+
+    await this.prisma.prescriptionItem.deleteMany({ where: { prescriptionId: id } })
+    await this.prisma.prescription.delete({ where: { id } })
+  }
+
+  async deleteTransaction(user: AuthUser, id: string) {
+    const tx = await this.prisma.bankTransaction.findFirst({
+      where: { id, tenantId: user.tenantId },
+    })
+    if (!tx) throw new NotFoundException('Transakce nenalezena')
+
+    await this.prisma.bankTransaction.delete({ where: { id } })
   }
 }

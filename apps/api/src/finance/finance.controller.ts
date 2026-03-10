@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Body, Query, Param, Req,
+  Controller, Get, Post, Delete, Body, Query, Param, Req, HttpCode, HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { FinanceService } from './finance.service';
@@ -50,7 +50,7 @@ export class FinanceController {
   @Get('transactions')
   @ApiOperation({ summary: 'Bankovní transakce' })
   listTransactions(@CurrentUser() user: AuthUser, @Query() query: {
-    bankAccountId?: string; status?: string;
+    bankAccountId?: string; status?: string; type?: string;
     dateFrom?: string; dateTo?: string;
     page?: number; limit?: number;
   }) {
@@ -73,7 +73,7 @@ export class FinanceController {
   @Get('prescriptions')
   @ApiOperation({ summary: 'Předpisy' })
   listPrescriptions(@CurrentUser() user: AuthUser, @Query() query: {
-    propertyId?: string; residentId?: string; status?: string; page?: number; limit?: number;
+    propertyId?: string; residentId?: string; status?: string; type?: string; page?: number; limit?: number;
   }) {
     return this.service.listPrescriptions(user, query);
   }
@@ -183,5 +183,31 @@ export class FinanceController {
       body.transactionId,
       body.prescriptionId,
     )
+  }
+
+  // ─── DELETE ───────────────────────────────────────────────────
+
+  @Delete('prescriptions/:id')
+  @Roles(...ROLES_WRITE)
+  @AuditAction('Prescription', 'DELETE')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Smazat předpis' })
+  deletePrescription(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ) {
+    return this.service.deletePrescription(user, id)
+  }
+
+  @Delete('transactions/:id')
+  @Roles(...ROLES_WRITE)
+  @AuditAction('BankTransaction', 'DELETE')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Smazat transakci' })
+  deleteTransaction(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ) {
+    return this.service.deleteTransaction(user, id)
   }
 }

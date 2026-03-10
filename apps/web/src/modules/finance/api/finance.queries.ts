@@ -120,6 +120,28 @@ export function useGeneratePrescriptions() {
   });
 }
 
+export function useDeletePrescription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => financeApi.prescriptions.remove(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['finance', 'prescriptions'] });
+      qc.invalidateQueries({ queryKey: ['finance', 'summary'] });
+    },
+  });
+}
+
+export function useDeleteTransaction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => financeApi.transactions.remove(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['finance', 'transactions'] });
+      qc.invalidateQueries({ queryKey: ['finance', 'summary'] });
+    },
+  });
+}
+
 export function useMatchSingle() {
   const qc = useQueryClient();
   return useMutation({

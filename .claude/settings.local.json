@@ -9,7 +9,8 @@
       "Bash(npx vitest:*)",
       "Bash(do test:*)",
       "Bash(npm install:*)",
-      "Bash(code .:*)"
+      "Bash(code .:*)",
+      "Bash(npx vite:*)"
     ]
   }
 }

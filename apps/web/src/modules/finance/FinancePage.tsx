@@ -1,17 +1,18 @@
 import { useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Upload, Zap, Link2, Calculator } from 'lucide-react';
+import { Upload, Zap, Link2, Calculator, Plus } from 'lucide-react';
 import { KpiCard, Table, Badge, SearchBar, Button, EmptyState, Modal } from '../../shared/components';
 import type { Column } from '../../shared/components';
 import { formatKc, formatCzDate } from '../../shared/utils/format';
 import { FIN_STATUS_LABELS, label } from '../../constants/labels';
 import type { FinTransaction, FinPrescription, FinAccount } from './types';
 import { useToast } from '../../shared/components/toast/Toast';
-import { useBankAccounts, useTransactions, useImportTransactions, usePrescriptions, useGeneratePrescriptions, useMatchTransactions, useMatchSingle, useFinanceSummary } from './api/finance.queries';
+import { useBankAccounts, useTransactions, useImportTransactions, usePrescriptions, useGeneratePrescriptions, useMatchTransactions, useMatchSingle, useFinanceSummary, useDeletePrescription, useDeleteTransaction, useCreatePrescription } from './api/finance.queries';
 import { mapAccount, mapTransaction, mapPrescription } from './api/finance.mappers';
 import { useProperties } from '../properties/use-properties';
 import { useResidents } from '../residents/api/residents.queries';
 import { PrescriptionCalc } from './calc/PrescriptionCalc';
+import type { ApiProperty } from '../properties/properties-api';
 
 const TABS = [
   { key: 'prescriptions', label: 'Předpisy' },
@@ -35,18 +36,36 @@ export default function FinancePage() {
   const accounts = useMemo(() => apiBankAccounts.map(mapAccount), [apiBankAccounts]);
 
   // TAB 2: transactions from API
-  const { data: txData } = useTransactions({ page: 1, limit: 500 });
+  const { data: txData } = useTransactions({ page: 1, limit: 500, ...(filterTxType ? { type: filterTxType } : {}) });
   const transactions = useMemo(() => (txData?.data ?? []).map(mapTransaction), [txData]);
   const importMutation = useImportTransactions();
 
-  // TAB 3: prescriptions from API
-  const { data: presData } = usePrescriptions();
+  // TAB 3: prescriptions from API (with type/status filter)
+  const [filterPresType, setFilterPresType] = useState('');
+  const [filterPresStatus, setFilterPresStatus] = useState('');
+  const { data: presData } = usePrescriptions({
+    ...(filterPresType ? { type: filterPresType } : {}),
+    ...(filterPresStatus ? { status: filterPresStatus } : { status: 'active' }),
+    limit: 200,
+  });
   const prescriptions = useMemo(() => (presData?.data ?? []).map(mapPrescription), [presData]);
   const generateMutation = useGeneratePrescriptions();
+
+  // TAB 2b: transaction type filter
+  const [filterTxType, setFilterTxType] = useState('');
 
   // TAB 4: matching mutation
   const matchMutation = useMatchTransactions();
   const [search, setSearch] = useState('');
+
+  // Delete mutations
+  const deletePrescriptionMutation = useDeletePrescription();
+  const deleteTransactionMutation = useDeleteTransaction();
+  const [deletePredpis, setDeletePredpis] = useState<FinPrescription | null>(null);
+  const [deleteTx, setDeleteTx] = useState<FinTransaction | null>(null);
+
+  // New prescription form
+  const [showPrescriptionForm, setShowPrescriptionForm] = useState(false);
 
   // Generate modal
   const [showGen, setShowGen] = useState(false);
@@ -155,6 +174,7 @@ export default function FinancePage() {
           <h1 className="page-title">Finance</h1>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowPrescriptionForm(true)}>Nový předpis</Button>
           <Button icon={<Calculator size={15} />} onClick={() => setShowCalc(true)}>Kalkulačka</Button>
           <Button icon={<Zap size={15} />} onClick={() => setShowGen(true)}>Generovat předpisy</Button>
           <Button icon={<Link2 size={15} />} onClick={handleAutoParovat}>Auto-párovat</Button>
@@ -192,6 +212,11 @@ export default function FinancePage() {
           onSearch={setSearch}
           onSelect={setDetailPredpis}
           getPropName={getPropName}
+          filterType={filterPresType}
+          onFilterType={setFilterPresType}
+          filterStatus={filterPresStatus}
+          onFilterStatus={setFilterPresStatus}
+          onDelete={setDeletePredpis}
         />
       )}
 
@@ -209,6 +234,9 @@ export default function FinancePage() {
           setImportMsg={setImportMsg}
           onImport={handleImport}
           onSelectTx={setParTx}
+          filterType={filterTxType}
+          onFilterType={setFilterTxType}
+          onDelete={setDeleteTx}
         />
       )}
 
@@ -283,18 +311,93 @@ export default function FinancePage() {
           />
         )}
       </Modal>
+
+      {/* ── MODAL: SMAZAT PŘEDPIS ──────────────────────────────── */}
+      {deletePredpis && (
+        <Modal open onClose={() => setDeletePredpis(null)} title="Smazat předpis"
+          subtitle={deletePredpis.popis}
+          footer={
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <Button onClick={() => setDeletePredpis(null)}>Zrušit</Button>
+              <Button variant="danger" onClick={() => {
+                deletePrescriptionMutation.mutate(deletePredpis.id, {
+                  onSuccess: () => { setDeletePredpis(null); setDetailPredpis(null); },
+                });
+              }} disabled={deletePrescriptionMutation.isPending}>
+                {deletePrescriptionMutation.isPending ? 'Mažu...' : 'Smazat'}
+              </Button>
+            </div>
+          }>
+          <p style={{ fontSize: '0.9rem', marginBottom: 8 }}>
+            Opravdu chcete smazat předpis <strong>{deletePredpis.popis}</strong>?
+          </p>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            Tato akce je nevratná. Budou smazány i všechny položky předpisu.
+          </p>
+          {deletePrescriptionMutation.isError && (
+            <div style={{ color: 'var(--danger)', fontSize: '0.85rem', marginTop: 8 }}>Nepodařilo se smazat předpis.</div>
+          )}
+        </Modal>
+      )}
+
+      {/* ── MODAL: SMAZAT TRANSAKCI ────────────────────────────── */}
+      {deleteTx && (
+        <Modal open onClose={() => setDeleteTx(null)} title="Smazat transakci"
+          subtitle={`${deleteTx.popis} | ${formatKc(deleteTx.castka)}`}
+          footer={
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <Button onClick={() => setDeleteTx(null)}>Zrušit</Button>
+              <Button variant="danger" onClick={() => {
+                deleteTransactionMutation.mutate(deleteTx.id, {
+                  onSuccess: () => setDeleteTx(null),
+                });
+              }} disabled={deleteTransactionMutation.isPending}>
+                {deleteTransactionMutation.isPending ? 'Mažu...' : 'Smazat'}
+              </Button>
+            </div>
+          }>
+          <p style={{ fontSize: '0.9rem', marginBottom: 8 }}>
+            Opravdu chcete smazat transakci <strong>{deleteTx.popis}</strong>?
+          </p>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Tato akce je nevratná.</p>
+          {deleteTransactionMutation.isError && (
+            <div style={{ color: 'var(--danger)', fontSize: '0.85rem', marginTop: 8 }}>Nepodařilo se smazat transakci.</div>
+          )}
+        </Modal>
+      )}
+
+      {/* ── MODAL: NOVÝ PŘEDPIS ────────────────────────────────── */}
+      {showPrescriptionForm && (
+        <PrescriptionForm
+          properties={properties as ApiProperty[]}
+          onClose={() => setShowPrescriptionForm(false)}
+        />
+      )}
     </div>
   );
 }
 
 // ─── Prescriptions Tab ────────────────────────────────────────────────────────
 
-function PrescriptionsTab({ prescriptions, search, onSearch, onSelect, getPropName }: {
+const PRES_TYPE_LABELS: Record<string, string> = {
+  advance: 'Záloha', service: 'Služby', rent: 'Nájem', other: 'Ostatní',
+};
+
+const PRES_STATUS_LABELS: Record<string, string> = {
+  active: 'Aktivní', inactive: 'Neaktivní', cancelled: 'Zrušený',
+};
+
+function PrescriptionsTab({ prescriptions, search, onSearch, onSelect, getPropName, filterType, onFilterType, filterStatus, onFilterStatus, onDelete }: {
   prescriptions: FinPrescription[];
   search: string;
   onSearch: (q: string) => void;
   onSelect: (p: FinPrescription) => void;
   getPropName: (id: unknown) => string;
+  filterType: string;
+  onFilterType: (v: string) => void;
+  filterStatus: string;
+  onFilterStatus: (v: string) => void;
+  onDelete: (p: FinPrescription) => void;
 }) {
   const filtered = useMemo(() => {
     let list = [...prescriptions].sort((a, b) => b.datum.localeCompare(a.datum));
@@ -309,9 +412,15 @@ function PrescriptionsTab({ prescriptions, search, onSearch, onSelect, getPropNa
     paid: 'green', partial: 'yellow', pending: 'blue', overdue: 'red',
   };
 
+  const selectStyle = {
+    padding: '8px 12px', borderRadius: 6,
+    border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)',
+  };
+
   const columns: Column<FinPrescription>[] = [
     { key: 'datum', label: 'Datum', render: (p) => <span className="text-muted text-sm">{formatCzDate(p.datum)}</span> },
     { key: 'popis', label: 'Popis', render: (p) => <span style={{ fontWeight: 500 }}>{p.popis}</span> },
+    { key: 'typ', label: 'Typ', render: (p) => <Badge variant="blue">{PRES_TYPE_LABELS[p.typ] || p.typ}</Badge> },
     { key: 'propId', label: 'Nemovitost', render: (p) => <span className="text-sm">{getPropName(p.propId)}</span> },
     { key: 'status', label: 'Status', render: (p) => <Badge variant={statusColor[p.status] || 'muted'}>{label(FIN_STATUS_LABELS, p.status)}</Badge> },
     { key: 'castka', label: 'Částka', align: 'right', render: (p) => <span className="font-semibold">{formatKc(p.castka)}</span> },
@@ -324,11 +433,27 @@ function PrescriptionsTab({ prescriptions, search, onSearch, onSelect, getPropNa
       const overdue = p.splatnost < new Date().toISOString().slice(0, 10) && p.status !== 'paid';
       return <span style={{ color: overdue ? 'var(--danger)' : 'var(--text-muted)', fontSize: '0.85rem' }}>{formatCzDate(p.splatnost)}</span>;
     }},
+    { key: 'actions', label: '', render: (p) => (
+      <button onClick={(e) => { e.stopPropagation(); onDelete(p); }}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: '0.8rem' }}>
+        Smazat
+      </button>
+    )},
   ];
 
   return (
     <div>
-      <div style={{ marginBottom: 16 }}><SearchBar placeholder="Hledat předpisy..." onSearch={onSearch} /></div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <div style={{ flex: 1 }}><SearchBar placeholder="Hledat předpisy..." onSearch={onSearch} /></div>
+        <select value={filterType} onChange={(e) => onFilterType(e.target.value)} style={selectStyle}>
+          <option value="">Všechny typy</option>
+          {Object.entries(PRES_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        <select value={filterStatus} onChange={(e) => onFilterStatus(e.target.value)} style={selectStyle}>
+          <option value="">Aktivní</option>
+          {Object.entries(PRES_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+      </div>
       <Table data={filtered} columns={columns} rowKey={p => p.id} onRowClick={onSelect} emptyText="Žádné předpisy. Klikni na Generovat předpisy." />
     </div>
   );
@@ -336,7 +461,11 @@ function PrescriptionsTab({ prescriptions, search, onSearch, onSelect, getPropNa
 
 // ─── Bank Tab ─────────────────────────────────────────────────────────────────
 
-function BankTab({ transactions, accounts, search, onSearch, importRef, importUctId, setImportUctId, importMsg, setImportMsg, onImport, onSelectTx }: {
+const TX_TYPE_LABELS: Record<string, string> = {
+  credit: 'Příjem', debit: 'Výdaj',
+};
+
+function BankTab({ transactions, accounts, search, onSearch, importRef, importUctId, setImportUctId, importMsg, setImportMsg, onImport, onSelectTx, filterType, onFilterType, onDelete }: {
   transactions: FinTransaction[];
   accounts: FinAccount[];
   search: string;
@@ -348,6 +477,9 @@ function BankTab({ transactions, accounts, search, onSearch, importRef, importUc
   setImportMsg: (v: string | null) => void;
   onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSelectTx: (tx: FinTransaction) => void;
+  filterType: string;
+  onFilterType: (v: string) => void;
+  onDelete: (tx: FinTransaction) => void;
 }) {
   const filtered = useMemo(() => {
     let list = [...transactions].sort((a, b) => b.datum.localeCompare(a.datum));
@@ -357,6 +489,11 @@ function BankTab({ transactions, accounts, search, onSearch, importRef, importUc
     }
     return list;
   }, [transactions, search]);
+
+  const selectStyle = {
+    padding: '8px 12px', borderRadius: 6,
+    border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)',
+  };
 
   const columns: Column<FinTransaction>[] = [
     { key: 'datum', label: 'Datum', render: t => <span className="text-muted text-sm">{formatCzDate(t.datum)}</span> },
@@ -372,6 +509,12 @@ function BankTab({ transactions, accounts, search, onSearch, importRef, importUc
       (t.parovani || []).length > 0
         ? <Badge variant="green">Spárováno</Badge>
         : t.typ === 'prijem' ? <Badge variant="yellow">Nespárováno</Badge> : <Badge variant="muted">Výdej</Badge>
+    )},
+    { key: 'actions', label: '', render: t => (
+      <button onClick={(e) => { e.stopPropagation(); onDelete(t); }}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: '0.8rem' }}>
+        Smazat
+      </button>
     )},
   ];
 
@@ -399,7 +542,13 @@ function BankTab({ transactions, accounts, search, onSearch, importRef, importUc
         )}
       </div>
 
-      <div style={{ marginBottom: 16 }}><SearchBar placeholder="Hledat transakce..." onSearch={onSearch} /></div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <div style={{ flex: 1 }}><SearchBar placeholder="Hledat transakce..." onSearch={onSearch} /></div>
+        <select value={filterType} onChange={(e) => onFilterType(e.target.value)} style={selectStyle}>
+          <option value="">Všechny typy</option>
+          {Object.entries(TX_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+      </div>
       <Table data={filtered} columns={columns} rowKey={t => t.id} onRowClick={onSelectTx} emptyText="Žádné transakce. Importuj bankovní výpis." />
     </div>
   );
@@ -633,5 +782,150 @@ function ParovaniPicker({ prescriptions, onParovat, getPropName }: {
         {filtered.length === 0 && <EmptyState title="Žádné otevřené předpisy" />}
       </div>
     </div>
+  );
+}
+
+// ─── Prescription Form ─────────────────────────────────────────────────────────
+
+function PrescriptionForm({ properties, onClose }: {
+  properties: ApiProperty[];
+  onClose: () => void;
+}) {
+  const createMutation = useCreatePrescription();
+  const [form, setForm] = useState({
+    propertyId: '',
+    unitId: '',
+    type: 'rent' as string,
+    amount: '',
+    dueDay: '15',
+    variableSymbol: '',
+    description: '',
+    validFrom: new Date().toISOString().slice(0, 10),
+    validTo: '',
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const set = (key: string, value: string) => setForm(f => ({ ...f, [key]: value }));
+
+  const selectedProperty = properties.find(p => p.id === form.propertyId);
+  const availableUnits = selectedProperty?.units ?? [];
+
+  const validate = () => {
+    const errs: Record<string, string> = {};
+    if (!form.propertyId) errs.propertyId = 'Povinné';
+    if (!form.description.trim()) errs.description = 'Povinné';
+    if (!form.amount || Number(form.amount) <= 0) errs.amount = 'Zadejte částku';
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleSubmit = () => {
+    if (!validate()) return;
+    createMutation.mutate(
+      {
+        propertyId: form.propertyId,
+        unitId: form.unitId || undefined,
+        type: form.type,
+        amount: Number(form.amount),
+        dueDay: Number(form.dueDay) || 15,
+        variableSymbol: form.variableSymbol || undefined,
+        description: form.description.trim(),
+        validFrom: form.validFrom,
+        validTo: form.validTo || undefined,
+      },
+      { onSuccess: () => onClose() },
+    );
+  };
+
+  const inputStyle = (field?: string) => ({
+    width: '100%',
+    padding: '8px 12px',
+    borderRadius: 6,
+    boxSizing: 'border-box' as const,
+    border: `1px solid ${field && errors[field] ? 'var(--danger)' : 'var(--border)'}`,
+    background: 'var(--surface-2, var(--surface))',
+    color: 'var(--text)',
+  });
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title="Nový předpis"
+      footer={
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <Button onClick={onClose}>Zrušit</Button>
+          <Button variant="primary" onClick={handleSubmit} disabled={createMutation.isPending}>
+            {createMutation.isPending ? 'Vytvářím...' : 'Vytvořit'}
+          </Button>
+        </div>
+      }
+    >
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+        <div>
+          <label className="form-label">Nemovitost *</label>
+          <select value={form.propertyId} onChange={e => { set('propertyId', e.target.value); set('unitId', ''); }} style={inputStyle('propertyId')}>
+            <option value="">— vyberte —</option>
+            {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          {errors.propertyId && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.propertyId}</div>}
+        </div>
+        {availableUnits.length > 0 && (
+          <div>
+            <label className="form-label">Jednotka</label>
+            <select value={form.unitId} onChange={e => set('unitId', e.target.value)} style={inputStyle()}>
+              <option value="">— bez jednotky —</option>
+              {availableUnits.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+        <div>
+          <label className="form-label">Typ *</label>
+          <select value={form.type} onChange={e => set('type', e.target.value)} style={inputStyle()}>
+            {Object.entries(PRES_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="form-label">Částka (Kč) *</label>
+          <input type="number" value={form.amount} onChange={e => set('amount', e.target.value)} placeholder="0" style={inputStyle('amount')} />
+          {errors.amount && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.amount}</div>}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+        <div>
+          <label className="form-label">Splatnost (den v měsíci)</label>
+          <input type="number" value={form.dueDay} onChange={e => set('dueDay', e.target.value)} min="1" max="28" style={inputStyle()} />
+        </div>
+        <div>
+          <label className="form-label">Variabilní symbol</label>
+          <input value={form.variableSymbol} onChange={e => set('variableSymbol', e.target.value)} placeholder="volitelný" style={inputStyle()} />
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
+        <label className="form-label">Popis *</label>
+        <input value={form.description} onChange={e => set('description', e.target.value)} placeholder="Popis předpisu" style={inputStyle('description')} />
+        {errors.description && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.description}</div>}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div>
+          <label className="form-label">Platnost od</label>
+          <input type="date" value={form.validFrom} onChange={e => set('validFrom', e.target.value)} style={inputStyle()} />
+        </div>
+        <div>
+          <label className="form-label">Platnost do</label>
+          <input type="date" value={form.validTo} onChange={e => set('validTo', e.target.value)} style={inputStyle()} />
+        </div>
+      </div>
+
+      {createMutation.isError && (
+        <div style={{ color: 'var(--danger)', fontSize: '0.85rem', marginTop: 12 }}>Nepodařilo se vytvořit předpis.</div>
+      )}
+    </Modal>
   );
 }
