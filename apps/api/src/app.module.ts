@@ -10,6 +10,7 @@ import { UnitsModule } from './units/units.module';
 import { ResidentsModule } from './residents/residents.module';
 import { FinanceModule } from './finance/finance.module';
 import { ContractsModule } from './contracts/contracts.module';
+import { WorkOrdersModule } from './work-orders/work-orders.module';
 import { RemindersModule } from './reminders/reminders.module';
 import { HelpdeskModule } from './helpdesk/helpdesk.module';
 import { DashboardModule } from './dashboard/dashboard.module';
@@ -39,6 +40,7 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
     ResidentsModule,
     FinanceModule,
     ContractsModule,
+    WorkOrdersModule,
     RemindersModule,
     HelpdeskModule,
     DashboardModule,

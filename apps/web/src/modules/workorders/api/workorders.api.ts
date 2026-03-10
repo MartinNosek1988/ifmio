@@ -1,0 +1,108 @@
+import { apiClient } from '../../../core/api/client';
+
+export type WOStatus = 'nova' | 'v_reseni' | 'vyresena' | 'uzavrena' | 'zrusena';
+export type WOPriority = 'nizka' | 'normalni' | 'vysoka' | 'kriticka';
+
+export interface ApiWorkOrderComment {
+  id: string;
+  workOrderId: string;
+  author: string;
+  text: string;
+  createdAt: string;
+}
+
+export interface ApiWorkOrder {
+  id: string;
+  tenantId: string;
+  propertyId: string | null;
+  unitId: string | null;
+  title: string;
+  description: string | null;
+  workType: string;
+  priority: WOPriority;
+  status: WOStatus;
+  assignee: string | null;
+  requester: string | null;
+  deadline: string | null;
+  completedAt: string | null;
+  estimatedHours: number | null;
+  actualHours: number | null;
+  laborCost: number | null;
+  materialCost: number | null;
+  totalCost: number | null;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+  property?: { id: string; name: string; address?: string } | null;
+  unit?: { id: string; name: string; area?: number; floor?: number } | null;
+  comments: ApiWorkOrderComment[];
+}
+
+export interface WOStats {
+  total: number;
+  open: number;
+  completedToday: number;
+  overdue: number;
+}
+
+export interface CreateWorkOrderDto {
+  title: string;
+  description?: string;
+  workType?: string;
+  priority?: string;
+  propertyId?: string;
+  unitId?: string;
+  assignee?: string;
+  requester?: string;
+  deadline?: string;
+  estimatedHours?: number;
+  laborCost?: number;
+  materialCost?: number;
+  note?: string;
+}
+
+export interface UpdateWorkOrderDto extends Partial<CreateWorkOrderDto> {
+  actualHours?: number;
+}
+
+export const workOrdersApi = {
+  list: async (params?: { status?: string; priority?: string; propertyId?: string; search?: string }) => {
+    const { data } = await apiClient.get<ApiWorkOrder[]>('/work-orders', { params });
+    return data;
+  },
+
+  stats: async () => {
+    const { data } = await apiClient.get<WOStats>('/work-orders/stats');
+    return data;
+  },
+
+  getById: async (id: string) => {
+    const { data } = await apiClient.get<ApiWorkOrder>(`/work-orders/${id}`);
+    return data;
+  },
+
+  create: async (dto: CreateWorkOrderDto) => {
+    const { data } = await apiClient.post<ApiWorkOrder>('/work-orders', dto);
+    return data;
+  },
+
+  update: async (id: string, dto: UpdateWorkOrderDto) => {
+    const { data } = await apiClient.put<ApiWorkOrder>(`/work-orders/${id}`, dto);
+    return data;
+  },
+
+  changeStatus: async (id: string, status: string) => {
+    const { data } = await apiClient.put<ApiWorkOrder>(`/work-orders/${id}/status`, { status });
+    return data;
+  },
+
+  addComment: async (id: string, text: string) => {
+    const { data } = await apiClient.post<ApiWorkOrderComment>(`/work-orders/${id}/comments`, { text });
+    return data;
+  },
+
+  remove: async (id: string) => {
+    const { data } = await apiClient.delete(`/work-orders/${id}`);
+    return data;
+  },
+};

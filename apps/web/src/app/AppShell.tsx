@@ -148,6 +148,14 @@ export default function AppShell() {
   });
   const expiringContracts = contractStats?.expiringSoon ?? 0;
 
+  const { data: woStats } = useQuery({
+    queryKey: ['workorders', 'stats'],
+    queryFn: () => apiClient.get('/work-orders/stats').then((r) => r.data),
+    staleTime: 60_000,
+    retry: false,
+  });
+  const openWOCount = woStats?.open ?? 0;
+
   useEffect(() => {
     if (onboardingData && !onboardingData.completed) {
       setShowOnboarding(true);
@@ -164,7 +172,8 @@ export default function AppShell() {
             {sec.items.map((item) => {
               const hasQuery = item.to.includes('?');
               const badgeCount = item.to === '/helpdesk' ? openTicketsCount
-                : item.to === '/contracts' ? expiringContracts : 0;
+                : item.to === '/contracts' ? expiringContracts
+                : item.to === '/workorders' ? openWOCount : 0;
               return (
                 <NavLink
                   key={item.to}

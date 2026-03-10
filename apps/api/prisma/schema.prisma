@@ -41,6 +41,7 @@ model Tenant {
   importLogs        ImportLog[]
   notifications     Notification[]
   leaseAgreements   LeaseAgreement[]
+  workOrders        WorkOrder[]
 
   @@map("tenants")
 }
@@ -148,6 +149,7 @@ model Property {
   prescriptions   Prescription[]
   helpdeskTickets HelpdeskTicket[]
   leaseAgreements LeaseAgreement[]
+  workOrders      WorkOrder[]
 
   @@index([tenantId])
   @@map("properties")
@@ -190,6 +192,7 @@ model Unit {
   prescriptions   Prescription[]
   helpdeskTickets HelpdeskTicket[]
   leaseAgreements LeaseAgreement[]
+  workOrders      WorkOrder[]
 
   @@index([propertyId])
   @@map("units")
@@ -832,4 +835,77 @@ enum RenewalType {
   pisemna
   automaticka
   nevztahuje
+}
+
+// ─── WORK ORDERS ─────────────────────────────────────────────────
+
+model WorkOrder {
+  id              String          @id @default(uuid())
+  tenantId        String
+  propertyId      String?
+  unitId          String?
+  title           String
+  description     String?         @db.Text
+  workType        WorkType        @default(corrective)
+  priority        WOPriority      @default(normalni)
+  status          WOStatus        @default(nova)
+  assignee        String?
+  requester       String?
+  deadline        DateTime?
+  completedAt     DateTime?
+  estimatedHours  Float?
+  actualHours     Float?
+  laborCost       Decimal?        @db.Decimal(12, 2)
+  materialCost    Decimal?        @db.Decimal(12, 2)
+  totalCost       Decimal?        @db.Decimal(12, 2)
+  note            String?         @db.Text
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property Property? @relation(fields: [propertyId], references: [id])
+  unit     Unit?     @relation(fields: [unitId], references: [id])
+  comments WorkOrderComment[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, priority])
+  @@index([tenantId, deadline])
+  @@index([propertyId])
+  @@map("work_orders")
+}
+
+model WorkOrderComment {
+  id          String   @id @default(uuid())
+  workOrderId String
+  author      String
+  text        String   @db.Text
+  createdAt   DateTime @default(now())
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  @@index([workOrderId])
+  @@map("work_order_comments")
+}
+
+enum WorkType {
+  corrective
+  preventive
+  inspection
+  emergency
+}
+
+enum WOPriority {
+  nizka
+  normalni
+  vysoka
+  kriticka
+}
+
+enum WOStatus {
+  nova
+  v_reseni
+  vyresena
+  uzavrena
+  zrusena
 }
