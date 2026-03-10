@@ -197,4 +197,145 @@ export class ReportsService {
 
     return { year, months, totals };
   }
+
+  async getDashboardKpi(user: AuthUser) {
+    const tenantId = user.tenantId;
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const d90 = new Date();
+    d90.setDate(d90.getDate() + 90);
+
+    const [
+      totalProperties,
+      totalUnits,
+      occupiedUnits,
+      activeResidents,
+      debtResidents,
+      openTickets,
+      openWorkOrders,
+      expiringLeases,
+      monthIncome,
+      monthExpense,
+      activePrescriptions,
+      calibrationDue,
+    ] = await Promise.all([
+      this.prisma.property.count({ where: { tenantId, status: 'active' } }),
+      this.prisma.unit.count({ where: { property: { tenantId } } }),
+      this.prisma.unit.count({ where: { property: { tenantId }, isOccupied: true } }),
+      this.prisma.resident.count({ where: { tenantId, isActive: true } }),
+      this.prisma.resident.count({ where: { tenantId, isActive: true, hasDebt: true } }),
+      this.prisma.helpdeskTicket.count({
+        where: { tenantId, status: { in: ['open', 'in_progress'] } },
+      }),
+      this.prisma.workOrder.count({
+        where: { tenantId, status: { in: ['nova', 'v_reseni'] } },
+      }),
+      this.prisma.leaseAgreement.count({
+        where: {
+          tenantId,
+          status: 'aktivni',
+          indefinite: false,
+          endDate: { gte: now, lte: d90 },
+        },
+      }),
+      this.prisma.bankTransaction
+        .findMany({
+          where: { tenantId, date: { gte: monthStart, lte: monthEnd }, type: 'credit' },
+        })
+        .then((txs) => txs.reduce((s, t) => s + Number(t.amount), 0)),
+      this.prisma.bankTransaction
+        .findMany({
+          where: { tenantId, date: { gte: monthStart, lte: monthEnd }, type: 'debit' },
+        })
+        .then((txs) => txs.reduce((s, t) => s + Number(t.amount), 0)),
+      this.prisma.prescription.count({
+        where: { tenantId, status: 'active' },
+      }),
+      this.prisma.meter.count({
+        where: { tenantId, isActive: true, calibrationDue: { lt: now } },
+      }),
+    ]);
+
+    const occupancyPct = totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 100) : 0;
+    const expectedMonthly = await this.prisma.prescription
+      .findMany({ where: { tenantId, status: 'active' } })
+      .then((ps) => ps.reduce((s, p) => s + Number(p.amount), 0));
+    const collectionRate = expectedMonthly > 0 ? Math.round((monthIncome / expectedMonthly) * 100) : 0;
+
+    return {
+      properties: totalProperties,
+      units: totalUnits,
+      occupiedUnits,
+      occupancyPct,
+      activeResidents,
+      debtResidents,
+      openTickets,
+      openWorkOrders,
+      expiringLeases,
+      calibrationDue,
+      activePrescriptions,
+      monthIncome,
+      monthExpense,
+      monthBalance: monthIncome - monthExpense,
+      expectedMonthly,
+      collectionRate,
+    };
+  }
+
+  async getPropertyReport(user: AuthUser) {
+    const tenantId = user.tenantId;
+
+    const properties = await this.prisma.property.findMany({
+      where: { tenantId, status: 'active' },
+      include: {
+        units: { select: { id: true, isOccupied: true } },
+        prescriptions: {
+          where: { status: 'active' },
+          select: { amount: true },
+        },
+        helpdeskTickets: {
+          where: { status: { in: ['open', 'in_progress'] } },
+          select: { id: true },
+        },
+        workOrders: {
+          where: { status: { in: ['nova', 'v_reseni'] } },
+          select: { id: true },
+        },
+        leaseAgreements: {
+          where: { status: 'aktivni' },
+          select: { id: true, endDate: true, monthlyRent: true },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    return properties.map((p) => {
+      const totalUnits = p.units.length;
+      const occupied = p.units.filter((u) => u.isOccupied).length;
+      const occupancyPct = totalUnits > 0 ? Math.round((occupied / totalUnits) * 100) : 0;
+      const monthlyPrescriptions = p.prescriptions.reduce(
+        (s, pr) => s + Number(pr.amount),
+        0,
+      );
+      const monthlyRent = p.leaseAgreements.reduce(
+        (s, la) => s + Number(la.monthlyRent),
+        0,
+      );
+
+      return {
+        id: p.id,
+        name: p.name,
+        address: p.address,
+        totalUnits,
+        occupied,
+        occupancyPct,
+        monthlyPrescriptions,
+        monthlyRent,
+        openTickets: p.helpdeskTickets.length,
+        openWorkOrders: p.workOrders.length,
+        activeLeases: p.leaseAgreements.length,
+      };
+    });
+  }
 }

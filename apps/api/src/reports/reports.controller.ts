@@ -66,4 +66,17 @@ export class ReportsController {
     const y = Number(year) || new Date().getFullYear();
     return this.service.getYearlyOverview(user, y);
   }
+
+  @Get('dashboard')
+  @ApiOperation({ summary: 'Dashboard KPI přehled' })
+  getDashboard(@CurrentUser() user: AuthUser) {
+    return this.service.getDashboardKpi(user);
+  }
+
+  @Get('properties')
+  @Roles('owner', 'admin')
+  @ApiOperation({ summary: 'Report nemovitostí' })
+  getProperties(@CurrentUser() user: AuthUser) {
+    return this.service.getPropertyReport(user);
+  }
 }
