@@ -35,7 +35,6 @@ function withBoundary(name: string, Component: React.ComponentType) {
 
 export const router = createBrowserRouter([
   { path: '/', element: <LandingPage /> },
-  { path: '/landing', element: <LandingPage /> },
   { path: '/login', element: <LoginPage /> },
   {
     path: '/',
