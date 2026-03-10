@@ -34,13 +34,13 @@ function withBoundary(name: string, Component: React.ComponentType) {
 }
 
 export const router = createBrowserRouter([
+  { path: '/', element: <LandingPage /> },
   { path: '/landing', element: <LandingPage /> },
   { path: '/login', element: <LoginPage /> },
   {
     path: '/',
     element: <AppShell />,
     children: [
-      { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: 'dashboard', element: withBoundary('Dashboard', DashboardPage) },
       { path: 'properties', element: withBoundary('Nemovitosti', PropertiesPage) },
       { path: 'properties/:id', element: withBoundary('Detail nemovitosti', PropertyDetailPage) },
