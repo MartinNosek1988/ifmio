@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
-import type { CalendarEventDto, CalendarStatsDto } from './calendar.dto'
+import { CalendarEventDto, CalendarStatsDto } from './calendar.dto'
 
 interface AuthUser { id: string; tenantId: string; role: string }
 
@@ -199,7 +199,7 @@ export class CalendarService {
     }
   }
 
-  async getById(user: AuthUser, id: string) {
+  async getById(user: AuthUser, id: string): Promise<CalendarEventDto> {
     const item = await this.prisma.calendarEvent.findFirst({
       where: { id, tenantId: user.tenantId },
     })
@@ -218,7 +218,7 @@ export class CalendarService {
     location?: string
     description?: string
     attendees?: string[]
-  }) {
+  }): Promise<CalendarEventDto> {
     const item = await this.prisma.calendarEvent.create({
       data: {
         tenantId: user.tenantId,
@@ -248,7 +248,7 @@ export class CalendarService {
     location?: string
     description?: string
     attendees?: string[]
-  }) {
+  }): Promise<CalendarEventDto> {
     const existing = await this.prisma.calendarEvent.findFirst({
       where: { id, tenantId: user.tenantId },
     })
@@ -273,7 +273,7 @@ export class CalendarService {
     return serializeEvent(item)
   }
 
-  async remove(user: AuthUser, id: string) {
+  async remove(user: AuthUser, id: string): Promise<{ success: boolean }> {
     const existing = await this.prisma.calendarEvent.findFirst({
       where: { id, tenantId: user.tenantId },
     })

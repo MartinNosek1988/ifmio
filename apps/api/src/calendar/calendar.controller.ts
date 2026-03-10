@@ -8,7 +8,7 @@ import { Roles } from '../common/decorators/roles.decorator'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
 import { AuditAction } from '../common/decorators/audit.decorator'
 import { ROLES_WRITE } from '../common/constants/roles.constants'
-import type { CalendarEventDto, CalendarStatsDto } from './calendar.dto'
+import { CalendarEventDto, CalendarStatsDto } from './calendar.dto'
 
 interface AuthUser { id: string; tenantId: string; role: string }
 
