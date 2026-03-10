@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ifmio — Facility & Property Management Platform</title>
+<meta name="description" content="The global platform for property managers, FM companies and real estate investors. Automate operations, track portfolios, manage tenants.">
+<meta property="og:title" content="ifmio — Facility & Property Management">
+<meta property="og:description" content="Global SaaS for facility and property management.">
+<meta name="theme-color" content="#5b5fc7">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%235b5fc7'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='central' text-anchor='middle' font-family='serif' font-size='14' font-weight='700' fill='white'%3Eif%3C/text%3E%3C/svg%3E">
+<style>
+/* ─── RESET & VARS ─────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a14;--bg2:#0f0f1e;--bg3:#14142a;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
+  --accent:#5b5fc7;--accent2:#7c3aed;--glow:rgba(91,95,199,0.35);
+  --text:#f0f0f8;--muted:#8888aa;--muted2:#55556e;
+  --card-bg:rgba(255,255,255,0.03);--card-brd:rgba(255,255,255,0.06);
+  --r:12px;--nav-h:68px;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:16px;line-height:1.6;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+em{font-style:italic;font-family:'DM Serif Display',serif;
+   background:linear-gradient(135deg,#a5b4fc,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+h1,h2,h3{font-family:'DM Serif Display',serif;line-height:1.2}
+/* ─── NOISE TEXTURE ─────────────────────────────────────────── */
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+  opacity:0.04}
+/* ─── BUTTONS ───────────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:11px 22px;border-radius:10px;font-size:.9rem;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;border:none;transition:all .2s}
+.btn-primary{background:var(--accent);color:#fff;box-shadow:0 0 24px var(--glow)}
+.btn-primary:hover{background:#4e52b8;box-shadow:0 0 36px var(--glow);transform:translateY(-1px)}
+.btn-secondary{background:transparent;color:var(--text);border:1px solid var(--border2)}
+.btn-secondary:hover{background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.2)}
+.btn-cta-nav{padding:8px 18px;font-size:.82rem;background:var(--accent);color:#fff;border-radius:8px;font-weight:600;transition:all .2s}
+.btn-cta-nav:hover{background:#4e52b8;transform:translateY(-1px)}
+.btn-outline-nav{padding:8px 16px;font-size:.82rem;background:transparent;color:var(--muted);border-radius:8px;font-weight:500;transition:color .2s}
+.btn-outline-nav:hover{color:var(--text)}
+/* ─── NAVBAR ────────────────────────────────────────────────── */
+nav.navbar{position:fixed;top:0;left:0;right:0;z-index:900;height:var(--nav-h);
+  display:flex;align-items:center;padding:0 5%;
+  background:rgba(10,10,20,0.6);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);transition:background .3s}
+nav.navbar.scrolled{background:rgba(10,10,20,0.95)}
+.nav-logo{display:flex;align-items:center;gap:10px;margin-right:40px}
+.nav-logo-mark{width:32px;height:32px;background:var(--accent);border-radius:10px;
+  display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:14px;color:#fff;font-weight:700;letter-spacing:-.5px}
+.nav-logo-name{font-size:1.1rem;font-weight:700;letter-spacing:-.3px}
+.nav-links{display:flex;align-items:center;gap:4px;flex:1}
+.nav-link{padding:7px 14px;border-radius:7px;font-size:.85rem;color:var(--muted);font-weight:500;transition:all .2s;cursor:pointer}
+.nav-link:hover{color:var(--text);background:rgba(255,255,255,0.05)}
+.nav-right{display:flex;align-items:center;gap:8px}
+/* Lang switcher */
+.lang-switcher{position:relative}
+.lang-btn{display:flex;align-items:center;gap:5px;padding:7px 12px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid var(--border);cursor:pointer;font-size:.82rem;color:var(--muted);transition:all .2s}
+.lang-btn:hover{color:var(--text);border-color:var(--border2)}
+.lang-btn span.arrow{font-size:.65rem;transition:transform .2s}
+.lang-switcher.open .lang-btn span.arrow{transform:rotate(180deg)}
+.lang-dd{position:absolute;top:calc(100% + 8px);right:0;background:#1a1a2e;border:1px solid var(--border2);border-radius:10px;padding:6px;min-width:140px;opacity:0;pointer-events:none;transform:translateY(-8px);transition:all .2s;z-index:999}
+.lang-switcher.open .lang-dd{opacity:1;pointer-events:auto;transform:none}
+.lang-option{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:.83rem;color:var(--muted);transition:all .15s}
+.lang-option:hover{background:rgba(91,95,199,0.15);color:var(--text)}
+.lang-option.active{color:var(--text);background:rgba(91,95,199,0.1)}
+/* ─── HERO ──────────────────────────────────────────────────── */
+.hero{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:calc(var(--nav-h) + 60px) 5% 80px;overflow:hidden}
+.orbs{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:.6}
+.orb1{width:500px;height:500px;background:radial-gradient(circle,#5b5fc7,transparent 70%);top:-10%;left:10%;animation:orbFloat1 14s ease-in-out infinite}
+.orb2{width:400px;height:400px;background:radial-gradient(circle,#7c3aed,transparent 70%);top:30%;right:5%;animation:orbFloat2 16s ease-in-out infinite}
+.orb3{width:300px;height:300px;background:radial-gradient(circle,#3b82f6,transparent 70%);bottom:0;left:30%;animation:orbFloat1 12s ease-in-out infinite reverse}
+@keyframes orbFloat1{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(30px,-20px) scale(1.05)}66%{transform:translate(-15px,15px) scale(.97)}}
+@keyframes orbFloat2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-25px,20px) scale(1.08)}}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:80px 80px;mask-image:radial-gradient(ellipse 80% 60% at 50% 50%,black,transparent);pointer-events:none}
+.hero-inner{position:relative;z-index:1;max-width:800px}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 16px;background:rgba(91,95,199,0.12);border:1px solid rgba(91,95,199,0.3);border-radius:100px;font-size:.78rem;color:#a5b4fc;margin-bottom:28px}
+.badge-dot{width:6px;height:6px;border-radius:50%;background:#5b5fc7;box-shadow:0 0 8px #5b5fc7;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
+.hero h1{font-size:clamp(42px,7vw,72px);color:var(--text);margin-bottom:22px;letter-spacing:-.02em}
+.hero-sub{font-size:1.1rem;color:var(--muted);max-width:560px;margin:0 auto 36px;line-height:1.7}
+.hero-ctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:64px}
+.stats-bar{display:flex;gap:0;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--card-bg);backdrop-filter:blur(8px)}
+.stat-item{flex:1;padding:18px 24px;text-align:center;border-right:1px solid var(--border)}
+.stat-item:last-child{border-right:none}
+.stat-val{font-size:1.2rem;font-weight:700;font-family:'DM Serif Display',serif;color:var(--text);display:block}
+.stat-lbl{font-size:.72rem;color:var(--muted);display:block;margin-top:2px}
+/* ─── SECTION COMMON ────────────────────────────────────────── */
+.section{padding:100px 5%}
+.section-label{font-size:.72rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:14px;font-family:'DM Sans',sans-serif}
+.section-title{font-size:clamp(32px,4vw,48px);color:var(--text);margin-bottom:16px}
+.section-sub{font-size:1rem;color:var(--muted);max-width:540px;line-height:1.7}
+.section-head{text-align:center;margin-bottom:64px}
+.section-head .section-sub{margin:0 auto}
+.bg2{background:var(--bg2)}
+.bg3{background:var(--bg3);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+/* ─── FEATURES GRID ─────────────────────────────────────────── */
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border)}
+.feat-card{background:var(--bg);padding:36px 32px;transition:all .25s;position:relative;overflow:hidden}
+.feat-card::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(91,95,199,.06),transparent);opacity:0;transition:opacity .25s}
+.feat-card:hover{background:#0d0d20}
+.feat-card:hover::after{opacity:1}
+.feat-icon{width:48px;height:48px;background:rgba(91,95,199,0.12);border:1px solid rgba(91,95,199,0.2);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:20px}
+.feat-card h3{font-size:1.05rem;font-family:'DM Serif Display',serif;color:var(--text);margin-bottom:10px}
+.feat-card p{font-size:.85rem;color:var(--muted);line-height:1.65}
+/* ─── HOW IT WORKS ──────────────────────────────────────────── */
+.hiw-steps{display:flex;gap:0;position:relative}
+.hiw-steps::before{content:'';position:absolute;top:28px;left:10%;right:10%;height:1px;background:repeating-linear-gradient(90deg,var(--accent) 0,var(--accent) 8px,transparent 8px,transparent 16px);z-index:0}
+.hiw-step{flex:1;text-align:center;padding:0 24px;position:relative;z-index:1}
+.hiw-num{width:56px;height:56px;border-radius:50%;background:var(--bg2);border:1px solid rgba(91,95,199,0.4);display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:1.4rem;color:var(--accent);margin:0 auto 20px}
+.hiw-step h3{font-size:1rem;color:var(--text);margin-bottom:8px}
+.hiw-step p{font-size:.83rem;color:var(--muted);line-height:1.6}
+/* ─── MODULES ───────────────────────────────────────────────── */
+.mod-layout{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start}
+.mod-list{display:flex;flex-direction:column;gap:4px}
+.mod-item{display:flex;align-items:center;gap:14px;padding:14px 18px;border-radius:10px;cursor:pointer;border:1px solid transparent;transition:all .2s}
+.mod-item:hover{background:var(--card-bg);border-color:var(--card-brd)}
+.mod-item.active{background:rgba(91,95,199,0.1);border-color:rgba(91,95,199,0.3)}
+.mod-item-icon{font-size:20px;flex-shrink:0;width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.04);border-radius:8px}
+.mod-item-text strong{display:block;font-size:.9rem;font-weight:600;color:var(--text)}
+.mod-item-text span{font-size:.78rem;color:var(--muted)}
+.mod-preview{position:sticky;top:calc(var(--nav-h) + 24px);background:rgba(91,95,199,0.06);border:1px solid rgba(91,95,199,0.15);border-radius:18px;padding:40px;min-height:360px}
+.mod-preview-icon{font-size:40px;margin-bottom:20px;display:block}
+.mod-preview h3{font-family:'DM Serif Display',serif;font-size:1.5rem;color:var(--text);margin-bottom:14px}
+.mod-preview p{font-size:.9rem;color:var(--muted);line-height:1.7;margin-bottom:24px}
+.mod-tags{display:flex;flex-wrap:wrap;gap:8px}
+.mod-tag{padding:4px 12px;border-radius:100px;background:rgba(91,95,199,0.15);border:1px solid rgba(91,95,199,0.2);font-size:.72rem;color:#a5b4fc;font-weight:500}
+/* ─── AUDIENCE ──────────────────────────────────────────────── */
+.aud-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.aud-card{background:var(--card-bg);border:1px solid var(--card-brd);border-radius:18px;padding:36px 30px;transition:all .25s;position:relative;overflow:hidden}
+.aud-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--accent);transform:scaleX(0);transform-origin:left;transition:transform .3s}
+.aud-card:hover{transform:translateY(-4px);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.aud-card:hover::after{transform:scaleX(1)}
+.aud-icon{font-size:32px;margin-bottom:16px;display:block}
+.aud-card h3{font-family:'DM Serif Display',serif;font-size:1.2rem;color:var(--text);margin-bottom:10px}
+.aud-card>p{font-size:.85rem;color:var(--muted);margin-bottom:20px}
+.aud-list{list-style:none;display:flex;flex-direction:column;gap:8px}
+.aud-list li{font-size:.83rem;color:var(--muted);display:flex;align-items:center;gap:8px}
+.aud-list li::before{content:'\2713';color:var(--accent);font-weight:700;flex-shrink:0}
+/* ─── PRICING ───────────────────────────────────────────────── */
+.price-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;align-items:start}
+.price-card{background:var(--card-bg);border:1px solid var(--card-brd);border-radius:18px;padding:32px 28px;position:relative;transition:all .2s}
+.price-card.featured{background:rgba(91,95,199,0.08);border-color:rgba(91,95,199,0.4);transform:scale(1.03)}
+.price-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-size:.7rem;font-weight:700;padding:4px 14px;border-radius:100px;white-space:nowrap}
+.price-name{font-size:.8rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.price-amount{font-family:'DM Serif Display',serif;font-size:2.8rem;color:var(--text);line-height:1}
+.price-amount sup{font-size:1rem;vertical-align:super;margin-right:2px}
+.price-mo{font-size:.8rem;color:var(--muted);margin-left:4px}
+.price-desc{font-size:.82rem;color:var(--muted);margin:12px 0 20px;line-height:1.5}
+.price-sep{height:1px;background:var(--border);margin-bottom:20px}
+.price-feats{list-style:none;display:flex;flex-direction:column;gap:9px;margin-bottom:28px}
+.price-feats li{font-size:.82rem;color:var(--muted);display:flex;align-items:center;gap:8px}
+.price-feats li .ok{color:var(--accent);font-weight:700}
+.price-feats li .no{color:var(--muted2)}
+.price-cta{width:100%;padding:12px;border-radius:10px;font-weight:600;font-size:.88rem;cursor:pointer;border:none;transition:all .2s;font-family:'DM Sans',sans-serif}
+.price-cta-primary{background:var(--accent);color:#fff;box-shadow:0 0 20px var(--glow)}
+.price-cta-primary:hover{background:#4e52b8}
+.price-cta-secondary{background:transparent;color:var(--text);border:1px solid var(--border2)}
+.price-cta-secondary:hover{background:rgba(255,255,255,0.05)}
+/* ─── CTA BANNER ────────────────────────────────────────────── */
+.cta-section{padding:100px 5%;text-align:center;position:relative;overflow:hidden;background:linear-gradient(135deg,#0d0d22 0%,#1a1240 50%,#0d0d22 100%)}
+.cta-section::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:600px;height:300px;background:radial-gradient(ellipse,rgba(91,95,199,.25),transparent 70%);pointer-events:none}
+.cta-section h2{font-size:clamp(28px,4vw,44px);color:var(--text);max-width:600px;margin:0 auto 18px}
+.cta-sub{font-size:1rem;color:var(--muted);max-width:440px;margin:0 auto 36px}
+.cta-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+/* ─── FOOTER ────────────────────────────────────────────────── */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:64px 5% 40px}
+.footer-grid{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:48px;margin-bottom:48px}
+.footer-brand{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.footer-tagline{font-size:.83rem;color:var(--muted);max-width:240px;line-height:1.6}
+.footer-col h4{font-size:.72rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted2);margin-bottom:16px}
+.footer-col a{display:block;font-size:.85rem;color:var(--muted);margin-bottom:10px;transition:color .2s;cursor:pointer}
+.footer-col a:hover{color:var(--text)}
+.footer-bottom{display:flex;align-items:center;justify-content:space-between;padding-top:24px;border-top:1px solid var(--border);flex-wrap:wrap;gap:12px}
+.footer-copy{font-size:.78rem;color:var(--muted2)}
+.footer-langs{display:flex;gap:6px}
+.footer-lang-btn{padding:4px 10px;border-radius:6px;font-size:.73rem;font-weight:600;cursor:pointer;background:transparent;border:1px solid var(--border);color:var(--muted2);transition:all .15s}
+.footer-lang-btn:hover,.footer-lang-btn.active{color:var(--text);border-color:var(--border2);background:rgba(255,255,255,0.04)}
+/* ─── SCROLL REVEAL ─────────────────────────────────────────── */
+.reveal{opacity:0;transform:translateY(20px);transition:opacity .6s ease,transform .6s ease}
+.reveal.visible{opacity:1;transform:none}
+.reveal-delay-1{transition-delay:.1s}
+.reveal-delay-2{transition-delay:.2s}
+.reveal-delay-3{transition-delay:.3s}
+/* ─── RESPONSIVE ────────────────────────────────────────────── */
+@media(max-width:900px){
+  .nav-links{display:none}
+  .feat-grid{grid-template-columns:1fr 1fr}
+  .hiw-steps{flex-direction:column;gap:32px}
+  .hiw-steps::before{display:none}
+  .mod-layout{grid-template-columns:1fr}
+  .mod-preview{position:static}
+  .aud-grid{grid-template-columns:1fr}
+  .price-grid{grid-template-columns:1fr 1fr}
+  .price-card.featured{transform:none}
+  .footer-grid{grid-template-columns:1fr 1fr}
+  .stats-bar{flex-wrap:wrap}
+  .stat-item{min-width:50%}
+}
+@media(max-width:540px){
+  .feat-grid{grid-template-columns:1fr}
+  .price-grid{grid-template-columns:1fr}
+  .footer-grid{grid-template-columns:1fr}
+  .hero-ctas{flex-direction:column;align-items:center}
+}
+</style>
+</head>
+<body>
+
+<!-- ─── NAVBAR ─────────────────────────────────────────────── -->
+<nav class="navbar" id="navbar">
+  <a href="/landing/" class="nav-logo">
+    <div class="nav-logo-mark">if</div>
+    <span class="nav-logo-name">ifmio</span>
+  </a>
+  <div class="nav-links">
+    <a class="nav-link" href="#features" data-i18n="nav.features">Features</a>
+    <a class="nav-link" href="#modules" data-i18n="nav.modules">Modules</a>
+    <a class="nav-link" href="#pricing" data-i18n="nav.pricing">Pricing</a>
+    <a class="nav-link" href="#contact" data-i18n="nav.contact">Contact</a>
+  </div>
+  <div class="nav-right">
+    <div class="lang-switcher" id="langSwitcher">
+      <button class="lang-btn" onclick="toggleLangDropdown()" id="langBtn">
+        <span id="langFlag"></span>
+        <span id="langCode">EN</span>
+        <span class="arrow">&#9662;</span>
+      </button>
+      <div class="lang-dd" id="langDd"></div>
+    </div>
+    <a href="/login" class="btn-outline-nav" data-i18n="nav.login">Sign in</a>
+    <a href="/login" class="btn-cta-nav" data-i18n="nav.start">Get started</a>
+  </div>
+</nav>
+
+<!-- ─── HERO ───────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="orbs">
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="orb orb3"></div>
+  </div>
+  <div class="hero-grid"></div>
+  <div class="hero-inner">
+    <div class="hero-badge reveal">
+      <span class="badge-dot"></span>
+      <span data-i18n="hero.badge">Global Facility &amp; Property Management Platform</span>
+    </div>
+    <h1 class="reveal reveal-delay-1" data-i18n="hero.h1">Manage your <em>properties</em> from anywhere</h1>
+    <p class="hero-sub reveal reveal-delay-2" data-i18n="hero.sub">The complete platform for property managers, FM companies and real estate investors.</p>
+    <div class="hero-ctas reveal reveal-delay-3">
+      <a href="/login" class="btn btn-primary" data-i18n="hero.cta1">Start for free &rarr;</a>
+      <a href="#features" class="btn btn-secondary" data-i18n="hero.cta2">See all features</a>
+    </div>
+    <div class="stats-bar reveal">
+      <div class="stat-item">
+        <span class="stat-val">300K+</span>
+        <span class="stat-lbl" data-i18n="stat.units">Units managed</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-val">50+</span>
+        <span class="stat-lbl" data-i18n="stat.countries">Countries</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-val">99.9%</span>
+        <span class="stat-lbl" data-i18n="stat.uptime">Uptime</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-val">24/7</span>
+        <span class="stat-lbl" data-i18n="stat.support">Support</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── FEATURES ───────────────────────────────────────────── -->
+<section class="section" id="features">
+  <div class="section-head reveal">
+    <div class="section-label" data-i18n="features.label">Platform</div>
+    <h2 class="section-title" data-i18n="features.title">Everything you need in one place</h2>
+    <p class="section-sub" data-i18n="features.sub">From property onboarding to financial reporting &mdash; all in one unified platform.</p>
+  </div>
+  <div class="feat-grid reveal">
+    <div class="feat-card">
+      <div class="feat-icon">&#127970;</div>
+      <h3 data-i18n="feat.prop.title">Property Management</h3>
+      <p data-i18n="feat.prop.desc">Manage portfolios of any size. Track units, tenants, contracts and maintenance from a single dashboard.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">&#128176;</div>
+      <h3 data-i18n="feat.fin.title">Financial Prescriptions</h3>
+      <p data-i18n="feat.fin.desc">Automate billing, track payments, generate invoices and reconcile bank transactions with ease.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">&#128295;</div>
+      <h3 data-i18n="feat.wo.title">Work Orders</h3>
+      <p data-i18n="feat.wo.desc">Create, assign and track maintenance requests. Connect with suppliers and monitor SLAs in real time.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">&#128202;</div>
+      <h3 data-i18n="feat.rep.title">Reporting &amp; KPIs</h3>
+      <p data-i18n="feat.rep.desc">Dashboards, custom KPIs and export-ready reports for every stakeholder and every portfolio level.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">&#128225;</div>
+      <h3 data-i18n="feat.meter.title">Meter Readings</h3>
+      <p data-i18n="feat.meter.desc">Collect, validate and process utility readings for water, electricity, gas and heating automatically.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">&#128274;</div>
+      <h3 data-i18n="feat.access.title">Role-Based Access</h3>
+      <p data-i18n="feat.access.desc">Granular permissions for every team member. Admin, manager, viewer and fully custom roles.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─── HOW IT WORKS ───────────────────────────────────────── -->
+<section class="section bg3">
+  <div class="section-head reveal">
+    <div class="section-label" data-i18n="hiw.label">How it works</div>
+    <h2 class="section-title" data-i18n="hiw.title">Up and running in minutes</h2>
+  </div>
+  <div class="hiw-steps">
+    <div class="hiw-step reveal">
+      <div class="hiw-num">1</div>
+      <h3 data-i18n="step1.title">Create workspace</h3>
+      <p data-i18n="step1.desc">Sign up and configure your organisation in under 5 minutes.</p>
+    </div>
+    <div class="hiw-step reveal reveal-delay-1">
+      <div class="hiw-num">2</div>
+      <h3 data-i18n="step2.title">Add properties</h3>
+      <p data-i18n="step2.desc">Import your portfolio or add properties one by one with full detail.</p>
+    </div>
+    <div class="hiw-step reveal reveal-delay-2">
+      <div class="hiw-num">3</div>
+      <h3 data-i18n="step3.title">Invite team</h3>
+      <p data-i18n="step3.desc">Add colleagues and set granular access permissions for each.</p>
+    </div>
+    <div class="hiw-step reveal reveal-delay-3">
+      <div class="hiw-num">4</div>
+      <h3 data-i18n="step4.title">Start managing</h3>
+      <p data-i18n="step4.desc">Go live instantly. No training, no migration headaches.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─── MODULES ─────────────────────────────────────────────── -->
+<section class="section bg2" id="modules">
+  <div class="section-head reveal">
+    <div class="section-label" data-i18n="mod.label">Modules</div>
+    <h2 class="section-title" data-i18n="mod.title">Built for every part of your workflow</h2>
+  </div>
+  <div class="mod-layout">
+    <div class="mod-list" id="modList">
+      <div class="mod-item active" onclick="selectModule(this,'finance')">
+        <div class="mod-item-icon">&#128176;</div>
+        <div class="mod-item-text">
+          <strong data-i18n="mod.finance.name">Finance</strong>
+          <span data-i18n="mod.finance.short">Invoicing, prescriptions, bank reconciliation</span>
+        </div>
+      </div>
+      <div class="mod-item" onclick="selectModule(this,'maintenance')">
+        <div class="mod-item-icon">&#128295;</div>
+        <div class="mod-item-text">
+          <strong data-i18n="mod.maintenance.name">Maintenance</strong>
+          <span data-i18n="mod.maintenance.short">Work orders, contractors, SLA tracking</span>
+        </div>
+      </div>
+      <div class="mod-item" onclick="selectModule(this,'tenants')">
+        <div class="mod-item-icon">&#128101;</div>
+        <div class="mod-item-text">
+          <strong data-i18n="mod.tenants.name">Tenants</strong>
+          <span data-i18n="mod.tenants.short">Contracts, profiles, debt management</span>
+        </div>
+      </div>
+      <div class="mod-item" onclick="selectModule(this,'meters')">
+        <div class="mod-item-icon">&#128225;</div>
+        <div class="mod-item-text">
+          <strong data-i18n="mod.meters.name">Meters</strong>
+          <span data-i18n="mod.meters.short">Readings, billing, consumption analysis</span>
+        </div>
+      </div>
+      <div class="mod-item" onclick="selectModule(this,'documents')">
+        <div class="mod-item-icon">&#128196;</div>
+        <div class="mod-item-text">
+          <strong data-i18n="mod.documents.name">Documents</strong>
+          <span data-i18n="mod.documents.short">Contracts, templates, ISDOC import</span>
+        </div>
+      </div>
+      <div class="mod-item" onclick="selectModule(this,'reporting')">
+        <div class="mod-item-icon">&#128202;</div>
+        <div class="mod-item-text">
+          <strong data-i18n="mod.reporting.name">Reporting</strong>
+          <span data-i18n="mod.reporting.short">KPIs, dashboards, custom exports</span>
+        </div>
+      </div>
+    </div>
+    <div class="mod-preview" id="modPreview">
+      <span class="mod-preview-icon" id="mpIcon">&#128176;</span>
+      <h3 id="mpTitle">Finance</h3>
+      <p id="mpText">Full financial lifecycle management — from rent prescriptions and utility billing to automated bank reconciliation and ISDOC/XML invoice exchange.</p>
+      <div class="mod-tags" id="mpTags"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── AUDIENCE ────────────────────────────────────────────── -->
+<section class="section">
+  <div class="section-head reveal">
+    <div class="section-label" data-i18n="aud.label">Who it's for</div>
+    <h2 class="section-title" data-i18n="aud.title">Built for professionals at every scale</h2>
+  </div>
+  <div class="aud-grid">
+    <div class="aud-card reveal">
+      <span class="aud-icon">&#127970;</span>
+      <h3 data-i18n="aud.pm.title">Property Managers</h3>
+      <p data-i18n="aud.pm.desc">Manage residential and commercial portfolios with ease.</p>
+      <ul class="aud-list">
+        <li data-i18n="aud.pm.1">Multi-property dashboard</li>
+        <li data-i18n="aud.pm.2">Automated rent collection</li>
+        <li data-i18n="aud.pm.3">Tenant communication</li>
+        <li data-i18n="aud.pm.4">Legal document templates</li>
+      </ul>
+    </div>
+    <div class="aud-card reveal reveal-delay-1">
+      <span class="aud-icon">&#128297;</span>
+      <h3 data-i18n="aud.fm.title">FM Companies</h3>
+      <p data-i18n="aud.fm.desc">Coordinate facility operations across multiple client sites.</p>
+      <ul class="aud-list">
+        <li data-i18n="aud.fm.1">Work order management</li>
+        <li data-i18n="aud.fm.2">Contractor coordination</li>
+        <li data-i18n="aud.fm.3">Compliance tracking</li>
+        <li data-i18n="aud.fm.4">SLA reporting</li>
+      </ul>
+    </div>
+    <div class="aud-card reveal reveal-delay-2">
+      <span class="aud-icon">&#127959;</span>
+      <h3 data-i18n="aud.dev.title">Developers &amp; Investors</h3>
+      <p data-i18n="aud.dev.desc">Track assets, returns and occupancy across your portfolio.</p>
+      <ul class="aud-list">
+        <li data-i18n="aud.dev.1">Portfolio analytics</li>
+        <li data-i18n="aud.dev.2">ROI tracking</li>
+        <li data-i18n="aud.dev.3">Occupancy reports</li>
+        <li data-i18n="aud.dev.4">Investor dashboards</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ─── PRICING ──────────────────────────────────────────────── -->
+<section class="section bg2" id="pricing">
+  <div class="section-head reveal">
+    <div class="section-label" data-i18n="price.label">Pricing</div>
+    <h2 class="section-title" data-i18n="price.title">Simple, transparent pricing</h2>
+    <p class="section-sub" data-i18n="price.sub">Start free, scale as you grow. No hidden fees.</p>
+  </div>
+  <div class="price-grid reveal">
+    <div class="price-card">
+      <div class="price-name" data-i18n="plan.free.name">FREE</div>
+      <div class="price-amount"><sup>&euro;</sup>0<span class="price-mo" data-i18n="price.mo">/mo</span></div>
+      <div class="price-desc" data-i18n="plan.free.desc">For individual landlords just getting started</div>
+      <div class="price-sep"></div>
+      <ul class="price-feats">
+        <li><span class="ok">&#10003;</span> 1 <span data-i18n="pf.property">property</span></li>
+        <li><span class="ok">&#10003;</span> 50 <span data-i18n="pf.units">units</span></li>
+        <li><span class="ok">&#10003;</span> 2 <span data-i18n="pf.users">users</span></li>
+        <li><span class="no">&ndash;</span> <span data-i18n="pf.api">API access</span></li>
+        <li><span class="no">&ndash;</span> <span data-i18n="pf.isdoc">ISDOC invoicing</span></li>
+      </ul>
+      <button class="price-cta price-cta-secondary" onclick="location.href='/login'" data-i18n="plan.cta.free">Get started free</button>
+    </div>
+    <div class="price-card">
+      <div class="price-name" data-i18n="plan.starter.name">STARTER</div>
+      <div class="price-amount"><sup>&euro;</sup>29<span class="price-mo" data-i18n="price.mo">/mo</span></div>
+      <div class="price-desc" data-i18n="plan.starter.desc">For small property managers</div>
+      <div class="price-sep"></div>
+      <ul class="price-feats">
+        <li><span class="ok">&#10003;</span> 5 <span data-i18n="pf.properties">properties</span></li>
+        <li><span class="ok">&#10003;</span> 200 <span data-i18n="pf.units">units</span></li>
+        <li><span class="ok">&#10003;</span> 5 <span data-i18n="pf.users">users</span></li>
+        <li><span class="no">&ndash;</span> <span data-i18n="pf.api">API access</span></li>
+        <li><span class="ok">&#10003;</span> <span data-i18n="pf.isdoc">ISDOC invoicing</span></li>
+      </ul>
+      <button class="price-cta price-cta-secondary" onclick="location.href='/login'" data-i18n="plan.cta.paid">Start trial</button>
+    </div>
+    <div class="price-card featured">
+      <div class="price-badge" data-i18n="plan.popular">Most popular</div>
+      <div class="price-name" data-i18n="plan.pro.name">PROFESSIONAL</div>
+      <div class="price-amount"><sup>&euro;</sup>89<span class="price-mo" data-i18n="price.mo">/mo</span></div>
+      <div class="price-desc" data-i18n="plan.pro.desc">For growing property companies</div>
+      <div class="price-sep"></div>
+      <ul class="price-feats">
+        <li><span class="ok">&#10003;</span> 20 <span data-i18n="pf.properties">properties</span></li>
+        <li><span class="ok">&#10003;</span> 1000 <span data-i18n="pf.units">units</span></li>
+        <li><span class="ok">&#10003;</span> 15 <span data-i18n="pf.users">users</span></li>
+        <li><span class="ok">&#10003;</span> <span data-i18n="pf.api">API access</span></li>
+        <li><span class="ok">&#10003;</span> <span data-i18n="pf.isdoc">ISDOC invoicing</span></li>
+      </ul>
+      <button class="price-cta price-cta-primary" onclick="location.href='/login'" data-i18n="plan.cta.paid">Start trial</button>
+    </div>
+    <div class="price-card">
+      <div class="price-name" data-i18n="plan.ent.name">ENTERPRISE</div>
+      <div class="price-amount" style="font-size:1.8rem" data-i18n="plan.ent.price">Custom</div>
+      <div class="price-desc" data-i18n="plan.ent.desc">For large portfolios and FM companies</div>
+      <div class="price-sep"></div>
+      <ul class="price-feats">
+        <li><span class="ok">&#10003;</span> <span data-i18n="pf.unlimited">Unlimited properties</span></li>
+        <li><span class="ok">&#10003;</span> <span data-i18n="pf.unlimitedU">Unlimited units</span></li>
+        <li><span class="ok">&#10003;</span> <span data-i18n="pf.unlimitedUs">Unlimited users</span></li>
+        <li><span class="ok">&#10003;</span> <span data-i18n="pf.api">API access</span></li>
+        <li><span class="ok">&#10003;</span> <span data-i18n="pf.isdoc">ISDOC invoicing</span></li>
+      </ul>
+      <button class="price-cta price-cta-secondary" onclick="location.href='mailto:sales@ifmio.com'" data-i18n="plan.cta.ent">Contact sales</button>
+    </div>
+  </div>
+</section>
+
+<!-- ─── CTA BANNER ──────────────────────────────────────────── -->
+<section class="cta-section" id="contact">
+  <div style="position:relative;z-index:1;max-width:640px;margin:0 auto">
+    <h2 class="reveal" data-i18n="cta.title">Ready to modernise your property operations?</h2>
+    <p class="cta-sub reveal reveal-delay-1" data-i18n="cta.sub">Join thousands of property professionals already using ifmio.</p>
+    <div class="cta-btns reveal reveal-delay-2">
+      <a href="/login" class="btn btn-primary" data-i18n="cta.btn1">Start for free</a>
+      <a href="mailto:sales@ifmio.com" class="btn btn-secondary" data-i18n="cta.btn2">Talk to sales</a>
+    </div>
+  </div>
+</section>
+
+<!-- ─── ABOUT ────────────────────────────────────────────────── -->
+<section id="about" style="padding:80px 5%;max-width:800px;margin:0 auto;text-align:center">
+  <h2 style="font-family:'DM Serif Display',serif;font-size:clamp(24px,3vw,36px);margin-bottom:16px;color:var(--text)">O ifmio</h2>
+  <p style="font-size:1rem;color:var(--muted);line-height:1.7;margin-bottom:12px">
+    ifmio je modern&iacute; platforma pro spr&aacute;vu nemovitost&iacute; a facility management.
+    Vyvinuto v &Ccaron;R, provozov&aacute;no v cloudu.
+  </p>
+  <p style="font-size:.9rem;color:var(--muted2)">Kontakt: <a href="mailto:info@ifmio.cz" style="color:var(--accent)">info@ifmio.cz</a></p>
+</section>
+
+<!-- ─── FOOTER ───────────────────────────────────────────────── -->
+<footer>
+  <div class="footer-grid">
+    <div>
+      <div class="footer-brand">
+        <div class="nav-logo-mark" style="width:28px;height:28px;font-size:12px">if</div>
+        <span style="font-size:1rem;font-weight:700">ifmio</span>
+      </div>
+      <p class="footer-tagline" data-i18n="footer.tagline">The global platform for facility and property management.</p>
+    </div>
+    <div class="footer-col">
+      <h4 data-i18n="footer.product">Product</h4>
+      <a href="#features" data-i18n="nav.features">Features</a>
+      <a href="#modules" data-i18n="nav.modules">Modules</a>
+      <a href="#pricing" data-i18n="nav.pricing">Pricing</a>
+      <a href="/login" data-i18n="footer.app">Launch app</a>
+    </div>
+    <div class="footer-col">
+      <h4 data-i18n="footer.company">Company</h4>
+      <a href="#about" data-i18n="footer.about">About us</a>
+      <a href="mailto:info@ifmio.cz" data-i18n="footer.contact">Contact</a>
+    </div>
+    <div class="footer-col">
+      <h4 data-i18n="footer.legal">Legal</h4>
+      <a href="#" data-i18n="footer.privacy">Privacy policy</a>
+      <a href="#" data-i18n="footer.terms">Terms of service</a>
+      <a href="#" data-i18n="footer.gdpr">GDPR</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span class="footer-copy">&copy; 2026 ifmio. All rights reserved.</span>
+    <div class="footer-langs">
+      <button class="footer-lang-btn" onclick="setLang('en')">EN</button>
+      <button class="footer-lang-btn" onclick="setLang('cs')">CZ</button>
+      <button class="footer-lang-btn" onclick="setLang('de')">DE</button>
+      <button class="footer-lang-btn" onclick="setLang('pl')">PL</button>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ─── TRANSLATIONS ───────────────────────────────────────────── */
+var TRANSLATIONS = {
+  en: {
+    'nav.features':'Features','nav.modules':'Modules','nav.pricing':'Pricing',
+    'nav.contact':'Contact','nav.login':'Sign in','nav.start':'Get started',
+    'hero.badge':'Global Facility & Property Management Platform',
+    'hero.h1':'Manage your <em>properties</em> from anywhere',
+    'hero.sub':'The complete platform for property managers, FM companies and real estate investors.',
+    'hero.cta1':'Start for free \u2192','hero.cta2':'See all features',
+    'stat.units':'Units managed','stat.countries':'Countries','stat.uptime':'Uptime','stat.support':'Support',
+    'features.label':'Platform','features.title':'Everything you need in one place',
+    'features.sub':'From property onboarding to financial reporting \u2014 all in one unified platform.',
+    'feat.prop.title':'Property Management','feat.prop.desc':'Manage portfolios of any size. Track units, tenants, contracts and maintenance from a single dashboard.',
+    'feat.fin.title':'Financial Prescriptions','feat.fin.desc':'Automate billing, track payments, generate invoices and reconcile bank transactions with ease.',
+    'feat.wo.title':'Work Orders','feat.wo.desc':'Create, assign and track maintenance requests. Connect with suppliers and monitor SLAs in real time.',
+    'feat.rep.title':'Reporting & KPIs','feat.rep.desc':'Dashboards, custom KPIs and export-ready reports for every stakeholder and portfolio level.',
+    'feat.meter.title':'Meter Readings','feat.meter.desc':'Collect, validate and process utility readings for water, electricity, gas and heating automatically.',
+    'feat.access.title':'Role-Based Access','feat.access.desc':'Granular permissions for every team member. Admin, manager, viewer and fully custom roles.',
+    'hiw.label':'How it works','hiw.title':'Up and running in minutes',
+    'step1.title':'Create workspace','step1.desc':'Sign up and configure your organisation in under 5 minutes.',
+    'step2.title':'Add properties','step2.desc':'Import your portfolio or add properties one by one with full detail.',
+    'step3.title':'Invite team','step3.desc':'Add colleagues and set granular access permissions for each.',
+    'step4.title':'Start managing','step4.desc':'Go live instantly. No training, no migration headaches.',
+    'mod.label':'Modules','mod.title':'Built for every part of your workflow',
+    'mod.finance.name':'Finance','mod.finance.short':'Invoicing, prescriptions, bank reconciliation',
+    'mod.finance.detail':'Full financial lifecycle management \u2014 from rent prescriptions and utility billing to automated bank reconciliation and ISDOC/XML invoice exchange.',
+    'mod.maintenance.name':'Maintenance','mod.maintenance.short':'Work orders, contractors, SLA tracking',
+    'mod.maintenance.detail':'Streamline maintenance workflows. Create work orders, assign contractors, track completion and measure SLA compliance across your entire portfolio.',
+    'mod.tenants.name':'Tenants','mod.tenants.short':'Contracts, profiles, debt management',
+    'mod.tenants.detail':'Complete tenant lifecycle \u2014 from contract signing to debt recovery. Built-in reminder system, occupancy tracking and tenant communication portal.',
+    'mod.meters.name':'Meters','mod.meters.short':'Readings, billing, consumption analysis',
+    'mod.meters.detail':'Collect utility readings, validate data and generate consumption-based billing automatically. Supports water, electricity, gas and heating.',
+    'mod.documents.name':'Documents','mod.documents.short':'Contracts, templates, ISDOC import',
+    'mod.documents.detail':'Centralised document storage with smart templates, e-signature ready exports and ISDOC electronic invoice import for seamless accounting integration.',
+    'mod.reporting.name':'Reporting','mod.reporting.short':'KPIs, dashboards, custom exports',
+    'mod.reporting.detail':'Real-time KPI dashboards, occupancy reports, financial summaries and one-click CSV/PDF exports tailored to every stakeholder level.',
+    'aud.label':"Who it's for",'aud.title':'Built for professionals at every scale',
+    'aud.pm.title':'Property Managers','aud.pm.desc':'Manage residential and commercial portfolios with ease.',
+    'aud.pm.1':'Multi-property dashboard','aud.pm.2':'Automated rent collection','aud.pm.3':'Tenant communication','aud.pm.4':'Legal document templates',
+    'aud.fm.title':'FM Companies','aud.fm.desc':'Coordinate facility operations across multiple client sites.',
+    'aud.fm.1':'Work order management','aud.fm.2':'Contractor coordination','aud.fm.3':'Compliance tracking','aud.fm.4':'SLA reporting',
+    'aud.dev.title':'Developers & Investors','aud.dev.desc':'Track assets, returns and occupancy across your portfolio.',
+    'aud.dev.1':'Portfolio analytics','aud.dev.2':'ROI tracking','aud.dev.3':'Occupancy reports','aud.dev.4':'Investor dashboards',
+    'price.label':'Pricing','price.title':'Simple, transparent pricing','price.sub':'Start free, scale as you grow. No hidden fees.','price.mo':'/mo',
+    'plan.free.name':'FREE','plan.free.desc':'For individual landlords just getting started',
+    'plan.starter.name':'STARTER','plan.starter.desc':'For small property managers',
+    'plan.pro.name':'PROFESSIONAL','plan.pro.desc':'For growing property companies',
+    'plan.ent.name':'ENTERPRISE','plan.ent.desc':'For large portfolios and FM companies','plan.ent.price':'Custom',
+    'plan.popular':'Most popular','plan.cta.free':'Get started free','plan.cta.paid':'Start trial','plan.cta.ent':'Contact sales',
+    'pf.property':'property','pf.properties':'properties','pf.units':'units','pf.users':'users',
+    'pf.api':'API access','pf.isdoc':'ISDOC invoicing','pf.unlimited':'Unlimited properties','pf.unlimitedU':'Unlimited units','pf.unlimitedUs':'Unlimited users',
+    'cta.title':'Ready to modernise your property operations?',
+    'cta.sub':'Join thousands of property professionals already using ifmio.',
+    'cta.btn1':'Start for free','cta.btn2':'Talk to sales',
+    'footer.tagline':'The global platform for facility and property management.',
+    'footer.product':'Product','footer.company':'Company','footer.legal':'Legal',
+    'footer.app':'Launch app','footer.about':'About us','footer.contact':'Contact',
+    'footer.privacy':'Privacy policy','footer.terms':'Terms of service','footer.gdpr':'GDPR',
+  },
+  cs: {
+    'nav.features':'Funkce','nav.modules':'Moduly','nav.pricing':'Cen\u00edk',
+    'nav.contact':'Kontakt','nav.login':'P\u0159ihl\u00e1sit se','nav.start':'Za\u010d\u00edt',
+    'hero.badge':'Glob\u00e1ln\u00ed platforma pro facility a property management',
+    'hero.h1':'Spravujte va\u0161e <em>nemovitosti</em> odkudkoli',
+    'hero.sub':'Kompletn\u00ed platforma pro spr\u00e1vcovsk\u00e9 firmy, FM spole\u010dnosti a investory do nemovitost\u00ed.',
+    'hero.cta1':'Za\u010d\u00edt zdarma \u2192','hero.cta2':'Zobrazit funkce',
+    'stat.units':'Spravovan\u00fdch jednotek','stat.countries':'Zem\u00ed','stat.uptime':'Dostupnost','stat.support':'Podpora',
+    'features.label':'Platforma','features.title':'V\u0161e, co pot\u0159ebujete, na jednom m\u00edst\u011b',
+    'features.sub':'Od registrace nemovitosti po finan\u010dn\u00ed reporting \u2014 v\u0161e v jedn\u00e9 sjednocen\u00e9 platform\u011b.',
+    'feat.prop.title':'Spr\u00e1va nemovitost\u00ed','feat.prop.desc':'Spravujte portfolia libovoln\u00e9 velikosti. Sledujte jednotky, n\u00e1jemce, smlouvy a \u00fadr\u017ebu z jednoho m\u00edsta.',
+    'feat.fin.title':'Finan\u010dn\u00ed p\u0159edpisy','feat.fin.desc':'Automatizujte fakturaci, sledujte platby, generujte faktury a p\u00e1rujte bankovn\u00ed transakce snadno.',
+    'feat.wo.title':'Pracovn\u00ed p\u0159\u00edkazy','feat.wo.desc':'Vytv\u00e1\u0159ejte, p\u0159i\u0159azujte a sledujte po\u017eadavky na \u00fadr\u017ebu. Propojte dodavatele a monitorujte SLA.',
+    'feat.rep.title':'Reporting a KPI','feat.rep.desc':'Dashboardy, vlastn\u00ed KPI a exportovateln\u00e9 reporty pro ka\u017ed\u00e9ho stakeholdera.',
+    'feat.meter.title':'Ode\u010dty m\u011b\u0159idel','feat.meter.desc':'Sb\u00edrejte, validujte a zpracov\u00e1vejte ode\u010dty vody, elekt\u0159iny, plynu a tepla automaticky.',
+    'feat.access.title':'\u0158\u00edzen\u00ed p\u0159\u00edstupu','feat.access.desc':'Detailn\u00ed opr\u00e1vn\u011bn\u00ed pro ka\u017ed\u00e9ho \u010dlena t\u00fdmu. Admin, mana\u017eer, prohl\u00ed\u017ee\u010d a vlastn\u00ed role.',
+    'hiw.label':'Jak to funguje','hiw.title':'Zprovozn\u011bn\u00ed za minuty',
+    'step1.title':'Vytvo\u0159te workspace','step1.desc':'Registrace a konfigurace va\u0161\u00ed organizace za m\u00e9n\u011b ne\u017e 5 minut.',
+    'step2.title':'P\u0159idejte nemovitosti','step2.desc':'Importujte portfolio nebo p\u0159id\u00e1vejte nemovitosti postupn\u011b.',
+    'step3.title':'Pozv\u011bte t\u00fdm','step3.desc':'P\u0159idejte kolegy a nastavte detailn\u00ed p\u0159\u00edstupov\u00e1 pr\u00e1va.',
+    'step4.title':'Za\u010dn\u011bte spravovat','step4.desc':'Spus\u0165te okam\u017eit\u011b. \u017d\u00e1dn\u00e9 \u0161kolen\u00ed, \u017e\u00e1dn\u00e9 probl\u00e9my s migrac\u00ed.',
+    'mod.label':'Moduly','mod.title':'Vytvo\u0159eno pro ka\u017edou \u010d\u00e1st va\u0161eho workflow',
+    'mod.finance.name':'Finance','mod.finance.short':'Fakturace, p\u0159edpisy, p\u00e1rov\u00e1n\u00ed transakc\u00ed',
+    'mod.finance.detail':'Kompletn\u00ed spr\u00e1va finan\u010dn\u00edho cyklu \u2014 od n\u00e1jemn\u00edch p\u0159edpis\u016f a fakturace energi\u00ed po automatick\u00e9 p\u00e1rov\u00e1n\u00ed banky.',
+    'mod.maintenance.name':'\u00dadr\u017eba','mod.maintenance.short':'Pracovn\u00ed p\u0159\u00edkazy, dodavatel\u00e9, SLA',
+    'mod.maintenance.detail':'Zjednodu\u0161te procesy \u00fadr\u017eby. Vytv\u00e1\u0159ejte pracovn\u00ed p\u0159\u00edkazy, p\u0159i\u0159azujte dodavatele, sledujte pln\u011bn\u00ed.',
+    'mod.tenants.name':'N\u00e1jemci','mod.tenants.short':'Smlouvy, profily, spr\u00e1va pohled\u00e1vek',
+    'mod.tenants.detail':'Kompletn\u00ed \u017eivotn\u00ed cyklus n\u00e1jemce \u2014 od podpisu smlouvy po vym\u00e1h\u00e1n\u00ed pohled\u00e1vek.',
+    'mod.meters.name':'M\u011b\u0159idla','mod.meters.short':'Ode\u010dty, fakturace, anal\u00fdza spot\u0159eby',
+    'mod.meters.detail':'Sb\u00edrejte ode\u010dty, validujte data a generujte fakturaci na z\u00e1klad\u011b spot\u0159eby automaticky.',
+    'mod.documents.name':'Dokumenty','mod.documents.short':'Smlouvy, \u0161ablony, import ISDOC',
+    'mod.documents.detail':'Centralizovan\u00e9 \u00falo\u017ei\u0161t\u011b dokument\u016f s chytr\u00fdmi \u0161ablonami a importem ISDOC faktur.',
+    'mod.reporting.name':'Reporting','mod.reporting.short':'KPI, dashboardy, vlastn\u00ed exporty',
+    'mod.reporting.detail':'Dashboardy KPI v re\u00e1ln\u00e9m \u010dase, reporty obsazenosti a exporty CSV/PDF jedn\u00edm klikem.',
+    'aud.label':'Pro koho je ur\u010den','aud.title':'Vytvo\u0159eno pro profesion\u00e1ly na ka\u017ed\u00e9 \u00farovni',
+    'aud.pm.title':'Spr\u00e1vci nemovitost\u00ed','aud.pm.desc':'Spravujte reziden\u010dn\u00ed i komer\u010dn\u00ed portfolia snadno.',
+    'aud.pm.1':'P\u0159ehled v\u00edce nemovitost\u00ed','aud.pm.2':'Automatizovan\u00fd v\u00fdb\u011br n\u00e1jemn\u00e9ho','aud.pm.3':'Komunikace s n\u00e1jemci','aud.pm.4':'Pr\u00e1vn\u00ed \u0161ablony dokument\u016f',
+    'aud.fm.title':'FM spole\u010dnosti','aud.fm.desc':'Koordinujte facility operace nap\u0159\u00ed\u010d v\u00edce klientsk\u00fdmi lokalitami.',
+    'aud.fm.1':'Spr\u00e1va pracovn\u00edch p\u0159\u00edkaz\u016f','aud.fm.2':'Koordinace dodavatel\u016f','aud.fm.3':'Sledov\u00e1n\u00ed shody','aud.fm.4':'SLA reporting',
+    'aud.dev.title':'Develope\u0159i a investo\u0159i','aud.dev.desc':'Sledujte aktiva, v\u00fdnosy a obsazenost cel\u00e9ho portfolia.',
+    'aud.dev.1':'Analytika portfolia','aud.dev.2':'Sledov\u00e1n\u00ed ROI','aud.dev.3':'Reporty obsazenosti','aud.dev.4':'Dashboardy pro investory',
+    'price.label':'Cen\u00edk','price.title':'Jednoduch\u00e9, transparentn\u00ed ceny','price.sub':'Za\u010dn\u011bte zdarma, \u0161k\u00e1lujte dle r\u016fstu.','price.mo':'/m\u011bs',
+    'plan.free.name':'ZDARMA','plan.free.desc':'Pro jednotliv\u00e9 pronaj\u00edmatele na za\u010d\u00e1tku',
+    'plan.starter.name':'STARTER','plan.starter.desc':'Pro mal\u00e9 spr\u00e1vce nemovitost\u00ed',
+    'plan.pro.name':'PROFESION\u00c1LN\u00cd','plan.pro.desc':'Pro rostouc\u00ed spr\u00e1vcovsk\u00e9 firmy',
+    'plan.ent.name':'ENTERPRISE','plan.ent.desc':'Pro velk\u00e1 portfolia a FM spole\u010dnosti','plan.ent.price':'Na m\u00edru',
+    'plan.popular':'Nejobl\u00edben\u011bj\u0161\u00ed','plan.cta.free':'Za\u010d\u00edt zdarma','plan.cta.paid':'Zku\u0161ebn\u00ed verze','plan.cta.ent':'Kontaktovat obchod',
+    'pf.property':'nemovitost','pf.properties':'nemovitosti','pf.units':'jednotek','pf.users':'u\u017eivatel\u016f',
+    'pf.api':'P\u0159\u00edstup k API','pf.isdoc':'ISDOC fakturace','pf.unlimited':'Neomezen\u00e9 nemovitosti','pf.unlimitedU':'Neomezen\u00e9 jednotky','pf.unlimitedUs':'Neomezen\u00ed u\u017eivatel\u00e9',
+    'cta.title':'P\u0159ipraveni modernizovat spr\u00e1vu va\u0161ich nemovitost\u00ed?',
+    'cta.sub':'P\u0159ipojte se k tis\u00edc\u016fm spr\u00e1vc\u016f nemovitost\u00ed, kte\u0159\u00ed ji\u017e pou\u017e\u00edvaj\u00ed ifmio.',
+    'cta.btn1':'Za\u010d\u00edt zdarma','cta.btn2':'Kontaktovat obchod',
+    'footer.tagline':'Glob\u00e1ln\u00ed platforma pro facility a property management.',
+    'footer.product':'Produkt','footer.company':'Firma','footer.legal':'Pr\u00e1vn\u00ed',
+    'footer.app':'Spustit aplikaci','footer.about':'O n\u00e1s','footer.contact':'Kontakt',
+    'footer.privacy':'Z\u00e1sady ochrany osobn\u00edch \u00fadaj\u016f','footer.terms':'Obchodn\u00ed podm\u00ednky','footer.gdpr':'GDPR',
+  },
+  de: {
+    'nav.features':'Funktionen','nav.modules':'Module','nav.pricing':'Preise',
+    'nav.contact':'Kontakt','nav.login':'Anmelden','nav.start':'Loslegen',
+    'hero.badge':'Globale Facility & Property Management Plattform',
+    'hero.h1':'Verwalten Sie Ihre <em>Immobilien</em> von \u00fcberall',
+    'hero.sub':'Die vollst\u00e4ndige Plattform f\u00fcr Immobilienverwalter, FM-Unternehmen und Investoren.',
+    'hero.cta1':'Kostenlos starten \u2192','hero.cta2':'Alle Funktionen ansehen',
+    'stat.units':'Verwaltete Einheiten','stat.countries':'L\u00e4nder','stat.uptime':'Verf\u00fcgbarkeit','stat.support':'Support',
+    'features.label':'Plattform','features.title':'Alles was Sie brauchen an einem Ort',
+    'features.sub':'Von der Immobilienaufnahme bis zum Finanzreporting \u2014 alles in einer Plattform.',
+    'feat.prop.title':'Immobilienverwaltung','feat.prop.desc':'Verwalten Sie Portfolios jeder Gr\u00f6\u00dfe von einem Dashboard.',
+    'feat.fin.title':'Finanzvorschriften','feat.fin.desc':'Automatisieren Sie die Abrechnung und stimmen Sie Banktransaktionen m\u00fchelos ab.',
+    'feat.wo.title':'Arbeitsauftr\u00e4ge','feat.wo.desc':'Erstellen, zuweisen und verfolgen Sie Wartungsanfragen in Echtzeit.',
+    'feat.rep.title':'Reporting & KPIs','feat.rep.desc':'Dashboards, individuelle KPIs und exportfertige Berichte.',
+    'feat.meter.title':'Z\u00e4hlerablesungen','feat.meter.desc':'Erfassen, validieren und verarbeiten Sie Verbrauchsdaten automatisch.',
+    'feat.access.title':'Rollenbasierter Zugriff','feat.access.desc':'Detaillierte Berechtigungen f\u00fcr jedes Teammitglied.',
+    'hiw.label':'So funktioniert es','hiw.title':'In wenigen Minuten einsatzbereit',
+    'step1.title':'Workspace erstellen','step1.desc':'Registrieren und konfigurieren Sie Ihre Organisation in unter 5 Minuten.',
+    'step2.title':'Immobilien hinzuf\u00fcgen','step2.desc':'Importieren Sie Ihr Portfolio oder f\u00fcgen Sie Immobilien einzeln hinzu.',
+    'step3.title':'Team einladen','step3.desc':'F\u00fcgen Sie Kollegen hinzu und vergeben Sie detaillierte Zugriffsrechte.',
+    'step4.title':'Verwalten starten','step4.desc':'Sofort live gehen. Kein Training, keine Migrationsprobleme.',
+    'mod.label':'Module','mod.title':'F\u00fcr jeden Teil Ihres Workflows konzipiert',
+    'mod.finance.name':'Finanzen','mod.finance.short':'Abrechnung, Vorschriften, Bankabgleich',
+    'mod.finance.detail':'Vollst\u00e4ndiges Finanzlebenszyklusmanagement \u2014 von Mietvorschriften bis zum automatischen Bankabgleich.',
+    'mod.maintenance.name':'Wartung','mod.maintenance.short':'Arbeitsauftr\u00e4ge, Auftragnehmer, SLA',
+    'mod.maintenance.detail':'Optimieren Sie Wartungsabl\u00e4ufe. Erstellen Sie Arbeitsauftr\u00e4ge und messen Sie SLA-Einhaltung.',
+    'mod.tenants.name':'Mieter','mod.tenants.short':'Vertr\u00e4ge, Profile, Schuldenmanagement',
+    'mod.tenants.detail':'Vollst\u00e4ndiger Mieterlebenszyklus \u2014 von der Vertragsunterzeichnung bis zur Schuldenr\u00fcckforderung.',
+    'mod.meters.name':'Z\u00e4hler','mod.meters.short':'Ablesungen, Abrechnung, Verbrauchsanalyse',
+    'mod.meters.detail':'Erfassen Sie Verbrauchsdaten und generieren Sie verbrauchsbasierte Abrechnungen automatisch.',
+    'mod.documents.name':'Dokumente','mod.documents.short':'Vertr\u00e4ge, Vorlagen, ISDOC-Import',
+    'mod.documents.detail':'Zentralisierte Dokumentenverwaltung mit intelligenten Vorlagen und ISDOC-Rechnungsimport.',
+    'mod.reporting.name':'Reporting','mod.reporting.short':'KPIs, Dashboards, individuelle Exporte',
+    'mod.reporting.detail':'Echtzeit-KPI-Dashboards, Belegungsberichte und CSV/PDF-Exporte auf Knopfdruck.',
+    'aud.label':'F\u00fcr wen','aud.title':'Konzipiert f\u00fcr Profis aller Gr\u00f6\u00dfen',
+    'aud.pm.title':'Immobilienverwalter','aud.pm.desc':'Verwalten Sie Wohn- und Gewerbeportfolios mit Leichtigkeit.',
+    'aud.pm.1':'Multi-Immobilien-Dashboard','aud.pm.2':'Automatisierte Mieterhebung','aud.pm.3':'Mieterkommunikation','aud.pm.4':'Rechtliche Dokumentvorlagen',
+    'aud.fm.title':'FM-Unternehmen','aud.fm.desc':'Koordinieren Sie Facility-Operationen \u00fcber mehrere Kundenstandorte.',
+    'aud.fm.1':'Arbeitsauftragsverwaltung','aud.fm.2':'Auftragnehmerkoordination','aud.fm.3':'Compliance-Tracking','aud.fm.4':'SLA-Reporting',
+    'aud.dev.title':'Entwickler & Investoren','aud.dev.desc':'Verfolgen Sie Verm\u00f6genswerte, Renditen und Belegung.',
+    'aud.dev.1':'Portfolio-Analytik','aud.dev.2':'ROI-Tracking','aud.dev.3':'Belegungsberichte','aud.dev.4':'Investor-Dashboards',
+    'price.label':'Preise','price.title':'Einfache, transparente Preise','price.sub':'Kostenlos starten, nach Bedarf skalieren.','price.mo':'/Mo',
+    'plan.free.name':'KOSTENLOS','plan.free.desc':'F\u00fcr einzelne Vermieter am Anfang',
+    'plan.starter.name':'STARTER','plan.starter.desc':'F\u00fcr kleine Immobilienverwalter',
+    'plan.pro.name':'PROFESSIONAL','plan.pro.desc':'F\u00fcr wachsende Immobilienunternehmen',
+    'plan.ent.name':'ENTERPRISE','plan.ent.desc':'F\u00fcr gro\u00dfe Portfolios und FM-Unternehmen','plan.ent.price':'Individuell',
+    'plan.popular':'Am beliebtesten','plan.cta.free':'Kostenlos starten','plan.cta.paid':'Testversion','plan.cta.ent':'Vertrieb kontaktieren',
+    'pf.property':'Immobilie','pf.properties':'Immobilien','pf.units':'Einheiten','pf.users':'Benutzer',
+    'pf.api':'API-Zugang','pf.isdoc':'ISDOC-Rechnungsstellung','pf.unlimited':'Unbegrenzte Immobilien','pf.unlimitedU':'Unbegrenzte Einheiten','pf.unlimitedUs':'Unbegrenzte Benutzer',
+    'cta.title':'Bereit, Ihr Immobilienmanagement zu modernisieren?',
+    'cta.sub':'Schlie\u00dfen Sie sich tausenden von Immobilienprofis an.',
+    'cta.btn1':'Kostenlos starten','cta.btn2':'Mit Vertrieb sprechen',
+    'footer.tagline':'Die globale Plattform f\u00fcr Facility und Property Management.',
+    'footer.product':'Produkt','footer.company':'Unternehmen','footer.legal':'Rechtliches',
+    'footer.app':'App starten','footer.about':'\u00dcber uns','footer.contact':'Kontakt',
+    'footer.privacy':'Datenschutzrichtlinie','footer.terms':'Nutzungsbedingungen','footer.gdpr':'DSGVO',
+  },
+  pl: {
+    'nav.features':'Funkcje','nav.modules':'Modu\u0142y','nav.pricing':'Cennik',
+    'nav.contact':'Kontakt','nav.login':'Zaloguj si\u0119','nav.start':'Zacznij',
+    'hero.badge':'Globalna platforma Facility & Property Management',
+    'hero.h1':'Zarz\u0105dzaj swoimi <em>nieruchomo\u015bciami</em> z dowolnego miejsca',
+    'hero.sub':'Kompletna platforma dla zarz\u0105dc\u00f3w nieruchomo\u015bci, firm FM i inwestor\u00f3w.',
+    'hero.cta1':'Zacznij za darmo \u2192','hero.cta2':'Zobacz wszystkie funkcje',
+    'stat.units':'Zarz\u0105dzanych lokali','stat.countries':'Kraj\u00f3w','stat.uptime':'Dost\u0119pno\u015b\u0107','stat.support':'Wsparcie',
+    'features.label':'Platforma','features.title':'Wszystko czego potrzebujesz w jednym miejscu',
+    'features.sub':'Od rejestracji nieruchomo\u015bci po raportowanie finansowe \u2014 wszystko w jednej platformie.',
+    'feat.prop.title':'Zarz\u0105dzanie nieruchomo\u015bciami','feat.prop.desc':'Zarz\u0105dzaj portfelami dowolnej wielko\u015bci z jednego pulpitu.',
+    'feat.fin.title':'Przepisy finansowe','feat.fin.desc':'Automatyzuj rozliczenia, \u015bled\u017a p\u0142atno\u015bci i uzgadniaj transakcje bankowe.',
+    'feat.wo.title':'Zlecenia robocze','feat.wo.desc':'Tw\u00f3rz, przydzielaj i \u015bled\u017a zg\u0142oszenia konserwacji w czasie rzeczywistym.',
+    'feat.rep.title':'Raporty i KPI','feat.rep.desc':'Pulpity, niestandardowe KPI i raporty gotowe do eksportu.',
+    'feat.meter.title':'Odczyty licznik\u00f3w','feat.meter.desc':'Zbieraj, waliduj i przetwarzaj odczyty medi\u00f3w automatycznie.',
+    'feat.access.title':'Dost\u0119p oparty na rolach','feat.access.desc':'Szczeg\u00f3\u0142owe uprawnienia dla ka\u017cdego cz\u0142onka zespo\u0142u.',
+    'hiw.label':'Jak to dzia\u0142a','hiw.title':'Gotowy do pracy w kilka minut',
+    'step1.title':'Utw\u00f3rz workspace','step1.desc':'Zarejestruj si\u0119 i skonfiguruj organizacj\u0119 w mniej ni\u017c 5 minut.',
+    'step2.title':'Dodaj nieruchomo\u015bci','step2.desc':'Importuj portfel lub dodawaj nieruchomo\u015bci jedna po drugiej.',
+    'step3.title':'Zapro\u015b zesp\u00f3\u0142','step3.desc':'Dodaj wsp\u00f3\u0142pracownik\u00f3w i ustaw szczeg\u00f3\u0142owe uprawnienia dost\u0119pu.',
+    'step4.title':'Zacznij zarz\u0105dza\u0107','step4.desc':'Uruchom natychmiast. Bez szkole\u0144, bez problem\u00f3w z migracj\u0105.',
+    'mod.label':'Modu\u0142y','mod.title':'Zbudowany dla ka\u017cdej cz\u0119\u015bci twojego przep\u0142ywu pracy',
+    'mod.finance.name':'Finanse','mod.finance.short':'Fakturowanie, przepisy, uzgodnienie bankowe',
+    'mod.finance.detail':'Pe\u0142ne zarz\u0105dzanie cyklem finansowym \u2014 od przepis\u00f3w czynszowych po automatyczne uzgodnienie bankowe.',
+    'mod.maintenance.name':'Konserwacja','mod.maintenance.short':'Zlecenia robocze, wykonawcy, SLA',
+    'mod.maintenance.detail':'Optymalizuj procesy konserwacji. Tw\u00f3rz zlecenia, przydzielaj wykonawc\u00f3w i mierz zgodno\u015b\u0107 SLA.',
+    'mod.tenants.name':'Najemcy','mod.tenants.short':'Umowy, profile, zarz\u0105dzanie d\u0142ugiem',
+    'mod.tenants.detail':'Kompletny cykl \u017cycia najemcy \u2014 od podpisania umowy po windykacj\u0119.',
+    'mod.meters.name':'Liczniki','mod.meters.short':'Odczyty, rozliczenia, analiza zu\u017cycia',
+    'mod.meters.detail':'Zbieraj odczyty i automatycznie generuj rozliczenia oparte na zu\u017cyciu.',
+    'mod.documents.name':'Dokumenty','mod.documents.short':'Umowy, szablony, import ISDOC',
+    'mod.documents.detail':'Scentralizowane przechowywanie dokument\u00f3w z inteligentnymi szablonami i importem faktur ISDOC.',
+    'mod.reporting.name':'Raporty','mod.reporting.short':'KPI, pulpity, niestandardowe eksporty',
+    'mod.reporting.detail':'Pulpity KPI w czasie rzeczywistym, raporty ob\u0142o\u017cenia i eksporty CSV/PDF jednym klikni\u0119ciem.',
+    'aud.label':'Dla kogo','aud.title':'Zbudowany dla profesjonalist\u00f3w na ka\u017cd\u0105 skal\u0119',
+    'aud.pm.title':'Zarz\u0105dcy nieruchomo\u015bci','aud.pm.desc':'Zarz\u0105dzaj portfelami z \u0142atwo\u015bci\u0105.',
+    'aud.pm.1':'Pulpit wielu nieruchomo\u015bci','aud.pm.2':'Automatyczne pobieranie czynszu','aud.pm.3':'Komunikacja z najemcami','aud.pm.4':'Prawne szablony dokument\u00f3w',
+    'aud.fm.title':'Firmy FM','aud.fm.desc':'Koordynuj operacje facility w wielu lokalizacjach.',
+    'aud.fm.1':'Zarz\u0105dzanie zleceniami','aud.fm.2':'Koordynacja wykonawc\u00f3w','aud.fm.3':'\u015aledzenie zgodno\u015bci','aud.fm.4':'Raportowanie SLA',
+    'aud.dev.title':'Deweloperzy i inwestorzy','aud.dev.desc':'\u015aled\u017a aktywa, zwroty i ob\u0142o\u017cenie portfela.',
+    'aud.dev.1':'Analityka portfela','aud.dev.2':'\u015aledzenie ROI','aud.dev.3':'Raporty ob\u0142o\u017cenia','aud.dev.4':'Pulpity inwestor\u00f3w',
+    'price.label':'Cennik','price.title':'Proste, przejrzyste ceny','price.sub':'Zacznij za darmo, skaluj w miar\u0119 wzrostu.','price.mo':'/mies',
+    'plan.free.name':'DARMOWY','plan.free.desc':'Dla indywidualnych w\u0142a\u015bcicieli na pocz\u0105tku',
+    'plan.starter.name':'STARTER','plan.starter.desc':'Dla ma\u0142ych zarz\u0105dc\u00f3w nieruchomo\u015bci',
+    'plan.pro.name':'PROFESJONALNY','plan.pro.desc':'Dla rosn\u0105cych firm zarz\u0105dczych',
+    'plan.ent.name':'ENTERPRISE','plan.ent.desc':'Dla du\u017cych portfeli i firm FM','plan.ent.price':'Indywidualnie',
+    'plan.popular':'Najpopularniejszy','plan.cta.free':'Zacznij za darmo','plan.cta.paid':'Wersja pr\u00f3bna','plan.cta.ent':'Skontaktuj z handlem',
+    'pf.property':'nieruchomo\u015b\u0107','pf.properties':'nieruchomo\u015bci','pf.units':'lokali','pf.users':'u\u017cytkownik\u00f3w',
+    'pf.api':'Dost\u0119p do API','pf.isdoc':'Fakturowanie ISDOC','pf.unlimited':'Nieograniczone nieruchomo\u015bci','pf.unlimitedU':'Nieograniczone lokale','pf.unlimitedUs':'Nieograniczeni u\u017cytkownicy',
+    'cta.title':'Gotowy na unowocze\u015bnienie zarz\u0105dzania nieruchomo\u015bciami?',
+    'cta.sub':'Do\u0142\u0105cz do tysi\u0119cy specjalist\u00f3w korzystaj\u0105cych z ifmio.',
+    'cta.btn1':'Zacznij za darmo','cta.btn2':'Porozmawiaj z handlem',
+    'footer.tagline':'Globalna platforma dla facility i property management.',
+    'footer.product':'Produkt','footer.company':'Firma','footer.legal':'Prawne',
+    'footer.app':'Uruchom aplikacj\u0119','footer.about':'O nas','footer.contact':'Kontakt',
+    'footer.privacy':'Polityka prywatno\u015bci','footer.terms':'Warunki us\u0142ugi','footer.gdpr':'RODO',
+  }
+};
+
+var LANG_META = {
+  en:{flag:'\ud83c\uddec\ud83c\udde7',code:'EN',html:'en'},
+  cs:{flag:'\ud83c\udde8\ud83c\uddff',code:'CS',html:'cs'},
+  de:{flag:'\ud83c\udde9\ud83c\uddea',code:'DE',html:'de'},
+  pl:{flag:'\ud83c\uddf5\ud83c\uddf1',code:'PL',html:'pl'},
+};
+
+var MODULE_DATA = {
+  finance:     {icon:'\ud83d\udcb0',titleKey:'mod.finance.name',    textKey:'mod.finance.detail',     tags:['Invoicing','Prescriptions','Bank Sync','ISDOC']},
+  maintenance: {icon:'\ud83d\udd27',titleKey:'mod.maintenance.name', textKey:'mod.maintenance.detail',  tags:['Work Orders','SLA','Contractors','Scheduling']},
+  tenants:     {icon:'\ud83d\udc65',titleKey:'mod.tenants.name',     textKey:'mod.tenants.detail',      tags:['Contracts','Reminders','Debt Recovery','Profiles']},
+  meters:      {icon:'\ud83d\udce1',titleKey:'mod.meters.name',      textKey:'mod.meters.detail',       tags:['Water','Electricity','Gas','Heating']},
+  documents:   {icon:'\ud83d\udcc4',titleKey:'mod.documents.name',   textKey:'mod.documents.detail',    tags:['Templates','ISDOC','Storage','e-Signature']},
+  reporting:   {icon:'\ud83d\udcca',titleKey:'mod.reporting.name',   textKey:'mod.reporting.detail',    tags:['KPIs','Dashboards','CSV','PDF']},
+};
+
+/* ─── LANG SYSTEM ────────────────────────────────────────────── */
+var currentLang = localStorage.getItem('ifmio_lang') || 'en';
+var activeModule = 'finance';
+
+function t(key) {
+  return (TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key]) ||
+         (TRANSLATIONS.en && TRANSLATIONS.en[key]) || key;
+}
+
+function applyTranslations() {
+  document.documentElement.lang = LANG_META[currentLang].html;
+  document.querySelectorAll('[data-i18n]').forEach(function(el) {
+    var key = el.getAttribute('data-i18n');
+    el.innerHTML = t(key);
+  });
+  updateModulePreview(activeModule);
+  updateFooterLangBtns();
+}
+
+function setLang(lang) {
+  if (!TRANSLATIONS[lang]) return;
+  currentLang = lang;
+  localStorage.setItem('ifmio_lang', lang);
+  var m = LANG_META[lang];
+  document.getElementById('langFlag').textContent = m.flag;
+  document.getElementById('langCode').textContent = m.code;
+  closeLangDropdown();
+  applyTranslations();
+}
+
+function buildLangDropdown() {
+  var dd = document.getElementById('langDd');
+  dd.innerHTML = Object.keys(LANG_META).map(function(lang) {
+    var m = LANG_META[lang];
+    return '<div class="lang-option' + (lang === currentLang ? ' active' : '') + '" onclick="setLang(\'' + lang + '\')">' +
+      '<span>' + m.flag + '</span><span>' + m.code + '</span></div>';
+  }).join('');
+}
+
+function toggleLangDropdown() {
+  document.getElementById('langSwitcher').classList.toggle('open');
+}
+
+function closeLangDropdown() {
+  document.getElementById('langSwitcher').classList.remove('open');
+}
+
+function updateFooterLangBtns() {
+  document.querySelectorAll('.footer-lang-btn').forEach(function(btn) {
+    var lang = btn.getAttribute('onclick').replace("setLang('","").replace("')","");
+    btn.classList.toggle('active', lang === currentLang);
+  });
+}
+
+/* ─── MODULE SELECTOR ────────────────────────────────────────── */
+function selectModule(el, key) {
+  document.querySelectorAll('.mod-item').forEach(function(i) { i.classList.remove('active'); });
+  el.classList.add('active');
+  activeModule = key;
+  updateModulePreview(key);
+}
+
+function updateModulePreview(key) {
+  var mod = MODULE_DATA[key];
+  if (!mod) return;
+  document.getElementById('mpIcon').textContent = mod.icon;
+  document.getElementById('mpTitle').textContent = t(mod.titleKey);
+  document.getElementById('mpText').textContent = t(mod.textKey);
+  var tagsEl = document.getElementById('mpTags');
+  tagsEl.innerHTML = mod.tags.map(function(tag) {
+    return '<span class="mod-tag">' + tag + '</span>';
+  }).join('');
+}
+
+/* ─── NAVBAR SCROLL ──────────────────────────────────────────── */
+window.addEventListener('scroll', function() {
+  document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 20);
+}, {passive: true});
+
+/* ─── SCROLL REVEAL ──────────────────────────────────────────── */
+(function() {
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, {threshold: 0.1, rootMargin: '0px 0px -40px 0px'});
+  document.querySelectorAll('.reveal').forEach(function(el) {
+    observer.observe(el);
+  });
+})();
+
+/* ─── CLOSE DROPDOWN ON OUTSIDE CLICK ───────────────────────── */
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#langSwitcher')) closeLangDropdown();
+});
+
+/* ─── SMOOTH SCROLL ──────────────────────────────────────────── */
+document.querySelectorAll('a[href^="#"]').forEach(function(a) {
+  a.addEventListener('click', function(e) {
+    var href = a.getAttribute('href');
+    if (href === '#') return;
+    var target = document.querySelector(href);
+    if (target) {
+      e.preventDefault();
+      var top = target.getBoundingClientRect().top + window.scrollY - 80;
+      window.scrollTo({top: top, behavior: 'smooth'});
+    }
+  });
+});
+
+/* ─── INIT ───────────────────────────────────────────────────── */
+(function init() {
+  var m = LANG_META[currentLang] || LANG_META.en;
+  document.getElementById('langFlag').textContent = m.flag;
+  document.getElementById('langCode').textContent = m.code;
+  buildLangDropdown();
+  applyTranslations();
+  updateModulePreview('finance');
+})();
+</script>
+</body>
+</html>
