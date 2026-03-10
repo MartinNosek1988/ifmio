@@ -140,6 +140,14 @@ export default function AppShell() {
   });
   const openTicketsCount = (helpdeskData?.total ?? 0) + (helpdeskInProgress?.total ?? 0);
 
+  const { data: contractStats } = useQuery({
+    queryKey: ['contracts', 'stats'],
+    queryFn: () => apiClient.get('/contracts/stats').then((r) => r.data),
+    staleTime: 60_000,
+    retry: false,
+  });
+  const expiringContracts = contractStats?.expiringSoon ?? 0;
+
   useEffect(() => {
     if (onboardingData && !onboardingData.completed) {
       setShowOnboarding(true);
@@ -155,7 +163,8 @@ export default function AppShell() {
             <div className="sidebar__section-title">{sec.title}</div>
             {sec.items.map((item) => {
               const hasQuery = item.to.includes('?');
-              const badgeCount = item.to === '/helpdesk' ? openTicketsCount : 0;
+              const badgeCount = item.to === '/helpdesk' ? openTicketsCount
+                : item.to === '/contracts' ? expiringContracts : 0;
               return (
                 <NavLink
                   key={item.to}

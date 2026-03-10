@@ -1,18 +1,16 @@
 import { useState } from 'react';
-import { Modal, Badge, Button } from '../../shared/components';
+import { Modal, Badge, Button, KpiCard } from '../../shared/components';
 import type { BadgeVariant } from '../../shared/components';
-import { useContractsStore, type LeaseAgreement, daysToExpiry, isExpiringSoon } from './contracts-store';
-import { loadFromStorage } from '../../core/storage';
+import { useTerminateContract } from './api/contracts.queries';
+import type { ApiLeaseAgreement } from './api/contracts.api';
 import { formatCzDate, formatKc } from '../../shared/utils/format';
 import LeaseForm from './LeaseForm';
 
 interface Props {
-  lease: LeaseAgreement;
+  lease: ApiLeaseAgreement;
   onClose: () => void;
   onUpdated: () => void;
 }
-
-type R = Record<string, unknown>;
 
 const STATUS_COLOR: Record<string, BadgeVariant> = {
   aktivni: 'green', ukoncena: 'muted', pozastavena: 'yellow', pripravovana: 'blue',
@@ -21,51 +19,60 @@ const STATUS_LABEL: Record<string, string> = {
   aktivni: 'Aktivni', ukoncena: 'Ukoncena', pozastavena: 'Pozastavena', pripravovana: 'Pripravovana',
 };
 
+const TYPE_LABEL: Record<string, string> = {
+  najem: 'Najem', podnajem: 'Podnajem', sluzebni: 'Sluzebni byt', jiny: 'Jiny',
+};
+
+const RENEWAL_LABEL: Record<string, string> = {
+  pisemna: 'Pisemna dohoda', automaticka: 'Automaticke', nevztahuje: 'Nevztahuje se',
+};
+
+function daysToExpiry(endDate: string | null): number | null {
+  if (!endDate) return null;
+  return Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+}
+
+function isExpiringSoon(c: ApiLeaseAgreement): boolean {
+  const days = daysToExpiry(c.endDate);
+  return days !== null && days >= 0 && days <= 30 && c.status === 'aktivni';
+}
+
 export default function LeaseDetailModal({ lease, onClose, onUpdated }: Props) {
-  const { terminate } = useContractsStore();
-  const [tab, setTab] = useState<'detail' | 'finance' | 'historie'>('detail');
+  const terminateMutation = useTerminateContract();
+  const [tab, setTab] = useState<'detail' | 'historie'>('detail');
   const [showEdit, setShowEdit] = useState(false);
   const [showTerminate, setShowTerminate] = useState(false);
   const [terminateDate, setTerminateDate] = useState(new Date().toISOString().slice(0, 10));
+  const [terminateNote, setTerminateNote] = useState('');
 
-  const properties = loadFromStorage<R[]>('estateos_properties', []);
-  const units = loadFromStorage<R[]>('estateos_units', []);
-  const transactions = loadFromStorage<R[]>('estateos_fin_transactions', []);
+  const residentName = lease.resident
+    ? `${lease.resident.firstName} ${lease.resident.lastName}`
+    : '—';
+  const propName = lease.property?.name || '—';
+  const unitName = lease.unit?.name || null;
 
-  const prop = properties.find(p => String(p.id) === String(lease.propId));
-  const unit = units.find(u => String(u.id) === String(lease.jednotkaId));
-
-  const propName = String(prop?.nazev || prop?.name || '');
-  const unitCislo = unit ? String(unit.cislo || unit.id) : null;
-
-  const daysLeft = daysToExpiry(lease.datumDo);
+  const daysLeft = daysToExpiry(lease.endDate);
   const expiring = isExpiringSoon(lease);
 
   // Duration progress
-  const progressPct = lease.datumOd && lease.datumDo
+  const progressPct = lease.startDate && lease.endDate
     ? Math.min(100, Math.max(0, Math.round(
-        (Date.now() - new Date(lease.datumOd).getTime()) /
-        (new Date(lease.datumDo).getTime() - new Date(lease.datumOd).getTime()) * 100
+        (Date.now() - new Date(lease.startDate).getTime()) /
+        (new Date(lease.endDate).getTime() - new Date(lease.startDate).getTime()) * 100
       )))
     : null;
 
-  // Related transactions (fuzzy match by name)
-  const firstName = lease.najemnik.split(' ')[0]?.toLowerCase() || '___';
-  const myTx = transactions.filter(t =>
-    String(t.popis || '').toLowerCase().includes(firstName)
-  ).sort((a, b) => String(b.datum || '').localeCompare(String(a.datum || '')));
-  const totalPaid = myTx.filter(t => Number(t.castka) > 0).reduce((s, t) => s + Number(t.castka), 0);
-
   const handleTerminate = () => {
-    terminate(lease.id, terminateDate);
-    setShowTerminate(false);
-    onUpdated();
+    terminateMutation.mutate(
+      { id: lease.id, dto: { terminatedAt: terminateDate, terminationNote: terminateNote || undefined } },
+      { onSuccess: () => { setShowTerminate(false); onUpdated(); } },
+    );
   };
 
-  const initials = lease.najemnik.split(' ').map(w => w[0] || '').slice(0, 2).join('').toUpperCase();
+  const initials = residentName.split(' ').map((w) => w[0] || '').slice(0, 2).join('').toUpperCase();
 
-  const tabs = ['detail', 'finance', 'historie'] as const;
-  const tabLabels = { detail: 'Detail', finance: 'Finance', historie: 'Historie' };
+  const tabs = ['detail', 'historie'] as const;
+  const tabLabels = { detail: 'Detail', historie: 'Historie' };
 
   return (
     <>
@@ -76,9 +83,9 @@ export default function LeaseDetailModal({ lease, onClose, onUpdated }: Props) {
               {initials}
             </div>
             <div>
-              <div>{lease.najemnik}</div>
+              <div>{residentName}</div>
               <div style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-muted)' }}>
-                {lease.cisloSmlouvy || lease.id} · {propName}{unitCislo ? ` · Jednotka ${unitCislo}` : ''}
+                {lease.contractNumber || lease.id.slice(0, 8)} · {propName}{unitName ? ` · ${unitName}` : ''}
               </div>
             </div>
           </div>
@@ -93,18 +100,20 @@ export default function LeaseDetailModal({ lease, onClose, onUpdated }: Props) {
         {/* Status badges */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <Badge variant={STATUS_COLOR[lease.status] || 'muted'}>{STATUS_LABEL[lease.status] || lease.status}</Badge>
+          <Badge variant="blue">{TYPE_LABEL[lease.contractType] || lease.contractType}</Badge>
           {expiring && daysLeft !== null && (
             <Badge variant="yellow">Konci za {daysLeft} dni</Badge>
           )}
+          {lease.indefinite && <Badge variant="muted">Na dobu neurcitou</Badge>}
         </div>
 
         {/* Duration progress */}
         {progressPct !== null && lease.status === 'aktivni' && (
           <div style={{ marginBottom: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 3 }}>
-              <span>{formatCzDate(lease.datumOd)}</span>
+              <span>{formatCzDate(lease.startDate)}</span>
               <span style={{ fontWeight: 600 }}>{progressPct}%</span>
-              <span>{lease.datumDo ? formatCzDate(lease.datumDo) : 'neurcito'}</span>
+              <span>{lease.endDate ? formatCzDate(lease.endDate) : 'neurcito'}</span>
             </div>
             <div style={{ height: 5, background: 'var(--surface-2, var(--surface))', borderRadius: 3, overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${progressPct}%`, background: expiring ? 'var(--accent-orange)' : 'var(--accent-green)', borderRadius: 3, transition: 'width 0.3s' }} />
@@ -114,7 +123,7 @@ export default function LeaseDetailModal({ lease, onClose, onUpdated }: Props) {
 
         {/* Tabs */}
         <div className="tabs" style={{ marginBottom: 16 }}>
-          {tabs.map(t => (
+          {tabs.map((t) => (
             <button key={t} className={`tab-btn${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
               {tabLabels[t]}
             </button>
@@ -127,31 +136,58 @@ export default function LeaseDetailModal({ lease, onClose, onUpdated }: Props) {
             <div style={{ background: 'var(--surface-2, var(--surface))', borderRadius: 8, padding: 14, marginBottom: 14 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                 <InfoCell label="Nemovitost" value={propName} />
-                {unitCislo && <InfoCell label="Jednotka" value={unitCislo} />}
-                {unit && <InfoCell label="Plocha" value={unit.plocha ? `${unit.plocha} m2` : unit.podlahova_plocha ? `${unit.podlahova_plocha} m2` : undefined} />}
+                {unitName && <InfoCell label="Jednotka" value={unitName} />}
+                {lease.unit?.area && <InfoCell label="Plocha" value={`${lease.unit.area} m2`} />}
               </div>
             </div>
 
+            {/* Resident info */}
+            {lease.resident && (
+              <div style={{ background: 'var(--surface-2, var(--surface))', borderRadius: 8, padding: 14, marginBottom: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                  <InfoCell label="Najemnik" value={residentName} />
+                  <InfoCell label="Email" value={lease.resident.email || undefined} />
+                  <InfoCell label="Telefon" value={lease.resident.phone || undefined} />
+                </div>
+              </div>
+            )}
+
             {/* Dates */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
-              <InfoCell label="Datum od" value={formatCzDate(lease.datumOd)} />
-              <InfoCell label="Datum do" value={lease.datumDo ? formatCzDate(lease.datumDo) : 'Neurcito'} />
+              <InfoCell label="Datum od" value={formatCzDate(lease.startDate)} />
+              <InfoCell label="Datum do" value={lease.endDate ? formatCzDate(lease.endDate) : 'Neurcito'} />
               {daysLeft !== null && lease.status === 'aktivni' && (
                 <InfoCell label="Zbyvajicich dni" value={String(daysLeft)} />
               )}
             </div>
 
             {/* Financials */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
+              <InfoCell label="Mesicni najem" value={formatKc(lease.monthlyRent)} />
+              <InfoCell label="Kauce" value={lease.deposit ? formatKc(lease.deposit) : '—'} />
+              <InfoCell label="Kauce uhrazena" value={lease.depositPaid ? formatKc(lease.depositPaid) : '—'} />
+            </div>
+
+            {/* Contract details */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-              <InfoCell label="Mesicni najem" value={formatKc(lease.mesicniNajem)} />
-              <InfoCell label="Kauce" value={lease.kauce ? formatKc(lease.kauce) : '—'} />
+              <InfoCell label="Vypovedni lhuta" value={`${lease.noticePeriod} mesicu`} />
+              <InfoCell label="Prodlouzeni" value={RENEWAL_LABEL[lease.renewalType] || lease.renewalType} />
             </div>
 
             {/* Note */}
-            {lease.poznamka && (
+            {lease.note && (
               <div style={{ background: 'var(--surface-2, var(--surface))', borderRadius: 8, padding: 12, marginBottom: 14 }}>
                 <div className="text-muted" style={{ fontSize: '0.78rem', marginBottom: 4 }}>POZNAMKA</div>
-                <div style={{ whiteSpace: 'pre-wrap' }}>{lease.poznamka}</div>
+                <div style={{ whiteSpace: 'pre-wrap' }}>{lease.note}</div>
+              </div>
+            )}
+
+            {/* Termination info */}
+            {lease.terminatedAt && (
+              <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: 12, marginBottom: 14 }}>
+                <div style={{ fontWeight: 600, color: 'var(--danger)', marginBottom: 4 }}>Ukoncena</div>
+                <div style={{ fontSize: '0.875rem' }}>Datum: {formatCzDate(lease.terminatedAt)}</div>
+                {lease.terminationNote && <div style={{ fontSize: '0.875rem', marginTop: 4 }}>{lease.terminationNote}</div>}
               </div>
             )}
 
@@ -165,12 +201,20 @@ export default function LeaseDetailModal({ lease, onClose, onUpdated }: Props) {
             {showTerminate && (
               <div style={{ border: '1px solid var(--danger)', borderRadius: 8, padding: 14, background: 'var(--surface-2, var(--surface))' }}>
                 <div style={{ fontWeight: 600, marginBottom: 8, color: 'var(--danger)' }}>Ukonceni smlouvy</div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', marginBottom: 8 }}>
                   <div style={{ flex: 1 }}>
                     <label className="form-label">Datum ukonceni</label>
-                    <input type="date" value={terminateDate} onChange={e => setTerminateDate(e.target.value)}
+                    <input type="date" value={terminateDate} onChange={(e) => setTerminateDate(e.target.value)}
                       style={{ width: '100%', padding: '7px 10px', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text)', boxSizing: 'border-box' }} />
                   </div>
+                </div>
+                <div style={{ marginBottom: 10 }}>
+                  <label className="form-label">Duvod ukonceni</label>
+                  <input value={terminateNote} onChange={(e) => setTerminateNote(e.target.value)}
+                    placeholder="Nepovinne"
+                    style={{ width: '100%', padding: '7px 10px', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text)', boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
                   <Button variant="primary" size="sm" onClick={handleTerminate}>Potvrdit</Button>
                   <Button size="sm" onClick={() => setShowTerminate(false)}>Zrusit</Button>
                 </div>
@@ -179,53 +223,18 @@ export default function LeaseDetailModal({ lease, onClose, onUpdated }: Props) {
           </div>
         )}
 
-        {tab === 'finance' && (
-          <div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
-              <KpiMini label="Mesicni najem" value={formatKc(lease.mesicniNajem)} />
-              <KpiMini label="Kauce" value={lease.kauce ? formatKc(lease.kauce) : '—'} />
-              <KpiMini label="Zaplaceno celkem" value={totalPaid > 0 ? formatKc(totalPaid) : '—'} />
-            </div>
-
-            {myTx.length === 0 ? (
-              <div className="text-muted" style={{ textAlign: 'center', padding: 32 }}>Zadne platebni zaznamy</div>
-            ) : (
-              <table style={{ width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    <th style={{ textAlign: 'left', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>DATUM</th>
-                    <th style={{ textAlign: 'left', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>POPIS</th>
-                    <th style={{ textAlign: 'right', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>CASTKA</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {myTx.slice(0, 10).map(t => (
-                    <tr key={String(t.id)}>
-                      <td style={{ padding: '8px 0', borderBottom: '1px solid var(--border)' }} className="text-muted text-sm">{formatCzDate(String(t.datum || ''))}</td>
-                      <td style={{ padding: '8px 0', borderBottom: '1px solid var(--border)' }}>{String(t.popis || '—')}</td>
-                      <td style={{ padding: '8px 0', borderBottom: '1px solid var(--border)', textAlign: 'right', fontWeight: 600, color: Number(t.castka) > 0 ? 'var(--accent-green)' : 'var(--danger)' }}>
-                        {formatKc(Math.abs(Number(t.castka)))}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        )}
-
         {tab === 'historie' && (
           <div>
-            <TimelineItem date={formatCzDate(lease.created_at)} title="Smlouva vytvorena" desc={`${lease.cisloSmlouvy || ''} · ${formatKc(lease.mesicniNajem)}/mes`} />
-            <TimelineItem date={formatCzDate(lease.datumOd)} title="Platnost zahjena" desc={`Najemnik: ${lease.najemnik}`} />
-            {lease.status === 'ukoncena' && lease.datumDo && (
-              <TimelineItem date={formatCzDate(lease.datumDo)} title="Smlouva ukoncena" desc="" />
+            <TimelineItem date={formatCzDate(lease.createdAt)} title="Smlouva vytvorena" desc={`${lease.contractNumber || ''} · ${formatKc(lease.monthlyRent)}/mes`} />
+            <TimelineItem date={formatCzDate(lease.startDate)} title="Platnost zahjena" desc={`Najemnik: ${residentName}`} />
+            {lease.status === 'ukoncena' && lease.terminatedAt && (
+              <TimelineItem date={formatCzDate(lease.terminatedAt)} title="Smlouva ukoncena" desc={lease.terminationNote || ''} />
             )}
-            {lease.status === 'aktivni' && lease.datumDo && (
-              <TimelineItem date={formatCzDate(lease.datumDo)} title="Planovane ukonceni" desc={daysLeft != null ? `Za ${daysLeft} dni` : ''} muted />
+            {lease.status === 'aktivni' && lease.endDate && (
+              <TimelineItem date={formatCzDate(lease.endDate)} title="Planovane ukonceni" desc={daysLeft != null ? `Za ${daysLeft} dni` : ''} muted />
             )}
-            {lease.updated_at !== lease.created_at && (
-              <TimelineItem date={formatCzDate(lease.updated_at)} title="Smlouva upravena" desc="" />
+            {lease.updatedAt !== lease.createdAt && (
+              <TimelineItem date={formatCzDate(lease.updatedAt)} title="Smlouva upravena" desc="" />
             )}
           </div>
         )}
@@ -243,15 +252,6 @@ function InfoCell({ label, value }: { label: string; value?: string }) {
     <div>
       <div className="text-muted" style={{ fontSize: '0.78rem', marginBottom: 2 }}>{label}</div>
       <div style={{ fontWeight: 500 }}>{value || '—'}</div>
-    </div>
-  );
-}
-
-function KpiMini({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px' }}>
-      <div className="text-muted" style={{ fontSize: '0.72rem', marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: '1.05rem', fontWeight: 700 }}>{value}</div>
     </div>
   );
 }

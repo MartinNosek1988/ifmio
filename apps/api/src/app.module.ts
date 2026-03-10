@@ -9,6 +9,7 @@ import { PropertiesModule } from './properties/properties.module';
 import { UnitsModule } from './units/units.module';
 import { ResidentsModule } from './residents/residents.module';
 import { FinanceModule } from './finance/finance.module';
+import { ContractsModule } from './contracts/contracts.module';
 import { RemindersModule } from './reminders/reminders.module';
 import { HelpdeskModule } from './helpdesk/helpdesk.module';
 import { DashboardModule } from './dashboard/dashboard.module';
@@ -37,6 +38,7 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
     UnitsModule,
     ResidentsModule,
     FinanceModule,
+    ContractsModule,
     RemindersModule,
     HelpdeskModule,
     DashboardModule,
