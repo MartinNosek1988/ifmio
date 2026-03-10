@@ -1,1 +1,1 @@
-﻿-- test migration
+-- test migration
