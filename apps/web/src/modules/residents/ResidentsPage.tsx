@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Plus, Upload } from 'lucide-react';
-import { KpiCard, Table, Badge, SearchBar, Button, LoadingState, ErrorState } from '../../shared/components';
+import { KpiCard, Table, Badge, SearchBar, Button, Modal, LoadingState, ErrorState } from '../../shared/components';
 import type { Column } from '../../shared/components';
-import { useResidents } from './api/residents.queries';
+import { useResidents, useDeleteResident } from './api/residents.queries';
 import type { ApiResident } from './api/residents.api';
 import ResidentDetailModal from './ResidentDetailModal';
 import ResidentForm from './ResidentForm';
@@ -13,6 +13,8 @@ export default function ResidentsPage() {
   const [filterRole, setFilterRole] = useState('all');
   const [selectedResident, setSelectedResident] = useState<ApiResident | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [editResident, setEditResident] = useState<ApiResident | null>(null);
+  const [deleteResident, setDeleteResident] = useState<ApiResident | null>(null);
   const [showImport, setShowImport] = useState(false);
 
   const { data: paginated, isLoading, error } = useResidents({
@@ -20,6 +22,8 @@ export default function ResidentsPage() {
     ...(filterRole !== 'all' ? { role: filterRole } : {}),
     limit: 100,
   });
+
+  const deleteMutation = useDeleteResident();
 
   const residents = paginated?.data ?? [];
   const total = paginated?.total ?? 0;
@@ -75,6 +79,19 @@ export default function ResidentsPage() {
   if (isLoading) return <LoadingState />;
   if (error) return <ErrorState message="Nepodařilo se načíst bydlící." />;
 
+  const handleDeleteConfirm = () => {
+    if (!deleteResident) return;
+    deleteMutation.mutate(deleteResident.id, {
+      onSuccess: () => {
+        setDeleteResident(null);
+        // If detail modal was showing this resident, close it too
+        if (selectedResident?.id === deleteResident.id) {
+          setSelectedResident(null);
+        }
+      },
+    });
+  };
+
   return (
     <div>
       <div className="page-header">
@@ -117,9 +134,13 @@ export default function ResidentsPage() {
 
       {selectedResident && (
         <ResidentDetailModal
-          resident={selectedResident as never}
+          resident={selectedResident}
           onClose={() => setSelectedResident(null)}
           onUpdated={() => setSelectedResident(null)}
+          onDelete={() => {
+            setDeleteResident(selectedResident);
+            setSelectedResident(null);
+          }}
         />
       )}
 
@@ -127,8 +148,54 @@ export default function ResidentsPage() {
         <ResidentForm onClose={() => setShowForm(false)} />
       )}
 
+      {editResident && (
+        <ResidentForm
+          resident={editResident}
+          onClose={() => setEditResident(null)}
+        />
+      )}
+
       {showImport && (
         <ResidentImportWizard onClose={() => setShowImport(false)} />
+      )}
+
+      {/* Delete confirmation modal */}
+      {deleteResident && (
+        <Modal
+          open
+          onClose={() => setDeleteResident(null)}
+          title="Smazat bydlícího"
+          subtitle={`${deleteResident.firstName} ${deleteResident.lastName}`}
+          footer={
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <Button onClick={() => setDeleteResident(null)}>Zrušit</Button>
+              <Button
+                variant="danger"
+                onClick={handleDeleteConfirm}
+                disabled={deleteMutation.isPending}
+              >
+                {deleteMutation.isPending ? 'Mažu...' : 'Smazat'}
+              </Button>
+            </div>
+          }
+        >
+          <p style={{ fontSize: '0.9rem', marginBottom: 8 }}>
+            Opravdu chcete smazat bydlícího <strong>{deleteResident.firstName} {deleteResident.lastName}</strong>?
+          </p>
+          {deleteResident.hasDebt && (
+            <div style={{ background: 'rgba(239,68,68,.1)', border: '1px solid var(--danger)', borderRadius: 6, padding: '8px 12px', fontSize: '0.85rem', color: 'var(--danger)' }}>
+              Tento bydlící má evidovaný dluh.
+            </div>
+          )}
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 8 }}>
+            Tato akce je nevratná.
+          </p>
+          {deleteMutation.isError && (
+            <div style={{ color: 'var(--danger)', fontSize: '0.85rem', marginTop: 8 }}>
+              Nepodařilo se smazat bydlícího.
+            </div>
+          )}
+        </Modal>
       )}
     </div>
   );
