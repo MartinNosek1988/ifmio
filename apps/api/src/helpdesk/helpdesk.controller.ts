@@ -50,6 +50,18 @@ export class HelpdeskController {
     return this.service.updateTicket(user, id, dto)
   }
 
+  @Delete(':id')
+  @Roles(...ROLES_WRITE)
+  @AuditAction('HelpdeskTicket', 'DELETE')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Smazat ticket' })
+  deleteTicket(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ) {
+    return this.service.deleteTicket(user, id)
+  }
+
   // Items
   @Post(':ticketId/items')
   @Roles(...ROLES_WRITE)

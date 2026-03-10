@@ -118,6 +118,11 @@ export class HelpdeskService {
     return { ...ticket, createdAt: ticket.createdAt.toISOString(), updatedAt: ticket.updatedAt.toISOString() }
   }
 
+  async deleteTicket(user: AuthUser, id: string) {
+    await this.findOne(user, id)
+    await this.prisma.helpdeskTicket.delete({ where: { id } })
+  }
+
   // Items
   async addItem(user: AuthUser, ticketId: string, dto: any) {
     await this.findOne(user, ticketId)

@@ -20,6 +20,7 @@ interface NavItem {
   to: string;
   label: string;
   icon: React.ReactNode;
+  badge?: number;
 }
 
 interface NavSection {
@@ -125,6 +126,20 @@ export default function AppShell() {
     staleTime: Infinity,
   });
 
+  const { data: helpdeskData } = useQuery({
+    queryKey: ['helpdesk', 'list', { status: 'open', limit: 1 }],
+    queryFn: () => apiClient.get('/helpdesk', { params: { status: 'open', limit: 1 } }).then((r) => r.data),
+    staleTime: 60_000,
+    retry: false,
+  });
+  const { data: helpdeskInProgress } = useQuery({
+    queryKey: ['helpdesk', 'list', { status: 'in_progress', limit: 1 }],
+    queryFn: () => apiClient.get('/helpdesk', { params: { status: 'in_progress', limit: 1 } }).then((r) => r.data),
+    staleTime: 60_000,
+    retry: false,
+  });
+  const openTicketsCount = (helpdeskData?.total ?? 0) + (helpdeskInProgress?.total ?? 0);
+
   useEffect(() => {
     if (onboardingData && !onboardingData.completed) {
       setShowOnboarding(true);
@@ -139,14 +154,13 @@ export default function AppShell() {
           <div key={sec.title} className="sidebar__section">
             <div className="sidebar__section-title">{sec.title}</div>
             {sec.items.map((item) => {
-              // For links with query params, use onClick navigation
               const hasQuery = item.to.includes('?');
+              const badgeCount = item.to === '/helpdesk' ? openTicketsCount : 0;
               return (
                 <NavLink
                   key={item.to}
                   to={item.to}
                   className={({ isActive }) => {
-                    // For query-param links, check exact match
                     if (hasQuery) {
                       const active = location.pathname + location.search === item.to;
                       return `sidebar__link${active ? ' active' : ''}`;
@@ -157,6 +171,15 @@ export default function AppShell() {
                 >
                   {item.icon}
                   {item.label}
+                  {badgeCount > 0 && (
+                    <span style={{
+                      marginLeft: 'auto', background: 'var(--danger, #ef4444)', color: '#fff',
+                      fontSize: '0.65rem', fontWeight: 700, borderRadius: 10,
+                      padding: '1px 6px', minWidth: 18, textAlign: 'center',
+                    }}>
+                      {badgeCount}
+                    </span>
+                  )}
                 </NavLink>
               );
             })}
