@@ -20,6 +20,7 @@ export class DashboardService {
       activeReminders,
       unmatchedTransactions,
       activePrescriptions,
+      prescriptionVolumeAgg,
       recentTransactions,
       recentTickets,
     ] = await Promise.all([
@@ -61,6 +62,11 @@ export class DashboardService {
 
       this.prisma.prescription.count({
         where: { tenantId, status: 'active' },
+      }),
+
+      this.prisma.prescription.aggregate({
+        where: { tenantId, status: 'active' },
+        _sum: { amount: true },
       }),
 
       this.prisma.bankTransaction.findMany({
@@ -116,6 +122,7 @@ export class DashboardService {
         activeReminders,
         unmatchedTransactions,
         activePrescriptions,
+        monthlyPrescriptionVolume: Number(prescriptionVolumeAgg._sum.amount ?? 0),
       },
       alerts,
       recentTransactions: recentTransactions.map((t) => ({

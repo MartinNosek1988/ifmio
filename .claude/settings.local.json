@@ -10,7 +10,8 @@
       "Bash(do test:*)",
       "Bash(npm install:*)",
       "Bash(code .:*)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(git push:*)"
     ]
   }
 }
