@@ -42,6 +42,7 @@ model Tenant {
   notifications     Notification[]
   leaseAgreements   LeaseAgreement[]
   workOrders        WorkOrder[]
+  meters            Meter[]
 
   @@map("tenants")
 }
@@ -150,6 +151,7 @@ model Property {
   helpdeskTickets HelpdeskTicket[]
   leaseAgreements LeaseAgreement[]
   workOrders      WorkOrder[]
+  meters          Meter[]
 
   @@index([tenantId])
   @@map("properties")
@@ -193,6 +195,7 @@ model Unit {
   helpdeskTickets HelpdeskTicket[]
   leaseAgreements LeaseAgreement[]
   workOrders      WorkOrder[]
+  meters          Meter[]
 
   @@index([propertyId])
   @@map("units")
@@ -908,4 +911,61 @@ enum WOStatus {
   vyresena
   uzavrena
   zrusena
+}
+
+// ─── METERS ──────────────────────────────────────────────────────
+
+model Meter {
+  id              String      @id @default(uuid())
+  tenantId        String
+  propertyId      String?
+  unitId          String?
+  name            String
+  serialNumber    String
+  meterType       MeterType
+  unit            String      @default("kWh")
+  installDate     DateTime?
+  calibrationDate DateTime?
+  calibrationDue  DateTime?
+  manufacturer    String?
+  location        String?
+  isActive        Boolean     @default(true)
+  lastReading     Float?
+  lastReadingDate DateTime?
+  note            String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property  Property?      @relation(fields: [propertyId], references: [id])
+  unitRel   Unit?          @relation(fields: [unitId], references: [id])
+  readings  MeterReading[]
+
+  @@index([tenantId])
+  @@map("meters")
+}
+
+model MeterReading {
+  id          String   @id @default(uuid())
+  meterId     String
+  readingDate DateTime
+  value       Float
+  consumption Float?
+  source      String   @default("manual")
+  readBy      String?
+  note        String?
+  createdAt   DateTime @default(now())
+
+  meter Meter @relation(fields: [meterId], references: [id], onDelete: Cascade)
+
+  @@index([meterId])
+  @@map("meter_readings")
+}
+
+enum MeterType {
+  elektrina
+  voda_studena
+  voda_tepla
+  plyn
+  teplo
 }

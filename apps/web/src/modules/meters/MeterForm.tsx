@@ -1,14 +1,13 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Modal, Button } from '../../shared/components';
-import { useMeterStore } from './meter-store';
-import { loadFromStorage } from '../../core/storage';
+import { useCreateMeter } from './api/meters.queries';
 import { METER_TYPE_LABELS } from '../../constants/labels';
-
-type R = Record<string, unknown>;
+import { propertiesApi } from '../properties/properties-api';
 
 const JEDNOTKY: Record<string, string> = {
-  elektrina: 'kWh', voda_studena: 'm3', voda_tepla: 'm3',
-  plyn: 'm3', teplo: 'GJ',
+  elektrina: 'kWh', voda_studena: 'm³', voda_tepla: 'm³',
+  plyn: 'm³', teplo: 'GJ',
 };
 
 interface Props {
@@ -16,47 +15,60 @@ interface Props {
 }
 
 export default function MeterForm({ onClose }: Props) {
-  const { createMeter } = useMeterStore();
-  const properties = loadFromStorage<R[]>('estateos_properties', []);
-  const units = loadFromStorage<R[]>('estateos_units', []);
+  const createMutation = useCreateMeter();
+
+  const { data: properties } = useQuery({
+    queryKey: ['properties'],
+    queryFn: () => propertiesApi.list(),
+  });
 
   const [form, setForm] = useState({
-    nazev: '',
-    cislo: '',
-    typ: 'elektrina',
-    jednotka: 'kWh',
-    propId: '',
-    jednotkaId: '',
+    name: '',
+    serialNumber: '',
+    meterType: 'elektrina',
+    unit: 'kWh',
+    propertyId: '',
+    unitId: '',
+    installDate: new Date().toISOString().slice(0, 10),
+    calibrationDue: '',
+    manufacturer: '',
+    location: '',
+    note: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const set = (key: string, value: unknown) => setForm(f => ({ ...f, [key]: value }));
-  const availableUnits = units.filter(u => form.propId && String(u.property_id) === form.propId);
 
-  const handleTypChange = (typ: string) => {
-    setForm(f => ({ ...f, typ, jednotka: JEDNOTKY[typ] || f.jednotka }));
+  const selectedProp = properties?.find(p => p.id === form.propertyId);
+  const availableUnits = useMemo(() => selectedProp?.units ?? [], [selectedProp]);
+
+  const handleTypeChange = (typ: string) => {
+    setForm(f => ({ ...f, meterType: typ, unit: JEDNOTKY[typ] || f.unit }));
   };
 
   const validate = () => {
     const errs: Record<string, string> = {};
-    if (!form.nazev.trim()) errs.nazev = 'Nazev je povinny';
-    if (!form.cislo.trim()) errs.cislo = 'Cislo je povinne';
-    if (!form.propId) errs.propId = 'Vyberte nemovitost';
+    if (!form.name.trim()) errs.name = 'Nazev je povinny';
+    if (!form.serialNumber.trim()) errs.serialNumber = 'Cislo je povinne';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
   const handleSubmit = () => {
     if (!validate()) return;
-    createMeter({
-      nazev: form.nazev,
-      cislo: form.cislo,
-      typ: form.typ,
-      jednotka: form.jednotka,
-      propId: form.propId,
-      jednotkaId: form.jednotkaId || undefined,
-    });
-    onClose();
+    createMutation.mutate({
+      name: form.name,
+      serialNumber: form.serialNumber,
+      meterType: form.meterType,
+      unit: form.unit,
+      propertyId: form.propertyId || undefined,
+      unitId: form.unitId || undefined,
+      installDate: form.installDate || undefined,
+      calibrationDue: form.calibrationDue || undefined,
+      manufacturer: form.manufacturer || undefined,
+      location: form.location || undefined,
+      note: form.note || undefined,
+    }, { onSuccess: () => onClose() });
   };
 
   const inputStyle = (field?: string) => ({
@@ -70,55 +82,80 @@ export default function MeterForm({ onClose }: Props) {
       footer={
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <Button onClick={onClose}>Zrusit</Button>
-          <Button variant="primary" onClick={handleSubmit}>Vytvorit</Button>
+          <Button variant="primary" onClick={handleSubmit} disabled={createMutation.isPending}>Vytvorit</Button>
         </div>
       }>
 
       <div style={{ marginBottom: 14 }}>
         <label className="form-label">Nazev meridla *</label>
-        <input value={form.nazev} onChange={e => set('nazev', e.target.value)} style={inputStyle('nazev')} placeholder="napr. Hlavni elektromер" />
-        {errors.nazev && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.nazev}</div>}
+        <input value={form.name} onChange={e => set('name', e.target.value)} style={inputStyle('name')} placeholder="napr. Hlavni elektromer" />
+        {errors.name && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.name}</div>}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div>
-          <label className="form-label">Cislo meridla *</label>
-          <input value={form.cislo} onChange={e => set('cislo', e.target.value)} style={inputStyle('cislo')} placeholder="SN-12345" />
-          {errors.cislo && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.cislo}</div>}
+          <label className="form-label">Vyrobni cislo *</label>
+          <input value={form.serialNumber} onChange={e => set('serialNumber', e.target.value)} style={inputStyle('serialNumber')} placeholder="SN-12345" />
+          {errors.serialNumber && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.serialNumber}</div>}
         </div>
         <div>
           <label className="form-label">Typ</label>
-          <select value={form.typ} onChange={e => handleTypChange(e.target.value)} style={inputStyle()}>
+          <select value={form.meterType} onChange={e => handleTypeChange(e.target.value)} style={inputStyle()}>
             {Object.entries(METER_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </div>
       </div>
 
-      <div style={{ marginBottom: 14 }}>
-        <label className="form-label">Jednotka</label>
-        <input value={form.jednotka} onChange={e => set('jednotka', e.target.value)} style={inputStyle()} />
-      </div>
-
-      <div style={{ marginBottom: 14 }}>
-        <label className="form-label">Nemovitost *</label>
-        <select value={form.propId} onChange={e => { set('propId', e.target.value); set('jednotkaId', ''); }} style={inputStyle('propId')}>
-          <option value="">-- Vyber nemovitost --</option>
-          {properties.map(p => <option key={String(p.id)} value={String(p.id)}>{String(p.nazev || p.name)}</option>)}
-        </select>
-        {errors.propId && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.propId}</div>}
-      </div>
-
-      {availableUnits.length > 0 && (
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div>
-          <label className="form-label">Jednotka (byt)</label>
-          <select value={form.jednotkaId} onChange={e => set('jednotkaId', e.target.value)} style={inputStyle()}>
-            <option value="">-- Spolecne --</option>
-            {availableUnits.map(u => (
-              <option key={String(u.id)} value={String(u.id)}>c. {String(u.cislo)} · {String(u.typ || u.type)}</option>
-            ))}
+          <label className="form-label">Jednotka</label>
+          <input value={form.unit} onChange={e => set('unit', e.target.value)} style={inputStyle()} />
+        </div>
+        <div>
+          <label className="form-label">Vyrobce</label>
+          <input value={form.manufacturer} onChange={e => set('manufacturer', e.target.value)} style={inputStyle()} placeholder="napr. Landis+Gyr" />
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+        <div>
+          <label className="form-label">Nemovitost</label>
+          <select value={form.propertyId} onChange={e => { set('propertyId', e.target.value); set('unitId', ''); }} style={inputStyle()}>
+            <option value="">-- Vyber nemovitost --</option>
+            {(properties ?? []).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </div>
-      )}
+        <div>
+          <label className="form-label">Jednotka (byt)</label>
+          <select value={form.unitId} onChange={e => set('unitId', e.target.value)}
+            disabled={!form.propertyId || availableUnits.length === 0} style={inputStyle()}>
+            <option value="">-- Spolecne --</option>
+            {availableUnits.map(u => <option key={u.id} value={u.id}>{u.name}{u.area ? ` · ${u.area} m²` : ''}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+        <div>
+          <label className="form-label">Datum instalace</label>
+          <input type="date" value={form.installDate} onChange={e => set('installDate', e.target.value)} style={inputStyle()} />
+        </div>
+        <div>
+          <label className="form-label">Kalibrace do</label>
+          <input type="date" value={form.calibrationDue} onChange={e => set('calibrationDue', e.target.value)} style={inputStyle()} />
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
+        <label className="form-label">Umisteni</label>
+        <input value={form.location} onChange={e => set('location', e.target.value)} style={inputStyle()} placeholder="napr. Sklep - rozvadec c.1" />
+      </div>
+
+      <div>
+        <label className="form-label">Poznamka</label>
+        <textarea value={form.note} onChange={e => set('note', e.target.value)}
+          rows={2} style={{ ...inputStyle(), resize: 'vertical' as const }} placeholder="Volitelna poznamka..." />
+      </div>
     </Modal>
   );
 }
