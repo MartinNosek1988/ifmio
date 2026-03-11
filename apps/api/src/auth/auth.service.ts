@@ -11,6 +11,8 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 export interface AuthUser {
   id: string;
@@ -165,22 +167,66 @@ export class AuthService {
   }
 
   async me(user: AuthUser) {
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: user.tenantId },
+    const full = await this.prisma.user.findUnique({
+      where: { id: user.id },
       select: {
-        id: true,
-        name: true,
-        slug: true,
-        plan: true,
-        trialEndsAt: true,
-        isActive: true,
+        id: true, email: true, name: true, role: true, tenantId: true,
+        phone: true, position: true, avatarBase64: true,
+        language: true, timezone: true, dateFormat: true, notifEmail: true,
+        createdAt: true, lastLoginAt: true,
       },
     });
 
-    return {
-      ...user,
-      tenant,
-    };
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: user.tenantId },
+      select: {
+        id: true, name: true, slug: true, plan: true,
+        trialEndsAt: true, isActive: true,
+      },
+    });
+
+    return { ...full, tenant };
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const data: Record<string, unknown> = {};
+    if (dto.name !== undefined) data.name = dto.name;
+    if (dto.phone !== undefined) data.phone = dto.phone;
+    if (dto.position !== undefined) data.position = dto.position;
+    if (dto.avatarBase64 !== undefined) data.avatarBase64 = dto.avatarBase64;
+    if (dto.language !== undefined) data.language = dto.language;
+    if (dto.timezone !== undefined) data.timezone = dto.timezone;
+    if (dto.dateFormat !== undefined) data.dateFormat = dto.dateFormat;
+    if (dto.notifEmail !== undefined) data.notifEmail = dto.notifEmail;
+
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data,
+      select: {
+        id: true, email: true, name: true, role: true, tenantId: true,
+        phone: true, position: true, avatarBase64: true,
+        language: true, timezone: true, dateFormat: true, notifEmail: true,
+        createdAt: true, lastLoginAt: true,
+      },
+    });
+
+    return user;
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Uživatel nenalezen');
+
+    const valid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
+    if (!valid) throw new UnauthorizedException('Nesprávné aktuální heslo');
+
+    const passwordHash = await bcrypt.hash(dto.newPassword, 12);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+
+    return { success: true, message: 'Heslo bylo změněno' };
   }
 
   async verifyEmail(token: string) {

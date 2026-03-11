@@ -1,5 +1,5 @@
-import { Suspense, useState, useEffect } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Suspense, useState, useEffect, useRef } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard, Building2, Users, FolderOpen, Calendar,
@@ -7,6 +7,7 @@ import {
   ShieldCheck, Wallet, AlertTriangle, TrendingUp,
   MessageSquare, Mail, Settings, BarChart3,
   ClipboardList, ScrollText, UsersRound,
+  User as UserIcon, LogOut,
 } from 'lucide-react';
 import { LoadingSpinner } from '../shared/components';
 import { GlobalSearch } from '../modules/search/GlobalSearch';
@@ -111,6 +112,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin': 'Administrace',
   '/settings': 'Nastavení organizace',
   '/notifications': 'Notifikace',
+  '/profile': 'Můj profil',
 };
 
 function getPageTitle(pathname: string): string {
@@ -120,8 +122,22 @@ function getPageTitle(pathname: string): string {
 
 export default function AppShell() {
   const location = useLocation();
+  const navigate = useNavigate();
   const pageTitle = getPageTitle(location.pathname);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close user menu on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   useKeyboardShortcuts();
 
@@ -238,8 +254,44 @@ export default function AppShell() {
             </div>
           )}
           <NotificationCenter />
-          <div className="topbar__avatar" title={meData?.name ?? 'Uzivatel'}>
-            {(meData?.name ?? 'U').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+          <div className="user-menu-wrap" ref={userMenuRef}>
+            <div
+              className="topbar__avatar"
+              title={meData?.name ?? 'Uzivatel'}
+              onClick={() => setShowUserMenu((v) => !v)}
+              style={{ cursor: 'pointer' }}
+            >
+              {meData?.avatarBase64 ? (
+                <img src={meData.avatarBase64} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+              ) : (
+                (meData?.name ?? 'U').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+              )}
+            </div>
+            {showUserMenu && (
+              <div className="user-dropdown">
+                <div className="user-dropdown__header">
+                  <div style={{ fontWeight: 600, color: '#f3f4f6', fontSize: '.9rem' }}>{meData?.name ?? 'Uživatel'}</div>
+                  <div style={{ color: '#6b7280', fontSize: '.78rem' }}>{meData?.email ?? ''}</div>
+                </div>
+                <div className="user-dropdown__sep" />
+                <button className="user-dropdown__item" onClick={() => { setShowUserMenu(false); navigate('/profile'); }}>
+                  <UserIcon size={15} /> Můj profil
+                </button>
+                <button className="user-dropdown__item" onClick={() => { setShowUserMenu(false); navigate('/settings'); }}>
+                  <Settings size={15} /> Nastavení
+                </button>
+                <div className="user-dropdown__sep" />
+                <button className="user-dropdown__item user-dropdown__item--danger" onClick={() => {
+                  setShowUserMenu(false);
+                  localStorage.removeItem('ifmio:access_token');
+                  localStorage.removeItem('ifmio:refresh_token');
+                  localStorage.removeItem('ifmio:user');
+                  window.location.href = '/login';
+                }}>
+                  <LogOut size={15} /> Odhlásit se
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

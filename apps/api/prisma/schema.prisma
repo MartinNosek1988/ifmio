@@ -65,6 +65,13 @@ model User {
   name         String
   role         UserRole  @default(viewer)
   isActive     Boolean   @default(true)
+  phone        String?
+  position     String?
+  avatarBase64 String?
+  language     String    @default("cs")
+  timezone     String    @default("Europe/Prague")
+  dateFormat   String    @default("DD.MM.YYYY")
+  notifEmail   Boolean   @default(true)
   lastLoginAt  DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt

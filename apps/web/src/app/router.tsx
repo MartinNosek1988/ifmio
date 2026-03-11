@@ -30,6 +30,7 @@ const TeamPage = lazy(() => import('../modules/team/TeamPage'));
 const AdminPage = lazy(() => import('../modules/admin/AdminPage'));
 const SettingsPage = lazy(() => import('../modules/settings/SettingsPage'));
 const NotificationsPage = lazy(() => import('../modules/notifications/NotificationsPage'));
+const ProfilePage = lazy(() => import('../modules/profile/ProfilePage'));
 
 function withBoundary(name: string, Component: React.ComponentType) {
   return (
@@ -70,6 +71,7 @@ export const router = createBrowserRouter([
       { path: 'admin', element: withBoundary('Admin', AdminPage) },
       { path: 'settings', element: withBoundary('Nastaveni', SettingsPage) },
       { path: 'notifications', element: withBoundary('Notifikace', NotificationsPage) },
+      { path: 'profile', element: withBoundary('Profil', ProfilePage) },
     ],
   },
 ]);
