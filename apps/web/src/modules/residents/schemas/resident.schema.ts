@@ -1,3 +1,6 @@
+// TODO: Switch back to 'zod' once @hookform/resolvers fixes Zod 4 classic compat
+// Issue: zod@4 classic wrapper has _zod.version.minor:3, which matches neither
+// the resolver's Zod 3 overload (_def.typeName) nor Zod 4 core (_zod.version.minor:0)
 import { z } from 'zod/v3'
 
 export const residentSchema = z.object({
