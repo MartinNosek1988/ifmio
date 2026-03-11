@@ -7,6 +7,8 @@ export const financeKeys = {
   transactions: (p?: Record<string, unknown>) => ['finance', 'transactions', p] as const,
   prescriptions: (p?: Record<string, unknown>) => ['finance', 'prescriptions', p] as const,
   billingPeriods: (pid?: string) => ['finance', 'billing-periods', pid] as const,
+  invoices: (p?: Record<string, unknown>) => ['finance', 'invoices', p] as const,
+  invoiceStats: () => ['finance', 'invoices', 'stats'] as const,
 };
 
 export function useFinanceSummary(propertyId?: string) {
@@ -157,5 +159,79 @@ export function useMatchSingle() {
       qc.invalidateQueries({ queryKey: ['finance', 'prescriptions'] });
       qc.invalidateQueries({ queryKey: ['finance', 'summary'] });
     },
+  });
+}
+
+// ─── INVOICES (Doklady) ───────────────────────────────────────────
+
+export function useInvoices(params?: Record<string, unknown>) {
+  return useQuery({
+    queryKey: financeKeys.invoices(params),
+    queryFn: () => financeApi.invoices.list(params),
+  });
+}
+
+export function useInvoiceStats() {
+  return useQuery({
+    queryKey: financeKeys.invoiceStats(),
+    queryFn: () => financeApi.invoices.stats(),
+    staleTime: 30_000,
+  });
+}
+
+export function useCreateInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: Record<string, unknown>) => financeApi.invoices.create(dto),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['finance', 'invoices'] });
+    },
+  });
+}
+
+export function useUpdateInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, dto }: { id: string; dto: Record<string, unknown> }) =>
+      financeApi.invoices.update(id, dto),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['finance', 'invoices'] });
+    },
+  });
+}
+
+export function useDeleteInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => financeApi.invoices.remove(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['finance', 'invoices'] });
+    },
+  });
+}
+
+export function useMarkInvoicePaid() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => financeApi.invoices.markPaid(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['finance', 'invoices'] });
+    },
+  });
+}
+
+export function useImportIsdoc() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (xmlContent: string) => financeApi.invoices.importIsdoc(xmlContent),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['finance', 'invoices'] });
+    },
+  });
+}
+
+export function useExportIsdoc() {
+  return useMutation({
+    mutationFn: (id: string) => financeApi.invoices.exportIsdoc(id),
   });
 }

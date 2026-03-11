@@ -1,8 +1,9 @@
 import {
-  Controller, Get, Post, Delete, Body, Query, Param, Req, HttpCode, HttpStatus,
+  Controller, Get, Post, Put, Delete, Body, Query, Param, Req, HttpCode, HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { FinanceService } from './finance.service';
+import { InvoicesService } from './invoices.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuditAction } from '../common/decorators/audit.decorator';
@@ -19,7 +20,10 @@ interface AuthUser {
 @ApiBearerAuth()
 @Controller('finance')
 export class FinanceController {
-  constructor(private service: FinanceService) {}
+  constructor(
+    private service: FinanceService,
+    private invoicesService: InvoicesService,
+  ) {}
 
   @Get('summary')
   @ApiOperation({ summary: 'Finance summary — přehled' })
@@ -209,5 +213,65 @@ export class FinanceController {
     @Param('id') id: string,
   ) {
     return this.service.deleteTransaction(user, id)
+  }
+
+  // ─── INVOICES ─────────────────────────────────────────────────────
+
+  @Get('invoices')
+  @ApiOperation({ summary: 'Seznam dokladů' })
+  listInvoices(@CurrentUser() user: AuthUser, @Query() query: any) {
+    return this.invoicesService.list(user, query);
+  }
+
+  @Get('invoices/stats')
+  @ApiOperation({ summary: 'Statistiky dokladů' })
+  invoiceStats(@CurrentUser() user: AuthUser) {
+    return this.invoicesService.stats(user);
+  }
+
+  @Post('invoices')
+  @Roles(...ROLES_WRITE)
+  @AuditAction('invoice', 'create')
+  @ApiOperation({ summary: 'Vytvořit doklad' })
+  createInvoice(@CurrentUser() user: AuthUser, @Body() dto: any) {
+    return this.invoicesService.create(user, dto);
+  }
+
+  @Post('invoices/import-isdoc')
+  @Roles(...ROLES_WRITE)
+  @AuditAction('invoice', 'import_isdoc')
+  @ApiOperation({ summary: 'Import dokladu z ISDOC XML' })
+  importIsdoc(@CurrentUser() user: AuthUser, @Body() body: { xmlContent: string }) {
+    return this.invoicesService.importIsdoc(user, body.xmlContent);
+  }
+
+  @Get('invoices/:id/export-isdoc')
+  @ApiOperation({ summary: 'Export dokladu do ISDOC XML' })
+  exportIsdoc(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.invoicesService.exportIsdoc(user, id);
+  }
+
+  @Put('invoices/:id')
+  @Roles(...ROLES_WRITE)
+  @AuditAction('invoice', 'update')
+  @ApiOperation({ summary: 'Aktualizovat doklad' })
+  updateInvoice(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: any) {
+    return this.invoicesService.update(user, id, dto);
+  }
+
+  @Post('invoices/:id/mark-paid')
+  @Roles(...ROLES_WRITE)
+  @ApiOperation({ summary: 'Označit doklad jako uhrazený' })
+  markInvoicePaid(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.invoicesService.markPaid(user, id);
+  }
+
+  @Delete('invoices/:id')
+  @Roles(...ROLES_WRITE)
+  @AuditAction('invoice', 'delete')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Smazat doklad' })
+  deleteInvoice(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.invoicesService.remove(user, id);
   }
 }

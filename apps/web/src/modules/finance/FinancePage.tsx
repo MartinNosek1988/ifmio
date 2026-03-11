@@ -1,13 +1,14 @@
 import { useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Upload, Zap, Link2, Calculator, Plus } from 'lucide-react';
+import { Upload, Zap, Link2, Calculator, Plus, FileText, Download } from 'lucide-react';
 import { KpiCard, Table, Badge, SearchBar, Button, EmptyState, Modal } from '../../shared/components';
 import type { Column } from '../../shared/components';
 import { formatKc, formatCzDate } from '../../shared/utils/format';
 import { FIN_STATUS_LABELS, label } from '../../constants/labels';
 import type { FinTransaction, FinPrescription, FinAccount } from './types';
 import { useToast } from '../../shared/components/toast/Toast';
-import { useBankAccounts, useTransactions, useImportTransactions, usePrescriptions, useGeneratePrescriptions, useMatchTransactions, useMatchSingle, useFinanceSummary, useDeletePrescription, useDeleteTransaction, useCreatePrescription } from './api/finance.queries';
+import { useBankAccounts, useTransactions, useImportTransactions, usePrescriptions, useGeneratePrescriptions, useMatchTransactions, useMatchSingle, useFinanceSummary, useDeletePrescription, useDeleteTransaction, useCreatePrescription, useInvoices, useInvoiceStats, useCreateInvoice, useDeleteInvoice, useMarkInvoicePaid, useImportIsdoc, useExportIsdoc } from './api/finance.queries';
+import type { ApiInvoice } from './api/finance.api';
 import { mapAccount, mapTransaction, mapPrescription } from './api/finance.mappers';
 import { useProperties } from '../properties/use-properties';
 import { useResidents } from '../residents/api/residents.queries';
@@ -17,6 +18,7 @@ import type { ApiProperty } from '../properties/properties-api';
 const TABS = [
   { key: 'prescriptions', label: 'Předpisy' },
   { key: 'bank', label: 'Banka' },
+  { key: 'doklady', label: 'Doklady' },
   { key: 'parovani', label: 'Párování' },
   { key: 'accounts', label: 'Účty' },
   { key: 'debtors', label: 'Dlužníci' },
@@ -238,6 +240,11 @@ export default function FinancePage() {
           onFilterType={setFilterTxType}
           onDelete={setDeleteTx}
         />
+      )}
+
+      {/* ── TAB: DOKLADY ──────────────────────────────────────────── */}
+      {tab === 'doklady' && (
+        <DokladyTab transactions={transactions} />
       )}
 
       {/* ── TAB: PÁROVÁNÍ ─────────────────────────────────────────── */}
@@ -782,6 +789,428 @@ function ParovaniPicker({ prescriptions, onParovat, getPropName }: {
         {filtered.length === 0 && <EmptyState title="Žádné otevřené předpisy" />}
       </div>
     </div>
+  );
+}
+
+// ─── Doklady Tab ───────────────────────────────────────────────────────────────
+
+const INVOICE_TYPE_LABELS: Record<string, string> = {
+  received: 'Přijatá', issued: 'Vydaná', proforma: 'Záloha', credit_note: 'Dobropis',
+};
+
+function DokladyTab({ transactions }: { transactions: FinTransaction[] }) {
+  const [search, setSearch] = useState('');
+  const [filterType, setFilterType] = useState('');
+  const [filterPaid, setFilterPaid] = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const [editInvoice, setEditInvoice] = useState<ApiInvoice | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ApiInvoice | null>(null);
+
+  const { data: invData } = useInvoices({
+    ...(filterType ? { type: filterType } : {}),
+    ...(filterPaid ? { isPaid: filterPaid } : {}),
+    ...(search ? { search } : {}),
+    limit: 200,
+  });
+  const invoices = invData?.data ?? [];
+  const { data: stats } = useInvoiceStats();
+  const deleteMut = useDeleteInvoice();
+  const markPaidMut = useMarkInvoicePaid();
+  const importIsdocMut = useImportIsdoc();
+  const exportIsdocMut = useExportIsdoc();
+  const isdocRef = useRef<HTMLInputElement>(null);
+
+  const handleIsdocImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+
+    // .isdocx is a ZIP containing the XML
+    if (file.name.endsWith('.isdocx')) {
+      try {
+        // Try reading as text first (some .isdocx are just XML)
+        if (text.trim().startsWith('<?xml') || text.trim().startsWith('<')) {
+          importIsdocMut.mutate(text);
+        } else {
+          // Can't parse ZIP without a library — treat the raw text
+          importIsdocMut.mutate(text);
+        }
+      } catch {
+        importIsdocMut.mutate(text);
+      }
+    } else {
+      importIsdocMut.mutate(text);
+    }
+    if (isdocRef.current) isdocRef.current.value = '';
+  };
+
+  const handleExport = (inv: ApiInvoice) => {
+    exportIsdocMut.mutate(inv.id, {
+      onSuccess: (xml) => {
+        const blob = new Blob([typeof xml === 'string' ? xml : JSON.stringify(xml)], { type: 'application/xml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${inv.number}.isdoc`;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+    });
+  };
+
+  const selectStyle = {
+    padding: '8px 12px', borderRadius: 6,
+    border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)',
+  };
+
+  const columns: Column<ApiInvoice>[] = [
+    { key: 'number', label: 'Číslo', render: (i) => (
+      <span style={{ fontFamily: 'monospace', fontSize: '0.82rem' }}>
+        {i.number}
+        {i.isdocXml && <span style={{ fontSize: '0.62rem', background: '#1e3a5f', color: '#93c5fd', borderRadius: 3, padding: '0 4px', marginLeft: 4 }}>ISDOC</span>}
+      </span>
+    ) },
+    { key: 'type', label: 'Typ', render: (i) => <Badge variant="blue">{INVOICE_TYPE_LABELS[i.type] || i.type}</Badge> },
+    { key: 'supplierName', label: 'Dodavatel/Odběratel', render: (i) => (
+      <span style={{ fontWeight: 500 }}>{i.type === 'issued' ? (i.buyerName || '—') : (i.supplierName || '—')}</span>
+    ) },
+    { key: 'description', label: 'Popis', render: (i) => <span className="text-muted text-sm">{i.description || '—'}</span> },
+    { key: 'amountTotal', label: 'Částka', align: 'right', render: (i) => (
+      <div>
+        <div style={{ fontWeight: 600 }}>{formatKc(i.amountTotal)}</div>
+        {i.vatRate > 0 && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>základ {formatKc(i.amountBase)} + {i.vatRate}% DPH</div>}
+      </div>
+    ) },
+    { key: 'dueDate', label: 'Splatnost', render: (i) => {
+      if (!i.dueDate) return <span className="text-muted">—</span>;
+      const overdue = !i.isPaid && i.dueDate < new Date().toISOString().slice(0, 10);
+      return <span style={{ color: overdue ? 'var(--danger)' : 'var(--text-muted)', fontSize: '0.85rem', fontWeight: overdue ? 600 : 400 }}>{formatCzDate(i.dueDate)}</span>;
+    } },
+    { key: 'isPaid', label: 'Stav', render: (i) => {
+      if (i.isPaid) return <Badge variant="green">Uhrazeno</Badge>;
+      const overdue = i.dueDate && i.dueDate < new Date().toISOString().slice(0, 10);
+      return <Badge variant={overdue ? 'red' : 'yellow'}>{overdue ? 'Po splatnosti' : 'Čeká'}</Badge>;
+    } },
+    { key: 'actions', label: '', render: (i) => (
+      <div style={{ display: 'flex', gap: 4 }}>
+        {!i.isPaid && (
+          <button onClick={(e) => { e.stopPropagation(); markPaidMut.mutate(i.id); }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--success)', fontSize: '0.78rem' }} title="Uhradit">
+            ✓
+          </button>
+        )}
+        <button onClick={(e) => { e.stopPropagation(); handleExport(i); }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.78rem' }} title="Export ISDOC">
+          <Download size={13} />
+        </button>
+        <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(i); }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: '0.78rem' }}>
+          Smazat
+        </button>
+      </div>
+    ) },
+  ];
+
+  return (
+    <div>
+      {/* KPI */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 16 }}>
+        <KpiCard label="Celkem dokladů" value={String(stats?.total ?? 0)} color="var(--accent-blue)" />
+        <KpiCard label="Neuhrazené" value={String(stats?.unpaid ?? 0)} color="var(--accent-orange)" />
+        <KpiCard label="Po splatnosti" value={String(stats?.overdue ?? 0)} color="var(--accent-red)" />
+        <KpiCard label="Celková částka" value={formatKc(stats?.totalAmount ?? 0)} color="var(--accent-green)" />
+      </div>
+
+      {/* Toolbar */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <SearchBar placeholder="Hledat doklady..." onSearch={setSearch} />
+        </div>
+        <select value={filterType} onChange={(e) => setFilterType(e.target.value)} style={selectStyle}>
+          <option value="">Všechny typy</option>
+          {Object.entries(INVOICE_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        <select value={filterPaid} onChange={(e) => setFilterPaid(e.target.value)} style={selectStyle}>
+          <option value="">Vše</option>
+          <option value="false">Neuhrazené</option>
+          <option value="true">Uhrazené</option>
+        </select>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 6, border: '1px solid var(--border)', cursor: 'pointer', background: 'var(--surface)', color: 'var(--text)', fontSize: '0.85rem' }}>
+          <FileText size={15} /> Import ISDOC
+          <input ref={isdocRef} type="file" accept=".isdoc,.isdocx,.xml" onChange={handleIsdocImport} style={{ display: 'none' }} />
+        </label>
+        <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setEditInvoice(null); setShowForm(true); }}>Nový doklad</Button>
+      </div>
+
+      {importIsdocMut.isSuccess && (
+        <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 14px', marginBottom: 12, fontSize: '0.85rem', color: 'var(--success)' }}>
+          ISDOC doklad úspěšně importován
+        </div>
+      )}
+      {importIsdocMut.isError && (
+        <div style={{ background: '#2d1b1b', border: '1px solid #ef4444', borderRadius: 8, padding: '8px 14px', marginBottom: 12, fontSize: '0.85rem', color: '#ef4444' }}>
+          Chyba při importu ISDOC
+        </div>
+      )}
+
+      <Table data={invoices} columns={columns} rowKey={(i) => i.id} onRowClick={(i) => { setEditInvoice(i); setShowForm(true); }} emptyText="Žádné doklady. Přidejte nový doklad nebo importujte ISDOC." />
+
+      {/* Form modal */}
+      {showForm && (
+        <InvoiceForm
+          invoice={editInvoice}
+          transactions={transactions}
+          onClose={() => { setShowForm(false); setEditInvoice(null); }}
+        />
+      )}
+
+      {/* Delete confirm */}
+      {deleteTarget && (
+        <Modal open onClose={() => setDeleteTarget(null)} title="Smazat doklad"
+          subtitle={deleteTarget.number}
+          footer={
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <Button onClick={() => setDeleteTarget(null)}>Zrušit</Button>
+              <Button variant="danger" onClick={() => {
+                deleteMut.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) });
+              }} disabled={deleteMut.isPending}>
+                {deleteMut.isPending ? 'Mažu...' : 'Smazat'}
+              </Button>
+            </div>
+          }>
+          <p style={{ fontSize: '0.9rem' }}>Opravdu smazat doklad <strong>{deleteTarget.number}</strong>?</p>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ─── Invoice Form ──────────────────────────────────────────────────────────────
+
+function InvoiceForm({ invoice, transactions, onClose }: {
+  invoice: ApiInvoice | null;
+  transactions: FinTransaction[];
+  onClose: () => void;
+}) {
+  const createMut = useCreateInvoice();
+  const updateMut = useUpdateInvoice();
+  const isEdit = !!invoice;
+
+  const [form, setForm] = useState({
+    number: invoice?.number || `FAK-${new Date().getFullYear()}-`,
+    type: invoice?.type || 'received',
+    supplierName: invoice?.supplierName || '',
+    supplierIco: invoice?.supplierIco || '',
+    supplierDic: invoice?.supplierDic || '',
+    buyerName: invoice?.buyerName || '',
+    buyerIco: invoice?.buyerIco || '',
+    buyerDic: invoice?.buyerDic || '',
+    description: invoice?.description || '',
+    amountBase: invoice?.amountBase?.toString() || '',
+    vatRate: invoice?.vatRate?.toString() || '0',
+    vatAmount: invoice?.vatAmount?.toString() || '',
+    amountTotal: invoice?.amountTotal?.toString() || '',
+    issueDate: invoice?.issueDate?.slice(0, 10) || new Date().toISOString().slice(0, 10),
+    dueDate: invoice?.dueDate?.slice(0, 10) || '',
+    variableSymbol: invoice?.variableSymbol || '',
+    transactionId: invoice?.transactionId || '',
+    note: invoice?.note || '',
+    isPaid: invoice?.isPaid || false,
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const set = (key: string, value: unknown) => setForm(f => ({ ...f, [key]: value }));
+
+  const recalcVat = (base: string, rate: string) => {
+    const b = parseFloat(base) || 0;
+    const r = parseInt(rate) || 0;
+    const vat = Math.round(b * r / 100);
+    setForm(f => ({ ...f, amountBase: base, vatRate: rate, vatAmount: String(vat), amountTotal: String(b + vat) }));
+  };
+
+  const validate = () => {
+    const errs: Record<string, string> = {};
+    if (!form.number.trim()) errs.number = 'Povinné';
+    if (!form.amountBase || Number(form.amountBase) <= 0) errs.amountBase = 'Zadejte částku';
+    if (!form.issueDate) errs.issueDate = 'Povinné';
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleSubmit = () => {
+    if (!validate()) return;
+    const dto = {
+      number: form.number,
+      type: form.type,
+      supplierName: form.supplierName || undefined,
+      supplierIco: form.supplierIco || undefined,
+      supplierDic: form.supplierDic || undefined,
+      buyerName: form.buyerName || undefined,
+      buyerIco: form.buyerIco || undefined,
+      buyerDic: form.buyerDic || undefined,
+      description: form.description || undefined,
+      amountBase: Number(form.amountBase) || 0,
+      vatRate: Number(form.vatRate) || 0,
+      vatAmount: Number(form.vatAmount) || 0,
+      amountTotal: Number(form.amountTotal) || Number(form.amountBase) || 0,
+      issueDate: form.issueDate,
+      dueDate: form.dueDate || undefined,
+      variableSymbol: form.variableSymbol || undefined,
+      transactionId: form.transactionId || undefined,
+      note: form.note || undefined,
+      isPaid: form.isPaid,
+    };
+    if (isEdit) {
+      updateMut.mutate({ id: invoice!.id, dto }, { onSuccess: () => onClose() });
+    } else {
+      createMut.mutate(dto, { onSuccess: () => onClose() });
+    }
+  };
+
+  const isPending = createMut.isPending || updateMut.isPending;
+
+  const inputStyle = (field?: string) => ({
+    width: '100%', padding: '8px 12px', borderRadius: 6, boxSizing: 'border-box' as const,
+    border: `1px solid ${field && errors[field] ? 'var(--danger)' : 'var(--border)'}`,
+    background: 'var(--surface-2, var(--surface))', color: 'var(--text)',
+  });
+
+  return (
+    <Modal open onClose={onClose} title={isEdit ? 'Upravit doklad' : 'Nový doklad'} wide
+      footer={
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <Button onClick={onClose}>Zrušit</Button>
+          <Button variant="primary" onClick={handleSubmit} disabled={isPending}>
+            {isPending ? 'Ukládám...' : isEdit ? 'Uložit' : 'Vytvořit'}
+          </Button>
+        </div>
+      }>
+
+      {/* Row 1: number + type */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+        <div>
+          <label className="form-label">Číslo dokladu *</label>
+          <input value={form.number} onChange={e => set('number', e.target.value)} style={inputStyle('number')} />
+          {errors.number && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.number}</div>}
+        </div>
+        <div>
+          <label className="form-label">Typ</label>
+          <select value={form.type} onChange={e => set('type', e.target.value)} style={inputStyle()}>
+            {Object.entries(INVOICE_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* Row 2: supplier */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
+        <div>
+          <label className="form-label">Dodavatel</label>
+          <input value={form.supplierName} onChange={e => set('supplierName', e.target.value)} style={inputStyle()} placeholder="Název firmy" />
+        </div>
+        <div>
+          <label className="form-label">IČO</label>
+          <input value={form.supplierIco} onChange={e => set('supplierIco', e.target.value)} style={inputStyle()} />
+        </div>
+        <div>
+          <label className="form-label">DIČ</label>
+          <input value={form.supplierDic} onChange={e => set('supplierDic', e.target.value)} style={inputStyle()} />
+        </div>
+      </div>
+
+      {/* Row 3: buyer */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
+        <div>
+          <label className="form-label">Odběratel</label>
+          <input value={form.buyerName} onChange={e => set('buyerName', e.target.value)} style={inputStyle()} placeholder="Název firmy" />
+        </div>
+        <div>
+          <label className="form-label">IČO</label>
+          <input value={form.buyerIco} onChange={e => set('buyerIco', e.target.value)} style={inputStyle()} />
+        </div>
+        <div>
+          <label className="form-label">DIČ</label>
+          <input value={form.buyerDic} onChange={e => set('buyerDic', e.target.value)} style={inputStyle()} />
+        </div>
+      </div>
+
+      {/* Row 4: description */}
+      <div style={{ marginBottom: 14 }}>
+        <label className="form-label">Popis</label>
+        <input value={form.description} onChange={e => set('description', e.target.value)} style={inputStyle()} placeholder="Co je fakturováno..." />
+      </div>
+
+      {/* Row 5: amounts */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
+        <div>
+          <label className="form-label">Základ (Kč) *</label>
+          <input type="number" value={form.amountBase} onChange={e => recalcVat(e.target.value, form.vatRate)} style={inputStyle('amountBase')} placeholder="0" />
+          {errors.amountBase && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.amountBase}</div>}
+        </div>
+        <div>
+          <label className="form-label">DPH sazba</label>
+          <select value={form.vatRate} onChange={e => recalcVat(form.amountBase, e.target.value)} style={inputStyle()}>
+            <option value="0">0%</option>
+            <option value="12">12%</option>
+            <option value="21">21%</option>
+          </select>
+        </div>
+        <div>
+          <label className="form-label">DPH (Kč)</label>
+          <input type="number" value={form.vatAmount} onChange={e => set('vatAmount', e.target.value)} style={inputStyle()} />
+        </div>
+        <div>
+          <label className="form-label">Celkem s DPH</label>
+          <input type="number" value={form.amountTotal} onChange={e => set('amountTotal', e.target.value)} style={inputStyle()} />
+        </div>
+      </div>
+
+      {/* Row 6: dates */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
+        <div>
+          <label className="form-label">Datum vystavení *</label>
+          <input type="date" value={form.issueDate} onChange={e => set('issueDate', e.target.value)} style={inputStyle('issueDate')} />
+          {errors.issueDate && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.issueDate}</div>}
+        </div>
+        <div>
+          <label className="form-label">Splatnost</label>
+          <input type="date" value={form.dueDate} onChange={e => set('dueDate', e.target.value)} style={inputStyle()} />
+        </div>
+        <div>
+          <label className="form-label">Variabilní symbol</label>
+          <input value={form.variableSymbol} onChange={e => set('variableSymbol', e.target.value)} style={inputStyle()} />
+        </div>
+      </div>
+
+      {/* Row 7: transaction link + paid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12, marginBottom: 14 }}>
+        <div>
+          <label className="form-label">Propojit s transakcí</label>
+          <select value={form.transactionId} onChange={e => set('transactionId', e.target.value)} style={inputStyle()}>
+            <option value="">— Žádná —</option>
+            {transactions.map(t => (
+              <option key={t.id} value={t.id}>{formatCzDate(t.datum)} | {t.popis} | {formatKc(t.castka)}</option>
+            ))}
+          </select>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 4 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem', cursor: 'pointer' }}>
+            <input type="checkbox" checked={form.isPaid} onChange={e => set('isPaid', e.target.checked)}
+              style={{ accentColor: 'var(--accent)' }} />
+            Uhrazeno
+          </label>
+        </div>
+      </div>
+
+      {/* Row 8: note */}
+      <div>
+        <label className="form-label">Poznámka</label>
+        <textarea value={form.note} onChange={e => set('note', e.target.value)} style={{ ...inputStyle(), minHeight: 50 }} />
+      </div>
+
+      {(createMut.isError || updateMut.isError) && (
+        <div style={{ color: 'var(--danger)', fontSize: '0.85rem', marginTop: 12 }}>Nepodařilo se uložit doklad.</div>
+      )}
+    </Modal>
   );
 }
 

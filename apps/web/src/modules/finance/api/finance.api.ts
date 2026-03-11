@@ -73,6 +73,45 @@ export interface FinanceSummary {
   openBillingPeriods: number;
 }
 
+export interface ApiInvoice {
+  id: string;
+  tenantId: string;
+  propertyId?: string;
+  number: string;
+  type: 'received' | 'issued' | 'proforma' | 'credit_note';
+  supplierName?: string;
+  supplierIco?: string;
+  supplierDic?: string;
+  buyerName?: string;
+  buyerIco?: string;
+  buyerDic?: string;
+  description?: string;
+  amountBase: number;
+  vatRate: number;
+  vatAmount: number;
+  amountTotal: number;
+  currency: string;
+  issueDate: string;
+  dueDate?: string | null;
+  paymentDate?: string | null;
+  isPaid: boolean;
+  variableSymbol?: string;
+  transactionId?: string | null;
+  isdocXml?: string | null;
+  note?: string;
+  createdAt: string;
+  updatedAt: string;
+  property?: { id: string; name: string } | null;
+  transaction?: { id: string; description: string; amount: number } | null;
+}
+
+export interface InvoiceStats {
+  total: number;
+  unpaid: number;
+  overdue: number;
+  totalAmount: number;
+}
+
 interface Paginated<T> {
   data: T[];
   total: number;
@@ -144,4 +183,23 @@ export const financeApi = {
     apiClient
       .post('/finance/match-single', { transactionId, prescriptionId })
       .then((r) => r.data),
+
+  invoices: {
+    list: (params?: Record<string, unknown>) =>
+      apiClient.get<Paginated<ApiInvoice>>('/finance/invoices', { params }).then((r) => r.data),
+    stats: () =>
+      apiClient.get<InvoiceStats>('/finance/invoices/stats').then((r) => r.data),
+    create: (dto: Record<string, unknown>) =>
+      apiClient.post<ApiInvoice>('/finance/invoices', dto).then((r) => r.data),
+    update: (id: string, dto: Record<string, unknown>) =>
+      apiClient.put<ApiInvoice>(`/finance/invoices/${id}`, dto).then((r) => r.data),
+    remove: (id: string) =>
+      apiClient.delete(`/finance/invoices/${id}`).then((r) => r.data),
+    markPaid: (id: string) =>
+      apiClient.post(`/finance/invoices/${id}/mark-paid`).then((r) => r.data),
+    importIsdoc: (xmlContent: string) =>
+      apiClient.post<ApiInvoice>('/finance/invoices/import-isdoc', { xmlContent }).then((r) => r.data),
+    exportIsdoc: (id: string) =>
+      apiClient.get<string>(`/finance/invoices/${id}/export-isdoc`).then((r) => r.data),
+  },
 };
