@@ -45,7 +45,7 @@ jobs:
 
       - name: Install cross-platform native binaries
         run: |
-          VERSION=$(node -p "require('lightningcss/package.json').version")
+          VERSION=$(node -p "JSON.parse(require('fs').readFileSync('node_modules/lightningcss/package.json')).version")
           npm install --no-save "lightningcss-linux-x64-gnu@$VERSION"
         working-directory: apps/web
 
