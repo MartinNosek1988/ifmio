@@ -6,7 +6,7 @@ import { Type } from 'class-transformer';
 
 export class InvoiceLineDto {
   @IsString()
-  description: string;
+  description!: string;
 
   @IsOptional() @IsNumber()
   quantity?: number;
@@ -29,7 +29,7 @@ export class InvoiceLineDto {
 
 export class CreateInvoiceDto {
   @IsString()
-  number: string;
+  number!: string;
 
   @IsOptional() @IsEnum(['received', 'issued'])
   type?: string;
@@ -74,7 +74,7 @@ export class CreateInvoiceDto {
   currency?: string;
 
   @IsDateString()
-  issueDate: string;
+  issueDate!: string;
 
   @IsOptional() @IsDateString()
   duzp?: string;

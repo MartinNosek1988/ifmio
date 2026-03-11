@@ -42,14 +42,14 @@ export class UpdateSettingsDto {
 
 export class InviteUserDto {
   @IsString()
-  name: string;
+  name!: string;
 
   @IsEmail()
-  email: string;
+  email!: string;
 
   @IsEnum(['owner', 'admin', 'manager', 'technician', 'viewer'])
-  role: string;
+  role!: string;
 
   @IsString()
-  password: string;
+  password!: string;
 }

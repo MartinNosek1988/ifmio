@@ -23,19 +23,19 @@ export class ReminderListQueryDto {
 
 export class CreateReminderDto {
   @IsString()
-  residentId: string;
+  residentId!: string;
 
   @IsOptional() @IsString()
   templateId?: string;
 
   @IsEnum(['first', 'second', 'third'])
-  level: string;
+  level!: string;
 
   @IsNumber() @Min(0)
-  amount: number;
+  amount!: number;
 
   @IsDateString()
-  dueDate: string;
+  dueDate!: string;
 
   @IsOptional() @IsString()
   note?: string;
@@ -43,10 +43,10 @@ export class CreateReminderDto {
 
 export class BulkCreateRemindersDto {
   @IsArray() @IsString({ each: true })
-  residentIds: string[];
+  residentIds!: string[];
 
   @IsEnum(['first', 'second', 'third'])
-  level: string;
+  level!: string;
 
   @IsOptional() @IsString()
   templateId?: string;
@@ -55,7 +55,7 @@ export class BulkCreateRemindersDto {
   amount?: number;
 
   @IsDateString()
-  dueDate: string;
+  dueDate!: string;
 }
 
 export class UpdateTemplateDto {

@@ -6,22 +6,22 @@ export class RegisterDto {
   @IsString()
   @MinLength(2)
   @MaxLength(100)
-  name: string;
+  name!: string;
 
   @ApiProperty({ example: 'jan@spravadm.cz' })
   @IsEmail({}, { message: 'Neplatný email' })
-  email: string;
+  email!: string;
 
   @ApiProperty({ example: 'heslo12345' })
   @IsString()
   @MinLength(8, { message: 'Heslo musí mít alespoň 8 znaků' })
-  password: string;
+  password!: string;
 
   @ApiProperty({ example: 'Správa DM Praha s.r.o.' })
   @IsString()
   @MinLength(2)
   @MaxLength(200)
-  tenantName: string;
+  tenantName!: string;
 
   @ApiPropertyOptional({ example: '+420 777 123 456' })
   @IsOptional()

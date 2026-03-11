@@ -26,7 +26,7 @@ export class HelpdeskListQueryDto {
 
 export class CreateTicketDto {
   @IsString()
-  title: string;
+  title!: string;
 
   @IsOptional() @IsString()
   description?: string;
@@ -81,7 +81,7 @@ export class UpdateTicketDto {
 
 export class CreateItemDto {
   @IsString()
-  description: string;
+  description!: string;
 
   @IsOptional() @IsString()
   unit?: string;
