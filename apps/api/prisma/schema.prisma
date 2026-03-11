@@ -247,8 +247,8 @@ model Resident {
   updatedAt  DateTime     @updatedAt
 
   tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  property         Property?         @relation(fields: [propertyId], references: [id])
-  unit             Unit?             @relation(fields: [unitId], references: [id])
+  property         Property?         @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  unit             Unit?             @relation(fields: [unitId], references: [id], onDelete: SetNull)
   occupancies        Occupancy[]
   prescriptions      Prescription[]
   bankTransactions   BankTransaction[]
@@ -375,10 +375,10 @@ model Invoice {
   updatedAt       DateTime      @updatedAt
 
   tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  property        Property?     @relation(fields: [propertyId], references: [id])
-  transaction     BankTransaction? @relation(fields: [transactionId], references: [id])
-  supplier        Resident?     @relation("InvoiceSupplier", fields: [supplierId], references: [id])
-  buyer           Resident?     @relation("InvoiceBuyer", fields: [buyerId], references: [id])
+  property        Property?     @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  transaction     BankTransaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+  supplier        Resident?     @relation("InvoiceSupplier", fields: [supplierId], references: [id], onDelete: SetNull)
+  buyer           Resident?     @relation("InvoiceBuyer", fields: [buyerId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
   @@index([tenantId, type])
@@ -411,7 +411,7 @@ model BankAccount {
   updatedAt     DateTime @updatedAt
 
   tenant       Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  property     Property?       @relation(fields: [propertyId], references: [id])
+  property     Property?       @relation(fields: [propertyId], references: [id], onDelete: Restrict)
   transactions BankTransaction[]
   importLogs   ImportLog[]
 
@@ -439,9 +439,9 @@ model BankTransaction {
   updatedAt        DateTime              @updatedAt
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  bankAccount  BankAccount   @relation(fields: [bankAccountId], references: [id])
-  prescription Prescription? @relation(fields: [prescriptionId], references: [id])
-  resident     Resident?     @relation(fields: [residentId], references: [id])
+  bankAccount  BankAccount   @relation(fields: [bankAccountId], references: [id], onDelete: Restrict)
+  prescription Prescription? @relation(fields: [prescriptionId], references: [id], onDelete: SetNull)
+  resident     Resident?     @relation(fields: [residentId], references: [id], onDelete: SetNull)
   invoices     Invoice[]
 
   @@index([tenantId])
@@ -475,7 +475,7 @@ model BillingPeriod {
   updatedAt   DateTime            @updatedAt
 
   tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  property      Property       @relation(fields: [propertyId], references: [id])
+  property      Property       @relation(fields: [propertyId], references: [id], onDelete: Restrict)
   prescriptions Prescription[]
 
   @@index([tenantId])
@@ -510,10 +510,10 @@ model Prescription {
   updatedAt       DateTime           @updatedAt
 
   tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  property      Property         @relation(fields: [propertyId], references: [id])
-  unit          Unit?            @relation(fields: [unitId], references: [id])
-  resident      Resident?        @relation(fields: [residentId], references: [id])
-  billingPeriod BillingPeriod?   @relation(fields: [billingPeriodId], references: [id])
+  property      Property         @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  unit          Unit?            @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  resident      Resident?        @relation(fields: [residentId], references: [id], onDelete: SetNull)
+  billingPeriod BillingPeriod?   @relation(fields: [billingPeriodId], references: [id], onDelete: SetNull)
   items         PrescriptionItem[]
   transactions  BankTransaction[]
 
@@ -596,8 +596,8 @@ model Reminder {
   updatedAt  DateTime       @updatedAt
 
   tenant    Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  resident  Resident           @relation(fields: [residentId], references: [id])
-  template  ReminderTemplate?  @relation(fields: [templateId], references: [id])
+  resident  Resident           @relation(fields: [residentId], references: [id], onDelete: Restrict)
+  template  ReminderTemplate?  @relation(fields: [templateId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
   @@index([tenantId, status, level])
@@ -634,10 +634,10 @@ model HelpdeskTicket {
   updatedAt   DateTime       @updatedAt
 
   tenant    Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  property  Property?         @relation(fields: [propertyId], references: [id])
-  unit      Unit?             @relation(fields: [unitId], references: [id])
-  resident  Resident?         @relation(fields: [residentId], references: [id])
-  assignee  User?             @relation(fields: [assigneeId], references: [id])
+  property  Property?         @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  unit      Unit?             @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  resident  Resident?         @relation(fields: [residentId], references: [id], onDelete: SetNull)
+  assignee  User?             @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
   items     HelpdeskItem[]
   protocol  HelpdeskProtocol?
 
@@ -724,7 +724,7 @@ model Document {
   updatedAt    DateTime     @updatedAt
 
   tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  createdBy User?           @relation(fields: [createdById], references: [id])
+  createdBy User?           @relation(fields: [createdById], references: [id], onDelete: SetNull)
   tags      DocumentTag[]
   links     DocumentLink[]
 
@@ -865,7 +865,7 @@ model ImportLog {
   createdAt     DateTime     @default(now())
 
   tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  bankAccount BankAccount? @relation(fields: [bankAccountId], references: [id])
+  bankAccount BankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
   @@map("import_logs")
@@ -935,9 +935,9 @@ model LeaseAgreement {
   updatedAt       DateTime        @updatedAt
 
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  property Property  @relation(fields: [propertyId], references: [id])
-  unit     Unit?     @relation(fields: [unitId], references: [id])
-  resident Resident? @relation(fields: [residentId], references: [id])
+  property Property  @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  unit     Unit?     @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  resident Resident? @relation(fields: [residentId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
   @@index([tenantId, status])
@@ -993,8 +993,8 @@ model WorkOrder {
   updatedAt       DateTime        @updatedAt
 
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  property Property? @relation(fields: [propertyId], references: [id])
-  unit     Unit?     @relation(fields: [unitId], references: [id])
+  property Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  unit     Unit?     @relation(fields: [unitId], references: [id], onDelete: SetNull)
   comments WorkOrderComment[]
 
   @@index([tenantId])
@@ -1064,8 +1064,8 @@ model Meter {
   updatedAt       DateTime    @updatedAt
 
   tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  property  Property?      @relation(fields: [propertyId], references: [id])
-  unitRel   Unit?          @relation(fields: [unitId], references: [id])
+  property  Property?      @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  unitRel   Unit?          @relation(fields: [unitId], references: [id], onDelete: SetNull)
   readings  MeterReading[]
 
   @@index([tenantId])
@@ -1157,8 +1157,8 @@ model Asset {
   deletedAt       DateTime?
 
   tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  property        Property?      @relation(fields: [propertyId], references: [id])
-  unit            Unit?          @relation(fields: [unitId], references: [id])
+  property        Property?      @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  unit            Unit?          @relation(fields: [unitId], references: [id], onDelete: SetNull)
   serviceRecords  AssetServiceRecord[]
 
   @@index([tenantId])
