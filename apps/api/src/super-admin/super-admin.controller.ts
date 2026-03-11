@@ -2,6 +2,7 @@ import { Controller, Get, Post, Patch, Param, Body, Query } from '@nestjs/common
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { SuperAdminService } from './super-admin.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { AuditAction } from '../common/decorators/audit.decorator';
 import type { AuthUser } from '@ifmio/shared-types';
 
 @ApiTags('Super Admin')
@@ -47,6 +48,7 @@ export class SuperAdminController {
   }
 
   @Patch('tenants/:id')
+  @AuditAction('Tenant', 'UPDATE')
   @ApiOperation({ summary: 'Upravit tenant (plan, limity, aktivace)' })
   updateTenant(
     @CurrentUser() user: AuthUser,
@@ -65,6 +67,7 @@ export class SuperAdminController {
   }
 
   @Post('tenants/:id/impersonate')
+  @AuditAction('Tenant', 'IMPERSONATE')
   @ApiOperation({ summary: 'Přihlásit se jako tenant (impersonation)' })
   impersonate(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     this.service.assertSuperAdmin(user.email);
