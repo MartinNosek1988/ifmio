@@ -83,3 +83,7 @@ jobs:
           JWT_SECRET: ci-test-jwt-secret-not-for-production-use-min-32chars
           JWT_REFRESH_SECRET: ci-test-refresh-secret-not-for-production-use-32ch
           NODE_ENV: test
+
+      - name: Test Web
+        run: npm run test
+        working-directory: apps/web
