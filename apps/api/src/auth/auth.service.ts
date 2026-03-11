@@ -321,9 +321,12 @@ export class AuthService {
 
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
-    await this.prisma.refreshToken.create({
-      data: { userId: user.id, token: refreshToken, expiresAt },
-    });
+    await this.prisma.$transaction([
+      this.prisma.refreshToken.deleteMany({ where: { userId: user.id } }),
+      this.prisma.refreshToken.create({
+        data: { userId: user.id, token: refreshToken, expiresAt },
+      }),
+    ]);
 
     return {
       accessToken,

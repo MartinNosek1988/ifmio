@@ -22,7 +22,8 @@ describe('Properties (e2e)', () => {
           address: 'Testovací ulice 1',
           city: 'Praha',
           postalCode: '11000',
-          type: 'apartment_building',
+          type: 'bytdum',
+          ownership: 'vlastnictvi',
         })
         .expect(201)
 

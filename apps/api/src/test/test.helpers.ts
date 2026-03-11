@@ -55,6 +55,8 @@ export function authRequest(server: any, token: string) {
       request(server).get(url).set('Authorization', `Bearer ${token}`),
     post: (url: string, body?: any) =>
       request(server).post(url).set('Authorization', `Bearer ${token}`).send(body),
+    put: (url: string, body?: any) =>
+      request(server).put(url).set('Authorization', `Bearer ${token}`).send(body),
     patch: (url: string, body?: any) =>
       request(server).patch(url).set('Authorization', `Bearer ${token}`).send(body),
     delete: (url: string) =>

@@ -31,7 +31,7 @@ export class CreateTicketDto {
   @IsOptional() @IsString()
   description?: string;
 
-  @IsOptional() @IsEnum(['general', 'maintenance', 'repair', 'complaint', 'other'])
+  @IsOptional() @IsEnum(['general', 'plumbing', 'electrical', 'hvac', 'structural', 'cleaning', 'other'])
   category?: string;
 
   @IsOptional() @IsEnum(['low', 'medium', 'high', 'urgent'])
@@ -54,7 +54,7 @@ export class UpdateTicketDto {
   @IsOptional() @IsString()
   description?: string;
 
-  @IsOptional() @IsEnum(['general', 'maintenance', 'repair', 'complaint', 'other'])
+  @IsOptional() @IsEnum(['general', 'plumbing', 'electrical', 'hvac', 'structural', 'cleaning', 'other'])
   category?: string;
 
   @IsOptional() @IsEnum(['low', 'medium', 'high', 'urgent'])

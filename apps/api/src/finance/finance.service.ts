@@ -56,7 +56,9 @@ export class FinanceService {
       limit?: number;
     },
   ) {
-    const { bankAccountId, status, type, dateFrom, dateTo, page = 1, limit = 50 } = query;
+    const { bankAccountId, status, type, dateFrom, dateTo } = query;
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(query.limit) || 50));
     const skip = (page - 1) * limit;
 
     const where: Prisma.BankTransactionWhereInput = {
@@ -138,7 +140,9 @@ export class FinanceService {
     page?: number;
     limit?: number;
   }) {
-    const { propertyId, residentId, status = 'active', type, page = 1, limit = 20 } = query;
+    const { propertyId, residentId, status = 'active', type } = query;
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
     const skip = (page - 1) * limit;
 
     const where: Prisma.PrescriptionWhereInput = {
