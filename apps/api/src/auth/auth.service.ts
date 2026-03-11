@@ -16,6 +16,11 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import type { AuthUser } from '@ifmio/shared-types';
 
+export interface RequestMeta {
+  ip?: string;
+  userAgent?: string;
+}
+
 export interface AuthResponse {
   accessToken: string;
   refreshToken: string;
@@ -24,13 +29,15 @@ export interface AuthResponse {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private prisma: PrismaService,
     private jwt: JwtService,
     private email: EmailService,
   ) {}
 
-  async register(dto: RegisterDto): Promise<AuthResponse> {
+  async register(dto: RegisterDto, meta?: RequestMeta): Promise<AuthResponse> {
     const slug = dto.tenantName
       .toLowerCase()
       .normalize('NFD')
@@ -98,6 +105,8 @@ export class AuthService {
           action: 'REGISTER',
           entity: 'User',
           entityId: user.id,
+          ipAddress: meta?.ip,
+          userAgent: meta?.userAgent,
         },
       });
 
@@ -114,18 +123,31 @@ export class AuthService {
       tenantName: tenant.name,
       loginUrl: `${frontendUrl}/verify-email?token=${verificationToken}`,
     }).catch((err) => {
-      const logger = new Logger('AuthService');
-      logger.error(`Failed to send welcome email to ${dto.email}: ${err}`);
+      this.logger.error(`Failed to send welcome email to ${dto.email}: ${err}`);
     });
 
     return this.issueTokens(user);
   }
 
-  async login(dto: LoginDto): Promise<AuthResponse> {
+  async login(dto: LoginDto, meta?: RequestMeta): Promise<AuthResponse> {
     const user = await this.prisma.user.findFirst({
       where: { email: dto.email, isActive: true },
     });
     if (!user || !(await bcrypt.compare(dto.password, user.passwordHash))) {
+      // Audit failed login if user exists (wrong password)
+      if (user) {
+        this.prisma.auditLog.create({
+          data: {
+            tenantId: user.tenantId,
+            userId: user.id,
+            action: 'LOGIN_FAIL',
+            entity: 'User',
+            entityId: user.id,
+            ipAddress: meta?.ip,
+            userAgent: meta?.userAgent,
+          },
+        }).catch((err) => this.logger.error('Audit LOGIN_FAIL failed', err));
+      }
       throw new UnauthorizedException('Nesprávný email nebo heslo');
     }
 
@@ -141,6 +163,8 @@ export class AuthService {
           action: 'LOGIN',
           entity: 'User',
           entityId: user.id,
+          ipAddress: meta?.ip,
+          userAgent: meta?.userAgent,
         },
       }),
     ]);
@@ -148,7 +172,7 @@ export class AuthService {
     return this.issueTokens(user);
   }
 
-  async logout(userId: string): Promise<void> {
+  async logout(userId: string, meta?: RequestMeta): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (user) {
       await this.prisma.$transaction([
@@ -160,6 +184,8 @@ export class AuthService {
             action: 'LOGOUT',
             entity: 'User',
             entityId: userId,
+            ipAddress: meta?.ip,
+            userAgent: meta?.userAgent,
           },
         }),
       ]);
@@ -213,7 +239,7 @@ export class AuthService {
     return user;
   }
 
-  async changePassword(userId: string, dto: ChangePasswordDto) {
+  async changePassword(userId: string, dto: ChangePasswordDto, meta?: RequestMeta) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Uživatel nenalezen');
 
@@ -221,15 +247,28 @@ export class AuthService {
     if (!valid) throw new UnauthorizedException('Nesprávné aktuální heslo');
 
     const passwordHash = await bcrypt.hash(dto.newPassword, 12);
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { passwordHash },
-    });
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: userId },
+        data: { passwordHash },
+      }),
+      this.prisma.auditLog.create({
+        data: {
+          tenantId: user.tenantId,
+          userId,
+          action: 'PASSWORD_CHANGE',
+          entity: 'User',
+          entityId: userId,
+          ipAddress: meta?.ip,
+          userAgent: meta?.userAgent,
+        },
+      }),
+    ]);
 
     return { success: true, message: 'Heslo bylo změněno' };
   }
 
-  async refresh(refreshTokenValue: string): Promise<AuthResponse> {
+  async refresh(refreshTokenValue: string, meta?: RequestMeta): Promise<AuthResponse> {
     const stored = await this.prisma.refreshToken.findFirst({
       where: { token: refreshTokenValue },
       include: { user: true },
@@ -254,7 +293,20 @@ export class AuthService {
     if (!user.isActive) throw new UnauthorizedException('Účet je deaktivován');
 
     // Rotate: delete old refresh token, issue new pair
-    await this.prisma.refreshToken.delete({ where: { id: stored.id } });
+    await this.prisma.$transaction([
+      this.prisma.refreshToken.delete({ where: { id: stored.id } }),
+      this.prisma.auditLog.create({
+        data: {
+          tenantId: user.tenantId,
+          userId: user.id,
+          action: 'TOKEN_REFRESH',
+          entity: 'User',
+          entityId: user.id,
+          ipAddress: meta?.ip,
+          userAgent: meta?.userAgent,
+        },
+      }),
+    ]);
 
     return this.issueTokens(user);
   }
@@ -276,6 +328,15 @@ export class AuthService {
         data: { isActive: true },
       }),
       this.prisma.emailVerificationToken.delete({ where: { id: record.id } }),
+      this.prisma.auditLog.create({
+        data: {
+          tenantId: record.user.tenantId,
+          userId: record.userId,
+          action: 'EMAIL_VERIFY',
+          entity: 'User',
+          entityId: record.userId,
+        },
+      }),
     ]);
 
     return { success: true, message: 'Email úspěšně ověřen' };
