@@ -7,7 +7,7 @@ import {
   ShieldCheck, Wallet, AlertTriangle, TrendingUp,
   MessageSquare, Mail, Settings, BarChart3,
   ClipboardList, ScrollText, UsersRound,
-  User as UserIcon, LogOut,
+  User as UserIcon, LogOut, Shield,
 } from 'lucide-react';
 import { LoadingSpinner } from '../shared/components';
 import { GlobalSearch } from '../modules/search/GlobalSearch';
@@ -113,6 +113,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/settings': 'Nastavení organizace',
   '/notifications': 'Notifikace',
   '/profile': 'Můj profil',
+  '/super-admin': 'Super Admin',
 };
 
 function getPageTitle(pathname: string): string {
@@ -183,6 +184,13 @@ export default function AppShell() {
     staleTime: 300_000,
     retry: false,
   });
+  const { data: saCheck } = useQuery({
+    queryKey: ['super-admin', 'check'],
+    queryFn: () => apiClient.get('/super-admin/check').then((r) => r.data),
+    staleTime: Infinity,
+    retry: false,
+  });
+  const isSuperAdmin = saCheck?.isSuperAdmin === true;
   const trialDays = (() => {
     if (!meData?.tenant?.trialEndsAt) return null;
     const diff = new Date(meData.tenant.trialEndsAt).getTime() - Date.now();
@@ -280,6 +288,12 @@ export default function AppShell() {
                 <button className="user-dropdown__item" onClick={() => { setShowUserMenu(false); navigate('/settings'); }}>
                   <Settings size={15} /> Nastavení
                 </button>
+                {isSuperAdmin && (
+                  <button className="user-dropdown__item" onClick={() => { setShowUserMenu(false); navigate('/super-admin'); }}
+                    style={{ color: '#ef4444' }}>
+                    <Shield size={15} /> Super Admin
+                  </button>
+                )}
                 <div className="user-dropdown__sep" />
                 <button className="user-dropdown__item user-dropdown__item--danger" onClick={() => {
                   setShowUserMenu(false);

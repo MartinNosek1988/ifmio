@@ -714,3 +714,59 @@ body {
 .profile-toggle-row input:checked + .profile-toggle-track .profile-toggle-thumb {
   transform: translateX(18px);
 }
+
+/* ─── Super Admin ───────────────────────────────────────────────── */
+.sa-kpi-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px;
+}
+.sa-card {
+  background: #1a1d27; border: 1px solid #2a2d3a; border-radius: 12px; padding: 20px;
+}
+.sa-card-title {
+  color: #f3f4f6; font-size: .95rem; font-weight: 600; margin: 0 0 14px;
+}
+.sa-badge {
+  display: inline-block; font-size: .72rem; font-weight: 600;
+  padding: 2px 8px; border-radius: 5px; white-space: nowrap;
+}
+.sa-search-bar {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+  padding: 10px 14px; background: #1a1d27; border: 1px solid #2a2d3a; border-radius: 10px;
+}
+.sa-search-input {
+  flex: 1; background: transparent; border: none; color: #fff; font-size: .9rem; outline: none;
+}
+.sa-select {
+  padding: 6px 10px; background: #0f1117; border: 1px solid #2a2d3a;
+  border-radius: 6px; color: #d1d5db; font-size: .82rem; cursor: pointer;
+}
+.sa-select:focus { outline: none; border-color: #6366f1; }
+.sa-table-wrap { overflow-x: auto; }
+.sa-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.sa-table th {
+  text-align: left; padding: 10px 12px; color: #6b7280; font-weight: 600;
+  font-size: .75rem; text-transform: uppercase; letter-spacing: .03em;
+  border-bottom: 1px solid #2a2d3a;
+}
+.sa-table td { padding: 10px 12px; color: #9ca3af; border-bottom: 1px solid #1f2232; }
+.sa-table tbody tr:hover { background: #1f2232; }
+.sa-btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px;
+  background: #2a2d3a; color: #d1d5db; border: 1px solid #3a3d4a;
+  border-radius: 8px; font-size: .82rem; font-weight: 500; cursor: pointer;
+  transition: background .15s;
+}
+.sa-btn:hover { background: #353848; }
+.sa-btn:disabled { opacity: .5; cursor: not-allowed; }
+.sa-btn-sm {
+  display: inline-flex; align-items: center; padding: 5px 8px;
+  background: none; border: 1px solid #2a2d3a; border-radius: 6px;
+  color: #9ca3af; cursor: pointer; transition: all .15s;
+}
+.sa-btn-sm:hover { background: #2a2d3a; color: #d1d5db; }
+.sa-back-btn {
+  display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px;
+  background: none; border: none; color: #818cf8; font-size: .85rem;
+  cursor: pointer; margin-bottom: 12px;
+}
+.sa-back-btn:hover { text-decoration: underline; }

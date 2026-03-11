@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, Body, Query } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, Query } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { SuperAdminService } from './super-admin.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -16,6 +16,12 @@ interface AuthUser {
 export class SuperAdminController {
   constructor(private service: SuperAdminService) {}
 
+  @Get('check')
+  @ApiOperation({ summary: 'Ověří, zda je uživatel super admin' })
+  check(@CurrentUser() user: AuthUser) {
+    return { isSuperAdmin: this.service.isSuperAdmin(user.email) };
+  }
+
   @Get('stats')
   @ApiOperation({ summary: 'Globální statistiky platformy' })
   getStats(@CurrentUser() user: AuthUser) {
@@ -29,11 +35,13 @@ export class SuperAdminController {
     @CurrentUser() user: AuthUser,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('search') search?: string,
   ) {
     this.service.assertSuperAdmin(user.email);
     return this.service.listTenants(
       page ? parseInt(page) : 1,
       limit ? parseInt(limit) : 50,
+      search,
     );
   }
 
@@ -60,5 +68,45 @@ export class SuperAdminController {
   ) {
     this.service.assertSuperAdmin(user.email);
     return this.service.updateTenant(id, body);
+  }
+
+  @Post('tenants/:id/impersonate')
+  @ApiOperation({ summary: 'Přihlásit se jako tenant (impersonation)' })
+  impersonate(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    this.service.assertSuperAdmin(user.email);
+    return this.service.impersonate(id);
+  }
+
+  @Get('users')
+  @ApiOperation({ summary: 'Seznam všech uživatelů napříč tenanty' })
+  listUsers(
+    @CurrentUser() user: AuthUser,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+    @Query('role') role?: string,
+  ) {
+    this.service.assertSuperAdmin(user.email);
+    return this.service.listAllUsers(
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 50,
+      search, role,
+    );
+  }
+
+  @Get('audit')
+  @ApiOperation({ summary: 'Audit log napříč tenanty' })
+  getAuditLog(
+    @CurrentUser() user: AuthUser,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('tenantId') tenantId?: string,
+  ) {
+    this.service.assertSuperAdmin(user.email);
+    return this.service.getAuditLog(
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 50,
+      tenantId,
+    );
   }
 }
