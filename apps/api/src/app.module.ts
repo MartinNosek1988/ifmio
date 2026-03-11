@@ -37,7 +37,14 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot({
-      throttlers: [{ name: 'default', ttl: 60_000, limit: 20 }],
+      throttlers: [
+        {
+          name: 'default',
+          ttl: 60_000,
+          limit: 20,
+          skipIf: () => process.env.NODE_ENV === 'test',
+        },
+      ],
     }),
     PrismaModule,
     HealthModule,
