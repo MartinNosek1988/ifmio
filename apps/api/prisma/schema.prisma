@@ -130,7 +130,7 @@ model EmailVerificationToken {
 
 model AuditLog {
   id         String   @id @default(uuid())
-  tenantId   String
+  tenantId   String?
   userId     String?
   action     String
   entity     String
@@ -141,8 +141,8 @@ model AuditLog {
   userAgent  String?
   createdAt  DateTime @default(now())
 
-  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  tenant Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
   @@index([tenantId, entity])
