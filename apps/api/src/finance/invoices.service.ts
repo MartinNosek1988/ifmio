@@ -115,6 +115,7 @@ export class InvoicesService {
         transactionId: dto.transactionId || null,
         supplierId: dto.supplierId || null,
         buyerId: dto.buyerId || null,
+        lines: dto.lines ?? undefined,
         isdocXml: dto.isdocXml || null,
         note: dto.note || null,
       },
@@ -160,6 +161,7 @@ export class InvoicesService {
     if (dto.transactionId !== undefined) data.transactionId = dto.transactionId || null;
     if (dto.supplierId !== undefined) data.supplierId = dto.supplierId || null;
     if (dto.buyerId !== undefined) data.buyerId = dto.buyerId || null;
+    if (dto.lines !== undefined) data.lines = dto.lines;
     if (dto.note !== undefined) data.note = dto.note;
 
     const invoice = await this.prisma.invoice.update({
@@ -326,6 +328,23 @@ export class InvoicesService {
     const supplier = parseParty(supplierXml);
     const buyer = parseParty(buyerXml);
 
+    // Parse InvoiceLine items
+    const lines: Array<Record<string, unknown>> = [];
+    const lineRegex = /<InvoiceLine[^>]*>([\s\S]*?)<\/InvoiceLine>/gi;
+    let lineMatch: RegExpExecArray | null;
+    let lineIdx = 0;
+    while ((lineMatch = lineRegex.exec(xml)) !== null) {
+      const l = lineMatch[1];
+      const description = getFrom(l, 'Name') || getFrom(l, 'Description') || getFrom(l, 'Note') || `Položka ${++lineIdx}`;
+      const quantity = parseFloat(getFrom(l, 'InvoicedQuantity')) || 1;
+      const unit = getFrom(l, 'unitCode') || getFrom(l, 'InvoicedQuantity').replace(/[\d.]/g, '').trim() || 'ks';
+      const unitPrice = parseFloat(getFrom(l, 'PriceAmount')) || 0;
+      const lineTotal = parseFloat(getFrom(l, 'LineExtensionAmount')) || quantity * unitPrice;
+      const vatRate = parseFloat(getFrom(l, 'Percent')) || 0;
+      const vatAmount = Math.round(lineTotal * vatRate / 100 * 100) / 100;
+      lines.push({ description, quantity, unit, unitPrice, lineTotal, vatRate, vatAmount });
+    }
+
     return {
       number: get('ID') || get('DocumentNumber') || `ISDOC-${Date.now()}`,
       type: 'received',
@@ -345,6 +364,7 @@ export class InvoicesService {
       duzp: get('TaxPointDate') || get('IssueDate') || '',
       dueDate: get('DueDate') || '',
       variableSymbol: get('VariableSymbol') || get('ID') || '',
+      lines: lines.length > 0 ? lines : undefined,
     };
   }
 

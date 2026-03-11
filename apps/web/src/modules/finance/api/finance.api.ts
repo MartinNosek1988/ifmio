@@ -73,6 +73,16 @@ export interface FinanceSummary {
   openBillingPeriods: number;
 }
 
+export interface InvoiceLine {
+  description: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  lineTotal: number;
+  vatRate: number;
+  vatAmount: number;
+}
+
 export interface ApiInvoice {
   id: string;
   tenantId: string;
@@ -98,6 +108,7 @@ export interface ApiInvoice {
   isPaid: boolean;
   variableSymbol?: string;
   transactionId?: string | null;
+  lines?: InvoiceLine[] | null;
   isdocXml?: string | null;
   note?: string;
   createdAt: string;

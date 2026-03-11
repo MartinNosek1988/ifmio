@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Upload, Zap, Link2, Calculator, Plus, FileText, Download, Users } from 'lucide-react';
+import { Upload, Zap, Link2, Calculator, Plus, FileText, Download, Users, Trash2 } from 'lucide-react';
 import { KpiCard, Table, Badge, SearchBar, Button, EmptyState, Modal } from '../../shared/components';
 import type { Column } from '../../shared/components';
 import { formatKc, formatCzDate } from '../../shared/utils/format';
@@ -8,7 +8,7 @@ import { FIN_STATUS_LABELS, label } from '../../constants/labels';
 import type { FinTransaction, FinPrescription, FinAccount } from './types';
 import { useToast } from '../../shared/components/toast/Toast';
 import { useBankAccounts, useTransactions, useImportTransactions, usePrescriptions, useGeneratePrescriptions, useMatchTransactions, useMatchSingle, useFinanceSummary, useDeletePrescription, useDeleteTransaction, useCreatePrescription, useInvoices, useInvoiceStats, useCreateInvoice, useUpdateInvoice, useDeleteInvoice, useMarkInvoicePaid, useImportIsdoc, useExportIsdoc } from './api/finance.queries';
-import type { ApiInvoice } from './api/finance.api';
+import type { ApiInvoice, InvoiceLine } from './api/finance.api';
 import { mapAccount, mapTransaction, mapPrescription } from './api/finance.mappers';
 import { useProperties } from '../properties/use-properties';
 import { useResidents } from '../residents/api/residents.queries';
@@ -998,6 +998,219 @@ function DokladyTab({ transactions }: { transactions: FinTransaction[] }) {
   );
 }
 
+// ─── Invoice Lines Detail ────────────────────────────────────────────────────────
+
+function InvoiceLinesDetail({ lines }: { lines: InvoiceLine[] }) {
+  // Group by VAT rate for summary
+  const vatGroups: Record<number, { base: number; vat: number }> = {};
+  let totalBase = 0, totalVat = 0, totalWithVat = 0;
+
+  for (const l of lines) {
+    const base = l.lineTotal;
+    const vat = l.vatAmount ?? Math.round(base * (l.vatRate || 0) / 100 * 100) / 100;
+    totalBase += base;
+    totalVat += vat;
+    totalWithVat += base + vat;
+    if (!vatGroups[l.vatRate]) vatGroups[l.vatRate] = { base: 0, vat: 0 };
+    vatGroups[l.vatRate].base += base;
+    vatGroups[l.vatRate].vat += vat;
+  }
+
+  const thStyle: React.CSSProperties = {
+    padding: '6px 8px', fontSize: '0.72rem', color: 'var(--text-muted)',
+    textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600,
+    borderBottom: '2px solid var(--border)', textAlign: 'left',
+  };
+  const tdStyle: React.CSSProperties = {
+    padding: '6px 8px', fontSize: '0.84rem', borderBottom: '1px solid var(--border)',
+  };
+  const numTd: React.CSSProperties = { ...tdStyle, textAlign: 'right', fontVariantNumeric: 'tabular-nums' };
+
+  return (
+    <div style={{ marginTop: 16 }}>
+      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>
+        Položky faktury
+      </div>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th style={thStyle}>Popis</th>
+              <th style={{ ...thStyle, textAlign: 'right' }}>Množství</th>
+              <th style={{ ...thStyle, textAlign: 'right' }}>J.cena</th>
+              <th style={{ ...thStyle, textAlign: 'right' }}>Základ</th>
+              <th style={{ ...thStyle, textAlign: 'right' }}>DPH %</th>
+              <th style={{ ...thStyle, textAlign: 'right' }}>DPH Kč</th>
+              <th style={{ ...thStyle, textAlign: 'right' }}>Celkem</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lines.map((l, i) => {
+              const vat = l.vatAmount ?? Math.round(l.lineTotal * (l.vatRate || 0) / 100 * 100) / 100;
+              return (
+                <tr key={i}>
+                  <td style={tdStyle}>{l.description}</td>
+                  <td style={numTd}>{l.quantity} {l.unit}</td>
+                  <td style={numTd}>{formatKc(l.unitPrice)}</td>
+                  <td style={numTd}>{formatKc(l.lineTotal)}</td>
+                  <td style={numTd}>{l.vatRate}%</td>
+                  <td style={numTd}>{formatKc(vat)}</td>
+                  <td style={{ ...numTd, fontWeight: 600 }}>{formatKc(l.lineTotal + vat)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* VAT summary by rate */}
+      <div style={{ marginTop: 10, padding: '8px 10px', background: 'var(--surface-2, var(--surface))', borderRadius: 6, fontSize: '0.82rem' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 6 }}>
+          {Object.entries(vatGroups).sort(([a], [b]) => Number(a) - Number(b)).map(([rate, g]) => (
+            <span key={rate} style={{ color: 'var(--text-muted)' }}>
+              Základ {rate}%: <strong>{formatKc(g.base)}</strong>, DPH: <strong>{formatKc(g.vat)}</strong>
+            </span>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 20, fontWeight: 600 }}>
+          <span>Základ celkem: {formatKc(totalBase)}</span>
+          <span>DPH celkem: {formatKc(totalVat)}</span>
+          <span style={{ color: 'var(--accent)' }}>K úhradě: {formatKc(totalWithVat)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Invoice Lines Editor (for form) ─────────────────────────────────────────────
+
+interface LineItem {
+  description: string;
+  quantity: string;
+  unit: string;
+  unitPrice: string;
+  vatRate: string;
+}
+
+function emptyLine(): LineItem {
+  return { description: '', quantity: '1', unit: 'ks', unitPrice: '', vatRate: '21' };
+}
+
+function calcLine(l: LineItem) {
+  const qty = parseFloat(l.quantity) || 0;
+  const price = parseFloat(l.unitPrice) || 0;
+  const base = Math.round(qty * price * 100) / 100;
+  const rate = parseInt(l.vatRate) || 0;
+  const vat = Math.round(base * rate / 100 * 100) / 100;
+  return { base, vat, total: base + vat };
+}
+
+function InvoiceLinesEditor({ lines, onChange }: {
+  lines: LineItem[];
+  onChange: (lines: LineItem[]) => void;
+}) {
+  const update = (idx: number, key: keyof LineItem, value: string) => {
+    const next = [...lines];
+    next[idx] = { ...next[idx], [key]: value };
+    onChange(next);
+  };
+  const remove = (idx: number) => onChange(lines.filter((_, i) => i !== idx));
+  const add = () => onChange([...lines, emptyLine()]);
+
+  const totals = lines.reduce((acc, l) => {
+    const c = calcLine(l);
+    return { base: acc.base + c.base, vat: acc.vat + c.vat, total: acc.total + c.total };
+  }, { base: 0, vat: 0, total: 0 });
+
+  const cellStyle: React.CSSProperties = {
+    padding: '4px 4px', fontSize: '0.82rem',
+  };
+  const inputSm: React.CSSProperties = {
+    width: '100%', padding: '5px 6px', borderRadius: 4,
+    border: '1px solid var(--border)', background: 'var(--surface-2, var(--surface))',
+    color: 'var(--text)', fontSize: '0.82rem', boxSizing: 'border-box',
+  };
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+        <label className="form-label" style={{ margin: 0, fontWeight: 600 }}>Položky faktury</label>
+        <button type="button" onClick={add}
+          style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer', color: 'var(--accent)', fontSize: '0.78rem', padding: '2px 10px', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <Plus size={12} /> Přidat řádek
+        </button>
+      </div>
+
+      {lines.length > 0 && (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                <th style={{ ...cellStyle, textAlign: 'left', minWidth: 140 }}>Popis</th>
+                <th style={{ ...cellStyle, textAlign: 'right', width: 55 }}>Množ.</th>
+                <th style={{ ...cellStyle, textAlign: 'left', width: 50 }}>Jedn.</th>
+                <th style={{ ...cellStyle, textAlign: 'right', width: 80 }}>J.cena</th>
+                <th style={{ ...cellStyle, textAlign: 'right', width: 60 }}>DPH %</th>
+                <th style={{ ...cellStyle, textAlign: 'right', width: 70 }}>Základ</th>
+                <th style={{ ...cellStyle, textAlign: 'right', width: 70 }}>DPH</th>
+                <th style={{ ...cellStyle, textAlign: 'right', width: 70 }}>Celkem</th>
+                <th style={{ ...cellStyle, width: 28 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((l, i) => {
+                const c = calcLine(l);
+                return (
+                  <tr key={i}>
+                    <td style={cellStyle}>
+                      <input value={l.description} onChange={e => update(i, 'description', e.target.value)} style={inputSm} placeholder="Popis položky" />
+                    </td>
+                    <td style={cellStyle}>
+                      <input type="number" value={l.quantity} onChange={e => update(i, 'quantity', e.target.value)} style={{ ...inputSm, textAlign: 'right' }} />
+                    </td>
+                    <td style={cellStyle}>
+                      <input value={l.unit} onChange={e => update(i, 'unit', e.target.value)} style={{ ...inputSm, width: 50 }} />
+                    </td>
+                    <td style={cellStyle}>
+                      <input type="number" value={l.unitPrice} onChange={e => update(i, 'unitPrice', e.target.value)} style={{ ...inputSm, textAlign: 'right' }} placeholder="0" />
+                    </td>
+                    <td style={cellStyle}>
+                      <select value={l.vatRate} onChange={e => update(i, 'vatRate', e.target.value)} style={{ ...inputSm, textAlign: 'right' }}>
+                        <option value="0">0%</option>
+                        <option value="10">10%</option>
+                        <option value="12">12%</option>
+                        <option value="15">15%</option>
+                        <option value="21">21%</option>
+                      </select>
+                    </td>
+                    <td style={{ ...cellStyle, textAlign: 'right', fontSize: '0.82rem', fontVariantNumeric: 'tabular-nums' }}>{formatKc(c.base)}</td>
+                    <td style={{ ...cellStyle, textAlign: 'right', fontSize: '0.82rem', fontVariantNumeric: 'tabular-nums' }}>{formatKc(c.vat)}</td>
+                    <td style={{ ...cellStyle, textAlign: 'right', fontSize: '0.82rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{formatKc(c.total)}</td>
+                    <td style={cellStyle}>
+                      <button type="button" onClick={() => remove(i)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', padding: 2 }}>
+                        <Trash2 size={13} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {lines.length > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 16, marginTop: 6, fontSize: '0.84rem', fontWeight: 600 }}>
+          <span>Základ: {formatKc(totals.base)}</span>
+          <span>DPH: {formatKc(totals.vat)}</span>
+          <span style={{ color: 'var(--accent)' }}>Celkem: {formatKc(totals.total)}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Invoice Detail Modal ───────────────────────────────────────────────────────
 
 function InvoiceDetailModal({ invoice, onClose, onEdit, onMarkPaid, onExport, onDelete }: {
@@ -1098,6 +1311,12 @@ function InvoiceDetailModal({ invoice, onClose, onEdit, onMarkPaid, onExport, on
           <div style={{ fontSize: '0.9rem' }}>{invoice.description}</div>
         </div>
       )}
+
+      {/* Invoice lines */}
+      {invoice.lines && invoice.lines.length > 0 && (
+        <InvoiceLinesDetail lines={invoice.lines} />
+      )}
+
       {invoice.note && (
         <div style={{ marginTop: 10 }}>
           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 4 }}>Poznámka</div>
@@ -1135,6 +1354,21 @@ function InvoiceForm({ invoice, transactions, onClose }: {
   const isEdit = !!invoice;
   const [showContactPicker, setShowContactPicker] = useState<'supplier' | 'buyer' | null>(null);
 
+  // Initialize lines from existing invoice
+  const initLines = (): LineItem[] => {
+    if (invoice?.lines && invoice.lines.length > 0) {
+      return invoice.lines.map(l => ({
+        description: l.description || '',
+        quantity: String(l.quantity ?? 1),
+        unit: l.unit || 'ks',
+        unitPrice: String(l.unitPrice ?? 0),
+        vatRate: String(l.vatRate ?? 21),
+      }));
+    }
+    return [];
+  };
+  const [lines, setLines] = useState<LineItem[]>(initLines);
+
   const [form, setForm] = useState({
     number: invoice?.number || `FAK-${new Date().getFullYear()}-`,
     type: invoice?.type || 'received',
@@ -1161,6 +1395,24 @@ function InvoiceForm({ invoice, transactions, onClose }: {
 
   const set = (key: string, value: unknown) => setForm(f => ({ ...f, [key]: value }));
 
+  // When lines change, auto-sync totals
+  const handleLinesChange = (newLines: LineItem[]) => {
+    setLines(newLines);
+    if (newLines.length > 0) {
+      const totals = newLines.reduce((acc, l) => {
+        const c = calcLine(l);
+        return { base: acc.base + c.base, vat: acc.vat + c.vat, total: acc.total + c.total };
+      }, { base: 0, vat: 0, total: 0 });
+      setForm(f => ({
+        ...f,
+        amountBase: String(totals.base),
+        vatAmount: String(totals.vat),
+        amountTotal: String(totals.total),
+        vatRate: '0', // mixed rates
+      }));
+    }
+  };
+
   const recalcVat = (base: string, rate: string) => {
     const b = parseFloat(base) || 0;
     const r = parseInt(rate) || 0;
@@ -1171,7 +1423,7 @@ function InvoiceForm({ invoice, transactions, onClose }: {
   const validate = () => {
     const errs: Record<string, string> = {};
     if (!form.number.trim()) errs.number = 'Povinné';
-    if (!form.amountBase || Number(form.amountBase) <= 0) errs.amountBase = 'Zadejte částku';
+    if ((!form.amountBase || Number(form.amountBase) <= 0) && lines.length === 0) errs.amountBase = 'Zadejte částku nebo přidejte položky';
     if (!form.issueDate) errs.issueDate = 'Povinné';
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -1200,6 +1452,14 @@ function InvoiceForm({ invoice, transactions, onClose }: {
       transactionId: form.transactionId || undefined,
       note: form.note || undefined,
       isPaid: form.isPaid,
+      lines: lines.length > 0 ? lines.map(l => {
+        const c = calcLine(l);
+        return {
+          description: l.description, quantity: parseFloat(l.quantity) || 1,
+          unit: l.unit, unitPrice: parseFloat(l.unitPrice) || 0,
+          lineTotal: c.base, vatRate: parseInt(l.vatRate) || 0, vatAmount: c.vat,
+        };
+      }) : undefined,
     };
     if (isEdit) {
       updateMut.mutate({ id: invoice!.id, dto }, { onSuccess: () => onClose() });
@@ -1293,6 +1553,9 @@ function InvoiceForm({ invoice, transactions, onClose }: {
         <label className="form-label">Popis</label>
         <input value={form.description} onChange={e => set('description', e.target.value)} style={inputStyle()} placeholder="Co je fakturováno..." />
       </div>
+
+      {/* Row 4.5: Invoice lines */}
+      <InvoiceLinesEditor lines={lines} onChange={handleLinesChange} />
 
       {/* Row 5: amounts */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>

@@ -351,6 +351,7 @@ model Invoice {
   transactionId   String?
   supplierId      String?
   buyerId         String?
+  lines           Json?
   isdocXml        String?       @db.Text
   note            String?
   deletedAt       DateTime?
