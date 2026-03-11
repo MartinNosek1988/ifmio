@@ -10,6 +10,6 @@ import { PrismaModule } from '../prisma/prisma.module';
   imports: [PrismaModule],
   providers: [FinanceService, InvoicesService, PrescriptionCalcService],
   controllers: [FinanceController, PrescriptionCalcController],
-  exports: [FinanceService],
+  exports: [FinanceService, InvoicesService],
 })
 export class FinanceModule {}

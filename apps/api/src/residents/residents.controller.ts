@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { ResidentsService } from './residents.service';
+import { InvoicesService } from '../finance/invoices.service';
 import { CreateResidentDto } from './dto/create-resident.dto';
 import { UpdateResidentDto } from './dto/update-resident.dto';
 import { QueryResidentDto } from './dto/query-resident.dto';
@@ -22,7 +23,10 @@ interface AuthUser {
 @ApiBearerAuth()
 @Controller('residents')
 export class ResidentsController {
-  constructor(private service: ResidentsService) {}
+  constructor(
+    private service: ResidentsService,
+    private invoicesService: InvoicesService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Seznam obyvatel (tenant-scoped, pagination)' })
@@ -34,6 +38,12 @@ export class ResidentsController {
   @ApiOperation({ summary: 'Seznam dlužníků' })
   findDebtors(@CurrentUser() user: AuthUser) {
     return this.service.findDebtors(user);
+  }
+
+  @Get(':id/invoices')
+  @ApiOperation({ summary: 'Faktury kontaktu' })
+  findInvoices(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.invoicesService.findForResident(user, id);
   }
 
   @Get(':id')

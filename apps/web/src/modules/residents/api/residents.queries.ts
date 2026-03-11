@@ -52,6 +52,14 @@ export function useUpdateResident() {
   });
 }
 
+export function useResidentInvoices(id: string) {
+  return useQuery({
+    queryKey: ['residents', 'invoices', id],
+    queryFn: () => residentsApi.invoices(id),
+    enabled: !!id,
+  });
+}
+
 export function useDeleteResident() {
   const qc = useQueryClient();
   return useMutation({

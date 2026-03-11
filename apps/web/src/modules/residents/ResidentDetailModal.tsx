@@ -1,7 +1,10 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Modal, Badge, Button } from '../../shared/components';
 import type { ApiResident } from './api/residents.api';
+import { useResidentInvoices } from './api/residents.queries';
 import ResidentForm from './ResidentForm';
+import { formatKc, formatCzDate } from '../../shared/utils/format';
 
 interface Props {
   resident: ApiResident;
@@ -10,11 +13,12 @@ interface Props {
   onDelete?: () => void;
 }
 
-type DetailTab = 'prehled' | 'komunikace';
+type DetailTab = 'prehled' | 'komunikace' | 'faktury';
 
 const TABS: { key: DetailTab; label: string }[] = [
   { key: 'prehled', label: 'Přehled' },
   { key: 'komunikace', label: 'Komunikace' },
+  { key: 'faktury', label: 'Faktury' },
 ];
 
 const ROLE_LABELS: Record<string, string> = {
@@ -27,6 +31,8 @@ const ROLE_LABELS: Record<string, string> = {
 export default function ResidentDetailModal({ resident, onClose, onUpdated, onDelete }: Props) {
   const [tab, setTab] = useState<DetailTab>('prehled');
   const [showEdit, setShowEdit] = useState(false);
+  const navigate = useNavigate();
+  const { data: invoices = [] } = useResidentInvoices(resident.id);
 
   const fullName = `${resident.firstName} ${resident.lastName}`;
   const initials = [resident.firstName, resident.lastName]
@@ -85,6 +91,11 @@ export default function ResidentDetailModal({ resident, onClose, onUpdated, onDe
               <button key={t.key} className={`tab-btn${tab === t.key ? ' active' : ''}`}
                 onClick={() => setTab(t.key)}>
                 {t.label}
+                {t.key === 'faktury' && invoices.length > 0 && (
+                  <span style={{ marginLeft: 4, fontSize: '0.72rem', background: 'var(--primary)', color: '#fff', borderRadius: 10, padding: '1px 6px' }}>
+                    {invoices.length}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -139,6 +150,53 @@ export default function ResidentDetailModal({ resident, onClose, onUpdated, onDe
               )}
             </div>
             <EmptyTab text="Žádná komunikace" sub="Historie komunikace bude zobrazena zde" />
+          </div>
+        )}
+
+        {/* TAB: FAKTURY */}
+        {tab === 'faktury' && (
+          <div>
+            {invoices.length === 0 ? (
+              <EmptyTab text="Žádné faktury" sub="Faktury tohoto kontaktu budou zobrazeny zde" />
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                {invoices.map((inv: any) => {
+                  const overdue = !inv.isPaid && inv.dueDate && inv.dueDate < new Date().toISOString().slice(0, 10);
+                  return (
+                    <div key={inv.id}
+                      onClick={() => {
+                        onClose();
+                        navigate('/finance?tab=doklady');
+                      }}
+                      style={{
+                        display: 'grid', gridTemplateColumns: '1fr 1fr auto auto',
+                        gap: 12, padding: '10px 12px', borderBottom: '1px solid var(--border)',
+                        cursor: 'pointer', borderRadius: 4, alignItems: 'center',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-2, rgba(255,255,255,0.05))')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: '0.88rem', fontFamily: 'monospace' }}>{inv.number}</div>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                          {inv.type === 'received' ? 'Přijatá' : inv.type === 'issued' ? 'Vydaná' : inv.type === 'proforma' ? 'Záloha' : 'Dobropis'}
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                        {formatCzDate(inv.issueDate)}
+                        {inv.dueDate && <span> · Spl. {formatCzDate(inv.dueDate)}</span>}
+                      </div>
+                      <div style={{ fontWeight: 600, fontSize: '0.9rem', textAlign: 'right' }}>
+                        {formatKc(inv.amountTotal)}
+                      </div>
+                      <Badge variant={inv.isPaid ? 'green' : overdue ? 'red' : 'yellow'}>
+                        {inv.isPaid ? 'Uhrazeno' : overdue ? 'Po splatnosti' : 'Čeká'}
+                      </Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </Modal>

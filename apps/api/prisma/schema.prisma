@@ -235,12 +235,14 @@ model Resident {
   tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   property         Property?         @relation(fields: [propertyId], references: [id])
   unit             Unit?             @relation(fields: [unitId], references: [id])
-  occupancies      Occupancy[]
-  prescriptions    Prescription[]
-  bankTransactions BankTransaction[]
-  reminders        Reminder[]
-  helpdeskTickets  HelpdeskTicket[]
-  leaseAgreements  LeaseAgreement[]
+  occupancies        Occupancy[]
+  prescriptions      Prescription[]
+  bankTransactions   BankTransaction[]
+  reminders          Reminder[]
+  helpdeskTickets    HelpdeskTicket[]
+  leaseAgreements    LeaseAgreement[]
+  supplierInvoices   Invoice[] @relation("InvoiceSupplier")
+  buyerInvoices      Invoice[] @relation("InvoiceBuyer")
 
   @@index([tenantId])
   @@index([tenantId, isActive])
@@ -347,6 +349,8 @@ model Invoice {
   isPaid          Boolean       @default(false)
   variableSymbol  String?
   transactionId   String?
+  supplierId      String?
+  buyerId         String?
   isdocXml        String?       @db.Text
   note            String?
   deletedAt       DateTime?
@@ -356,10 +360,14 @@ model Invoice {
   tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   property        Property?     @relation(fields: [propertyId], references: [id])
   transaction     BankTransaction? @relation(fields: [transactionId], references: [id])
+  supplier        Resident?     @relation("InvoiceSupplier", fields: [supplierId], references: [id])
+  buyer           Resident?     @relation("InvoiceBuyer", fields: [buyerId], references: [id])
 
   @@index([tenantId])
   @@index([tenantId, type])
   @@index([tenantId, isPaid])
+  @@index([supplierId])
+  @@index([buyerId])
   @@map("invoices")
 }
 

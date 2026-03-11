@@ -55,6 +55,9 @@ export const residentsApi = {
   remove: (id: string) =>
     apiClient.delete(`/residents/${id}`),
 
+  invoices: (id: string) =>
+    apiClient.get<any[]>(`/residents/${id}/invoices`).then((r) => r.data),
+
   bulkDeactivate: (ids: string[]) =>
     apiClient.post<{ affected: number }>('/residents/bulk/deactivate', { ids }).then((r) => r.data),
 

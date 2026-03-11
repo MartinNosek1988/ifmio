@@ -113,6 +113,8 @@ export class InvoicesService {
         isPaid: dto.isPaid || false,
         variableSymbol: dto.variableSymbol || null,
         transactionId: dto.transactionId || null,
+        supplierId: dto.supplierId || null,
+        buyerId: dto.buyerId || null,
         isdocXml: dto.isdocXml || null,
         note: dto.note || null,
       },
@@ -156,6 +158,8 @@ export class InvoicesService {
     if (dto.isPaid !== undefined) data.isPaid = dto.isPaid;
     if (dto.variableSymbol !== undefined) data.variableSymbol = dto.variableSymbol;
     if (dto.transactionId !== undefined) data.transactionId = dto.transactionId || null;
+    if (dto.supplierId !== undefined) data.supplierId = dto.supplierId || null;
+    if (dto.buyerId !== undefined) data.buyerId = dto.buyerId || null;
     if (dto.note !== undefined) data.note = dto.note;
 
     const invoice = await this.prisma.invoice.update({
@@ -199,7 +203,87 @@ export class InvoicesService {
   async importIsdoc(user: AuthUser, xmlContent: string) {
     // Parse ISDOC XML to extract invoice data
     const parsed = this.parseIsdocXml(xmlContent);
-    return this.create(user, { ...parsed, isdocXml: xmlContent });
+
+    // Auto-create or find supplier in residents
+    const supplierIco = parsed.supplierIco as string;
+    const supplierName = parsed.supplierName as string;
+    let supplierId: string | null = null;
+
+    if (supplierIco || supplierName) {
+      // Try to find existing resident by IČO first, then by name
+      let existing = supplierIco
+        ? await this.prisma.resident.findFirst({
+            where: { tenantId: user.tenantId, email: supplierIco, isActive: true },
+          })
+        : null;
+
+      // Also search by lastName matching supplierName
+      if (!existing && supplierName) {
+        existing = await this.prisma.resident.findFirst({
+          where: {
+            tenantId: user.tenantId,
+            isActive: true,
+            OR: [
+              { lastName: { equals: supplierName, mode: 'insensitive' } },
+              { firstName: supplierName.split(' ')[0] || '', lastName: supplierName.split(' ').slice(1).join(' ') || supplierName },
+            ],
+          },
+        });
+      }
+
+      if (existing) {
+        supplierId = existing.id;
+      } else {
+        // Create new resident as supplier contact
+        const nameParts = supplierName ? supplierName.split(' ') : ['Dodavatel'];
+        const created = await this.prisma.resident.create({
+          data: {
+            tenantId: user.tenantId,
+            firstName: nameParts[0] || '',
+            lastName: nameParts.slice(1).join(' ') || nameParts[0] || 'ISDOC',
+            email: supplierIco || undefined, // store IČO in email temporarily for lookups
+            role: 'contact',
+            isActive: true,
+          },
+        });
+        supplierId = created.id;
+      }
+    }
+
+    // Auto-create or find buyer
+    const buyerIco = parsed.buyerIco as string;
+    const buyerName = parsed.buyerName as string;
+    let buyerId: string | null = null;
+
+    if (buyerIco || buyerName) {
+      let existingBuyer = buyerIco
+        ? await this.prisma.resident.findFirst({
+            where: { tenantId: user.tenantId, email: buyerIco, isActive: true },
+          })
+        : null;
+
+      if (!existingBuyer && buyerName) {
+        existingBuyer = await this.prisma.resident.findFirst({
+          where: {
+            tenantId: user.tenantId,
+            isActive: true,
+            lastName: { equals: buyerName, mode: 'insensitive' },
+          },
+        });
+      }
+
+      if (existingBuyer) {
+        buyerId = existingBuyer.id;
+      }
+      // Don't auto-create buyer — usually it's us (the tenant)
+    }
+
+    return this.create(user, {
+      ...parsed,
+      isdocXml: xmlContent,
+      supplierId,
+      buyerId,
+    });
   }
 
   async exportIsdoc(user: AuthUser, id: string): Promise<string> {
@@ -262,6 +346,49 @@ export class InvoicesService {
       dueDate: get('DueDate') || '',
       variableSymbol: get('VariableSymbol') || get('ID') || '',
     };
+  }
+
+  async findForResident(user: AuthUser, residentId: string) {
+    // Get resident name for fallback matching
+    const resident = await this.prisma.resident.findFirst({
+      where: { id: residentId, tenantId: user.tenantId },
+    });
+    if (!resident) throw new NotFoundException('Kontakt nenalezen');
+
+    const fullName = `${resident.firstName} ${resident.lastName}`.trim();
+
+    const invoices = await this.prisma.invoice.findMany({
+      where: {
+        tenantId: user.tenantId,
+        deletedAt: null,
+        OR: [
+          { supplierId: residentId },
+          { buyerId: residentId },
+          ...(fullName ? [
+            { supplierName: { equals: fullName, mode: 'insensitive' as const } },
+            { buyerName: { equals: fullName, mode: 'insensitive' as const } },
+          ] : []),
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      include: {
+        property: { select: { id: true, name: true } },
+      },
+    });
+
+    return invoices.map(i => ({
+      ...i,
+      amountBase: Number(i.amountBase),
+      vatAmount: Number(i.vatAmount),
+      amountTotal: Number(i.amountTotal),
+      issueDate: i.issueDate.toISOString(),
+      duzp: i.duzp?.toISOString() ?? null,
+      dueDate: i.dueDate?.toISOString() ?? null,
+      paymentDate: i.paymentDate?.toISOString() ?? null,
+      createdAt: i.createdAt.toISOString(),
+      updatedAt: i.updatedAt.toISOString(),
+    }));
   }
 
   private generateIsdocXml(invoice: any): string {
