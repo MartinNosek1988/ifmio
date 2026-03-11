@@ -4,12 +4,7 @@ import type { FastifyReply } from 'fastify';
 import { ReportsService } from './reports.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-
-interface AuthUser {
-  id: string;
-  tenantId: string;
-  role: string;
-}
+import type { AuthUser } from '@ifmio/shared-types';
 
 @ApiTags('Reports')
 @ApiBearerAuth()

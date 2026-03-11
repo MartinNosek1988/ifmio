@@ -10,6 +10,7 @@ import { Roles }         from '../common/decorators/roles.decorator'
 import { CurrentUser }   from '../common/decorators/current-user.decorator'
 import { AuditAction }   from '../common/decorators/audit.decorator'
 import { ROLES_MANAGE }  from '../common/constants/roles.constants'
+import { UpdateSettingsDto, InviteUserDto } from './dto/admin.dto'
 import type { AuthUser } from '@ifmio/shared-types'
 
 @ApiTags('Admin')
@@ -44,7 +45,7 @@ export class AdminController {
   @Roles(...ROLES_MANAGE)
   @AuditAction('TenantSettings', 'UPDATE')
   @ApiOperation({ summary: 'Aktualizovat nastavení' })
-  updateSettings(@CurrentUser() user: AuthUser, @Body() dto: any) {
+  updateSettings(@CurrentUser() user: AuthUser, @Body() dto: UpdateSettingsDto) {
     return this.service.updateSettings(user, dto)
   }
 
@@ -59,7 +60,7 @@ export class AdminController {
   @Roles(...ROLES_MANAGE)
   @AuditAction('User', 'INVITE')
   @ApiOperation({ summary: 'Pozvat uživatele' })
-  inviteUser(@CurrentUser() user: AuthUser, @Body() dto: any) {
+  inviteUser(@CurrentUser() user: AuthUser, @Body() dto: InviteUserDto) {
     return this.service.inviteUser(user, dto)
   }
 

@@ -1,8 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { CalendarEventDto, CalendarStatsDto } from './calendar.dto'
-
-interface AuthUser { id: string; tenantId: string; role: string }
+import type { AuthUser } from '@ifmio/shared-types';
 
 function serializeEvent(item: any): CalendarEventDto {
   return {

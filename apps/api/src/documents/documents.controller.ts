@@ -10,6 +10,7 @@ import { Roles }            from '../common/decorators/roles.decorator'
 import { CurrentUser }      from '../common/decorators/current-user.decorator'
 import { AuditAction }      from '../common/decorators/audit.decorator'
 import { ROLES_WRITE, ROLES_MANAGE } from '../common/constants/roles.constants'
+import { DocumentListQueryDto } from './dto/documents.dto'
 import type { AuthUser }    from '@ifmio/shared-types'
 import * as fs   from 'fs'
 import * as path from 'path'
@@ -24,7 +25,7 @@ export class DocumentsController {
 
   @Get()
   @ApiOperation({ summary: 'Seznam dokumentů' })
-  list(@CurrentUser() user: AuthUser, @Query() query: any) {
+  list(@CurrentUser() user: AuthUser, @Query() query: DocumentListQueryDto) {
     return this.service.list(user, query)
   }
 

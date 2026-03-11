@@ -3,12 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
 import { CreateOccupancyDto } from './dto/create-occupancy.dto';
-
-interface AuthUser {
-  id: string;
-  tenantId: string;
-  role: string;
-}
+import type { AuthUser } from '@ifmio/shared-types';
 
 @Injectable()
 export class UnitsService {

@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
+import type { HelpdeskListQueryDto, CreateTicketDto, UpdateTicketDto, CreateItemDto, CreateProtocolDto } from './dto/helpdesk.dto'
 import type { AuthUser } from '@ifmio/shared-types'
 
 @Injectable()
@@ -15,13 +16,13 @@ export class HelpdeskService {
     return (last?.number ?? 0) + 1
   }
 
-  async listTickets(user: AuthUser, query: any) {
+  async listTickets(user: AuthUser, query: HelpdeskListQueryDto) {
     const { status, priority, propertyId, search } = query
-    const page = Math.max(1, parseInt(query.page, 10) || 1)
-    const limit = Math.min(100, Math.max(1, parseInt(query.limit, 10) || 20))
+    const page = Math.max(1, Number(query.page) || 1)
+    const limit = Math.min(100, Math.max(1, Number(query.limit) || 20))
     const skip = (page - 1) * limit
 
-    const where: any = {
+    const where: Record<string, unknown> = {
       tenantId: user.tenantId,
       ...(status     ? { status }     : {}),
       ...(priority   ? { priority }   : {}),
@@ -90,7 +91,7 @@ export class HelpdeskService {
     }
   }
 
-  async createTicket(user: AuthUser, dto: any) {
+  async createTicket(user: AuthUser, dto: CreateTicketDto) {
     const number = await this.nextTicketNumber(user.tenantId)
     const ticket = await this.prisma.helpdeskTicket.create({
       data: {
@@ -98,8 +99,8 @@ export class HelpdeskService {
         number,
         title:       dto.title,
         description: dto.description,
-        category:    dto.category ?? 'general',
-        priority:    dto.priority ?? 'medium',
+        category:    (dto.category ?? 'general') as any,
+        priority:    (dto.priority ?? 'medium') as any,
         propertyId:  dto.propertyId ?? null,
         unitId:      dto.unitId    ?? null,
         residentId:  dto.residentId ?? null,
@@ -108,9 +109,9 @@ export class HelpdeskService {
     return { ...ticket, createdAt: ticket.createdAt.toISOString(), updatedAt: ticket.updatedAt.toISOString() }
   }
 
-  async updateTicket(user: AuthUser, id: string, dto: any) {
+  async updateTicket(user: AuthUser, id: string, dto: UpdateTicketDto) {
     await this.findOne(user, id)
-    const data: any = { ...dto }
+    const data: Record<string, unknown> = { ...dto }
     if (dto.status === 'resolved' && !dto.resolvedAt) {
       data.resolvedAt = new Date()
     }
@@ -126,7 +127,7 @@ export class HelpdeskService {
   }
 
   // Items
-  async addItem(user: AuthUser, ticketId: string, dto: any) {
+  async addItem(user: AuthUser, ticketId: string, dto: CreateItemDto) {
     await this.findOne(user, ticketId)
     const totalPrice = (dto.quantity ?? 1) * (dto.unitPrice ?? 0)
     return this.prisma.helpdeskItem.create({
@@ -147,7 +148,7 @@ export class HelpdeskService {
   }
 
   // Protocol
-  async createOrUpdateProtocol(user: AuthUser, ticketId: string, dto: any) {
+  async createOrUpdateProtocol(user: AuthUser, ticketId: string, dto: CreateProtocolDto) {
     await this.findOne(user, ticketId)
 
     const ticket = await this.prisma.helpdeskTicket.findUnique({
@@ -157,10 +158,11 @@ export class HelpdeskService {
 
     const number = `PROT-${String(ticket!.number).padStart(4, '0')}`
 
+    const data: Record<string, unknown> = { ...dto }
     return this.prisma.helpdeskProtocol.upsert({
       where:  { ticketId },
-      create: { ticketId, number, ...dto },
-      update: dto,
+      create: { ticketId, number, ...data } as any,
+      update: data as any,
     })
   }
 

@@ -2,13 +2,7 @@ import { Controller, Get, Post, Patch, Param, Body, Query } from '@nestjs/common
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { SuperAdminService } from './super-admin.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-
-interface AuthUser {
-  id: string;
-  tenantId: string;
-  role: string;
-  email: string;
-}
+import type { AuthUser } from '@ifmio/shared-types';
 
 @ApiTags('Super Admin')
 @ApiBearerAuth()

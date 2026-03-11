@@ -1,20 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-
-interface AuthUser {
-  id: string;
-  tenantId: string;
-  role: string;
-}
+import type { CreateInvoiceDto, UpdateInvoiceDto, InvoiceListQueryDto, MarkPaidDto } from './dto/invoice.dto';
+import type { AuthUser } from '@ifmio/shared-types';
 
 @Injectable()
 export class InvoicesService {
   constructor(private prisma: PrismaService) {}
 
-  async list(user: AuthUser, query: any) {
+  async list(user: AuthUser, query: InvoiceListQueryDto) {
     const { type, isPaid, search } = query;
-    const page = Math.max(1, parseInt(query.page, 10) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(query.limit, 10) || 50));
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(query.limit) || 50));
     const skip = (page - 1) * limit;
 
     const where: any = {
@@ -88,13 +84,13 @@ export class InvoicesService {
     };
   }
 
-  async create(user: AuthUser, dto: any) {
+  async create(user: AuthUser, dto: CreateInvoiceDto & { supplierId?: string | null; buyerId?: string | null; isdocXml?: string | null }) {
     const invoice = await this.prisma.invoice.create({
       data: {
         tenantId: user.tenantId,
         propertyId: dto.propertyId || null,
         number: dto.number,
-        type: dto.type || 'received',
+        type: (dto.type || 'received') as any,
         supplierName: dto.supplierName || null,
         supplierIco: dto.supplierIco || null,
         supplierDic: dto.supplierDic || null,
@@ -116,7 +112,7 @@ export class InvoicesService {
         transactionId: dto.transactionId || null,
         supplierId: dto.supplierId || null,
         buyerId: dto.buyerId || null,
-        lines: dto.lines ?? undefined,
+        lines: dto.lines ? JSON.parse(JSON.stringify(dto.lines)) : undefined,
         isdocXml: dto.isdocXml || null,
         note: dto.note || null,
       },
@@ -133,13 +129,13 @@ export class InvoicesService {
     };
   }
 
-  async update(user: AuthUser, id: string, dto: any) {
+  async update(user: AuthUser, id: string, dto: UpdateInvoiceDto) {
     const existing = await this.prisma.invoice.findFirst({
       where: { id, tenantId: user.tenantId, deletedAt: null },
     });
     if (!existing) throw new NotFoundException('Doklad nenalezen');
 
-    const data: any = {};
+    const data: Record<string, unknown> = {};
     if (dto.number !== undefined) data.number = dto.number;
     if (dto.type !== undefined) data.type = dto.type;
     if (dto.supplierName !== undefined) data.supplierName = dto.supplierName;
@@ -192,7 +188,7 @@ export class InvoicesService {
     });
   }
 
-  async markPaid(user: AuthUser, id: string, dto?: { paidAt?: string; paymentMethod?: string; paidAmount?: number; note?: string }) {
+  async markPaid(user: AuthUser, id: string, dto?: MarkPaidDto) {
     const existing = await this.prisma.invoice.findFirst({
       where: { id, tenantId: user.tenantId, deletedAt: null },
     });
@@ -381,10 +377,10 @@ export class InvoicesService {
     }
 
     return this.create(user, {
-      ...parsed,
+      ...(parsed as unknown as CreateInvoiceDto),
       isdocXml: xmlContent,
-      supplierId,
-      buyerId,
+      supplierId: supplierId ?? undefined,
+      buyerId: buyerId ?? undefined,
     });
   }
 

@@ -9,6 +9,7 @@ import { Roles }            from '../common/decorators/roles.decorator'
 import { CurrentUser }      from '../common/decorators/current-user.decorator'
 import { AuditAction }      from '../common/decorators/audit.decorator'
 import { ROLES_WRITE, ROLES_MANAGE } from '../common/constants/roles.constants'
+import { ReminderListQueryDto, CreateReminderDto, BulkCreateRemindersDto, UpdateTemplateDto } from './dto/reminders.dto'
 import type { AuthUser }    from '@ifmio/shared-types'
 
 @ApiTags('Reminders')
@@ -39,7 +40,7 @@ export class RemindersController {
   updateTemplate(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
-    @Body() dto: any,
+    @Body() dto: UpdateTemplateDto,
   ) {
     return this.service.updateTemplate(user, id, dto)
   }
@@ -54,7 +55,7 @@ export class RemindersController {
   // Reminders
   @Get()
   @ApiOperation({ summary: 'Seznam upomínek' })
-  listReminders(@CurrentUser() user: AuthUser, @Query() query: any) {
+  listReminders(@CurrentUser() user: AuthUser, @Query() query: ReminderListQueryDto) {
     return this.service.listReminders(user, query)
   }
 
@@ -62,7 +63,7 @@ export class RemindersController {
   @Roles(...ROLES_WRITE)
   @AuditAction('Reminder', 'CREATE')
   @ApiOperation({ summary: 'Vytvořit upomínku' })
-  createReminder(@CurrentUser() user: AuthUser, @Body() dto: any) {
+  createReminder(@CurrentUser() user: AuthUser, @Body() dto: CreateReminderDto) {
     return this.service.createReminder(user, dto)
   }
 
@@ -70,7 +71,7 @@ export class RemindersController {
   @Roles(...ROLES_WRITE)
   @AuditAction('Reminder', 'BULK_CREATE')
   @ApiOperation({ summary: 'Hromadné vytvoření upomínek' })
-  bulkCreate(@CurrentUser() user: AuthUser, @Body() dto: any) {
+  bulkCreate(@CurrentUser() user: AuthUser, @Body() dto: BulkCreateRemindersDto) {
     return this.service.bulkCreateReminders(user, dto)
   }
 

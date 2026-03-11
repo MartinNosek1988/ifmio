@@ -9,6 +9,7 @@ import { Roles }           from '../common/decorators/roles.decorator'
 import { CurrentUser }     from '../common/decorators/current-user.decorator'
 import { AuditAction }     from '../common/decorators/audit.decorator'
 import { ROLES_WRITE }     from '../common/constants/roles.constants'
+import { HelpdeskListQueryDto, CreateTicketDto, UpdateTicketDto, CreateItemDto, CreateProtocolDto } from './dto/helpdesk.dto'
 import type { AuthUser }   from '@ifmio/shared-types'
 
 @ApiTags('Helpdesk')
@@ -20,7 +21,7 @@ export class HelpdeskController {
 
   @Get()
   @ApiOperation({ summary: 'Seznam ticketů' })
-  listTickets(@CurrentUser() user: AuthUser, @Query() query: any) {
+  listTickets(@CurrentUser() user: AuthUser, @Query() query: HelpdeskListQueryDto) {
     return this.service.listTickets(user, query)
   }
 
@@ -34,7 +35,7 @@ export class HelpdeskController {
   @Roles(...ROLES_WRITE)
   @AuditAction('HelpdeskTicket', 'CREATE')
   @ApiOperation({ summary: 'Vytvořit ticket' })
-  createTicket(@CurrentUser() user: AuthUser, @Body() dto: any) {
+  createTicket(@CurrentUser() user: AuthUser, @Body() dto: CreateTicketDto) {
     return this.service.createTicket(user, dto)
   }
 
@@ -45,7 +46,7 @@ export class HelpdeskController {
   updateTicket(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
-    @Body() dto: any,
+    @Body() dto: UpdateTicketDto,
   ) {
     return this.service.updateTicket(user, id, dto)
   }
@@ -69,7 +70,7 @@ export class HelpdeskController {
   addItem(
     @CurrentUser() user: AuthUser,
     @Param('ticketId') ticketId: string,
-    @Body() dto: any,
+    @Body() dto: CreateItemDto,
   ) {
     return this.service.addItem(user, ticketId, dto)
   }
@@ -94,7 +95,7 @@ export class HelpdeskController {
   createProtocol(
     @CurrentUser() user: AuthUser,
     @Param('ticketId') ticketId: string,
-    @Body() dto: any,
+    @Body() dto: CreateProtocolDto,
   ) {
     return this.service.createOrUpdateProtocol(user, ticketId, dto)
   }

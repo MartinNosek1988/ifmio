@@ -30,7 +30,7 @@ export class AdminService {
     return settings
   }
 
-  async updateSettings(user: AuthUser, dto: any) {
+  async updateSettings(user: AuthUser, dto: object) {
     await this.getSettings(user)
 
     return this.prisma.tenantSettings.update({

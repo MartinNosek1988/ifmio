@@ -1,11 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
-
-interface AuthUser {
-  id: string
-  tenantId: string
-  role: string
-}
+import type { AuthUser } from '@ifmio/shared-types';
 
 export type NotificationType =
   | 'reminder_due'

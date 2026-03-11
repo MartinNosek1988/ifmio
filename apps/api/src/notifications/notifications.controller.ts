@@ -7,12 +7,7 @@ import { NotificationsService } from './notifications.service'
 import { Roles } from '../common/decorators/roles.decorator'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
 import { ROLES_MANAGE } from '../common/constants/roles.constants'
-
-interface AuthUser {
-  id: string
-  tenantId: string
-  role: string
-}
+import type { AuthUser } from '@ifmio/shared-types';
 
 @ApiTags('Notifications')
 @ApiBearerAuth()

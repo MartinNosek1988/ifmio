@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { EmailService } from '../email/email.service'
 import { DEFAULT_REMINDER_TEMPLATES } from './reminders.seed'
+import type { ReminderListQueryDto, CreateReminderDto, UpdateTemplateDto } from './dto/reminders.dto'
 import type { AuthUser } from '@ifmio/shared-types'
 
 @Injectable()
@@ -37,7 +38,7 @@ export class RemindersService {
     return { message: 'Výchozí šablony vytvořeny', count: created.length }
   }
 
-  async updateTemplate(user: AuthUser, id: string, dto: any) {
+  async updateTemplate(user: AuthUser, id: string, dto: UpdateTemplateDto) {
     const template = await this.prisma.reminderTemplate.findFirst({
       where: { id, tenantId: user.tenantId },
     })
@@ -93,11 +94,11 @@ export class RemindersService {
 
   // ─── REMINDERS ────────────────────────────────────────────────
 
-  async listReminders(user: AuthUser, query: any) {
+  async listReminders(user: AuthUser, query: ReminderListQueryDto) {
     const { residentId, status, level, page = 1, limit = 20 } = query
     const skip = (page - 1) * limit
 
-    const where: any = {
+    const where: Record<string, unknown> = {
       tenantId: user.tenantId,
       ...(residentId ? { residentId } : {}),
       ...(status     ? { status }     : {}),
@@ -139,7 +140,7 @@ export class RemindersService {
     }
   }
 
-  async createReminder(user: AuthUser, dto: any) {
+  async createReminder(user: AuthUser, dto: CreateReminderDto) {
     const resident = await this.prisma.resident.findFirst({
       where: { id: dto.residentId, tenantId: user.tenantId },
     })
@@ -150,7 +151,7 @@ export class RemindersService {
         tenantId:   user.tenantId,
         residentId: dto.residentId,
         templateId: dto.templateId ?? null,
-        level:      dto.level,
+        level:      dto.level as any,
         status:     'draft',
         amount:     dto.amount,
         dueDate:    new Date(dto.dueDate),
@@ -185,7 +186,13 @@ export class RemindersService {
   }) {
     const results = await Promise.allSettled(
       dto.residentIds.map((residentId) =>
-        this.createReminder(user, { ...dto, residentId })
+        this.createReminder(user, {
+          residentId,
+          level: dto.level,
+          templateId: dto.templateId,
+          amount: dto.amount ?? 0,
+          dueDate: dto.dueDate,
+        })
       )
     )
 

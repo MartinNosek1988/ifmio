@@ -4,12 +4,7 @@ import { CreateResidentDto } from './dto/create-resident.dto';
 import { UpdateResidentDto } from './dto/update-resident.dto';
 import { QueryResidentDto } from './dto/query-resident.dto';
 import type { Prisma } from '@prisma/client';
-
-interface AuthUser {
-  id: string;
-  tenantId: string;
-  role: string;
-}
+import type { AuthUser } from '@ifmio/shared-types';
 
 @Injectable()
 export class ResidentsService {

@@ -9,12 +9,7 @@ import { AresService } from './ares/ares.service';
 import { CuzkService } from './cuzk/cuzk.service';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-
-interface AuthUser {
-  id: string;
-  tenantId: string;
-  role: string;
-}
+import type { AuthUser } from '@ifmio/shared-types';
 
 @ApiTags('Integrations')
 @Controller('integrations')

@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
-
-interface AuthUser { id: string; tenantId: string; role: string }
+import type { AuthUser } from '@ifmio/shared-types';
 
 function serialize(item: any) {
   return {

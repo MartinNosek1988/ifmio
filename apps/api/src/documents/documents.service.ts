@@ -26,11 +26,11 @@ export class DocumentsService {
     private storage:  LocalStorageProvider,
   ) {}
 
-  async list(user: AuthUser, query: any) {
+  async list(user: AuthUser, query: { category?: string; tag?: string; entityType?: string; entityId?: string; search?: string; page?: number; limit?: number }) {
     const { category, tag, entityType, entityId, search, page = 1, limit = 20 } = query
     const skip = (page - 1) * limit
 
-    const where: any = {
+    const where: Record<string, unknown> = {
       tenantId: user.tenantId,
       ...(category ? { category } : {}),
       ...(search   ? { name: { contains: search, mode: 'insensitive' } } : {}),

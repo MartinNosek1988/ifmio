@@ -1,12 +1,7 @@
-import { Injectable, BadRequestException } from '@nestjs/common'
+import { Injectable, BadRequestException, Logger } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
 import * as XLSX from 'xlsx'
-
-interface AuthUser {
-  id: string
-  tenantId: string
-  role: string
-}
+import type { AuthUser } from '@ifmio/shared-types'
 
 export interface ResidentImportRow {
   rowIndex: number
@@ -40,6 +35,8 @@ const COLUMN_ALIASES: Record<string, string> = {
 
 @Injectable()
 export class ResidentsImportService {
+  private readonly logger = new Logger(ResidentsImportService.name)
+
   constructor(private prisma: PrismaService) {}
 
   parseFile(buffer: Buffer, _mimetype: string): ResidentImportRow[] {
@@ -196,7 +193,9 @@ export class ResidentsImportService {
         status: 'done',
         errors: errors.length ? errors : undefined,
       },
-    }).catch(() => {})
+    }).catch((err) => {
+      this.logger.error(`Failed to create import log: ${err}`)
+    })
 
     return { imported, skipped, errors, total: rows.length }
   }

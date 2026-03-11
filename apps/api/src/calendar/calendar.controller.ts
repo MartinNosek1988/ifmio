@@ -9,8 +9,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator'
 import { AuditAction } from '../common/decorators/audit.decorator'
 import { ROLES_WRITE } from '../common/constants/roles.constants'
 import { CalendarEventDto, CalendarStatsDto } from './calendar.dto'
-
-interface AuthUser { id: string; tenantId: string; role: string }
+import type { AuthUser } from '@ifmio/shared-types';
 
 @ApiTags('Calendar')
 @ApiBearerAuth()

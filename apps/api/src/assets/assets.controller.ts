@@ -6,13 +6,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AssetsService } from './assets.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { Response } from 'express';
-
-interface AuthUser {
-  id: string;
-  tenantId: string;
-  role: string;
-  email: string;
-}
+import type { AuthUser } from '@ifmio/shared-types';
 
 @ApiTags('Assets')
 @ApiBearerAuth()

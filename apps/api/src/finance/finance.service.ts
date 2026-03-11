@@ -3,12 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import type { Prisma } from '@prisma/client';
 import { parseCsv } from './parsers/csv.parser';
 import { parseAbo } from './parsers/abo.parser';
-
-interface AuthUser {
-  id: string;
-  tenantId: string;
-  role: string;
-}
+import type { AuthUser } from '@ifmio/shared-types';
 
 @Injectable()
 export class FinanceService {

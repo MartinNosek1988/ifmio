@@ -8,12 +8,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator'
 import { Roles } from '../../common/decorators/roles.decorator'
 import { ROLES_WRITE } from '../../common/constants/roles.constants'
 import type { FastifyReply, FastifyRequest } from 'fastify'
-
-interface AuthUser {
-  id: string
-  tenantId: string
-  role: string
-}
+import type { AuthUser } from '@ifmio/shared-types';
 
 @ApiTags('Residents Import')
 @ApiBearerAuth()

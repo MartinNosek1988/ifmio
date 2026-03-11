@@ -16,14 +16,7 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
-
-interface AuthUser {
-  id: string;
-  email: string;
-  name: string;
-  role: string;
-  tenantId: string;
-}
+import type { AuthUser } from '@ifmio/shared-types';
 
 @ApiTags('Auth')
 @Controller('auth')

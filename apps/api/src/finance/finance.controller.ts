@@ -8,13 +8,9 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuditAction } from '../common/decorators/audit.decorator';
 import { ROLES_WRITE } from '../common/constants/roles.constants';
+import { CreateInvoiceDto, UpdateInvoiceDto, InvoiceListQueryDto, MarkPaidDto } from './dto/invoice.dto';
 import type { FastifyRequest } from 'fastify';
-
-interface AuthUser {
-  id: string;
-  tenantId: string;
-  role: string;
-}
+import type { AuthUser } from '@ifmio/shared-types';
 
 @ApiTags('Finance')
 @ApiBearerAuth()
@@ -219,7 +215,7 @@ export class FinanceController {
 
   @Get('invoices')
   @ApiOperation({ summary: 'Seznam dokladů' })
-  listInvoices(@CurrentUser() user: AuthUser, @Query() query: any) {
+  listInvoices(@CurrentUser() user: AuthUser, @Query() query: InvoiceListQueryDto) {
     return this.invoicesService.list(user, query);
   }
 
@@ -233,7 +229,7 @@ export class FinanceController {
   @Roles(...ROLES_WRITE)
   @AuditAction('invoice', 'create')
   @ApiOperation({ summary: 'Vytvořit doklad' })
-  createInvoice(@CurrentUser() user: AuthUser, @Body() dto: any) {
+  createInvoice(@CurrentUser() user: AuthUser, @Body() dto: CreateInvoiceDto) {
     return this.invoicesService.create(user, dto);
   }
 
@@ -255,14 +251,14 @@ export class FinanceController {
   @Roles(...ROLES_WRITE)
   @AuditAction('invoice', 'update')
   @ApiOperation({ summary: 'Aktualizovat doklad' })
-  updateInvoice(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: any) {
+  updateInvoice(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: UpdateInvoiceDto) {
     return this.invoicesService.update(user, id, dto);
   }
 
   @Post('invoices/:id/mark-paid')
   @Roles(...ROLES_WRITE)
   @ApiOperation({ summary: 'Označit doklad jako uhrazený' })
-  markInvoicePaid(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto?: any) {
+  markInvoicePaid(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto?: MarkPaidDto) {
     return this.invoicesService.markPaid(user, id, dto);
   }
 

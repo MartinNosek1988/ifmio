@@ -1,5 +1,5 @@
-import { useAuthStore } from '../core/auth-store';
+import { useAuthStore } from '../core/auth/auth.store';
 
 export function bootstrap() {
-  useAuthStore.getState().loadUser();
+  useAuthStore.getState().restoreSession();
 }
