@@ -45,9 +45,12 @@ jobs:
 
       - name: Install cross-platform native binaries
         run: |
-          VERSION=$(node -p "JSON.parse(require('fs').readFileSync('node_modules/lightningcss/package.json')).version")
-          npm install --no-save "lightningcss-linux-x64-gnu@$VERSION"
-        working-directory: apps/web
+          VERSION=$(node -p "JSON.parse(require('fs').readFileSync('apps/web/node_modules/lightningcss/package.json')).version")
+          mkdir -p apps/web/node_modules/lightningcss-linux-x64-gnu
+          cd apps/web/node_modules/lightningcss-linux-x64-gnu
+          npm pack "lightningcss-linux-x64-gnu@$VERSION" --pack-destination .
+          tar xzf *.tgz --strip-components=1
+          rm *.tgz
 
       - name: Generate Prisma client
         run: npx prisma generate
