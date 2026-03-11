@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   ConflictException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
@@ -13,14 +14,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
-
-export interface AuthUser {
-  id: string;
-  email: string;
-  name: string;
-  role: string;
-  tenantId: string;
-}
+import type { AuthUser } from '@ifmio/shared-types';
 
 export interface AuthResponse {
   accessToken: string;
@@ -110,13 +104,19 @@ export class AuthService {
       return { user, tenant };
     });
 
-    // Send welcome email (fire and forget)
+    // Create email verification token and send welcome email
+    const verificationToken = await this.createEmailVerificationToken(user.id);
+    const frontendUrl = process.env.FRONTEND_URL || `https://${process.env.DOMAIN || 'ifmio.com'}`;
+
     this.email.sendWelcome({
       to: dto.email,
       name: dto.name,
       tenantName: tenant.name,
-      loginUrl: `${process.env.FRONTEND_URL || `https://${process.env.DOMAIN || 'ifmio.com'}`}/login`,
-    }).catch(() => {});
+      loginUrl: `${frontendUrl}/verify-email?token=${verificationToken}`,
+    }).catch((err) => {
+      const logger = new Logger('AuthService');
+      logger.error(`Failed to send welcome email to ${dto.email}: ${err}`);
+    });
 
     return this.issueTokens(user);
   }
@@ -260,17 +260,40 @@ export class AuthService {
   }
 
   async verifyEmail(token: string) {
-    // For now, email verification is simplified — token is the user ID
-    // In production, use a dedicated verification token table
-    const user = await this.prisma.user.findUnique({ where: { id: token } });
-    if (!user) throw new NotFoundException('Neplatný verifikační token');
-
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { isActive: true },
+    const record = await this.prisma.emailVerificationToken.findUnique({
+      where: { token },
+      include: { user: true },
     });
 
+    if (!record || record.expiresAt < new Date()) {
+      if (record) await this.prisma.emailVerificationToken.delete({ where: { id: record.id } });
+      throw new NotFoundException('Neplatný nebo expirovaný verifikační token');
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: record.userId },
+        data: { isActive: true },
+      }),
+      this.prisma.emailVerificationToken.delete({ where: { id: record.id } }),
+    ]);
+
     return { success: true, message: 'Email úspěšně ověřen' };
+  }
+
+  async createEmailVerificationToken(userId: string): Promise<string> {
+    // Delete any existing tokens for this user
+    await this.prisma.emailVerificationToken.deleteMany({ where: { userId } });
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24);
+
+    await this.prisma.emailVerificationToken.create({
+      data: { userId, token, expiresAt },
+    });
+
+    return token;
   }
 
   private async issueTokens(user: {
@@ -309,7 +332,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         name: user.name,
-        role: user.role,
+        role: user.role as AuthUser['role'],
         tenantId: user.tenantId,
       },
     };

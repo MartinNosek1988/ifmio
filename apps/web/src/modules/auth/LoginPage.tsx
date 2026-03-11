@@ -16,9 +16,9 @@ export default function LoginPage() {
     try {
       const res = await apiClient.post('/auth/login', { email, password });
       const { accessToken, refreshToken, user } = res.data;
-      localStorage.setItem('ifmio:access_token', accessToken);
-      localStorage.setItem('ifmio:refresh_token', refreshToken);
-      localStorage.setItem('ifmio:user', JSON.stringify(user));
+      sessionStorage.setItem('ifmio:access_token', accessToken);
+      sessionStorage.setItem('ifmio:refresh_token', refreshToken);
+      sessionStorage.setItem('ifmio:user', JSON.stringify(user));
       navigate('/dashboard', { replace: true });
     } catch {
       setError('Nesprávný email nebo heslo.');

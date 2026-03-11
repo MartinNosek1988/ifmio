@@ -7,7 +7,7 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
     'nav.features':'Features','nav.modules':'Modules','nav.pricing':'Pricing',
     'nav.contact':'Contact','nav.login':'Sign in','nav.start':'Get started',
     'hero.badge':'Global Facility & Property Management Platform',
-    'hero.h1':'Manage your <em>properties</em> from anywhere',
+    'hero.h1.before':'Manage your ','hero.h1.em':'properties','hero.h1.after':' from anywhere',
     'hero.sub':'The complete platform for property managers, FM companies and real estate investors.',
     'hero.cta1':'Start for free \u2192','hero.cta2':'See all features',
     'stat.units':'Units managed','stat.countries':'Countries','stat.uptime':'Uptime','stat.support':'Support',
@@ -64,7 +64,7 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
     'nav.features':'Funkce','nav.modules':'Moduly','nav.pricing':'Cen\u00edk',
     'nav.contact':'Kontakt','nav.login':'P\u0159ihl\u00e1sit se','nav.start':'Za\u010d\u00edt',
     'hero.badge':'Glob\u00e1ln\u00ed platforma pro facility a property management',
-    'hero.h1':'Spravujte va\u0161e <em>nemovitosti</em> odkudkoli',
+    'hero.h1.before':'Spravujte va\u0161e ','hero.h1.em':'nemovitosti','hero.h1.after':' odkudkoli',
     'hero.sub':'Kompletn\u00ed platforma pro spr\u00e1vcovsk\u00e9 firmy, FM spole\u010dnosti a investory do nemovitost\u00ed.',
     'hero.cta1':'Za\u010d\u00edt zdarma \u2192','hero.cta2':'Zobrazit funkce',
     'stat.units':'Spravovan\u00fdch jednotek','stat.countries':'Zem\u00ed','stat.uptime':'Dostupnost','stat.support':'Podpora',
@@ -121,7 +121,7 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
     'nav.features':'Funktionen','nav.modules':'Module','nav.pricing':'Preise',
     'nav.contact':'Kontakt','nav.login':'Anmelden','nav.start':'Loslegen',
     'hero.badge':'Globale Facility & Property Management Plattform',
-    'hero.h1':'Verwalten Sie Ihre <em>Immobilien</em> von \u00fcberall',
+    'hero.h1.before':'Verwalten Sie Ihre ','hero.h1.em':'Immobilien','hero.h1.after':' von \u00fcberall',
     'hero.sub':'Die vollst\u00e4ndige Plattform f\u00fcr Immobilienverwalter, FM-Unternehmen und Investoren.',
     'hero.cta1':'Kostenlos starten \u2192','hero.cta2':'Alle Funktionen ansehen',
     'stat.units':'Verwaltete Einheiten','stat.countries':'L\u00e4nder','stat.uptime':'Verf\u00fcgbarkeit','stat.support':'Support',
@@ -178,7 +178,7 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
     'nav.features':'Funkcje','nav.modules':'Modu\u0142y','nav.pricing':'Cennik',
     'nav.contact':'Kontakt','nav.login':'Zaloguj si\u0119','nav.start':'Zacznij',
     'hero.badge':'Globalna platforma Facility & Property Management',
-    'hero.h1':'Zarz\u0105dzaj swoimi <em>nieruchomo\u015bciami</em> z dowolnego miejsca',
+    'hero.h1.before':'Zarz\u0105dzaj swoimi ','hero.h1.em':'nieruchomo\u015bciami','hero.h1.after':' z dowolnego miejsca',
     'hero.sub':'Kompletna platforma dla zarz\u0105dc\u00f3w nieruchomo\u015bci, firm FM i inwestor\u00f3w.',
     'hero.cta1':'Zacznij za darmo \u2192','hero.cta2':'Zobacz wszystkie funkcje',
     'stat.units':'Zarz\u0105dzanych lokali','stat.countries':'Kraj\u00f3w','stat.uptime':'Dost\u0119pno\u015b\u0107','stat.support':'Wsparcie',
@@ -445,7 +445,7 @@ export default function LandingPage() {
 
   // Auth check — redirect logged-in users
   useEffect(() => {
-    const token = localStorage.getItem('ifmio:access_token');
+    const token = sessionStorage.getItem('ifmio:access_token');
     if (token) navigate('/dashboard', { replace: true });
   }, [navigate]);
 
@@ -572,7 +572,7 @@ export default function LandingPage() {
             <span className="badge-dot" />
             <span>{t('hero.badge')}</span>
           </div>
-          <h1 className="reveal reveal-delay-1" dangerouslySetInnerHTML={{ __html: t('hero.h1') }} />
+          <h1 className="reveal reveal-delay-1">{t('hero.h1.before')}<em>{t('hero.h1.em')}</em>{t('hero.h1.after')}</h1>
           <p className="hero-sub reveal reveal-delay-2">{t('hero.sub')}</p>
           <div className="hero-ctas reveal reveal-delay-3">
             <a href="/register" className="btn btn-primary">{t('hero.cta1')}</a>

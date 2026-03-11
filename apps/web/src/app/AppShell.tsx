@@ -297,9 +297,9 @@ export default function AppShell() {
                 <div className="user-dropdown__sep" />
                 <button className="user-dropdown__item user-dropdown__item--danger" onClick={() => {
                   setShowUserMenu(false);
-                  localStorage.removeItem('ifmio:access_token');
-                  localStorage.removeItem('ifmio:refresh_token');
-                  localStorage.removeItem('ifmio:user');
+                  sessionStorage.removeItem('ifmio:access_token');
+                  sessionStorage.removeItem('ifmio:refresh_token');
+                  sessionStorage.removeItem('ifmio:user');
                   window.location.href = '/login';
                 }}>
                   <LogOut size={15} /> Odhlásit se

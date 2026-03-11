@@ -101,7 +101,7 @@ export const reportsApi = {
   },
 
   exportMonthlyXlsx: (year: number, month: number) => {
-    const token = localStorage.getItem('ifmio:access_token');
+    const token = sessionStorage.getItem('ifmio:access_token');
     const baseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1';
     window.open(`${baseUrl}/reports/monthly/export?year=${year}&month=${month}&token=${token}`, '_blank');
   },

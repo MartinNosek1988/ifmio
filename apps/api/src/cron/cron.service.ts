@@ -36,9 +36,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
 
   private async ping() {
     try {
-      const result = await this.prisma.$queryRawUnsafe<{ now: Date }[]>(
-        'SELECT NOW() as now',
-      );
+      const result = await this.prisma.$queryRaw<{ now: Date }[]>`SELECT NOW() as now`;
       this.logger.log(`Supabase keepalive OK — ${result[0]?.now}`);
     } catch (err) {
       this.logger.error(

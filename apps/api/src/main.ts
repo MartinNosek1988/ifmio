@@ -9,7 +9,25 @@ import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import multipart from '@fastify/multipart';
 
+function validateEnv() {
+  const required = ['JWT_SECRET', 'DATABASE_URL'];
+  const missing = required.filter((key) => !process.env[key]);
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required environment variables: ${missing.join(', ')}. ` +
+      'See .env.example for reference.',
+    );
+  }
+  if ((process.env.JWT_SECRET ?? '').length < 32) {
+    throw new Error(
+      'JWT_SECRET must be at least 32 characters. ' +
+      'Generate one with: openssl rand -base64 48',
+    );
+  }
+}
+
 async function bootstrap() {
+  validateEnv();
   const logger = new Logger('Bootstrap');
 
   const app = await NestFactory.create<NestFastifyApplication>(

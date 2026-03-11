@@ -145,7 +145,7 @@ export class SuperAdminService {
 
     const payload = { sub: owner.id, tenantId: owner.tenantId, role: owner.role };
     const accessToken = this.jwt.sign(payload, {
-      secret: process.env.JWT_SECRET ?? 'dev-secret-change-in-prod',
+      secret: process.env.JWT_SECRET,
       expiresIn: '1h',
     } as Record<string, unknown>);
 

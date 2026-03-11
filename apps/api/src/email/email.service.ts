@@ -10,6 +10,15 @@ export interface SendEmailDto {
   from?:    string
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 @Injectable()
 export class EmailService {
   private readonly logger     = new Logger(EmailService.name)
@@ -98,15 +107,15 @@ export class EmailService {
     const html = `
 <!DOCTYPE html>
 <html lang="cs">
-<head><meta charset="UTF-8"><title>Vitejte v ${params.tenantName}</title></head>
+<head><meta charset="UTF-8"><title>Vitejte v ${escapeHtml(params.tenantName)}</title></head>
 <body style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #374151;">
   <div style="background: #1e1b4b; padding: 24px; border-radius: 8px 8px 0 0;">
     <h1 style="color: #fff; margin: 0; font-size: 24px;">ifmio</h1>
   </div>
   <div style="border: 1px solid #e5e7eb; border-top: none; padding: 32px; border-radius: 0 0 8px 8px;">
-    <h2 style="color: #111827;">Vitejte, ${params.name}!</h2>
-    <p>Byl vam vytvoren pristup do systemu ${params.tenantName}.</p>
-    <a href="${params.loginUrl}"
+    <h2 style="color: #111827;">Vitejte, ${escapeHtml(params.name)}!</h2>
+    <p>Byl vam vytvoren pristup do systemu ${escapeHtml(params.tenantName)}.</p>
+    <a href="${encodeURI(params.loginUrl)}"
        style="display: inline-block; background: #6366f1; color: #fff;
               padding: 12px 24px; border-radius: 6px; text-decoration: none;
               font-weight: 600; margin: 16px 0;">
@@ -148,11 +157,11 @@ export class EmailService {
 <head><meta charset="UTF-8"></head>
 <body style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #374151;">
   <div style="background: #1e1b4b; padding: 20px 24px; border-radius: 8px 8px 0 0;">
-    <h1 style="color: #fff; margin: 0; font-size: 20px;">${params.tenantName}</h1>
+    <h1 style="color: #fff; margin: 0; font-size: 20px;">${escapeHtml(params.tenantName)}</h1>
   </div>
   <div style="border: 1px solid #e5e7eb; border-top: 4px solid ${borderColor};
               border-radius: 0 0 8px 8px; padding: 32px;">
-    <p style="white-space: pre-line; line-height: 1.7;">${params.body}</p>
+    <p style="white-space: pre-line; line-height: 1.7;">${escapeHtml(params.body)}</p>
 
     <div style="background: #fef3c7; border: 1px solid #fcd34d;
                 border-radius: 8px; padding: 16px 20px; margin: 24px 0;">

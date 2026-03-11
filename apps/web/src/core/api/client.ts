@@ -10,7 +10,7 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('ifmio:access_token');
+  const token = sessionStorage.getItem('ifmio:access_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -32,9 +32,9 @@ function processPendingQueue(token: string | null, error: unknown) {
 }
 
 function forceLogout() {
-  localStorage.removeItem('ifmio:access_token');
-  localStorage.removeItem('ifmio:refresh_token');
-  localStorage.removeItem('ifmio:user');
+  sessionStorage.removeItem('ifmio:access_token');
+  sessionStorage.removeItem('ifmio:refresh_token');
+  sessionStorage.removeItem('ifmio:user');
   window.location.href = '/login';
 }
 
@@ -54,7 +54,7 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    const refreshToken = localStorage.getItem('ifmio:refresh_token');
+    const refreshToken = sessionStorage.getItem('ifmio:refresh_token');
     if (!refreshToken) {
       forceLogout();
       return Promise.reject(error);
@@ -80,9 +80,9 @@ apiClient.interceptors.response.use(
       const newAccessToken: string = data.accessToken;
       const newRefreshToken: string = data.refreshToken;
 
-      localStorage.setItem('ifmio:access_token', newAccessToken);
-      localStorage.setItem('ifmio:refresh_token', newRefreshToken);
-      if (data.user) localStorage.setItem('ifmio:user', JSON.stringify(data.user));
+      sessionStorage.setItem('ifmio:access_token', newAccessToken);
+      sessionStorage.setItem('ifmio:refresh_token', newRefreshToken);
+      if (data.user) sessionStorage.setItem('ifmio:user', JSON.stringify(data.user));
 
       processPendingQueue(newAccessToken, null);
 
