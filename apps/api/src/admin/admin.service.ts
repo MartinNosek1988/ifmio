@@ -89,16 +89,7 @@ export class AdminService {
       },
     })
 
-    await this.prisma.auditLog.create({
-      data: {
-        tenantId: user.tenantId,
-        userId:   user.id,
-        action:   'INVITE_USER',
-        entity:   'User',
-        entityId: created.id,
-        newData:  { email: dto.email, role: dto.role },
-      },
-    })
+    // Audit is handled by @AuditAction('User', 'INVITE') on the controller
 
     // Send welcome email
     const tenant = await this.prisma.tenant.findUnique({

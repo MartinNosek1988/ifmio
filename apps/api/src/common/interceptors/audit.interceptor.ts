@@ -42,6 +42,17 @@ const AUDIT_FIELDS: Record<string, string[]> = {
     'title', 'description', 'category', 'priority', 'status',
     'assigneeId', 'resolvedAt',
   ],
+  User: [
+    'id', 'name', 'email', 'role', 'isActive',
+  ],
+  TenantSettings: [
+    'id', 'tenantId', 'orgName', 'orgPhone', 'orgEmail',
+    'companyNumber', 'vatNumber', 'address',
+  ],
+  Tenant: [
+    'id', 'name', 'slug', 'plan', 'isActive',
+    'maxUsers', 'maxProperties', 'trialEndsAt', 'notes',
+  ],
 };
 
 /**
@@ -66,6 +77,9 @@ export class AuditInterceptor implements NestInterceptor {
       invoice: this.prisma.invoice as unknown as PrismaModel,
       bankAccount: this.prisma.bankAccount as unknown as PrismaModel,
       HelpdeskTicket: this.prisma.helpdeskTicket as unknown as PrismaModel,
+      User: this.prisma.user as unknown as PrismaModel,
+      TenantSettings: this.prisma.tenantSettings as unknown as PrismaModel,
+      Tenant: this.prisma.tenant as unknown as PrismaModel,
     };
   }
 
