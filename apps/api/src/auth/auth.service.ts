@@ -134,20 +134,19 @@ export class AuthService {
       where: { email: dto.email, isActive: true },
     });
     if (!user || !(await bcrypt.compare(dto.password, user.passwordHash))) {
-      // Audit failed login if user exists (wrong password)
-      if (user) {
-        this.prisma.auditLog.create({
-          data: {
-            tenantId: user.tenantId,
-            userId: user.id,
-            action: 'LOGIN_FAIL',
-            entity: 'User',
-            entityId: user.id,
-            ipAddress: meta?.ip,
-            userAgent: meta?.userAgent,
-          },
-        }).catch((err) => this.logger.error('Audit LOGIN_FAIL failed', err));
-      }
+      // Audit failed login — with or without known user
+      this.prisma.auditLog.create({
+        data: {
+          tenantId: user?.tenantId ?? null,
+          userId: user?.id ?? null,
+          action: 'LOGIN_FAIL',
+          entity: 'User',
+          entityId: user?.id ?? null,
+          newData: { email: this.maskEmail(dto.email) },
+          ipAddress: meta?.ip,
+          userAgent: meta?.userAgent,
+        },
+      }).catch((err) => this.logger.error('Audit LOGIN_FAIL failed', err));
       throw new UnauthorizedException('Nesprávný email nebo heslo');
     }
 
@@ -400,5 +399,15 @@ export class AuthService {
         tenantId: user.tenantId,
       },
     };
+  }
+
+  /** Mask email for audit: "jan@firma.cz" → "j**@f***a.cz" */
+  private maskEmail(email: string): string {
+    const [local, domain] = email.split('@');
+    if (!domain) return '***';
+    const maskedLocal = local[0] + '**';
+    const parts = domain.split('.');
+    const maskedDomain = parts[0][0] + '***' + (parts[0].length > 1 ? parts[0].slice(-1) : '');
+    return `${maskedLocal}@${maskedDomain}.${parts.slice(1).join('.')}`;
   }
 }
