@@ -47,7 +47,7 @@ describe('ErrorBoundary', () => {
       return <div>Recovered</div>
     }
 
-    const { rerender } = render(
+    render(
       <ErrorBoundary moduleName="Test">
         <Conditional />
       </ErrorBoundary>,
