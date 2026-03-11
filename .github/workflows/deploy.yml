@@ -34,15 +34,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # One-time: mark baseline as applied on existing production DB
-      # TODO: Remove this step after first successful deploy
-      - name: Resolve baseline migration
-        run: npx prisma migrate resolve --applied 20260308000000_baseline
-        working-directory: apps/api
-        env:
-          DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.DIRECT_DATABASE_URL }}
-
       - name: Run Prisma migrations
         run: npx prisma migrate deploy
         working-directory: apps/api
