@@ -555,7 +555,7 @@ export default function LandingPage() {
             </div>
           </div>
           <a href="/login" className="btn-outline-nav">{t('nav.login')}</a>
-          <a href="/login" className="btn-cta-nav">{t('nav.start')}</a>
+          <a href="/register" className="btn-cta-nav">{t('nav.start')}</a>
         </div>
       </nav>
 
@@ -575,7 +575,7 @@ export default function LandingPage() {
           <h1 className="reveal reveal-delay-1" dangerouslySetInnerHTML={{ __html: t('hero.h1') }} />
           <p className="hero-sub reveal reveal-delay-2">{t('hero.sub')}</p>
           <div className="hero-ctas reveal reveal-delay-3">
-            <a href="/login" className="btn btn-primary">{t('hero.cta1')}</a>
+            <a href="/register" className="btn btn-primary">{t('hero.cta1')}</a>
             <span className="btn btn-secondary" onClick={() => scrollTo('features')}>{t('hero.cta2')}</span>
           </div>
           <div className="stats-bar reveal">
@@ -707,7 +707,7 @@ export default function LandingPage() {
               <li><span className="no">{'\u2013'}</span> {t('pf.api')}</li>
               <li><span className="no">{'\u2013'}</span> {t('pf.isdoc')}</li>
             </ul>
-            <button className="price-cta price-cta-secondary" onClick={() => navigate('/login')}>{t('plan.cta.free')}</button>
+            <button className="price-cta price-cta-secondary" onClick={() => navigate('/register')}>{t('plan.cta.free')}</button>
           </div>
           {/* Starter */}
           <div className="price-card">
@@ -722,7 +722,7 @@ export default function LandingPage() {
               <li><span className="no">{'\u2013'}</span> {t('pf.api')}</li>
               <li><span className="ok">{'\u2713'}</span> {t('pf.isdoc')}</li>
             </ul>
-            <button className="price-cta price-cta-secondary" onClick={() => navigate('/login')}>{t('plan.cta.paid')}</button>
+            <button className="price-cta price-cta-secondary" onClick={() => navigate('/register')}>{t('plan.cta.paid')}</button>
           </div>
           {/* Professional */}
           <div className="price-card featured">
@@ -738,7 +738,7 @@ export default function LandingPage() {
               <li><span className="ok">{'\u2713'}</span> {t('pf.api')}</li>
               <li><span className="ok">{'\u2713'}</span> {t('pf.isdoc')}</li>
             </ul>
-            <button className="price-cta price-cta-primary" onClick={() => navigate('/login')}>{t('plan.cta.paid')}</button>
+            <button className="price-cta price-cta-primary" onClick={() => navigate('/register')}>{t('plan.cta.paid')}</button>
           </div>
           {/* Enterprise */}
           <div className="price-card">
@@ -764,7 +764,7 @@ export default function LandingPage() {
           <h2 className="reveal">{t('cta.title')}</h2>
           <p className="cta-sub reveal reveal-delay-1">{t('cta.sub')}</p>
           <div className="cta-btns reveal reveal-delay-2">
-            <a href="/login" className="btn btn-primary">{t('cta.btn1')}</a>
+            <a href="/register" className="btn btn-primary">{t('cta.btn1')}</a>
             <a href="mailto:sales@ifmio.com" className="btn btn-secondary">{t('cta.btn2')}</a>
           </div>
         </div>

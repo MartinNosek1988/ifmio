@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { apiClient } from '../../core/api/client';
 
 export default function LoginPage() {
@@ -48,6 +48,14 @@ export default function LoginPage() {
             {loading ? 'Přihlašování...' : 'Přihlásit se'}
           </button>
         </form>
+        <div style={{ textAlign: 'center', marginTop: 16 }}>
+          <span style={{ color: '#6b7280', fontSize: '0.82rem' }}>
+            Nemate ucet?{' '}
+            <Link to="/register" style={{ color: '#6366f1', textDecoration: 'none', fontWeight: 600 }}>
+              Zaregistrujte se
+            </Link>
+          </span>
+        </div>
       </div>
     </div>
   );

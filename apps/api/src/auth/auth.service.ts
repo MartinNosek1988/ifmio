@@ -2,10 +2,13 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
+import { EmailService } from '../email/email.service';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 
@@ -28,6 +31,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwt: JwtService,
+    private email: EmailService,
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthResponse> {
@@ -42,12 +46,45 @@ export class AuthService {
     if (exists)
       throw new ConflictException('Tenant s tímto názvem již existuje');
 
+    const emailExists = await this.prisma.user.findFirst({
+      where: { email: dto.email },
+    });
+    if (emailExists)
+      throw new ConflictException('Uživatel s tímto emailem již existuje');
+
     const passwordHash = await bcrypt.hash(dto.password, 12);
 
-    const { user } = await this.prisma.$transaction(async (tx) => {
+    // Trial ends in 14 days
+    const trialEndsAt = new Date();
+    trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+
+    const validPlan = ['free', 'starter', 'pro'].includes(dto.plan ?? '')
+      ? dto.plan!
+      : 'free';
+
+    const { user, tenant } = await this.prisma.$transaction(async (tx) => {
       const tenant = await tx.tenant.create({
-        data: { name: dto.tenantName, slug, plan: 'free' },
+        data: {
+          name: dto.tenantName,
+          slug,
+          plan: validPlan as any,
+          trialEndsAt,
+        },
       });
+
+      // Create settings with org info
+      await tx.tenantSettings.create({
+        data: {
+          tenantId: tenant.id,
+          orgName: dto.tenantName,
+          orgPhone: dto.phone ?? null,
+          orgEmail: dto.email,
+          companyNumber: dto.companyNumber ?? null,
+          vatNumber: dto.vatNumber ?? null,
+          address: dto.address ?? null,
+        },
+      });
+
       const user = await tx.user.create({
         data: {
           tenantId: tenant.id,
@@ -57,6 +94,7 @@ export class AuthService {
           role: 'owner',
         },
       });
+
       await tx.auditLog.create({
         data: {
           tenantId: tenant.id,
@@ -66,8 +104,17 @@ export class AuthService {
           entityId: user.id,
         },
       });
+
       return { user, tenant };
     });
+
+    // Send welcome email (fire and forget)
+    this.email.sendWelcome({
+      to: dto.email,
+      name: dto.name,
+      tenantName: tenant.name,
+      loginUrl: `${process.env.FRONTEND_URL ?? 'http://localhost:5173'}/login`,
+    }).catch(() => {});
 
     return this.issueTokens(user);
   }
@@ -117,8 +164,37 @@ export class AuthService {
     }
   }
 
-  async me(user: AuthUser): Promise<AuthUser> {
-    return user;
+  async me(user: AuthUser) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: user.tenantId },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        plan: true,
+        trialEndsAt: true,
+        isActive: true,
+      },
+    });
+
+    return {
+      ...user,
+      tenant,
+    };
+  }
+
+  async verifyEmail(token: string) {
+    // For now, email verification is simplified — token is the user ID
+    // In production, use a dedicated verification token table
+    const user = await this.prisma.user.findUnique({ where: { id: token } });
+    if (!user) throw new NotFoundException('Neplatný verifikační token');
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { isActive: true },
+    });
+
+    return { success: true, message: 'Email úspěšně ověřen' };
   }
 
   private async issueTokens(user: {

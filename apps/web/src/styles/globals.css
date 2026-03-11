@@ -77,6 +77,11 @@ body {
 }
 .topbar__title { font-size: 0.95rem; font-weight: 600; color: var(--text-primary); }
 .topbar__actions { display: flex; align-items: center; gap: 12px; }
+.trial-badge {
+  background: #6366f120; color: #818cf8; font-size: 0.75rem; font-weight: 600;
+  padding: 4px 10px; border-radius: 6px; border: 1px solid #6366f140;
+  white-space: nowrap;
+}
 .topbar__icon-btn {
   width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border);
   background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center;

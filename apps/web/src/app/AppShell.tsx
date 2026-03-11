@@ -161,6 +161,19 @@ export default function AppShell() {
   });
   const openWOCount = woStats?.open ?? 0;
 
+  const { data: meData } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: () => apiClient.get('/auth/me').then((r) => r.data),
+    staleTime: 300_000,
+    retry: false,
+  });
+  const trialDays = (() => {
+    if (!meData?.tenant?.trialEndsAt) return null;
+    const diff = new Date(meData.tenant.trialEndsAt).getTime() - Date.now();
+    const days = Math.ceil(diff / 86_400_000);
+    return days > 0 ? days : null;
+  })();
+
   useEffect(() => {
     if (onboardingData && !onboardingData.completed) {
       setShowOnboarding(true);
@@ -219,8 +232,15 @@ export default function AppShell() {
         <div className="topbar__title">{pageTitle}</div>
         <GlobalSearch />
         <div className="topbar__actions">
+          {trialDays !== null && (
+            <div className="trial-badge" title={`Trial konci za ${trialDays} dni`}>
+              Trial: {trialDays} {trialDays === 1 ? 'den' : trialDays < 5 ? 'dny' : 'dni'}
+            </div>
+          )}
           <NotificationCenter />
-          <div className="topbar__avatar" title="Martin Nosek">MN</div>
+          <div className="topbar__avatar" title={meData?.name ?? 'Uzivatel'}>
+            {(meData?.name ?? 'U').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+          </div>
         </div>
       </div>
 

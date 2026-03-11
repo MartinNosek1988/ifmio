@@ -2,7 +2,10 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import AppShell from './AppShell';
 import LoginPage from '../modules/auth/LoginPage';
+import RegisterPage from '../modules/auth/RegisterPage';
 import LandingPage from '../modules/landing/LandingPage';
+
+const VerifyEmailPage = lazy(() => import('../modules/auth/VerifyEmailPage'));
 import { ErrorBoundary } from '../shared/components';
 
 const DashboardPage = lazy(() => import('../modules/dashboard/DashboardPage'));
@@ -39,6 +42,8 @@ function withBoundary(name: string, Component: React.ComponentType) {
 export const router = createBrowserRouter([
   { path: '/', element: <LandingPage /> },
   { path: '/login', element: <LoginPage /> },
+  { path: '/register', element: <RegisterPage /> },
+  { path: '/verify-email', element: withBoundary('VerifyEmail', VerifyEmailPage) },
   {
     path: '/',
     element: <AppShell />,

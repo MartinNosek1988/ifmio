@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Body,
+  Query,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -51,8 +52,16 @@ export class AuthController {
 
   @Get('me')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Aktuální uživatel' })
+  @ApiOperation({ summary: 'Aktuální uživatel + tenant info' })
   me(@CurrentUser() user: AuthUser) {
     return this.auth.me(user);
+  }
+
+  @Public()
+  @Post('verify-email')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Ověření emailu pomocí tokenu' })
+  verifyEmail(@Body() body: { token: string }) {
+    return this.auth.verifyEmail(body.token);
   }
 }
