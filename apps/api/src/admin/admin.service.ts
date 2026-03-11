@@ -109,7 +109,7 @@ export class AdminService {
       to:         dto.email,
       name:       dto.name,
       tenantName: tenant?.name ?? 'ifmio',
-      loginUrl:   `${process.env.FRONTEND_URL ?? 'http://localhost:5173'}/login`,
+      loginUrl:   `${process.env.FRONTEND_URL || `https://${process.env.DOMAIN || 'ifmio.com'}`}/login`,
     })
 
     return created

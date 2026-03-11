@@ -115,7 +115,7 @@ export class AuthService {
       to: dto.email,
       name: dto.name,
       tenantName: tenant.name,
-      loginUrl: `${process.env.FRONTEND_URL ?? 'http://localhost:5173'}/login`,
+      loginUrl: `${process.env.FRONTEND_URL || `https://${process.env.DOMAIN || 'ifmio.com'}`}/login`,
     }).catch(() => {});
 
     return this.issueTokens(user);
