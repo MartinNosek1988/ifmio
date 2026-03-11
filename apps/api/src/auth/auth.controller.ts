@@ -75,6 +75,14 @@ export class AuthController {
   }
 
   @Public()
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Obnovení access tokenu pomocí refresh tokenu' })
+  refresh(@Body() body: { refreshToken: string }) {
+    return this.auth.refresh(body.refreshToken);
+  }
+
+  @Public()
   @Post('verify-email')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Ověření emailu pomocí tokenu' })

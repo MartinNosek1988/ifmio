@@ -229,6 +229,36 @@ export class AuthService {
     return { success: true, message: 'Heslo bylo změněno' };
   }
 
+  async refresh(refreshTokenValue: string): Promise<AuthResponse> {
+    const stored = await this.prisma.refreshToken.findFirst({
+      where: { token: refreshTokenValue },
+      include: { user: true },
+    });
+
+    if (!stored || stored.expiresAt < new Date()) {
+      if (stored) await this.prisma.refreshToken.delete({ where: { id: stored.id } });
+      throw new UnauthorizedException('Refresh token je neplatný nebo expiroval');
+    }
+
+    // Verify JWT signature
+    try {
+      this.jwt.verify(refreshTokenValue, {
+        secret: process.env.JWT_REFRESH_SECRET ?? process.env.JWT_SECRET,
+      });
+    } catch {
+      await this.prisma.refreshToken.delete({ where: { id: stored.id } });
+      throw new UnauthorizedException('Refresh token je neplatný');
+    }
+
+    const user = stored.user;
+    if (!user.isActive) throw new UnauthorizedException('Účet je deaktivován');
+
+    // Rotate: delete old refresh token, issue new pair
+    await this.prisma.refreshToken.delete({ where: { id: stored.id } });
+
+    return this.issueTokens(user);
+  }
+
   async verifyEmail(token: string) {
     // For now, email verification is simplified — token is the user ID
     // In production, use a dedicated verification token table
@@ -258,7 +288,7 @@ export class AuthService {
 
     const accessToken = this.jwt.sign(payload, {
       secret: process.env.JWT_SECRET,
-      expiresIn: (process.env.JWT_EXPIRES_IN ?? '15m') as string & { __brand: 'StringValue' },
+      expiresIn: (process.env.JWT_EXPIRES_IN ?? '60m') as string & { __brand: 'StringValue' },
     } as Record<string, unknown>);
     const refreshToken = this.jwt.sign(payload, {
       secret:
