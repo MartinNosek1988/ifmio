@@ -151,13 +151,13 @@ export default function CalendarPage() {
     setWeekStart(d.toISOString().slice(0, 10));
   };
 
-  if (isLoading) return <LoadingState text="Nacitani kalendare..." />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
   const filtered = useMemo(() =>
     [...items].sort((a, b) => a.date.localeCompare(b.date)),
     [items]
   );
+
+  if (isLoading) return <LoadingState text="Nacitani kalendare..." />;
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div>
