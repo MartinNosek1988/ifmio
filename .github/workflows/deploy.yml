@@ -1,32 +1,42 @@
-﻿name: Deploy to Production
+name: Deploy to Production
+
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
     branches: [main]
+
 concurrency:
   group: deploy-production
   cancel-in-progress: false
+
 jobs:
   migrate:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # Only deploy if CI passed on a push to main
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
     steps:
-      - name: Checkout
+      - name: Checkout tested commit
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
       - name: Install dependencies
-        run: |
-          cd apps/api
-          npm install
+        run: npm ci
 
       - name: Run Prisma migrations
-        run: |
-          cd apps/api
-          npx prisma migrate deploy
+        run: npx prisma migrate deploy
+        working-directory: apps/api
         env:
           DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_DATABASE_URL }}
@@ -49,7 +59,7 @@ jobs:
             cd /opt/ifmio
             echo "Pull latest code"
             git fetch origin main
-            git reset --hard origin/main
+            git checkout ${{ github.event.workflow_run.head_sha }}
             echo "Build and restart"
             docker compose -f docker-compose.prod.yml build --no-cache
             docker compose -f docker-compose.prod.yml up -d
