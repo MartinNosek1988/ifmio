@@ -38,24 +38,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
-
-      - name: Debug lightningcss
-        run: |
-          echo "=== npm version ==="
-          npm --version
-          echo "=== root node_modules ==="
-          ls node_modules/lightningcss/ 2>/dev/null || echo "NOT FOUND at root"
-          ls node_modules/lightningcss-linux-x64-gnu/ 2>/dev/null || echo "NO linux binary at root"
-          echo "=== web node_modules ==="
-          ls apps/web/node_modules/lightningcss/ 2>/dev/null || echo "NOT FOUND in web"
-          ls apps/web/node_modules/lightningcss-linux-x64-gnu/ 2>/dev/null || echo "NO linux binary in web"
-          echo "=== require test ==="
-          node -e "try{require('lightningcss');console.log('lightningcss OK')}catch(e){console.error(e.message)}"
-          echo "=== npm ls lightningcss ==="
-          npm ls lightningcss 2>&1 || true
+        run: npm ci
 
       - name: Generate Prisma client
         run: npx prisma generate
