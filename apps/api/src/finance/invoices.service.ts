@@ -321,29 +321,63 @@ export class InvoicesService {
     // Auto-create or find buyer
     const buyerIco = parsed.buyerIco as string;
     const buyerName = parsed.buyerName as string;
+    const buyerDic = parsed.buyerDic as string;
     let buyerId: string | null = null;
 
     if (buyerIco || buyerName) {
-      let existingBuyer = buyerIco
-        ? await this.prisma.resident.findFirst({
-            where: { tenantId: user.tenantId, email: buyerIco, isActive: true },
-          })
-        : null;
+      // Check if buyer is us (the tenant) — skip creating duplicate
+      const tenantSettings = await this.prisma.tenantSettings.findUnique({
+        where: { tenantId: user.tenantId },
+        select: { companyNumber: true, orgName: true },
+      });
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: user.tenantId },
+        select: { name: true },
+      });
 
-      if (!existingBuyer && buyerName) {
-        existingBuyer = await this.prisma.resident.findFirst({
-          where: {
-            tenantId: user.tenantId,
-            isActive: true,
-            lastName: { equals: buyerName, mode: 'insensitive' },
-          },
-        });
-      }
+      const isSelf =
+        (buyerIco && tenantSettings?.companyNumber && buyerIco === tenantSettings.companyNumber) ||
+        (buyerName && tenantSettings?.orgName && buyerName.toLowerCase() === tenantSettings.orgName.toLowerCase()) ||
+        (buyerName && tenant?.name && buyerName.toLowerCase() === tenant.name.toLowerCase());
 
-      if (existingBuyer) {
-        buyerId = existingBuyer.id;
+      if (!isSelf) {
+        let existingBuyer = buyerIco
+          ? await this.prisma.resident.findFirst({
+              where: { tenantId: user.tenantId, email: buyerIco, isActive: true },
+            })
+          : null;
+
+        if (!existingBuyer && buyerName) {
+          existingBuyer = await this.prisma.resident.findFirst({
+            where: {
+              tenantId: user.tenantId,
+              isActive: true,
+              OR: [
+                { lastName: { equals: buyerName, mode: 'insensitive' } },
+                { firstName: buyerName.split(' ')[0] || '', lastName: buyerName.split(' ').slice(1).join(' ') || buyerName },
+              ],
+            },
+          });
+        }
+
+        if (existingBuyer) {
+          buyerId = existingBuyer.id;
+        } else {
+          // Create new resident as buyer contact
+          const nameParts = buyerName ? buyerName.split(' ') : ['Odběratel'];
+          const created = await this.prisma.resident.create({
+            data: {
+              tenantId: user.tenantId,
+              firstName: nameParts[0] || '',
+              lastName: nameParts.slice(1).join(' ') || nameParts[0] || 'ISDOC',
+              email: buyerIco || undefined,
+              role: 'contact',
+              isActive: true,
+            },
+          });
+          buyerId = created.id;
+        }
       }
-      // Don't auto-create buyer — usually it's us (the tenant)
     }
 
     return this.create(user, {
