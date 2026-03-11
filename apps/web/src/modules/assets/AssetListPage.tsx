@@ -1,51 +1,129 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Plus, Download, AlertTriangle } from 'lucide-react';
 import { KpiCard, Table, Badge, SearchBar, Button } from '../../shared/components';
 import type { Column, BadgeVariant } from '../../shared/components';
-import { ASSET_STATUS_LABELS, REVISION_STATUS_LABELS, label } from '../../constants/labels';
-import { useAssetStore, type Asset, daysToRevize } from './asset-store';
+import { apiClient } from '../../core/api/client';
 import AssetDetailModal from './AssetDetailModal';
 import AssetForm from './AssetForm';
 
-const STAV_COLOR: Record<string, BadgeVariant> = { aktivni: 'green', servis: 'yellow', vyrazeno: 'red', neaktivni: 'muted' };
-const REV_COLOR: Record<string, BadgeVariant> = { ok: 'green', blizi_se: 'yellow', prosla: 'red' };
+/* ─── types ──────────────────────────────────────────────────────── */
+
+export interface Asset {
+  id: string;
+  name: string;
+  category: string;
+  manufacturer: string | null;
+  model: string | null;
+  serialNumber: string | null;
+  location: string | null;
+  status: string;
+  purchaseDate: string | null;
+  purchaseValue: number | null;
+  warrantyUntil: string | null;
+  serviceInterval: number | null;
+  lastServiceDate: string | null;
+  nextServiceDate: string | null;
+  notes: string | null;
+  propertyId: string | null;
+  unitId: string | null;
+  property: { id: string; name: string } | null;
+  unit: { id: string; name: string } | null;
+  _count?: { serviceRecords: number };
+}
+
+interface Stats {
+  total: number;
+  inWarranty: number;
+  needsService: number;
+  totalValue: number;
+}
+
+/* ─── constants ──────────────────────────────────────────────────── */
+
+const STATUS_LABEL: Record<string, string> = { aktivni: 'Aktivní', servis: 'V servisu', vyrazeno: 'Vyřazeno', neaktivni: 'Neaktivní' };
+const STATUS_COLOR: Record<string, BadgeVariant> = { aktivni: 'green', servis: 'yellow', vyrazeno: 'red', neaktivni: 'muted' };
+
+const CATEGORY_LABEL: Record<string, string> = {
+  tzb: 'TZB', stroje: 'Stroje', vybaveni: 'Vybavení',
+  vozidla: 'Vozidla', it: 'IT', ostatni: 'Ostatní',
+};
+
+const CATEGORIES = ['', 'tzb', 'stroje', 'vybaveni', 'vozidla', 'it', 'ostatni'];
+
+/* ─── component ──────────────────────────────────────────────────── */
 
 export default function AssetListPage() {
-  const { assets, load, getStats } = useAssetStore();
   const [search, setSearch] = useState('');
+  const [catFilter, setCatFilter] = useState('');
   const [selected, setSelected] = useState<Asset | null>(null);
   const [showForm, setShowForm] = useState(false);
 
-  useEffect(() => { load(); }, [load]);
+  const { data: assets = [], refetch } = useQuery<Asset[]>({
+    queryKey: ['assets', 'list', catFilter],
+    queryFn: () => apiClient.get('/assets', {
+      params: { category: catFilter || undefined },
+    }).then((r) => r.data),
+  });
 
-  const stats = getStats();
+  const { data: stats } = useQuery<Stats>({
+    queryKey: ['assets', 'stats'],
+    queryFn: () => apiClient.get('/assets/stats').then((r) => r.data),
+    staleTime: 30_000,
+  });
 
-  const filtered = useMemo(() => {
-    if (!search) return assets;
-    const q = search.toLowerCase();
-    return assets.filter(a =>
-      a.nazev.toLowerCase().includes(q) ||
-      (a.typNazev || '').toLowerCase().includes(q) ||
-      (a.vyrobce || '').toLowerCase().includes(q)
-    );
-  }, [assets, search]);
+  const filtered = search
+    ? assets.filter((a) => {
+        const q = search.toLowerCase();
+        return a.name.toLowerCase().includes(q)
+          || (a.manufacturer ?? '').toLowerCase().includes(q)
+          || (a.model ?? '').toLowerCase().includes(q)
+          || (a.serialNumber ?? '').toLowerCase().includes(q);
+      })
+    : assets;
+
+  const handleExport = () => {
+    apiClient.get('/assets/export', { responseType: 'blob' }).then((res) => {
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'assets.csv'; a.click();
+      URL.revokeObjectURL(url);
+    });
+  };
+
+  const now = Date.now();
 
   const columns: Column<Asset>[] = [
-    { key: 'nazev', label: 'Nazev', render: a => <span style={{ fontWeight: 600 }}>{a.nazev}</span> },
-    { key: 'typNazev', label: 'Typ', render: a => a.typNazev ? <Badge variant="blue">{a.typNazev}</Badge> : <span className="text-muted">—</span> },
-    { key: 'vyrobce', label: 'Vyrobce', render: a => a.vyrobce || '—' },
-    { key: 'umisteni', label: 'Umisteni', render: a => <span className="text-muted">{a.umisteni || '—'}</span> },
-    { key: 'stav', label: 'Stav', render: a => <Badge variant={STAV_COLOR[a.stav] || 'muted'}>{label(ASSET_STATUS_LABELS, a.stav)}</Badge> },
-    { key: 'stavRevize', label: 'Revize', render: a => <Badge variant={REV_COLOR[a.stavRevize] || 'muted'}>{label(REVISION_STATUS_LABELS, a.stavRevize)}</Badge> },
-    { key: 'pristiRevize', label: 'Pristi revize', render: a => {
-      const days = daysToRevize(a.pristiRevize);
-      if (days == null) return <span className="text-muted">—</span>;
+    { key: 'name', label: 'Název', render: (a) => <span style={{ fontWeight: 600 }}>{a.name}</span> },
+    { key: 'category', label: 'Kategorie', render: (a) => (
+      <Badge variant="blue">{CATEGORY_LABEL[a.category] ?? a.category}</Badge>
+    ) },
+    { key: 'manufacturer', label: 'Výrobce', render: (a) => a.manufacturer || '—' },
+    { key: 'property', label: 'Nemovitost', render: (a) => (
+      <span className="text-muted">{a.property?.name ?? '—'}</span>
+    ) },
+    { key: 'status', label: 'Stav', render: (a) => (
+      <Badge variant={STATUS_COLOR[a.status] ?? 'muted'}>{STATUS_LABEL[a.status] ?? a.status}</Badge>
+    ) },
+    { key: 'warrantyUntil', label: 'Záruka', render: (a) => {
+      if (!a.warrantyUntil) return <span className="text-muted">—</span>;
+      const expired = new Date(a.warrantyUntil).getTime() < now;
       return (
-        <span style={{ color: days <= 0 ? 'var(--danger)' : days <= 30 ? 'var(--accent-orange)' : 'var(--text-muted)', fontSize: '0.85rem' }}>
-          {days <= 0 ? `Prosla` : `${days}d`}
+        <span style={{ color: expired ? 'var(--danger)' : 'var(--text-muted)', fontSize: '0.85rem' }}>
+          {expired && <AlertTriangle size={12} style={{ marginRight: 3, verticalAlign: -1 }} />}
+          {new Date(a.warrantyUntil).toLocaleDateString('cs-CZ')}
         </span>
       );
-    }},
+    } },
+    { key: 'nextServiceDate', label: 'Příští servis', render: (a) => {
+      if (!a.nextServiceDate) return <span className="text-muted">—</span>;
+      const days = Math.ceil((new Date(a.nextServiceDate).getTime() - now) / 86_400_000);
+      return (
+        <span style={{ color: days <= 0 ? 'var(--danger)' : days <= 30 ? 'var(--accent-orange)' : 'var(--text-muted)', fontSize: '0.85rem' }}>
+          {days <= 0 ? `Prošlý` : `${days}d`}
+        </span>
+      );
+    } },
   ];
 
   return (
@@ -53,34 +131,52 @@ export default function AssetListPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Asset Management</h1>
-          <p className="page-subtitle">{stats.celkem} zarizeni</p>
+          <p className="page-subtitle">{stats?.total ?? 0} zařízení</p>
         </div>
-        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)}>Nove zarizeni</Button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button icon={<Download size={15} />} onClick={handleExport}>CSV</Button>
+          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)}>Nové zařízení</Button>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
-        <KpiCard label="Celkem" value={String(stats.celkem)} color="var(--accent-blue)" />
-        <KpiCard label="Aktivnich" value={String(stats.aktivnich)} color="var(--accent-green)" />
-        <KpiCard label="Po revizi" value={String(stats.poRevizi)} color="var(--accent-red)" />
-        <KpiCard label="V servisu" value={String(stats.vServisu)} color="var(--accent-orange)" />
+        <KpiCard label="Celkem aktiv" value={String(stats?.total ?? 0)} color="var(--accent-blue)" />
+        <KpiCard label="V záruce" value={String(stats?.inWarranty ?? 0)} color="var(--accent-green)" />
+        <KpiCard label="Potřebuje servis" value={String(stats?.needsService ?? 0)} color="var(--accent-red)" />
+        <KpiCard label="Celková hodnota" value={`${((stats?.totalValue ?? 0) / 1000).toFixed(0)}k Kč`} color="var(--accent-orange)" />
       </div>
 
-      <div style={{ marginBottom: 16 }}>
-        <SearchBar placeholder="Hledat zarizeni..." onSearch={setSearch} />
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' }}>
+        <div style={{ flex: 1 }}>
+          <SearchBar placeholder="Hledat zařízení..." onSearch={setSearch} />
+        </div>
+        <select
+          value={catFilter}
+          onChange={(e) => setCatFilter(e.target.value)}
+          style={{
+            padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)',
+            background: 'var(--surface)', color: 'var(--text)', fontSize: '0.85rem',
+          }}
+        >
+          <option value="">Všechny kategorie</option>
+          {CATEGORIES.filter(Boolean).map((c) => (
+            <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>
+          ))}
+        </select>
       </div>
 
-      <Table data={filtered} columns={columns} rowKey={a => a.id} onRowClick={a => setSelected(a)} emptyText="Zadna zarizeni" />
+      <Table data={filtered} columns={columns} rowKey={(a) => a.id} onRowClick={(a) => setSelected(a)} emptyText="Žádná zařízení" />
 
       {selected && (
         <AssetDetailModal
           asset={selected}
           onClose={() => setSelected(null)}
-          onUpdated={() => { load(); setSelected(null); }}
+          onUpdated={() => { refetch(); setSelected(null); }}
         />
       )}
 
       {showForm && (
-        <AssetForm onClose={() => { setShowForm(false); load(); }} />
+        <AssetForm onClose={() => { setShowForm(false); refetch(); }} />
       )}
     </div>
   );

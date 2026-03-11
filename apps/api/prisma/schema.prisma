@@ -42,8 +42,10 @@ model Tenant {
   notifications     Notification[]
   leaseAgreements   LeaseAgreement[]
   workOrders        WorkOrder[]
-  meters            Meter[]
-  calendarEvents    CalendarEvent[]
+  meters              Meter[]
+  calendarEvents      CalendarEvent[]
+  assets              Asset[]
+  assetServiceRecords AssetServiceRecord[]
 
   @@map("tenants")
 }
@@ -160,6 +162,7 @@ model Property {
   leaseAgreements LeaseAgreement[]
   workOrders      WorkOrder[]
   meters          Meter[]
+  assets          Asset[]
 
   @@index([tenantId])
   @@map("properties")
@@ -204,6 +207,7 @@ model Unit {
   leaseAgreements LeaseAgreement[]
   workOrders      WorkOrder[]
   meters          Meter[]
+  assets          Asset[]
 
   @@index([propertyId])
   @@map("units")
@@ -1049,4 +1053,74 @@ enum CalEventType {
   predani
   prohlidka
   ostatni
+}
+
+// ─── ASSET MANAGEMENT ────────────────────────────────────────────
+
+model Asset {
+  id              String         @id @default(uuid())
+  tenantId        String
+  propertyId      String?
+  unitId          String?
+  name            String
+  category        AssetCategory  @default(ostatni)
+  manufacturer    String?
+  model           String?
+  serialNumber    String?
+  location        String?
+  status          AssetStatus    @default(aktivni)
+  purchaseDate    DateTime?
+  purchaseValue   Decimal?       @db.Decimal(12, 2)
+  warrantyUntil   DateTime?
+  serviceInterval Int?           // months
+  lastServiceDate DateTime?
+  nextServiceDate DateTime?
+  notes           String?        @db.Text
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  deletedAt       DateTime?
+
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property        Property?      @relation(fields: [propertyId], references: [id])
+  unit            Unit?          @relation(fields: [unitId], references: [id])
+  serviceRecords  AssetServiceRecord[]
+
+  @@index([tenantId])
+  @@index([propertyId])
+  @@map("assets")
+}
+
+enum AssetCategory {
+  tzb
+  stroje
+  vybaveni
+  vozidla
+  it
+  ostatni
+}
+
+enum AssetStatus {
+  aktivni
+  servis
+  vyrazeno
+  neaktivni
+}
+
+model AssetServiceRecord {
+  id          String   @id @default(uuid())
+  assetId     String
+  tenantId    String
+  date        DateTime
+  type        String   // preventivni, oprava, revize, kalibrace
+  description String?  @db.Text
+  cost        Decimal? @db.Decimal(12, 2)
+  supplier    String?
+  createdAt   DateTime @default(now())
+
+  asset  Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@index([tenantId])
+  @@map("asset_service_records")
 }
