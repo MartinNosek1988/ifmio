@@ -341,6 +341,7 @@ model Invoice {
   amountTotal     Decimal       @db.Decimal(12, 2) @default(0)
   currency        String        @default("CZK")
   issueDate       DateTime
+  duzp            DateTime?
   dueDate         DateTime?
   paymentDate     DateTime?
   isPaid          Boolean       @default(false)

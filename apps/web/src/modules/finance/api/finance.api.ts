@@ -92,6 +92,7 @@ export interface ApiInvoice {
   amountTotal: number;
   currency: string;
   issueDate: string;
+  duzp?: string | null;
   dueDate?: string | null;
   paymentDate?: string | null;
   isPaid: boolean;

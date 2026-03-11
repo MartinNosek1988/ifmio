@@ -53,6 +53,7 @@ export class InvoicesService {
         vatAmount: Number(i.vatAmount),
         amountTotal: Number(i.amountTotal),
         issueDate: i.issueDate.toISOString(),
+        duzp: i.duzp?.toISOString() ?? null,
         dueDate: i.dueDate?.toISOString() ?? null,
         paymentDate: i.paymentDate?.toISOString() ?? null,
         createdAt: i.createdAt.toISOString(),
@@ -106,6 +107,7 @@ export class InvoicesService {
         amountTotal: dto.amountTotal || 0,
         currency: dto.currency || 'CZK',
         issueDate: new Date(dto.issueDate),
+        duzp: dto.duzp ? new Date(dto.duzp) : null,
         dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
         paymentDate: dto.paymentDate ? new Date(dto.paymentDate) : null,
         isPaid: dto.isPaid || false,
@@ -121,6 +123,7 @@ export class InvoicesService {
       vatAmount: Number(invoice.vatAmount),
       amountTotal: Number(invoice.amountTotal),
       issueDate: invoice.issueDate.toISOString(),
+      duzp: invoice.duzp?.toISOString() ?? null,
       dueDate: invoice.dueDate?.toISOString() ?? null,
       paymentDate: invoice.paymentDate?.toISOString() ?? null,
     };
@@ -147,6 +150,7 @@ export class InvoicesService {
     if (dto.vatAmount !== undefined) data.vatAmount = dto.vatAmount;
     if (dto.amountTotal !== undefined) data.amountTotal = dto.amountTotal;
     if (dto.issueDate !== undefined) data.issueDate = new Date(dto.issueDate);
+    if (dto.duzp !== undefined) data.duzp = dto.duzp ? new Date(dto.duzp) : null;
     if (dto.dueDate !== undefined) data.dueDate = dto.dueDate ? new Date(dto.dueDate) : null;
     if (dto.paymentDate !== undefined) data.paymentDate = dto.paymentDate ? new Date(dto.paymentDate) : null;
     if (dto.isPaid !== undefined) data.isPaid = dto.isPaid;
@@ -164,6 +168,7 @@ export class InvoicesService {
       vatAmount: Number(invoice.vatAmount),
       amountTotal: Number(invoice.amountTotal),
       issueDate: invoice.issueDate.toISOString(),
+      duzp: invoice.duzp?.toISOString() ?? null,
       dueDate: invoice.dueDate?.toISOString() ?? null,
       paymentDate: invoice.paymentDate?.toISOString() ?? null,
     };
@@ -211,19 +216,41 @@ export class InvoicesService {
   }
 
   private parseIsdocXml(xml: string): Record<string, unknown> {
-    // Simple regex-based ISDOC parser for key fields
-    const get = (tag: string) => {
-      const match = xml.match(new RegExp(`<${tag}[^>]*>([^<]*)</${tag}>`, 'i'));
+    // Helper: get first tag value from a section of XML
+    const getFrom = (section: string, tag: string) => {
+      const match = section.match(new RegExp(`<${tag}[^>]*>([^<]*)</${tag}>`, 'i'));
       return match?.[1]?.trim() || '';
     };
+    const get = (tag: string) => getFrom(xml, tag);
     const getNum = (tag: string) => parseFloat(get(tag)) || 0;
+
+    // Extract supplier section (AccountingSupplierParty)
+    const supplierMatch = xml.match(/<AccountingSupplierParty[^>]*>([\s\S]*?)<\/AccountingSupplierParty>/i);
+    const supplierXml = supplierMatch?.[1] || '';
+
+    // Extract buyer section (AccountingCustomerParty)
+    const buyerMatch = xml.match(/<AccountingCustomerParty[^>]*>([\s\S]*?)<\/AccountingCustomerParty>/i);
+    const buyerXml = buyerMatch?.[1] || '';
+
+    // Parse party info from a section
+    const parseParty = (section: string) => ({
+      name: getFrom(section, 'Name') || getFrom(section, 'TradeName'),
+      ico: getFrom(section, 'CompanyID') || getFrom(section, 'IČ'),
+      dic: getFrom(section, 'TaxRegistrationID') || getFrom(section, 'DIČ'),
+    });
+
+    const supplier = parseParty(supplierXml);
+    const buyer = parseParty(buyerXml);
 
     return {
       number: get('ID') || get('DocumentNumber') || `ISDOC-${Date.now()}`,
       type: 'received',
-      supplierName: get('Name') || get('TradeName') || get('PartyName'),
-      supplierIco: get('CompanyID') || get('IČ'),
-      supplierDic: get('TaxRegistrationID') || get('DIČ'),
+      supplierName: supplier.name || get('Name') || get('TradeName'),
+      supplierIco: supplier.ico,
+      supplierDic: supplier.dic,
+      buyerName: buyer.name,
+      buyerIco: buyer.ico,
+      buyerDic: buyer.dic,
       description: get('Note') || get('Description') || '',
       amountBase: getNum('TaxExclusiveAmount') || getNum('TaxableAmount'),
       vatAmount: getNum('TaxAmount') || getNum('DifferenceTaxAmount'),
@@ -231,6 +258,7 @@ export class InvoicesService {
       vatRate: Math.round((getNum('TaxAmount') / (getNum('TaxExclusiveAmount') || 1)) * 100) || 0,
       currency: get('CurrencyCode') || 'CZK',
       issueDate: get('IssueDate') || new Date().toISOString().slice(0, 10),
+      duzp: get('TaxPointDate') || get('IssueDate') || '',
       dueDate: get('DueDate') || '',
       variableSymbol: get('VariableSymbol') || get('ID') || '',
     };
@@ -249,15 +277,22 @@ export class InvoicesService {
   <DocumentType>1</DocumentType>
   <ID>${escXml(invoice.number)}</ID>
   <IssueDate>${fmtDate(invoice.issueDate)}</IssueDate>
+  <TaxPointDate>${fmtDate(invoice.duzp || invoice.issueDate)}</TaxPointDate>
   <DueDate>${fmtDate(invoice.dueDate)}</DueDate>
   <Note>${escXml(invoice.description || '')}</Note>
   <CurrencyCode>${escXml(invoice.currency || 'CZK')}</CurrencyCode>
   <AccountingSupplierParty>
     <Party>
       <PartyName><Name>${escXml(invoice.supplierName || '')}</Name></PartyName>
-      <PartyIdentification><ID>${escXml(invoice.supplierIco || '')}</ID></PartyIdentification>
+      <PartyIdentification><ID>${escXml(invoice.supplierIco || '')}</ID></PartyIdentification>${invoice.supplierDic ? `\n      <PartyTaxScheme><CompanyID>${escXml(invoice.supplierDic)}</CompanyID></PartyTaxScheme>` : ''}
     </Party>
   </AccountingSupplierParty>
+  <AccountingCustomerParty>
+    <Party>
+      <PartyName><Name>${escXml(invoice.buyerName || '')}</Name></PartyName>
+      <PartyIdentification><ID>${escXml(invoice.buyerIco || '')}</ID></PartyIdentification>${invoice.buyerDic ? `\n      <PartyTaxScheme><CompanyID>${escXml(invoice.buyerDic)}</CompanyID></PartyTaxScheme>` : ''}
+    </Party>
+  </AccountingCustomerParty>
   <LegalMonetaryTotal>
     <TaxExclusiveAmount>${Number(invoice.amountBase)}</TaxExclusiveAmount>
     <TaxInclusiveAmount>${Number(invoice.amountTotal)}</TaxInclusiveAmount>

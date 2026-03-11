@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Upload, Zap, Link2, Calculator, Plus, FileText, Download } from 'lucide-react';
+import { Upload, Zap, Link2, Calculator, Plus, FileText, Download, Users } from 'lucide-react';
 import { KpiCard, Table, Badge, SearchBar, Button, EmptyState, Modal } from '../../shared/components';
 import type { Column } from '../../shared/components';
 import { formatKc, formatCzDate } from '../../shared/utils/format';
@@ -1061,6 +1061,7 @@ function InvoiceDetailModal({ invoice, onClose, onEdit, onMarkPaid, onExport, on
       {row('Číslo dokladu', invoice.number)}
       {row('Typ', INVOICE_TYPE_LABELS[invoice.type] || invoice.type)}
       {row('Datum vystavení', formatCzDate(invoice.issueDate))}
+      {invoice.duzp && row('DÚZP', formatCzDate(invoice.duzp))}
       {row('Splatnost', invoice.dueDate ? (
         <span style={{ color: overdue ? 'var(--danger)' : undefined, fontWeight: overdue ? 600 : 500 }}>
           {formatCzDate(invoice.dueDate)}
@@ -1132,6 +1133,7 @@ function InvoiceForm({ invoice, transactions, onClose }: {
   const createMut = useCreateInvoice();
   const updateMut = useUpdateInvoice();
   const isEdit = !!invoice;
+  const [showContactPicker, setShowContactPicker] = useState<'supplier' | 'buyer' | null>(null);
 
   const [form, setForm] = useState({
     number: invoice?.number || `FAK-${new Date().getFullYear()}-`,
@@ -1148,6 +1150,7 @@ function InvoiceForm({ invoice, transactions, onClose }: {
     vatAmount: invoice?.vatAmount?.toString() || '',
     amountTotal: invoice?.amountTotal?.toString() || '',
     issueDate: invoice?.issueDate?.slice(0, 10) || new Date().toISOString().slice(0, 10),
+    duzp: invoice?.duzp?.slice(0, 10) || '',
     dueDate: invoice?.dueDate?.slice(0, 10) || '',
     variableSymbol: invoice?.variableSymbol || '',
     transactionId: invoice?.transactionId || '',
@@ -1191,6 +1194,7 @@ function InvoiceForm({ invoice, transactions, onClose }: {
       vatAmount: Number(form.vatAmount) || 0,
       amountTotal: Number(form.amountTotal) || Number(form.amountBase) || 0,
       issueDate: form.issueDate,
+      duzp: form.duzp || undefined,
       dueDate: form.dueDate || undefined,
       variableSymbol: form.variableSymbol || undefined,
       transactionId: form.transactionId || undefined,
@@ -1239,9 +1243,16 @@ function InvoiceForm({ invoice, transactions, onClose }: {
       </div>
 
       {/* Row 2: supplier */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+        <span className="form-label" style={{ margin: 0, fontWeight: 600 }}>Dodavatel</span>
+        <button type="button" onClick={() => setShowContactPicker('supplier')}
+          style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer', color: 'var(--accent)', fontSize: '0.78rem', padding: '2px 8px', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <Users size={12} /> Z adresáře
+        </button>
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div>
-          <label className="form-label">Dodavatel</label>
+          <label className="form-label">Název</label>
           <input value={form.supplierName} onChange={e => set('supplierName', e.target.value)} style={inputStyle()} placeholder="Název firmy" />
         </div>
         <div>
@@ -1255,9 +1266,16 @@ function InvoiceForm({ invoice, transactions, onClose }: {
       </div>
 
       {/* Row 3: buyer */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+        <span className="form-label" style={{ margin: 0, fontWeight: 600 }}>Odběratel</span>
+        <button type="button" onClick={() => setShowContactPicker('buyer')}
+          style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer', color: 'var(--accent)', fontSize: '0.78rem', padding: '2px 8px', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <Users size={12} /> Z adresáře
+        </button>
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div>
-          <label className="form-label">Odběratel</label>
+          <label className="form-label">Název</label>
           <input value={form.buyerName} onChange={e => set('buyerName', e.target.value)} style={inputStyle()} placeholder="Název firmy" />
         </div>
         <div>
@@ -1302,11 +1320,15 @@ function InvoiceForm({ invoice, transactions, onClose }: {
       </div>
 
       {/* Row 6: dates */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div>
           <label className="form-label">Datum vystavení *</label>
           <input type="date" value={form.issueDate} onChange={e => set('issueDate', e.target.value)} style={inputStyle('issueDate')} />
           {errors.issueDate && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.issueDate}</div>}
+        </div>
+        <div>
+          <label className="form-label">DÚZP</label>
+          <input type="date" value={form.duzp} onChange={e => set('duzp', e.target.value)} style={inputStyle()} />
         </div>
         <div>
           <label className="form-label">Splatnost</label>
@@ -1347,6 +1369,72 @@ function InvoiceForm({ invoice, transactions, onClose }: {
       {(createMut.isError || updateMut.isError) && (
         <div style={{ color: 'var(--danger)', fontSize: '0.85rem', marginTop: 12 }}>Nepodařilo se uložit doklad.</div>
       )}
+
+      {/* Contact picker modal */}
+      {showContactPicker && (
+        <ContactPickerModal
+          onClose={() => setShowContactPicker(null)}
+          onSelect={(contact) => {
+            const prefix = showContactPicker === 'supplier' ? 'supplier' : 'buyer';
+            setForm(f => ({
+              ...f,
+              [`${prefix}Name`]: `${contact.firstName} ${contact.lastName}`.trim(),
+              [`${prefix}Ico`]: '',
+              [`${prefix}Dic`]: '',
+            }));
+            setShowContactPicker(null);
+          }}
+        />
+      )}
+    </Modal>
+  );
+}
+
+// ─── Contact Picker Modal ───────────────────────────────────────────────────────
+
+function ContactPickerModal({ onClose, onSelect }: {
+  onClose: () => void;
+  onSelect: (contact: { firstName: string; lastName: string; email?: string; phone?: string }) => void;
+}) {
+  const [search, setSearch] = useState('');
+  const { data: resData } = useResidents({ limit: 200 });
+  const residents = resData?.data ?? [];
+
+  const filtered = residents.filter(r => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return `${r.firstName} ${r.lastName}`.toLowerCase().includes(q) ||
+      (r.email?.toLowerCase().includes(q)) ||
+      (r.phone?.includes(q));
+  });
+
+  return (
+    <Modal open onClose={onClose} title="Vybrat z adresáře">
+      <div style={{ marginBottom: 12 }}>
+        <SearchBar placeholder="Hledat kontakt..." onSearch={setSearch} />
+      </div>
+      <div style={{ maxHeight: 350, overflow: 'auto' }}>
+        {filtered.length === 0 && (
+          <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.88rem' }}>Žádné kontakty</div>
+        )}
+        {filtered.map(r => (
+          <div key={r.id} onClick={() => onSelect(r)}
+            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderBottom: '1px solid var(--border)', cursor: 'pointer', borderRadius: 4 }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-2, rgba(255,255,255,0.05))')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{r.firstName} {r.lastName}</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                {r.role === 'owner' ? 'Vlastník' : r.role === 'tenant' ? 'Nájemník' : r.role === 'member' ? 'Člen' : 'Kontakt'}
+                {r.email && ` · ${r.email}`}
+              </div>
+            </div>
+            {r.property && (
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{r.property.name}</span>
+            )}
+          </div>
+        ))}
+      </div>
     </Modal>
   );
 }

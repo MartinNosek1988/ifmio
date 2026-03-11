@@ -196,6 +196,7 @@ export function useUpdateInvoice() {
       financeApi.invoices.update(id, dto),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['finance', 'invoices'] });
+      qc.invalidateQueries({ queryKey: ['finance', 'summary'] });
     },
   });
 }
