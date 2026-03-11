@@ -179,3 +179,6 @@ ALTER TABLE "prescriptions" ADD CONSTRAINT "prescriptions_billingPeriodId_fkey" 
 
 -- AddForeignKey
 ALTER TABLE "prescription_items" ADD CONSTRAINT "prescription_items_prescriptionId_fkey" FOREIGN KEY ("prescriptionId") REFERENCES "prescriptions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey (moved from 20260308135552_add_import_log — bank_accounts didn't exist yet)
+ALTER TABLE "import_logs" ADD CONSTRAINT "import_logs_bankAccountId_fkey" FOREIGN KEY ("bankAccountId") REFERENCES "bank_accounts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
