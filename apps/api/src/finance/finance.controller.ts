@@ -262,8 +262,16 @@ export class FinanceController {
   @Post('invoices/:id/mark-paid')
   @Roles(...ROLES_WRITE)
   @ApiOperation({ summary: 'Označit doklad jako uhrazený' })
-  markInvoicePaid(@CurrentUser() user: AuthUser, @Param('id') id: string) {
-    return this.invoicesService.markPaid(user, id);
+  markInvoicePaid(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto?: any) {
+    return this.invoicesService.markPaid(user, id, dto);
+  }
+
+  @Post('invoices/:id/pair')
+  @Roles(...ROLES_WRITE)
+  @AuditAction('invoice', 'pair')
+  @ApiOperation({ summary: 'Párovat doklad s bankovní transakcí' })
+  pairInvoice(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: { transactionId: string }) {
+    return this.invoicesService.pairWithTransaction(user, id, body.transactionId);
   }
 
   @Delete('invoices/:id')

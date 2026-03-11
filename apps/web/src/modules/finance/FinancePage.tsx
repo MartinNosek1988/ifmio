@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Upload, Zap, Link2, Calculator, Plus, FileText, Download, Users, Trash2 } from 'lucide-react';
 import { KpiCard, Table, Badge, SearchBar, Button, EmptyState, Modal } from '../../shared/components';
 import type { Column } from '../../shared/components';
@@ -7,7 +7,7 @@ import { formatKc, formatCzDate } from '../../shared/utils/format';
 import { FIN_STATUS_LABELS, label } from '../../constants/labels';
 import type { FinTransaction, FinPrescription, FinAccount } from './types';
 import { useToast } from '../../shared/components/toast/Toast';
-import { useBankAccounts, useTransactions, useImportTransactions, usePrescriptions, useGeneratePrescriptions, useMatchTransactions, useMatchSingle, useFinanceSummary, useDeletePrescription, useDeleteTransaction, useCreatePrescription, useInvoices, useInvoiceStats, useCreateInvoice, useUpdateInvoice, useDeleteInvoice, useMarkInvoicePaid, useImportIsdoc, useExportIsdoc } from './api/finance.queries';
+import { useBankAccounts, useTransactions, useImportTransactions, usePrescriptions, useGeneratePrescriptions, useMatchTransactions, useMatchSingle, useFinanceSummary, useDeletePrescription, useDeleteTransaction, useCreatePrescription, useInvoices, useInvoiceStats, useCreateInvoice, useUpdateInvoice, useDeleteInvoice, useMarkInvoicePaid, useImportIsdoc, useExportIsdoc, usePairInvoice } from './api/finance.queries';
 import type { ApiInvoice, InvoiceLine } from './api/finance.api';
 import { mapAccount, mapTransaction, mapPrescription } from './api/finance.mappers';
 import { useProperties } from '../properties/use-properties';
@@ -817,6 +817,7 @@ function DokladyTab({ transactions }: { transactions: FinTransaction[] }) {
   const { data: stats } = useInvoiceStats();
   const deleteMut = useDeleteInvoice();
   const markPaidMut = useMarkInvoicePaid();
+  const pairMut = usePairInvoice();
   const importIsdocMut = useImportIsdoc();
   const exportIsdocMut = useExportIsdoc();
   const isdocRef = useRef<HTMLInputElement>(null);
@@ -960,9 +961,11 @@ function DokladyTab({ transactions }: { transactions: FinTransaction[] }) {
       {detailInvoice && (
         <InvoiceDetailModal
           invoice={detailInvoice}
+          transactions={transactions}
           onClose={() => setDetailInvoice(null)}
           onEdit={() => { setEditInvoice(detailInvoice); setShowForm(true); setDetailInvoice(null); }}
-          onMarkPaid={() => { markPaidMut.mutate(detailInvoice.id, { onSuccess: () => setDetailInvoice(null) }); }}
+          onMarkPaid={(dto) => { markPaidMut.mutate({ id: detailInvoice.id, dto }, { onSuccess: () => setDetailInvoice(null) }); }}
+          onPair={(transactionId) => { pairMut.mutate({ invoiceId: detailInvoice.id, transactionId }, { onSuccess: () => setDetailInvoice(null) }); }}
           onExport={() => handleExport(detailInvoice)}
           onDelete={() => { setDeleteTarget(detailInvoice); setDetailInvoice(null); }}
         />
@@ -1213,14 +1216,26 @@ function InvoiceLinesEditor({ lines, onChange }: {
 
 // ─── Invoice Detail Modal ───────────────────────────────────────────────────────
 
-function InvoiceDetailModal({ invoice, onClose, onEdit, onMarkPaid, onExport, onDelete }: {
+const PAYMENT_METHODS = [
+  { value: 'bank_transfer', label: 'Bankovní převod' },
+  { value: 'cash', label: 'Hotovost' },
+  { value: 'card', label: 'Kartou' },
+  { value: 'other', label: 'Jiný' },
+];
+
+function InvoiceDetailModal({ invoice, transactions, onClose, onEdit, onMarkPaid, onPair, onExport, onDelete }: {
   invoice: ApiInvoice;
+  transactions: FinTransaction[];
   onClose: () => void;
   onEdit: () => void;
-  onMarkPaid: () => void;
+  onMarkPaid: (dto?: { paidAt?: string; paymentMethod?: string; paidAmount?: number; note?: string }) => void;
+  onPair: (transactionId: string) => void;
   onExport: () => void;
   onDelete: () => void;
 }) {
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showPairModal, setShowPairModal] = useState(false);
+  const navigate = useNavigate();
   const overdue = !invoice.isPaid && invoice.dueDate && invoice.dueDate < new Date().toISOString().slice(0, 10);
 
   const row = (label: string, value: React.ReactNode) => (
@@ -1230,7 +1245,23 @@ function InvoiceDetailModal({ invoice, onClose, onEdit, onMarkPaid, onExport, on
     </div>
   );
 
+  const clickableName = (name: string | undefined, id: string | undefined | null, type: 'supplier' | 'buyer') => {
+    if (!name) return '—';
+    if (id) {
+      return (
+        <span
+          style={{ color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}
+          onClick={() => { onClose(); navigate(`/residents?detail=${id}`); }}
+        >
+          {name}
+        </span>
+      );
+    }
+    return name;
+  };
+
   return (
+    <>
     <Modal open onClose={onClose} title={`Doklad ${invoice.number}`}
       subtitle={
         <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
@@ -1246,7 +1277,10 @@ function InvoiceDetailModal({ invoice, onClose, onEdit, onMarkPaid, onExport, on
           <Button variant="danger" onClick={onDelete}>Smazat</Button>
           <div style={{ display: 'flex', gap: 8 }}>
             <Button onClick={onExport} icon={<Download size={14} />}>Export ISDOC</Button>
-            {!invoice.isPaid && <Button variant="primary" onClick={onMarkPaid}>Uhradit</Button>}
+            {!invoice.isPaid && !invoice.transactionId && (
+              <Button onClick={() => setShowPairModal(true)} icon={<Link2 size={14} />}>Párovat s bankou</Button>
+            )}
+            {!invoice.isPaid && <Button variant="primary" onClick={() => setShowPaymentModal(true)}>Uhradit</Button>}
             <Button variant="primary" onClick={onEdit}>Upravit</Button>
           </div>
         </div>
@@ -1281,6 +1315,8 @@ function InvoiceDetailModal({ invoice, onClose, onEdit, onMarkPaid, onExport, on
         </span>
       ) : '—')}
       {invoice.paymentDate && row('Datum úhrady', formatCzDate(invoice.paymentDate))}
+      {invoice.paymentMethod && row('Způsob úhrady', PAYMENT_METHODS.find(m => m.value === invoice.paymentMethod)?.label || invoice.paymentMethod)}
+      {invoice.paidAmount != null && row('Uhrazená částka', formatKc(invoice.paidAmount))}
       {row('Variabilní symbol', invoice.variableSymbol)}
       {row('Měna', invoice.currency || 'CZK')}
 
@@ -1288,7 +1324,7 @@ function InvoiceDetailModal({ invoice, onClose, onEdit, onMarkPaid, onExport, on
       {(invoice.supplierName || invoice.supplierIco) && (
         <div style={{ marginTop: 14 }}>
           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Dodavatel</div>
-          {row('Název', invoice.supplierName)}
+          {row('Název', clickableName(invoice.supplierName, invoice.supplierId, 'supplier'))}
           {invoice.supplierIco && row('IČO', invoice.supplierIco)}
           {invoice.supplierDic && row('DIČ', invoice.supplierDic)}
         </div>
@@ -1298,7 +1334,7 @@ function InvoiceDetailModal({ invoice, onClose, onEdit, onMarkPaid, onExport, on
       {(invoice.buyerName || invoice.buyerIco) && (
         <div style={{ marginTop: 14 }}>
           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Odběratel</div>
-          {row('Název', invoice.buyerName)}
+          {row('Název', clickableName(invoice.buyerName, invoice.buyerId, 'buyer'))}
           {invoice.buyerIco && row('IČO', invoice.buyerIco)}
           {invoice.buyerDic && row('DIČ', invoice.buyerDic)}
         </div>
@@ -1338,6 +1374,175 @@ function InvoiceDetailModal({ invoice, onClose, onEdit, onMarkPaid, onExport, on
           {row('Nemovitost', invoice.property.name)}
         </div>
       )}
+    </Modal>
+
+    {/* Payment Modal */}
+    {showPaymentModal && (
+      <PaymentModal
+        invoice={invoice}
+        onClose={() => setShowPaymentModal(false)}
+        onSubmit={(dto) => { setShowPaymentModal(false); onMarkPaid(dto); }}
+      />
+    )}
+
+    {/* Pair with Bank Modal */}
+    {showPairModal && (
+      <PairTransactionModal
+        invoice={invoice}
+        transactions={transactions}
+        onClose={() => setShowPairModal(false)}
+        onPair={(txId) => { setShowPairModal(false); onPair(txId); }}
+      />
+    )}
+    </>
+  );
+}
+
+// ─── Payment Modal ──────────────────────────────────────────────────────────────
+
+function PaymentModal({ invoice, onClose, onSubmit }: {
+  invoice: ApiInvoice;
+  onClose: () => void;
+  onSubmit: (dto: { paidAt: string; paymentMethod: string; paidAmount: number; note?: string }) => void;
+}) {
+  const [paidAt, setPaidAt] = useState(new Date().toISOString().slice(0, 10));
+  const [paymentMethod, setPaymentMethod] = useState('bank_transfer');
+  const [paidAmount, setPaidAmount] = useState(String(invoice.amountTotal));
+  const [note, setNote] = useState('');
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '8px 12px', borderRadius: 6,
+    border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: '0.9rem',
+  };
+
+  return (
+    <Modal open onClose={onClose} title="Zaznamenat úhradu"
+      subtitle={`Doklad ${invoice.number} — ${formatKc(invoice.amountTotal)}`}
+      footer={
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <Button onClick={onClose}>Zrušit</Button>
+          <Button variant="primary" onClick={() => onSubmit({ paidAt, paymentMethod, paidAmount: parseFloat(paidAmount) || 0, note: note || undefined })}>
+            Zaznamenat úhradu
+          </Button>
+        </div>
+      }>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div>
+          <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Datum úhrady</label>
+          <input type="date" value={paidAt} onChange={e => setPaidAt(e.target.value)} style={inputStyle} />
+        </div>
+        <div>
+          <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Způsob platby</label>
+          <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} style={inputStyle}>
+            {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Uhrazená částka (Kč)</label>
+          <input type="number" step="0.01" value={paidAmount} onChange={e => setPaidAmount(e.target.value)} style={inputStyle} />
+          {parseFloat(paidAmount) < invoice.amountTotal && parseFloat(paidAmount) > 0 && (
+            <div style={{ fontSize: '0.78rem', color: 'var(--accent-orange)', marginTop: 4 }}>
+              Částečná úhrada — doklad zůstane jako neuhrazený
+            </div>
+          )}
+        </div>
+        <div>
+          <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Poznámka</label>
+          <input type="text" value={note} onChange={e => setNote(e.target.value)} placeholder="Volitelná poznámka..." style={inputStyle} />
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ─── Pair Transaction Modal ─────────────────────────────────────────────────────
+
+function PairTransactionModal({ invoice, transactions, onClose, onPair }: {
+  invoice: ApiInvoice;
+  transactions: FinTransaction[];
+  onClose: () => void;
+  onPair: (transactionId: string) => void;
+}) {
+  const [search, setSearch] = useState(invoice.variableSymbol || '');
+
+  // Filter unmatched transactions, prioritize by VS match
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return transactions
+      .filter(t => !t.parovani || t.parovani.length === 0)
+      .filter(t => {
+        if (!q) return true;
+        return (
+          (t.vs && t.vs.toLowerCase().includes(q)) ||
+          (t.protiUcet && t.protiUcet.toLowerCase().includes(q)) ||
+          (t.popis && t.popis.toLowerCase().includes(q)) ||
+          String(t.castka).includes(q)
+        );
+      })
+      .sort((a, b) => {
+        // Prioritize VS match
+        const aVs = a.vs === invoice.variableSymbol ? 1 : 0;
+        const bVs = b.vs === invoice.variableSymbol ? 1 : 0;
+        if (aVs !== bVs) return bVs - aVs;
+        // Then by amount match
+        const aDiff = Math.abs(a.castka - invoice.amountTotal);
+        const bDiff = Math.abs(b.castka - invoice.amountTotal);
+        return aDiff - bDiff;
+      });
+  }, [transactions, search, invoice]);
+
+  return (
+    <Modal open onClose={onClose} title="Párovat s bankovní transakcí"
+      subtitle={`Doklad ${invoice.number} — ${formatKc(invoice.amountTotal)}`}>
+      <div style={{ marginBottom: 12 }}>
+        <div className="search-bar">
+          <input type="text" placeholder="Hledat dle VS, protistrany, částky..."
+            value={search} onChange={e => setSearch(e.target.value)}
+            style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: '0.88rem' }}
+          />
+        </div>
+      </div>
+      <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+        {filtered.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
+            Žádné nespárované transakce
+          </div>
+        ) : (
+          filtered.slice(0, 50).map(tx => {
+            const isVsMatch = tx.vs && tx.vs === invoice.variableSymbol;
+            const isAmountMatch = Math.abs(tx.castka - invoice.amountTotal) < 0.01;
+            return (
+              <div key={tx.id}
+                onClick={() => onPair(tx.id)}
+                style={{
+                  display: 'grid', gridTemplateColumns: '1fr auto auto',
+                  gap: 10, padding: '10px 12px', borderBottom: '1px solid var(--border)',
+                  cursor: 'pointer', borderRadius: 4, alignItems: 'center',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-2, rgba(255,255,255,0.05))')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
+                <div>
+                  <div style={{ fontWeight: 500, fontSize: '0.88rem' }}>
+                    {tx.protiUcet || tx.popis || 'Transakce'}
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    {formatCzDate(tx.datum)}
+                    {tx.vs && <span> · VS: {tx.vs}</span>}
+                  </div>
+                </div>
+                <div style={{ fontWeight: 600, fontSize: '0.9rem', color: isAmountMatch ? 'var(--success)' : undefined }}>
+                  {formatKc(tx.castka)}
+                </div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {isVsMatch && <Badge variant="green">VS</Badge>}
+                  {isAmountMatch && <Badge variant="green">Částka</Badge>}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
     </Modal>
   );
 }

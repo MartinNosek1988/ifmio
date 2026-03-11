@@ -52,6 +52,7 @@ export class InvoicesService {
         amountBase: Number(i.amountBase),
         vatAmount: Number(i.vatAmount),
         amountTotal: Number(i.amountTotal),
+        paidAmount: i.paidAmount ? Number(i.paidAmount) : null,
         issueDate: i.issueDate.toISOString(),
         duzp: i.duzp?.toISOString() ?? null,
         dueDate: i.dueDate?.toISOString() ?? null,
@@ -191,15 +192,80 @@ export class InvoicesService {
     });
   }
 
-  async markPaid(user: AuthUser, id: string) {
+  async markPaid(user: AuthUser, id: string, dto?: { paidAt?: string; paymentMethod?: string; paidAmount?: number; note?: string }) {
     const existing = await this.prisma.invoice.findFirst({
       where: { id, tenantId: user.tenantId, deletedAt: null },
     });
     if (!existing) throw new NotFoundException('Doklad nenalezen');
-    return this.prisma.invoice.update({
+
+    const paidAmount = dto?.paidAmount ?? Number(existing.amountTotal);
+    const isFullyPaid = paidAmount >= Number(existing.amountTotal);
+
+    const invoice = await this.prisma.invoice.update({
       where: { id },
-      data: { isPaid: true, paymentDate: new Date() },
+      data: {
+        isPaid: isFullyPaid,
+        paymentDate: dto?.paidAt ? new Date(dto.paidAt) : new Date(),
+        paymentMethod: dto?.paymentMethod || null,
+        paidAmount,
+        ...(dto?.note !== undefined ? { note: dto.note } : {}),
+      },
     });
+    return {
+      ...invoice,
+      amountBase: Number(invoice.amountBase),
+      vatAmount: Number(invoice.vatAmount),
+      amountTotal: Number(invoice.amountTotal),
+      paidAmount: invoice.paidAmount ? Number(invoice.paidAmount) : null,
+      issueDate: invoice.issueDate.toISOString(),
+      duzp: invoice.duzp?.toISOString() ?? null,
+      dueDate: invoice.dueDate?.toISOString() ?? null,
+      paymentDate: invoice.paymentDate?.toISOString() ?? null,
+    };
+  }
+
+  async pairWithTransaction(user: AuthUser, invoiceId: string, transactionId: string) {
+    const invoice = await this.prisma.invoice.findFirst({
+      where: { id: invoiceId, tenantId: user.tenantId, deletedAt: null },
+    });
+    if (!invoice) throw new NotFoundException('Doklad nenalezen');
+
+    const transaction = await this.prisma.bankTransaction.findFirst({
+      where: { id: transactionId, tenantId: user.tenantId },
+    });
+    if (!transaction) throw new NotFoundException('Transakce nenalezena');
+
+    const updated = await this.prisma.invoice.update({
+      where: { id: invoiceId },
+      data: {
+        transactionId,
+        isPaid: true,
+        paymentDate: transaction.date,
+        paidAmount: Number(transaction.amount),
+      },
+      include: {
+        property: { select: { id: true, name: true } },
+        transaction: { select: { id: true, description: true, amount: true } },
+      },
+    });
+
+    // Also mark the transaction as matched
+    await this.prisma.bankTransaction.update({
+      where: { id: transactionId },
+      data: { status: 'matched' },
+    });
+
+    return {
+      ...updated,
+      amountBase: Number(updated.amountBase),
+      vatAmount: Number(updated.vatAmount),
+      amountTotal: Number(updated.amountTotal),
+      paidAmount: updated.paidAmount ? Number(updated.paidAmount) : null,
+      issueDate: updated.issueDate.toISOString(),
+      duzp: updated.duzp?.toISOString() ?? null,
+      dueDate: updated.dueDate?.toISOString() ?? null,
+      paymentDate: updated.paymentDate?.toISOString() ?? null,
+    };
   }
 
   async importIsdoc(user: AuthUser, xmlContent: string) {
@@ -362,7 +428,21 @@ export class InvoicesService {
       currency: get('CurrencyCode') || 'CZK',
       issueDate: get('IssueDate') || new Date().toISOString().slice(0, 10),
       duzp: get('TaxPointDate') || get('IssueDate') || '',
-      dueDate: get('DueDate') || '',
+      dueDate: get('PaymentDueDate') || get('DueDate') || (() => {
+        // Try PaymentMeans > PaymentDueDate
+        const pmMatch = xml.match(/<PaymentMeans[^>]*>([\s\S]*?)<\/PaymentMeans>/i);
+        if (pmMatch) {
+          const pmDue = pmMatch[1].match(/<PaymentDueDate[^>]*>([^<]+)<\/PaymentDueDate>/i);
+          if (pmDue) return pmDue[1].trim();
+        }
+        // Try PaymentTerms > PaymentDueDate
+        const ptMatch = xml.match(/<PaymentTerms[^>]*>([\s\S]*?)<\/PaymentTerms>/i);
+        if (ptMatch) {
+          const ptDue = ptMatch[1].match(/<PaymentDueDate[^>]*>([^<]+)<\/PaymentDueDate>/i);
+          if (ptDue) return ptDue[1].trim();
+        }
+        return '';
+      })(),
       variableSymbol: get('VariableSymbol') || get('ID') || '',
       lines: lines.length > 0 ? lines : undefined,
     };

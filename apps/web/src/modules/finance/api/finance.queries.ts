@@ -214,9 +214,24 @@ export function useDeleteInvoice() {
 export function useMarkInvoicePaid() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => financeApi.invoices.markPaid(id),
+    mutationFn: ({ id, dto }: { id: string; dto?: { paidAt?: string; paymentMethod?: string; paidAmount?: number; note?: string } }) =>
+      financeApi.invoices.markPaid(id, dto),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['finance', 'invoices'] });
+      qc.invalidateQueries({ queryKey: ['finance', 'summary'] });
+    },
+  });
+}
+
+export function usePairInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ invoiceId, transactionId }: { invoiceId: string; transactionId: string }) =>
+      financeApi.invoices.pair(invoiceId, transactionId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['finance', 'invoices'] });
+      qc.invalidateQueries({ queryKey: ['finance', 'transactions'] });
+      qc.invalidateQueries({ queryKey: ['finance', 'summary'] });
     },
   });
 }

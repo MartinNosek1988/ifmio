@@ -347,6 +347,8 @@ model Invoice {
   dueDate         DateTime?
   paymentDate     DateTime?
   isPaid          Boolean       @default(false)
+  paymentMethod   String?
+  paidAmount      Decimal?      @db.Decimal(12, 2)
   variableSymbol  String?
   transactionId   String?
   supplierId      String?

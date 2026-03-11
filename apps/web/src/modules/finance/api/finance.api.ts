@@ -106,8 +106,12 @@ export interface ApiInvoice {
   dueDate?: string | null;
   paymentDate?: string | null;
   isPaid: boolean;
+  paymentMethod?: string | null;
+  paidAmount?: number | null;
   variableSymbol?: string;
   transactionId?: string | null;
+  supplierId?: string | null;
+  buyerId?: string | null;
   lines?: InvoiceLine[] | null;
   isdocXml?: string | null;
   note?: string;
@@ -207,8 +211,10 @@ export const financeApi = {
       apiClient.put<ApiInvoice>(`/finance/invoices/${id}`, dto).then((r) => r.data),
     remove: (id: string) =>
       apiClient.delete(`/finance/invoices/${id}`).then((r) => r.data),
-    markPaid: (id: string) =>
-      apiClient.post(`/finance/invoices/${id}/mark-paid`).then((r) => r.data),
+    markPaid: (id: string, dto?: { paidAt?: string; paymentMethod?: string; paidAmount?: number; note?: string }) =>
+      apiClient.post(`/finance/invoices/${id}/mark-paid`, dto || {}).then((r) => r.data),
+    pair: (id: string, transactionId: string) =>
+      apiClient.post(`/finance/invoices/${id}/pair`, { transactionId }).then((r) => r.data),
     importIsdoc: (xmlContent: string) =>
       apiClient.post<ApiInvoice>('/finance/invoices/import-isdoc', { xmlContent }).then((r) => r.data),
     exportIsdoc: (id: string) =>
