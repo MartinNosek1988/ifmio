@@ -4,8 +4,8 @@ import { X } from 'lucide-react';
 interface Props {
   open: boolean;
   onClose: () => void;
-  title: string;
-  subtitle?: string;
+  title: ReactNode;
+  subtitle?: ReactNode;
   wide?: boolean;
   footer?: ReactNode;
   children: ReactNode;

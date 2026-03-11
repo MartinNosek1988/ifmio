@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { Calculator, CheckCircle } from 'lucide-react';
+import { CheckCircle } from 'lucide-react';
 import { Modal, Button, Badge } from '../../../shared/components';
 import { apiClient } from '../../../core/api/client';
 import { useProperties } from '../../properties/use-properties';

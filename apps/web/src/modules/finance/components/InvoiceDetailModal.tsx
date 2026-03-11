@@ -39,7 +39,7 @@ export function InvoiceDetailModal({ invoice, transactions, onClose, onEdit, onM
     </div>
   );
 
-  const clickableName = (name: string | undefined, id: string | undefined | null, type: 'supplier' | 'buyer') => {
+  const clickableName = (name: string | undefined, id: string | undefined | null, _type: 'supplier' | 'buyer') => {
     if (!name) return '—';
     if (id) {
       return (

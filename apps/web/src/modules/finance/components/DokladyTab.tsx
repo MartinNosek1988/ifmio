@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef } from 'react';
 import { Plus, FileText, Download } from 'lucide-react';
 import { KpiCard, SearchBar, Table, Badge, Button, Modal } from '../../../shared/components';
 import type { Column } from '../../../shared/components';
@@ -111,7 +111,7 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
     { key: 'actions', label: '', render: (i) => (
       <div style={{ display: 'flex', gap: 4 }}>
         {!i.isPaid && (
-          <button onClick={(e) => { e.stopPropagation(); markPaidMut.mutate(i.id); }}
+          <button onClick={(e) => { e.stopPropagation(); markPaidMut.mutate({ id: i.id }); }}
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--success)', fontSize: '0.78rem' }} title="Uhradit">
             ✓
           </button>

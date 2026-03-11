@@ -5,7 +5,7 @@ import { apiClient } from '../../core/api/client';
 import {
   Building2, Users, TrendingUp, Shield, Search,
   ChevronLeft, ExternalLink, ToggleLeft, ToggleRight,
-  Clock, Activity, Eye, UserCog, Crown,
+  Clock, Activity, Eye,
 } from 'lucide-react';
 
 /* ─── types ──────────────────────────────────────────────────────── */

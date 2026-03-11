@@ -5,7 +5,8 @@ import { formatKc, formatCzDate } from '../../../shared/utils/format';
 import type { ApiInvoice } from '../api/finance.api';
 import type { FinTransaction } from '../types';
 import { useCreateInvoice, useUpdateInvoice } from '../api/finance.queries';
-import { InvoiceLinesEditor, LineItem, emptyLine, calcLine } from './InvoiceLinesEditor';
+import { InvoiceLinesEditor, calcLine } from './InvoiceLinesEditor';
+import type { LineItem } from './InvoiceLinesEditor';
 import { ContactPickerModal } from './ContactPickerModal';
 import { INVOICE_TYPE_LABELS } from './DokladyTab';
 

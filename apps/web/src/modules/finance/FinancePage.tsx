@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Upload, Zap, Link2, Calculator, Plus } from 'lucide-react';
+import { Zap, Link2, Calculator, Plus } from 'lucide-react';
 import { KpiCard, Button, Modal } from '../../shared/components';
 import { formatKc } from '../../shared/utils/format';
 import type { FinTransaction, FinPrescription } from './types';

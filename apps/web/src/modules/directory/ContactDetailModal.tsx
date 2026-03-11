@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Modal, Badge, Button } from '../../shared/components';
 import type { BadgeVariant } from '../../shared/components';
-import type { Person, PersonRole } from '../../shared/schema/person';
+import type { Person } from '../../shared/schema/person';
 import { usePersonStore } from './person-store';
 import { loadFromStorage } from '../../core/storage';
 import { formatCzDate } from '../../shared/utils/format';

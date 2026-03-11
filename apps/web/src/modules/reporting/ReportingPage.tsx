@@ -21,7 +21,7 @@ function exportCSV(filename: string, csvContent: string) {
   URL.revokeObjectURL(a.href);
 }
 
-function yearlyToCSV(months: MonthlyRow[], year: number): string {
+function yearlyToCSV(months: MonthlyRow[], _year: number): string {
   const header = 'Mesic;Prijmy;Vydaje;Saldo;Inkaso %';
   const rows = months.map(m =>
     `${MONTHS_CS[m.month - 1]};${m.income};${m.expense};${m.balance};${m.collectionRate}`
@@ -116,37 +116,6 @@ function OccupancyBarChart({ data, height = 160 }: {
         );
       })}
     </div>
-  );
-}
-
-function DonutChart({ segments, size = 120 }: {
-  segments: { label: string; value: number; color: string }[];
-  size?: number;
-}) {
-  const total = segments.reduce((s, d) => s + d.value, 0) || 1;
-  const cx = size / 2, cy = size / 2, r = size * 0.38, inner = size * 0.25;
-
-  let angle = -Math.PI / 2;
-  const paths = segments.filter(s => s.value > 0).map(seg => {
-    const ratio = seg.value / total;
-    const startAngle = angle;
-    angle += ratio * 2 * Math.PI;
-    const endAngle = angle;
-    const x1 = cx + r * Math.cos(startAngle), y1 = cy + r * Math.sin(startAngle);
-    const x2 = cx + r * Math.cos(endAngle), y2 = cy + r * Math.sin(endAngle);
-    const xi1 = cx + inner * Math.cos(startAngle), yi1 = cy + inner * Math.sin(startAngle);
-    const xi2 = cx + inner * Math.cos(endAngle), yi2 = cy + inner * Math.sin(endAngle);
-    const largeArc = ratio > 0.5 ? 1 : 0;
-    return { ...seg, d: `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} L ${xi2} ${yi2} A ${inner} ${inner} 0 ${largeArc} 0 ${xi1} ${yi1} Z` };
-  });
-
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      {paths.map((p, i) => <path key={i} d={p.d} fill={p.color} opacity={0.85} />)}
-      <text x={cx} y={cy + 5} textAnchor="middle" fontSize={size * 0.13} fill="var(--text)" fontWeight="700">
-        {total}
-      </text>
-    </svg>
   );
 }
 

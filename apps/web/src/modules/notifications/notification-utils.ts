@@ -1,7 +1,7 @@
 import {
   Info, AlertTriangle, AlertCircle, CheckCircle,
   Bell, CreditCard, Home, Ticket,
-  FileText, Gauge, Wrench,
+  FileText, Gauge,
 } from 'lucide-react'
 import type { ComponentType } from 'react'
 

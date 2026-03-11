@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Link2 } from 'lucide-react';
-import { SearchBar, Button, EmptyState, Badge } from '../../../shared/components';
+import { SearchBar, Button, EmptyState } from '../../../shared/components';
 import { formatKc, formatCzDate } from '../../../shared/utils/format';
 import type { FinTransaction, FinPrescription } from '../types';
 

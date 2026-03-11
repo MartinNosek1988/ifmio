@@ -42,7 +42,7 @@ function normalize(raw: R): Asset {
     vyrobce: raw.vyrobce != null ? String(raw.vyrobce) : undefined,
     model: raw.model != null ? String(raw.model) : undefined,
     umisteni: raw.umisteni != null ? String(raw.umisteni) : undefined,
-    propertyId: raw.propertyId ?? raw.property_id,
+    propertyId: (raw.propertyId ?? raw.property_id) as string | number | undefined,
     jednotkaId: raw.jednotkaId != null ? String(raw.jednotkaId) : raw.unit_id != null ? String(raw.unit_id) : undefined,
     stav: (raw.stav || raw.status || 'aktivni') as AssetStav,
     stavRevize: (raw.stavRevize || 'ok') as AssetStavRevize,

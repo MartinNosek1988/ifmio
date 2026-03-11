@@ -51,7 +51,7 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
   const navigate = useNavigate()
 
   const stepLabels = ['Vitejte', 'Nemovitost', 'Jednotka', 'Hotovo']
-  const stepIndex: Record<Step, number> = { welcome: 0, property: 1, unit: 2, done: 3 }
+
 
   const overlay: React.CSSProperties = {
     position: 'fixed', inset: 0,

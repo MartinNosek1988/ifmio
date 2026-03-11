@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Modal, Badge, Button, KpiCard } from '../../shared/components';
+import { Modal, Badge, Button } from '../../shared/components';
 import type { BadgeVariant } from '../../shared/components';
 import { useTerminateContract } from './api/contracts.queries';
 import type { ApiLeaseAgreement } from './api/contracts.api';
