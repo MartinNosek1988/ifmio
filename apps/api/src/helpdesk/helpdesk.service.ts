@@ -16,7 +16,9 @@ export class HelpdeskService {
   }
 
   async listTickets(user: AuthUser, query: any) {
-    const { status, priority, propertyId, search, page = 1, limit = 20 } = query
+    const { status, priority, propertyId, search } = query
+    const page = Math.max(1, parseInt(query.page, 10) || 1)
+    const limit = Math.min(100, Math.max(1, parseInt(query.limit, 10) || 20))
     const skip = (page - 1) * limit
 
     const where: any = {

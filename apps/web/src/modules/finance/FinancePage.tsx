@@ -35,6 +35,9 @@ export default function FinancePage() {
   const { data: apiBankAccounts = [] } = useBankAccounts();
   const accounts = useMemo(() => apiBankAccounts.map(mapAccount), [apiBankAccounts]);
 
+  // TAB 2: transaction type filter (must be declared before useTransactions)
+  const [filterTxType, setFilterTxType] = useState('');
+
   // TAB 2: transactions from API
   const { data: txData } = useTransactions({ page: 1, limit: 500, ...(filterTxType ? { type: filterTxType } : {}) });
   const transactions = useMemo(() => (txData?.data ?? []).map(mapTransaction), [txData]);
@@ -50,9 +53,6 @@ export default function FinancePage() {
   });
   const prescriptions = useMemo(() => (presData?.data ?? []).map(mapPrescription), [presData]);
   const generateMutation = useGeneratePrescriptions();
-
-  // TAB 2b: transaction type filter
-  const [filterTxType, setFilterTxType] = useState('');
 
   // TAB 4: matching mutation
   const matchMutation = useMatchTransactions();
