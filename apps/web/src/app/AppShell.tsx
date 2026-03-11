@@ -110,6 +110,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/audit': 'Audit log',
   '/admin': 'Administrace',
   '/settings': 'Nastavení organizace',
+  '/notifications': 'Notifikace',
 };
 
 function getPageTitle(pathname: string): string {

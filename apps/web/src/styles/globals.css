@@ -519,3 +519,68 @@ body {
 @media (max-width: 800px) {
   .settings-sidenav { position: static; }
 }
+
+/* ─── Notifications Page ────────────────────────────────────────── */
+.notif-filter-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 12px; border-radius: 16px;
+  border: 1px solid var(--border); background: transparent;
+  font-size: .78rem; color: var(--text-secondary);
+  cursor: pointer; transition: all .15s;
+}
+.notif-filter-chip:hover { border-color: var(--accent); color: var(--accent); }
+.notif-filter-chip.active {
+  background: var(--accent-bg); border-color: var(--accent);
+  color: var(--accent); font-weight: 600;
+}
+.notif-filter-chip__count {
+  background: var(--danger, #ef4444); color: #fff;
+  font-size: .65rem; font-weight: 700; border-radius: 10px;
+  padding: 0 5px; min-width: 16px; text-align: center;
+}
+
+.notif-list {
+  display: flex; flex-direction: column; gap: 1px;
+  background: var(--border); border: 1px solid var(--border);
+  border-radius: 10px; overflow: hidden;
+}
+
+.notif-row {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px 16px; background: var(--card-bg);
+  transition: background .1s;
+}
+.notif-row:hover { background: var(--hover-bg); }
+.notif-row--unread { background: var(--accent-bg, #f0f0ff); }
+.notif-row--unread:hover { background: #e8e6ff; }
+
+.notif-row__icon {
+  width: 32px; height: 32px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 2px;
+}
+.notif-row__content { flex: 1; min-width: 0; }
+.notif-row__title {
+  font-size: .84rem; font-weight: 400; margin-bottom: 2px;
+  color: var(--text-primary);
+}
+.notif-row--unread .notif-row__title { font-weight: 600; }
+.notif-row__body {
+  font-size: .78rem; color: var(--text-secondary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.notif-row__meta {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 4px; font-size: .72rem; color: var(--text-muted);
+}
+.notif-row__actions {
+  display: flex; gap: 2px; flex-shrink: 0; opacity: 0;
+  transition: opacity .15s;
+}
+.notif-row:hover .notif-row__actions { opacity: 1; }
+
+.notif-dd-item { transition: background .1s; }
+.notif-dd-item:hover { background: var(--hover-bg, #f5f3ff) !important; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 1s linear infinite; }

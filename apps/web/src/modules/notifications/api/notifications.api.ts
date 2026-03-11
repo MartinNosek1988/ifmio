@@ -16,9 +16,9 @@ export interface Notification {
 }
 
 export const notificationsApi = {
-  list: (unreadOnly = false) =>
+  list: (unreadOnly = false, type?: string) =>
     apiClient
-      .get<Notification[]>('/notifications', { params: { unreadOnly } })
+      .get<Notification[]>('/notifications', { params: { unreadOnly, ...(type ? { type } : {}) } })
       .then((r) => r.data),
 
   unreadCount: () =>
@@ -29,4 +29,10 @@ export const notificationsApi = {
 
   markAllRead: () =>
     apiClient.patch('/notifications/read-all').then((r) => r.data),
+
+  remove: (id: string) =>
+    apiClient.delete(`/notifications/${id}`).then((r) => r.data),
+
+  generate: () =>
+    apiClient.post('/notifications/generate').then((r) => r.data),
 }
