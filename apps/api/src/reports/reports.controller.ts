@@ -3,6 +3,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import type { FastifyReply } from 'fastify';
 import { ReportsService } from './reports.service';
 import { Roles } from '../common/decorators/roles.decorator';
+import { ROLES_FINANCE_DRAFT } from '../common/constants/roles.constants';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '@ifmio/shared-types';
 
@@ -13,7 +14,7 @@ export class ReportsController {
   constructor(private service: ReportsService) {}
 
   @Get('monthly')
-  @Roles('tenant_owner', 'tenant_admin', 'property_manager', 'finance_manager')
+  @Roles(...ROLES_FINANCE_DRAFT)
   @ApiOperation({ summary: 'Měsíční report (JSON)' })
   getMonthly(
     @CurrentUser() user: AuthUser,
@@ -27,7 +28,7 @@ export class ReportsController {
   }
 
   @Get('monthly/export')
-  @Roles('tenant_owner', 'tenant_admin', 'property_manager', 'finance_manager')
+  @Roles(...ROLES_FINANCE_DRAFT)
   @ApiOperation({ summary: 'Měsíční report — XLSX export' })
   async exportMonthly(
     @CurrentUser() user: AuthUser,
@@ -52,7 +53,7 @@ export class ReportsController {
   }
 
   @Get('yearly')
-  @Roles('tenant_owner', 'tenant_admin', 'property_manager', 'finance_manager')
+  @Roles(...ROLES_FINANCE_DRAFT)
   @ApiOperation({ summary: 'Roční přehled' })
   getYearly(
     @CurrentUser() user: AuthUser,
@@ -69,7 +70,7 @@ export class ReportsController {
   }
 
   @Get('properties')
-  @Roles('tenant_owner', 'tenant_admin', 'property_manager', 'finance_manager')
+  @Roles(...ROLES_FINANCE_DRAFT)
   @ApiOperation({ summary: 'Report nemovitostí' })
   getProperties(@CurrentUser() user: AuthUser) {
     return this.service.getPropertyReport(user);

@@ -1,6 +1,7 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Roles } from '../common/decorators/roles.decorator';
+import { ROLES_MANAGE } from '../common/constants/roles.constants';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import type { Prisma } from '@prisma/client';
@@ -13,7 +14,7 @@ export class AuditController {
   constructor(private prisma: PrismaService) {}
 
   @Get()
-  @Roles('tenant_owner', 'tenant_admin')
+  @Roles(...ROLES_MANAGE)
   @ApiOperation({ summary: 'Seznam audit logů s filtrováním (owner/admin)' })
   async list(
     @CurrentUser() user: AuthUser,
@@ -60,7 +61,7 @@ export class AuditController {
   }
 
   @Get('entities')
-  @Roles('tenant_owner', 'tenant_admin')
+  @Roles(...ROLES_MANAGE)
   @ApiOperation({ summary: 'Distinct entity values pro filtr' })
   async entities(@CurrentUser() user: AuthUser) {
     const result = await this.prisma.auditLog.findMany({

@@ -9,6 +9,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import type { FastifyReply } from 'fastify';
 import { PdfService } from './pdf.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { PropertyScopeService } from '../common/services/property-scope.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '@ifmio/shared-types';
 
@@ -19,6 +20,7 @@ export class PdfController {
   constructor(
     private readonly pdf: PdfService,
     private readonly prisma: PrismaService,
+    private readonly scope: PropertyScopeService,
   ) {}
 
   @Get('helpdesk/:id/protocol')
@@ -42,6 +44,8 @@ export class PdfController {
     });
 
     if (!ticket) throw new NotFoundException('Tiket nenalezen');
+
+    await this.scope.verifyEntityAccess(user, ticket.propertyId);
 
     const doc = this.pdf.generateProtocol({
       ticketNumber: ticket.number,
@@ -79,12 +83,14 @@ export class PdfController {
     const reminder = await this.prisma.reminder.findFirst({
       where: { id, tenantId: user.tenantId },
       include: {
-        resident: { select: { firstName: true, lastName: true } },
+        resident: { select: { firstName: true, lastName: true, propertyId: true } },
         template: true,
       },
     });
 
     if (!reminder) throw new NotFoundException('Upominka nenalezena');
+
+    await this.scope.verifyEntityAccess(user, reminder.resident.propertyId);
 
     const doc = this.pdf.generateReminder({
       residentName: `${reminder.resident.firstName} ${reminder.resident.lastName}`,

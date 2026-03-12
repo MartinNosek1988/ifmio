@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
+import { PropertyScopeService } from '../common/services/property-scope.service'
 import { EmailService } from '../email/email.service'
 import { DEFAULT_REMINDER_TEMPLATES } from './reminders.seed'
 import type { ReminderListQueryDto, CreateReminderDto, UpdateTemplateDto } from './dto/reminders.dto'
@@ -9,10 +10,11 @@ import type { AuthUser } from '@ifmio/shared-types'
 export class RemindersService {
   constructor(
     private prisma: PrismaService,
+    private scope: PropertyScopeService,
     private email:  EmailService,
   ) {}
 
-  // ─── TEMPLATES ────────────────────────────────────────────────
+  // ─── TEMPLATES (tenant-wide, no property scope) ─────────────
 
   async listTemplates(user: AuthUser) {
     return this.prisma.reminderTemplate.findMany({
@@ -49,11 +51,13 @@ export class RemindersService {
     })
   }
 
-  // ─── DEBTORS ──────────────────────────────────────────────────
+  // ─── DEBTORS (property-scoped) ──────────────────────────────
 
   async listDebtors(user: AuthUser) {
+    const scopeWhere = await this.scope.scopeByPropertyId(user)
+
     const residents = await this.prisma.resident.findMany({
-      where:   { tenantId: user.tenantId, hasDebt: true, isActive: true },
+      where:   { tenantId: user.tenantId, hasDebt: true, isActive: true, ...scopeWhere } as any,
       orderBy: { lastName: 'asc' },
       include: {
         property: { select: { id: true, name: true } },
@@ -92,14 +96,17 @@ export class RemindersService {
     return '90_plus'
   }
 
-  // ─── REMINDERS ────────────────────────────────────────────────
+  // ─── REMINDERS (property-scoped via resident) ───────────────
 
   async listReminders(user: AuthUser, query: ReminderListQueryDto) {
     const { residentId, status, level, page = 1, limit = 20 } = query
     const skip = (page - 1) * limit
 
+    const reminderScope = await this.scope.scopeByRelation(user, 'resident')
+
     const where: Record<string, unknown> = {
       tenantId: user.tenantId,
+      ...reminderScope,
       ...(residentId ? { residentId } : {}),
       ...(status     ? { status }     : {}),
       ...(level      ? { level }      : {}),
@@ -145,6 +152,8 @@ export class RemindersService {
       where: { id: dto.residentId, tenantId: user.tenantId },
     })
     if (!resident) throw new NotFoundException('Resident nenalezen')
+
+    await this.scope.verifyEntityAccess(user, resident.propertyId)
 
     const reminder = await this.prisma.reminder.create({
       data: {
@@ -206,11 +215,13 @@ export class RemindersService {
     const reminder = await this.prisma.reminder.findFirst({
       where: { id, tenantId: user.tenantId },
       include: {
-        resident: { select: { firstName: true, lastName: true, email: true } },
+        resident: { select: { firstName: true, lastName: true, email: true, propertyId: true } },
         template: true,
       },
     })
     if (!reminder) throw new NotFoundException('Upomínka nenalezena')
+
+    await this.scope.verifyEntityAccess(user, reminder.resident.propertyId)
 
     const updated = await this.prisma.reminder.update({
       where: { id },
@@ -255,9 +266,11 @@ export class RemindersService {
   async markAsPaid(user: AuthUser, id: string) {
     const reminder = await this.prisma.reminder.findFirst({
       where: { id, tenantId: user.tenantId },
-      include: { resident: true },
+      include: { resident: { select: { id: true, propertyId: true } } },
     })
     if (!reminder) throw new NotFoundException('Upomínka nenalezena')
+
+    await this.scope.verifyEntityAccess(user, reminder.resident.propertyId)
 
     const updated = await this.prisma.reminder.update({
       where: { id },
@@ -293,6 +306,8 @@ export class RemindersService {
 
     if (!template) throw new NotFoundException('Šablona nenalezena')
     if (!resident) throw new NotFoundException('Resident nenalezen')
+
+    await this.scope.verifyEntityAccess(user, resident.propertyId)
 
     const vars: Record<string, string> = {
       firstName:  resident.firstName,
