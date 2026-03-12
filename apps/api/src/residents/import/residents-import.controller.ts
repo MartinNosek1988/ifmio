@@ -51,7 +51,7 @@ export class ResidentsImportController {
     const buffer = Buffer.concat(chunks)
 
     const rows = this.service.parseFile(buffer, data.mimetype)
-    return this.service.validate(rows, user.tenantId)
+    return this.service.validate(user, rows)
   }
 
   @Post('execute')

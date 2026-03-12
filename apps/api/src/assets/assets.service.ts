@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PropertyScopeService } from '../common/services/property-scope.service';
 import { Prisma } from '@prisma/client';
 import type { AuthUser } from '@ifmio/shared-types';
 
 @Injectable()
 export class AssetsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private scope: PropertyScopeService,
+  ) {}
 
   /* ─── List ──────────────────────────────────────────────────────── */
 
@@ -15,9 +19,12 @@ export class AssetsService {
     status?: string;
     propertyId?: string;
   }) {
+    const scopeWhere = await this.scope.scopeByPropertyId(user);
+
     const where: Prisma.AssetWhereInput = {
       tenantId: user.tenantId,
       deletedAt: null,
+      ...scopeWhere,
     };
 
     if (params.category) where.category = params.category as any;
@@ -48,7 +55,8 @@ export class AssetsService {
   /* ─── Stats ─────────────────────────────────────────────────────── */
 
   async getStats(user: AuthUser) {
-    const base = { tenantId: user.tenantId, deletedAt: null };
+    const scopeWhere = await this.scope.scopeByPropertyId(user);
+    const base = { tenantId: user.tenantId, deletedAt: null, ...scopeWhere } as any;
     const now = new Date();
 
     const [total, inWarranty, needsService, totalValue] = await Promise.all([
@@ -96,6 +104,10 @@ export class AssetsService {
     nextServiceDate?: string;
     notes?: string;
   }) {
+    if (dto.propertyId) {
+      await this.scope.verifyPropertyAccess(user, dto.propertyId);
+    }
+
     return this.prisma.asset.create({
       data: {
         tenantId: user.tenantId,
@@ -132,11 +144,17 @@ export class AssetsService {
       },
     });
     if (!asset) throw new NotFoundException('Aktivum nenalezeno');
+
+    await this.scope.verifyEntityAccess(user, asset.propertyId);
     return asset;
   }
 
   async update(user: AuthUser, id: string, dto: Record<string, unknown>) {
-    await this.getById(user, id); // ensure exists
+    await this.getById(user, id); // verifies scope
+
+    if (typeof dto.propertyId === 'string' && dto.propertyId) {
+      await this.scope.verifyPropertyAccess(user, dto.propertyId);
+    }
 
     const data: Record<string, unknown> = {};
     const strings = ['name', 'manufacturer', 'model', 'serialNumber', 'location', 'notes'];
@@ -162,7 +180,7 @@ export class AssetsService {
   }
 
   async remove(user: AuthUser, id: string) {
-    await this.getById(user, id);
+    await this.getById(user, id); // verifies scope
     await this.prisma.asset.update({
       where: { id },
       data: { deletedAt: new Date() },
@@ -179,7 +197,7 @@ export class AssetsService {
     cost?: number;
     supplier?: string;
   }) {
-    await this.getById(user, assetId);
+    await this.getById(user, assetId); // verifies scope
 
     const record = await this.prisma.assetServiceRecord.create({
       data: {
@@ -203,7 +221,7 @@ export class AssetsService {
   }
 
   async getServiceRecords(user: AuthUser, assetId: string) {
-    await this.getById(user, assetId);
+    await this.getById(user, assetId); // verifies scope
     return this.prisma.assetServiceRecord.findMany({
       where: { assetId, tenantId: user.tenantId },
       orderBy: { date: 'desc' },
@@ -213,8 +231,10 @@ export class AssetsService {
   /* ─── CSV Export ────────────────────────────────────────────────── */
 
   async exportCsv(user: AuthUser) {
+    const scopeWhere = await this.scope.scopeByPropertyId(user);
+
     const assets = await this.prisma.asset.findMany({
-      where: { tenantId: user.tenantId, deletedAt: null },
+      where: { tenantId: user.tenantId, deletedAt: null, ...scopeWhere } as any,
       include: {
         property: { select: { name: true } },
         unit: { select: { name: true } },

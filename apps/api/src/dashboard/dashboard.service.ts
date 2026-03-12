@@ -1,13 +1,22 @@
 import { Injectable } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
+import { PropertyScopeService } from '../common/services/property-scope.service'
 import type { AuthUser } from '@ifmio/shared-types'
 
 @Injectable()
 export class DashboardService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private scope: PropertyScopeService,
+  ) {}
 
   async getOverview(user: AuthUser) {
     const tenantId = user.tenantId
+    const scopeWhere = await this.scope.scopeByPropertyId(user)
+    const txScopeWhere = await this.scope.scopeByRelation(user, 'bankAccount')
+    const reminderScopeWhere = await this.scope.scopeByRelation(user, 'resident')
+    const ids = await this.scope.getAccessiblePropertyIds(user)
+    const propertyFilter = ids !== null ? { id: { in: ids } } : {}
 
     const [
       propertiesCount,
@@ -25,52 +34,52 @@ export class DashboardService {
       recentTickets,
     ] = await Promise.all([
       this.prisma.property.count({
-        where: { tenantId, status: 'active' },
+        where: { tenantId, status: 'active', ...propertyFilter } as any,
       }),
 
       this.prisma.unit.count({
-        where: { property: { tenantId } },
+        where: { property: { tenantId, ...propertyFilter } } as any,
       }),
 
       this.prisma.unit.count({
-        where: { property: { tenantId }, isOccupied: true },
+        where: { property: { tenantId, ...propertyFilter }, isOccupied: true } as any,
       }),
 
       this.prisma.resident.count({
-        where: { tenantId, isActive: true },
+        where: { tenantId, isActive: true, ...scopeWhere } as any,
       }),
 
       this.prisma.resident.count({
-        where: { tenantId, hasDebt: true, isActive: true },
+        where: { tenantId, hasDebt: true, isActive: true, ...scopeWhere } as any,
       }),
 
       this.prisma.helpdeskTicket.count({
-        where: { tenantId, status: { in: ['open', 'in_progress'] } },
+        where: { tenantId, status: { in: ['open', 'in_progress'] }, ...scopeWhere } as any,
       }),
 
       this.prisma.helpdeskTicket.count({
-        where: { tenantId, priority: 'urgent', status: { in: ['open', 'in_progress'] } },
+        where: { tenantId, priority: 'urgent', status: { in: ['open', 'in_progress'] }, ...scopeWhere } as any,
       }),
 
       this.prisma.reminder.count({
-        where: { tenantId, status: { in: ['draft', 'sent'] } },
+        where: { tenantId, status: { in: ['draft', 'sent'] }, ...reminderScopeWhere } as any,
       }),
 
       this.prisma.bankTransaction.count({
-        where: { tenantId, status: 'unmatched' },
+        where: { tenantId, status: 'unmatched', ...txScopeWhere } as any,
       }),
 
       this.prisma.prescription.count({
-        where: { tenantId, status: 'active' },
+        where: { tenantId, status: 'active', ...scopeWhere } as any,
       }),
 
       this.prisma.prescription.aggregate({
-        where: { tenantId, status: 'active' },
+        where: { tenantId, status: 'active', ...scopeWhere } as any,
         _sum: { amount: true },
       }),
 
       this.prisma.bankTransaction.findMany({
-        where:   { tenantId },
+        where:   { tenantId, ...txScopeWhere } as any,
         orderBy: { date: 'desc' },
         take:    5,
         include: {
@@ -79,7 +88,7 @@ export class DashboardService {
       }),
 
       this.prisma.helpdeskTicket.findMany({
-        where:   { tenantId, status: { in: ['open', 'in_progress'] } },
+        where:   { tenantId, status: { in: ['open', 'in_progress'] }, ...scopeWhere } as any,
         orderBy: { createdAt: 'desc' },
         take:    5,
         include: {

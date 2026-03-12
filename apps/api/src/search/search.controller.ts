@@ -21,7 +21,7 @@ export class SearchController {
   ) {
     const parsedLimit = limit ? parseInt(limit, 10) : 20;
     return this.searchService.search(
-      user.tenantId,
+      user,
       q,
       Number.isFinite(parsedLimit) ? parsedLimit : 20,
     );
