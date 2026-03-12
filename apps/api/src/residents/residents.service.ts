@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PropertyScopeService } from '../common/services/property-scope.service';
 import { CreateResidentDto } from './dto/create-resident.dto';
 import { UpdateResidentDto } from './dto/update-resident.dto';
 import { QueryResidentDto } from './dto/query-resident.dto';
@@ -8,15 +9,20 @@ import type { AuthUser } from '@ifmio/shared-types';
 
 @Injectable()
 export class ResidentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private scope: PropertyScopeService,
+  ) {}
 
   async findAll(user: AuthUser, query: QueryResidentDto) {
     const { search, role, propertyId, hasDebt, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
+    const scopeWhere = await this.scope.scopeByPropertyId(user);
     const where: Prisma.ResidentWhereInput = {
       tenantId: user.tenantId,
       isActive: true,
+      ...scopeWhere,
       ...(role ? { role: role as Prisma.EnumResidentRoleFilter } : {}),
       ...(propertyId ? { propertyId } : {}),
       ...(hasDebt !== undefined ? { hasDebt } : {}),
@@ -70,10 +76,14 @@ export class ResidentsService {
       },
     });
     if (!resident) throw new NotFoundException(`Resident ${id} nenalezen`);
+    await this.scope.verifyEntityAccess(user, resident.propertyId);
     return resident;
   }
 
   async create(user: AuthUser, dto: CreateResidentDto) {
+    if (dto.propertyId) {
+      await this.scope.verifyPropertyAccess(user, dto.propertyId);
+    }
     return this.prisma.resident.create({
       data: {
         tenantId: user.tenantId,
@@ -105,40 +115,46 @@ export class ResidentsService {
   }
 
   async bulkDeactivate(user: AuthUser, ids: string[]) {
+    const scopeWhere = await this.scope.scopeByPropertyId(user);
     const result = await this.prisma.resident.updateMany({
-      where: { id: { in: ids }, tenantId: user.tenantId },
+      where: { id: { in: ids }, tenantId: user.tenantId, ...scopeWhere },
       data: { isActive: false },
     });
     return { affected: result.count };
   }
 
   async bulkActivate(user: AuthUser, ids: string[]) {
+    const scopeWhere = await this.scope.scopeByPropertyId(user);
     const result = await this.prisma.resident.updateMany({
-      where: { id: { in: ids }, tenantId: user.tenantId },
+      where: { id: { in: ids }, tenantId: user.tenantId, ...scopeWhere },
       data: { isActive: true },
     });
     return { affected: result.count };
   }
 
   async bulkAssignProperty(user: AuthUser, ids: string[], propertyId: string) {
+    await this.scope.verifyPropertyAccess(user, propertyId);
+    const scopeWhere = await this.scope.scopeByPropertyId(user);
     const result = await this.prisma.resident.updateMany({
-      where: { id: { in: ids }, tenantId: user.tenantId },
+      where: { id: { in: ids }, tenantId: user.tenantId, ...scopeWhere },
       data: { propertyId },
     });
     return { affected: result.count };
   }
 
   async bulkMarkAsDebtors(user: AuthUser, ids: string[], hasDebt: boolean) {
+    const scopeWhere = await this.scope.scopeByPropertyId(user);
     const result = await this.prisma.resident.updateMany({
-      where: { id: { in: ids }, tenantId: user.tenantId },
+      where: { id: { in: ids }, tenantId: user.tenantId, ...scopeWhere },
       data: { hasDebt },
     });
     return { affected: result.count };
   }
 
   async findDebtors(user: AuthUser) {
+    const scopeWhere = await this.scope.scopeByPropertyId(user);
     return this.prisma.resident.findMany({
-      where: { tenantId: user.tenantId, hasDebt: true, isActive: true },
+      where: { tenantId: user.tenantId, hasDebt: true, isActive: true, ...scopeWhere },
       orderBy: { lastName: 'asc' },
       include: {
         property: { select: { id: true, name: true } },

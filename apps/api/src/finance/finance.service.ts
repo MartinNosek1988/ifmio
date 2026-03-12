@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PropertyScopeService } from '../common/services/property-scope.service';
 import type { Prisma } from '@prisma/client';
 import { parseCsv } from './parsers/csv.parser';
 import { parseAbo } from './parsers/abo.parser';
@@ -7,13 +8,17 @@ import type { AuthUser } from '@ifmio/shared-types';
 
 @Injectable()
 export class FinanceService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private scope: PropertyScopeService,
+  ) {}
 
   // ─── BANK ACCOUNTS ────────────────────────────────────────────
 
   async listBankAccounts(user: AuthUser) {
+    const scopeWhere = await this.scope.scopeByPropertyId(user);
     return this.prisma.bankAccount.findMany({
-      where: { tenantId: user.tenantId, isActive: true },
+      where: { tenantId: user.tenantId, isActive: true, ...scopeWhere },
       orderBy: { name: 'asc' },
       include: {
         _count: { select: { transactions: true } },
@@ -29,6 +34,9 @@ export class FinanceService {
     currency?: string;
     propertyId?: string;
   }) {
+    if (dto.propertyId) {
+      await this.scope.verifyPropertyAccess(user, dto.propertyId);
+    }
     return this.prisma.bankAccount.create({
       data: {
         tenantId: user.tenantId,
@@ -61,8 +69,11 @@ export class FinanceService {
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 50));
     const skip = (page - 1) * limit;
 
+    // BankTransaction → bankAccount.propertyId
+    const scopeWhere = await this.scope.scopeByRelation(user, 'bankAccount');
     const where: Prisma.BankTransactionWhereInput = {
       tenantId: user.tenantId,
+      ...scopeWhere,
       ...(bankAccountId ? { bankAccountId } : {}),
       ...(status ? { status: status as Prisma.EnumBankTransactionStatusFilter } : {}),
       ...(type ? { type: type as Prisma.EnumBankTransactionTypeFilter } : {}),
@@ -113,6 +124,13 @@ export class FinanceService {
     constantSymbol?: string;
     description?: string;
   }) {
+    // Verify bank account access
+    const bankAccount = await this.prisma.bankAccount.findFirst({
+      where: { id: dto.bankAccountId, tenantId: user.tenantId },
+    });
+    if (!bankAccount) throw new NotFoundException('Bankovní účet nenalezen');
+    await this.scope.verifyEntityAccess(user, bankAccount.propertyId);
+
     return this.prisma.bankTransaction.create({
       data: {
         tenantId: user.tenantId,
@@ -145,9 +163,11 @@ export class FinanceService {
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
     const skip = (page - 1) * limit;
 
+    const scopeWhere = await this.scope.scopeByPropertyId(user);
     const where: Prisma.PrescriptionWhereInput = {
       tenantId: user.tenantId,
       status: status as Prisma.EnumPrescriptionStatusFilter,
+      ...scopeWhere,
       ...(type ? { type: type as Prisma.EnumPrescriptionTypeFilter } : {}),
       ...(propertyId ? { propertyId } : {}),
       ...(residentId ? { residentId } : {}),
@@ -199,6 +219,7 @@ export class FinanceService {
     validTo?: string;
     items?: { name: string; amount: number; vatRate?: number; unit?: string; quantity?: number }[];
   }) {
+    await this.scope.verifyPropertyAccess(user, dto.propertyId);
     const { items, ...data } = dto;
     return this.prisma.prescription.create({
       data: {
@@ -233,9 +254,11 @@ export class FinanceService {
   // ─── BILLING PERIODS ──────────────────────────────────────────
 
   async listBillingPeriods(user: AuthUser, propertyId?: string) {
+    const scopeWhere = await this.scope.scopeByPropertyId(user);
     return this.prisma.billingPeriod.findMany({
       where: {
         tenantId: user.tenantId,
+        ...scopeWhere,
         ...(propertyId ? { propertyId } : {}),
       },
       orderBy: { dateFrom: 'desc' },
@@ -251,6 +274,7 @@ export class FinanceService {
     dateFrom: string;
     dateTo: string;
   }) {
+    await this.scope.verifyPropertyAccess(user, dto.propertyId);
     return this.prisma.billingPeriod.create({
       data: {
         tenantId: user.tenantId,
@@ -265,9 +289,18 @@ export class FinanceService {
   // ─── SUMMARY ──────────────────────────────────────────────────
 
   async getSummary(user: AuthUser, propertyId?: string) {
+    const scopeWhere = await this.scope.scopeByPropertyId(user);
     const baseWhere = {
       tenantId: user.tenantId,
+      ...scopeWhere,
       ...(propertyId ? { propertyId } : {}),
+    };
+
+    // For transactions, scope via bankAccount relation
+    const txScopeWhere = await this.scope.scopeByRelation(user, 'bankAccount');
+    const txBaseWhere = {
+      tenantId: user.tenantId,
+      ...txScopeWhere,
     };
 
     const [
@@ -277,18 +310,18 @@ export class FinanceService {
       openBillingPeriods,
     ] = await Promise.all([
       this.prisma.bankTransaction.aggregate({
-        where: baseWhere,
+        where: txBaseWhere as any,
         _sum: { amount: true },
         _count: true,
       }),
       this.prisma.bankTransaction.count({
-        where: { ...baseWhere, status: 'unmatched' },
+        where: { ...txBaseWhere, status: 'unmatched' } as any,
       }),
       this.prisma.prescription.count({
-        where: { ...baseWhere, status: 'active' },
+        where: { ...baseWhere, status: 'active' } as any,
       }),
       this.prisma.billingPeriod.count({
-        where: { ...baseWhere, status: 'open' },
+        where: { ...baseWhere, status: 'open' } as any,
       }),
     ]);
 
@@ -312,6 +345,7 @@ export class FinanceService {
       where: { id: bankAccountId, tenantId: user.tenantId },
     })
     if (!bankAccount) throw new NotFoundException('Bankovní účet nenalezen')
+    await this.scope.verifyEntityAccess(user, bankAccount.propertyId)
 
     const content  = file.buffer.toString('utf-8')
     const fileName = file.originalname.toLowerCase()
@@ -400,16 +434,19 @@ export class FinanceService {
   // ─── PÁROVÁNÍ TRANSAKCÍ ───────────────────────────────────────
 
   async matchTransactions(user: AuthUser, bankAccountId?: string) {
+    const txScopeWhere = await this.scope.scopeByRelation(user, 'bankAccount')
     const where: any = {
       tenantId: user.tenantId,
       status:   'unmatched',
+      ...txScopeWhere,
       ...(bankAccountId ? { bankAccountId } : {}),
     }
 
+    const prescriptionScope = await this.scope.scopeByPropertyId(user)
     const [transactions, prescriptions] = await Promise.all([
       this.prisma.bankTransaction.findMany({ where }),
       this.prisma.prescription.findMany({
-        where:   { tenantId: user.tenantId, status: 'active' },
+        where:   { tenantId: user.tenantId, status: 'active', ...prescriptionScope } as any,
         include: { items: true },
       }),
     ])
@@ -477,6 +514,7 @@ export class FinanceService {
       where: { id: dto.propertyId, tenantId: user.tenantId },
     })
     if (!property) throw new NotFoundException('Nemovitost nenalezena')
+    await this.scope.verifyPropertyAccess(user, dto.propertyId)
 
     const dueDay = dto.dueDay ?? 15
     const [year, month] = dto.month.split('-').map(Number)
@@ -583,6 +621,7 @@ export class FinanceService {
     const [tx, prescription] = await Promise.all([
       this.prisma.bankTransaction.findFirst({
         where: { id: transactionId, tenantId: user.tenantId },
+        include: { bankAccount: { select: { propertyId: true } } },
       }),
       this.prisma.prescription.findFirst({
         where: { id: prescriptionId, tenantId: user.tenantId },
@@ -591,6 +630,10 @@ export class FinanceService {
 
     if (!tx)           throw new NotFoundException('Transakce nenalezena')
     if (!prescription) throw new NotFoundException('Předpis nenalezen')
+
+    // Verify scope on both entities
+    await this.scope.verifyEntityAccess(user, tx.bankAccount?.propertyId ?? null)
+    await this.scope.verifyEntityAccess(user, prescription.propertyId)
 
     if (tx.status === 'matched') {
       throw new BadRequestException('Transakce je již spárována')
@@ -612,6 +655,7 @@ export class FinanceService {
       where: { id, tenantId: user.tenantId },
     })
     if (!prescription) throw new NotFoundException('Předpis nenalezen')
+    await this.scope.verifyPropertyAccess(user, prescription.propertyId)
 
     await this.prisma.prescriptionItem.deleteMany({ where: { prescriptionId: id } })
     await this.prisma.prescription.delete({ where: { id } })
@@ -620,8 +664,10 @@ export class FinanceService {
   async deleteTransaction(user: AuthUser, id: string) {
     const tx = await this.prisma.bankTransaction.findFirst({
       where: { id, tenantId: user.tenantId },
+      include: { bankAccount: { select: { propertyId: true } } },
     })
     if (!tx) throw new NotFoundException('Transakce nenalezena')
+    await this.scope.verifyEntityAccess(user, tx.bankAccount?.propertyId ?? null)
 
     await this.prisma.bankTransaction.delete({ where: { id } })
   }

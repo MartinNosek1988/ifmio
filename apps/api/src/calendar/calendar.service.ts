@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
+import { PropertyScopeService } from '../common/services/property-scope.service'
 import { CalendarEventDto, CalendarStatsDto } from './calendar.dto'
 import type { AuthUser } from '@ifmio/shared-types';
 
@@ -23,7 +24,10 @@ function serializeEvent(item: any): CalendarEventDto {
 
 @Injectable()
 export class CalendarService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private scope: PropertyScopeService,
+  ) {}
 
   async getEvents(user: AuthUser, query: {
     from?: string; to?: string; eventType?: string; search?: string
@@ -33,12 +37,14 @@ export class CalendarService {
     const from = query.from ? new Date(query.from) : new Date(now.getFullYear(), now.getMonth() - 1, 1)
     const to = query.to ? new Date(query.to) : new Date(now.getFullYear(), now.getMonth() + 2, 0)
 
+    const scopeWhere = await this.scope.scopeByPropertyId(user)
     const results: CalendarEventDto[] = []
 
     // 1. Custom calendar events
     const customWhere: any = {
       tenantId,
       date: { gte: from, lte: to },
+      ...scopeWhere,
     }
     if (query.eventType && query.eventType !== 'all') customWhere.eventType = query.eventType
     if (query.search) {
@@ -65,7 +71,8 @@ export class CalendarService {
             tenantId,
             deadline: { gte: from, lte: to },
             status: { notIn: ['uzavrena', 'zrusena'] },
-          },
+            ...scopeWhere,
+          } as any,
           include: { property: { select: { id: true, name: true } } },
           orderBy: { deadline: 'asc' },
         })
@@ -93,7 +100,8 @@ export class CalendarService {
             tenantId,
             endDate: { gte: from, lte: to },
             status: 'aktivni',
-          },
+            ...scopeWhere,
+          } as any,
           include: {
             property: { select: { id: true, name: true } },
             resident: { select: { firstName: true, lastName: true } },
@@ -125,7 +133,8 @@ export class CalendarService {
             tenantId,
             isActive: true,
             calibrationDue: { gte: from, lte: to },
-          },
+            ...scopeWhere,
+          } as any,
           include: { property: { select: { id: true, name: true } } },
           orderBy: { calibrationDue: 'asc' },
         })
@@ -164,27 +173,30 @@ export class CalendarService {
 
   async getStats(user: AuthUser): Promise<CalendarStatsDto> {
     const tenantId = user.tenantId
+    const scopeWhere = await this.scope.scopeByPropertyId(user)
     const now = new Date()
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
     const futureLimit = new Date(now.getFullYear(), now.getMonth() + 3, 0)
 
+    const baseCustom = { tenantId, ...scopeWhere }
+
     const [customTotal, customMonth, customUpcoming] = await Promise.all([
-      this.prisma.calendarEvent.count({ where: { tenantId } }),
-      this.prisma.calendarEvent.count({ where: { tenantId, date: { gte: monthStart, lte: monthEnd } } }),
-      this.prisma.calendarEvent.count({ where: { tenantId, date: { gte: now, lte: futureLimit } } }),
+      this.prisma.calendarEvent.count({ where: baseCustom as any }),
+      this.prisma.calendarEvent.count({ where: { ...baseCustom, date: { gte: monthStart, lte: monthEnd } } as any }),
+      this.prisma.calendarEvent.count({ where: { ...baseCustom, date: { gte: now, lte: futureLimit } } as any }),
     ])
 
     // Count aggregated upcoming events
     const [woCount, contractCount, meterCount] = await Promise.all([
       this.prisma.workOrder.count({
-        where: { tenantId, deadline: { gte: now, lte: futureLimit }, status: { notIn: ['uzavrena', 'zrusena'] } },
+        where: { tenantId, deadline: { gte: now, lte: futureLimit }, status: { notIn: ['uzavrena', 'zrusena'] }, ...scopeWhere } as any,
       }),
       this.prisma.leaseAgreement.count({
-        where: { tenantId, endDate: { gte: now, lte: futureLimit }, status: 'aktivni' },
+        where: { tenantId, endDate: { gte: now, lte: futureLimit }, status: 'aktivni', ...scopeWhere } as any,
       }),
       this.prisma.meter.count({
-        where: { tenantId, isActive: true, calibrationDue: { gte: now, lte: futureLimit } },
+        where: { tenantId, isActive: true, calibrationDue: { gte: now, lte: futureLimit }, ...scopeWhere } as any,
       }),
     ])
 
@@ -203,6 +215,7 @@ export class CalendarService {
       where: { id, tenantId: user.tenantId },
     })
     if (!item) throw new NotFoundException('Událost nenalezena')
+    await this.scope.verifyEntityAccess(user, item.propertyId)
     return serializeEvent(item)
   }
 
@@ -218,6 +231,9 @@ export class CalendarService {
     description?: string
     attendees?: string[]
   }): Promise<CalendarEventDto> {
+    if (dto.propertyId) {
+      await this.scope.verifyPropertyAccess(user, dto.propertyId)
+    }
     const item = await this.prisma.calendarEvent.create({
       data: {
         tenantId: user.tenantId,
@@ -248,10 +264,7 @@ export class CalendarService {
     description?: string
     attendees?: string[]
   }): Promise<CalendarEventDto> {
-    const existing = await this.prisma.calendarEvent.findFirst({
-      where: { id, tenantId: user.tenantId },
-    })
-    if (!existing) throw new NotFoundException('Událost nenalezena')
+    await this.getById(user, id)
 
     const data: any = {}
     if (dto.title !== undefined) data.title = dto.title
@@ -273,10 +286,7 @@ export class CalendarService {
   }
 
   async remove(user: AuthUser, id: string): Promise<{ success: boolean }> {
-    const existing = await this.prisma.calendarEvent.findFirst({
-      where: { id, tenantId: user.tenantId },
-    })
-    if (!existing) throw new NotFoundException('Událost nenalezena')
+    await this.getById(user, id)
     await this.prisma.calendarEvent.delete({ where: { id } })
     return { success: true }
   }

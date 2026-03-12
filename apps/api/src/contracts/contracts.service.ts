@@ -1,16 +1,21 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
+import { PropertyScopeService } from '../common/services/property-scope.service'
 import type { AuthUser } from '@ifmio/shared-types';
 
 @Injectable()
 export class ContractsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private scope: PropertyScopeService,
+  ) {}
 
   async list(
     user: AuthUser,
     query: { status?: string; propertyId?: string; search?: string },
   ) {
-    const where: any = { tenantId: user.tenantId }
+    const scopeWhere = await this.scope.scopeByPropertyId(user)
+    const where: any = { tenantId: user.tenantId, ...scopeWhere }
 
     if (query.status && query.status !== 'all') {
       where.status = query.status
@@ -52,23 +57,25 @@ export class ContractsService {
 
   async getStats(user: AuthUser) {
     const tenantId = user.tenantId
+    const scopeWhere = await this.scope.scopeByPropertyId(user)
+    const base = { tenantId, ...scopeWhere }
     const now = new Date()
     const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
 
     const [total, active, terminated, expiringSoon, rentAgg] = await Promise.all([
-      this.prisma.leaseAgreement.count({ where: { tenantId } }),
-      this.prisma.leaseAgreement.count({ where: { tenantId, status: 'aktivni' } }),
-      this.prisma.leaseAgreement.count({ where: { tenantId, status: 'ukoncena' } }),
+      this.prisma.leaseAgreement.count({ where: base as any }),
+      this.prisma.leaseAgreement.count({ where: { ...base, status: 'aktivni' } as any }),
+      this.prisma.leaseAgreement.count({ where: { ...base, status: 'ukoncena' } as any }),
       this.prisma.leaseAgreement.count({
         where: {
-          tenantId,
+          ...base,
           status: 'aktivni',
           indefinite: false,
           endDate: { lte: thirtyDaysLater, gte: now },
-        },
+        } as any,
       }),
       this.prisma.leaseAgreement.aggregate({
-        where: { tenantId, status: 'aktivni' },
+        where: { ...base, status: 'aktivni' } as any,
         _sum: { monthlyRent: true },
       }),
     ])
@@ -93,6 +100,7 @@ export class ContractsService {
     })
 
     if (!item) throw new NotFoundException('Smlouva nenalezena')
+    await this.scope.verifyPropertyAccess(user, item.propertyId)
 
     return {
       ...item,
@@ -121,6 +129,8 @@ export class ContractsService {
     renewalType?: string
     note?: string
   }) {
+    await this.scope.verifyPropertyAccess(user, dto.propertyId)
+
     // Generate contract number
     const year = new Date().getFullYear()
     const count = await this.prisma.leaseAgreement.count({
@@ -178,10 +188,7 @@ export class ContractsService {
     note?: string
     status?: string
   }) {
-    const existing = await this.prisma.leaseAgreement.findFirst({
-      where: { id, tenantId: user.tenantId },
-    })
-    if (!existing) throw new NotFoundException('Smlouva nenalezena')
+    await this.getById(user, id)
 
     const data: any = {}
     if (dto.propertyId !== undefined) data.propertyId = dto.propertyId
@@ -225,10 +232,7 @@ export class ContractsService {
     id: string,
     dto: { terminatedAt?: string; terminationNote?: string },
   ) {
-    const existing = await this.prisma.leaseAgreement.findFirst({
-      where: { id, tenantId: user.tenantId },
-    })
-    if (!existing) throw new NotFoundException('Smlouva nenalezena')
+    await this.getById(user, id)
 
     const terminatedAt = dto.terminatedAt ? new Date(dto.terminatedAt) : new Date()
 
@@ -260,11 +264,7 @@ export class ContractsService {
   }
 
   async remove(user: AuthUser, id: string) {
-    const existing = await this.prisma.leaseAgreement.findFirst({
-      where: { id, tenantId: user.tenantId },
-    })
-    if (!existing) throw new NotFoundException('Smlouva nenalezena')
-
+    await this.getById(user, id)
     await this.prisma.leaseAgreement.delete({ where: { id } })
     return { success: true }
   }

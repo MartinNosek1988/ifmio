@@ -1,22 +1,30 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PropertyScopeService } from '../common/services/property-scope.service';
 import * as ExcelJS from 'exceljs';
 import type { AuthUser } from '@ifmio/shared-types';
 
 @Injectable()
 export class ReportsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private scope: PropertyScopeService,
+  ) {}
 
   async getMonthlyReport(user: AuthUser, year: number, month: number) {
     const from = new Date(year, month - 1, 1);
     const to = new Date(year, month, 0, 23, 59, 59, 999);
+
+    const scopeWhere = await this.scope.scopeByPropertyId(user);
+    const txScopeWhere = await this.scope.scopeByRelation(user, 'bankAccount');
 
     const [transactions, prescriptions, residents] = await Promise.all([
       this.prisma.bankTransaction.findMany({
         where: {
           tenantId: user.tenantId,
           date: { gte: from, lte: to },
-        },
+          ...txScopeWhere,
+        } as any,
         orderBy: { date: 'asc' },
         include: {
           resident: { select: { id: true, firstName: true, lastName: true } },
@@ -29,14 +37,15 @@ export class ReportsService {
           status: 'active',
           validFrom: { lte: to },
           OR: [{ validTo: null }, { validTo: { gte: from } }],
-        },
+          ...scopeWhere,
+        } as any,
         include: {
           property: { select: { id: true, name: true } },
           resident: { select: { id: true, firstName: true, lastName: true } },
         },
       }),
       this.prisma.resident.count({
-        where: { tenantId: user.tenantId, isActive: true },
+        where: { tenantId: user.tenantId, isActive: true, ...scopeWhere } as any,
       }),
     ]);
 
@@ -195,11 +204,18 @@ export class ReportsService {
 
   async getDashboardKpi(user: AuthUser) {
     const tenantId = user.tenantId;
+    const scopeWhere = await this.scope.scopeByPropertyId(user);
+    const txScopeWhere = await this.scope.scopeByRelation(user, 'bankAccount');
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
     const d90 = new Date();
     d90.setDate(d90.getDate() + 90);
+
+    // For properties/units, use accessible property IDs
+    const ids = await this.scope.getAccessiblePropertyIds(user);
+    const propertyFilter = ids !== null ? { id: { in: ids } } : {};
+    const unitPropertyFilter = ids !== null ? { property: { id: { in: ids } } } : {};
 
     const [
       totalProperties,
@@ -215,16 +231,16 @@ export class ReportsService {
       activePrescriptions,
       calibrationDue,
     ] = await Promise.all([
-      this.prisma.property.count({ where: { tenantId, status: 'active' } }),
-      this.prisma.unit.count({ where: { property: { tenantId } } }),
-      this.prisma.unit.count({ where: { property: { tenantId }, isOccupied: true } }),
-      this.prisma.resident.count({ where: { tenantId, isActive: true } }),
-      this.prisma.resident.count({ where: { tenantId, isActive: true, hasDebt: true } }),
+      this.prisma.property.count({ where: { tenantId, status: 'active', ...propertyFilter } as any }),
+      this.prisma.unit.count({ where: { property: { tenantId, ...propertyFilter } } as any }),
+      this.prisma.unit.count({ where: { property: { tenantId, ...propertyFilter }, isOccupied: true } as any }),
+      this.prisma.resident.count({ where: { tenantId, isActive: true, ...scopeWhere } as any }),
+      this.prisma.resident.count({ where: { tenantId, isActive: true, hasDebt: true, ...scopeWhere } as any }),
       this.prisma.helpdeskTicket.count({
-        where: { tenantId, status: { in: ['open', 'in_progress'] } },
+        where: { tenantId, status: { in: ['open', 'in_progress'] }, ...scopeWhere } as any,
       }),
       this.prisma.workOrder.count({
-        where: { tenantId, status: { in: ['nova', 'v_reseni'] } },
+        where: { tenantId, status: { in: ['nova', 'v_reseni'] }, ...scopeWhere } as any,
       }),
       this.prisma.leaseAgreement.count({
         where: {
@@ -232,29 +248,30 @@ export class ReportsService {
           status: 'aktivni',
           indefinite: false,
           endDate: { gte: now, lte: d90 },
-        },
+          ...scopeWhere,
+        } as any,
       }),
       this.prisma.bankTransaction
         .findMany({
-          where: { tenantId, date: { gte: monthStart, lte: monthEnd }, type: 'credit' },
+          where: { tenantId, date: { gte: monthStart, lte: monthEnd }, type: 'credit', ...txScopeWhere } as any,
         })
         .then((txs) => txs.reduce((s, t) => s + Number(t.amount), 0)),
       this.prisma.bankTransaction
         .findMany({
-          where: { tenantId, date: { gte: monthStart, lte: monthEnd }, type: 'debit' },
+          where: { tenantId, date: { gte: monthStart, lte: monthEnd }, type: 'debit', ...txScopeWhere } as any,
         })
         .then((txs) => txs.reduce((s, t) => s + Number(t.amount), 0)),
       this.prisma.prescription.count({
-        where: { tenantId, status: 'active' },
+        where: { tenantId, status: 'active', ...scopeWhere } as any,
       }),
       this.prisma.meter.count({
-        where: { tenantId, isActive: true, calibrationDue: { lt: now } },
+        where: { tenantId, isActive: true, calibrationDue: { lt: now }, ...scopeWhere } as any,
       }),
     ]);
 
     const occupancyPct = totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 100) : 0;
     const expectedMonthly = await this.prisma.prescription
-      .findMany({ where: { tenantId, status: 'active' } })
+      .findMany({ where: { tenantId, status: 'active', ...scopeWhere } as any })
       .then((ps) => ps.reduce((s, p) => s + Number(p.amount), 0));
     const collectionRate = expectedMonthly > 0 ? Math.round((monthIncome / expectedMonthly) * 100) : 0;
 
@@ -280,9 +297,11 @@ export class ReportsService {
 
   async getPropertyReport(user: AuthUser) {
     const tenantId = user.tenantId;
+    const ids = await this.scope.getAccessiblePropertyIds(user);
+    const propertyFilter = ids !== null ? { id: { in: ids } } : {};
 
     const properties = await this.prisma.property.findMany({
-      where: { tenantId, status: 'active' },
+      where: { tenantId, status: 'active', ...propertyFilter },
       include: {
         units: { select: { id: true, isOccupied: true } },
         prescriptions: {

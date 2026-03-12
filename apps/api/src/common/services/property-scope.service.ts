@@ -79,6 +79,20 @@ export class PropertyScopeService {
   }
 
   /**
+   * Verify access to an entity with optional propertyId.
+   * If propertyId is set, verifies access. If null, only tenant-wide roles can access.
+   */
+  async verifyEntityAccess(user: AuthUser, propertyId: string | null | undefined): Promise<void> {
+    if (propertyId) {
+      return this.verifyPropertyAccess(user, propertyId);
+    }
+    const ids = await this.getAccessiblePropertyIds(user);
+    if (ids !== null) {
+      throw new ForbiddenException('Nemáte přístup k tomuto záznamu');
+    }
+  }
+
+  /**
    * Verify that the user has access to at least one of the given properties.
    * Useful for bulk actions and reports.
    */
