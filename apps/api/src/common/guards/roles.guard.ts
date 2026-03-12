@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY, UserRole } from '../decorators/roles.decorator';
+import { ROLE_MIGRATION_MAP } from '../constants/roles.constants';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -19,7 +20,9 @@ export class RolesGuard implements CanActivate {
     if (!required) return true;
 
     const { user } = ctx.switchToHttp().getRequest();
-    if (!required.includes(user?.role)) {
+    // Support old role names from pre-migration JWTs
+    const role: UserRole = ROLE_MIGRATION_MAP[user?.role] ?? user?.role;
+    if (!required.includes(role)) {
       throw new ForbiddenException('Nemáte oprávnění pro tuto akci');
     }
     return true;

@@ -1,6 +1,6 @@
 import type { BaseEntity } from './base';
 
-export type UserRole = 'owner' | 'admin' | 'manager' | 'viewer' | 'resident';
+export type UserRole = 'tenant_owner' | 'tenant_admin' | 'property_manager' | 'finance_manager' | 'operations' | 'viewer' | 'resident';
 
 export interface User extends BaseEntity {
   email: string;
@@ -38,20 +38,30 @@ export interface ModulePermissions {
 }
 
 export const ROLE_DEFAULT_PERMISSIONS: Record<UserRole, ModulePermissions> = {
-  owner: {
+  tenant_owner: {
     dashboard: 'admin', properties: 'admin', residents: 'admin', finance: 'admin',
     work_orders: 'admin', helpdesk: 'admin', assets: 'admin', meters: 'admin',
     documents: 'admin', contracts: 'admin', compliance: 'admin', reporting: 'admin', admin: 'admin',
   },
-  admin: {
+  tenant_admin: {
     dashboard: 'write', properties: 'write', residents: 'write', finance: 'write',
     work_orders: 'write', helpdesk: 'write', assets: 'write', meters: 'write',
     documents: 'write', contracts: 'write', compliance: 'write', reporting: 'write', admin: 'write',
   },
-  manager: {
+  property_manager: {
     dashboard: 'write', properties: 'write', residents: 'write', finance: 'read',
     work_orders: 'write', helpdesk: 'write', assets: 'write', meters: 'write',
-    documents: 'write', contracts: 'read', compliance: 'read', reporting: 'read', admin: 'none',
+    documents: 'write', contracts: 'write', compliance: 'read', reporting: 'read', admin: 'none',
+  },
+  finance_manager: {
+    dashboard: 'write', properties: 'read', residents: 'read', finance: 'write',
+    work_orders: 'none', helpdesk: 'none', assets: 'none', meters: 'read',
+    documents: 'write', contracts: 'read', compliance: 'read', reporting: 'write', admin: 'none',
+  },
+  operations: {
+    dashboard: 'read', properties: 'read', residents: 'read', finance: 'none',
+    work_orders: 'write', helpdesk: 'write', assets: 'write', meters: 'write',
+    documents: 'write', contracts: 'none', compliance: 'none', reporting: 'none', admin: 'none',
   },
   viewer: {
     dashboard: 'read', properties: 'read', residents: 'read', finance: 'none',

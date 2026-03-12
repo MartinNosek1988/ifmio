@@ -93,10 +93,11 @@ model User {
 }
 
 enum UserRole {
-  owner
-  admin
-  manager
-  technician
+  tenant_owner
+  tenant_admin
+  property_manager
+  finance_manager
+  operations
   viewer
 }
 

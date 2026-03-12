@@ -57,7 +57,7 @@ const PLAN_COLORS: Record<string, string> = {
 };
 
 const ROLE_COLORS: Record<string, string> = {
-  owner: '#ef4444', admin: '#f59e0b', manager: '#3b82f6', technician: '#22c55e', viewer: '#6b7280',
+  tenant_owner: '#ef4444', tenant_admin: '#f59e0b', property_manager: '#3b82f6', finance_manager: '#8b5cf6', operations: '#22c55e', viewer: '#6b7280',
 };
 
 /* ─── main ───────────────────────────────────────────────────────── */
@@ -438,11 +438,12 @@ function UsersTab() {
           onChange={(e) => setSearch(e.target.value)} className="sa-search-input" />
         <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="sa-select" style={{ width: 'auto' }}>
           <option value="">Všechny role</option>
-          <option value="owner">Owner</option>
-          <option value="admin">Admin</option>
-          <option value="manager">Manager</option>
-          <option value="technician">Technik</option>
-          <option value="viewer">Viewer</option>
+          <option value="tenant_owner">Vlastník</option>
+          <option value="tenant_admin">Admin</option>
+          <option value="property_manager">Správce</option>
+          <option value="finance_manager">Finance</option>
+          <option value="operations">Provoz</option>
+          <option value="viewer">Čtenář</option>
         </select>
         <span style={{ color: '#6b7280', fontSize: '.78rem' }}>{data?.total ?? 0} uživatelů</span>
       </div>

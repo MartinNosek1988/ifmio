@@ -47,7 +47,7 @@ export class InviteUserDto {
   @IsEmail()
   email!: string;
 
-  @IsEnum(['owner', 'admin', 'manager', 'technician', 'viewer'])
+  @IsEnum(['tenant_owner', 'tenant_admin', 'property_manager', 'finance_manager', 'operations', 'viewer'])
   role!: string;
 
   @IsString()

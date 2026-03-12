@@ -7,7 +7,7 @@ import { CalendarService } from './calendar.service'
 import { Roles } from '../common/decorators/roles.decorator'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
 import { AuditAction } from '../common/decorators/audit.decorator'
-import { ROLES_WRITE } from '../common/constants/roles.constants'
+import { ROLES_OPS } from '../common/constants/roles.constants'
 import { CalendarEventDto, CalendarStatsDto } from './calendar.dto'
 import type { AuthUser } from '@ifmio/shared-types';
 
@@ -42,7 +42,7 @@ export class CalendarController {
   }
 
   @Post('events')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_OPS)
   @AuditAction('calendarEvent', 'create')
   @ApiOperation({ summary: 'Vytvořit událost' })
   create(@CurrentUser() user: AuthUser, @Body() dto: {
@@ -61,7 +61,7 @@ export class CalendarController {
   }
 
   @Put('events/:id')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_OPS)
   @AuditAction('calendarEvent', 'update')
   @ApiOperation({ summary: 'Upravit událost' })
   update(
@@ -84,7 +84,7 @@ export class CalendarController {
   }
 
   @Delete('events/:id')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_OPS)
   @AuditAction('calendarEvent', 'delete')
   @ApiOperation({ summary: 'Smazat událost' })
   remove(@CurrentUser() user: AuthUser, @Param('id') id: string): Promise<{ success: boolean }> {

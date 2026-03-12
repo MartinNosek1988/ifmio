@@ -13,7 +13,7 @@ export class ReportsController {
   constructor(private service: ReportsService) {}
 
   @Get('monthly')
-  @Roles('owner', 'admin')
+  @Roles('tenant_owner', 'tenant_admin', 'property_manager', 'finance_manager')
   @ApiOperation({ summary: 'Měsíční report (JSON)' })
   getMonthly(
     @CurrentUser() user: AuthUser,
@@ -27,7 +27,7 @@ export class ReportsController {
   }
 
   @Get('monthly/export')
-  @Roles('owner', 'admin')
+  @Roles('tenant_owner', 'tenant_admin', 'property_manager', 'finance_manager')
   @ApiOperation({ summary: 'Měsíční report — XLSX export' })
   async exportMonthly(
     @CurrentUser() user: AuthUser,
@@ -52,7 +52,7 @@ export class ReportsController {
   }
 
   @Get('yearly')
-  @Roles('owner', 'admin')
+  @Roles('tenant_owner', 'tenant_admin', 'property_manager', 'finance_manager')
   @ApiOperation({ summary: 'Roční přehled' })
   getYearly(
     @CurrentUser() user: AuthUser,
@@ -69,7 +69,7 @@ export class ReportsController {
   }
 
   @Get('properties')
-  @Roles('owner', 'admin')
+  @Roles('tenant_owner', 'tenant_admin', 'property_manager', 'finance_manager')
   @ApiOperation({ summary: 'Report nemovitostí' })
   getProperties(@CurrentUser() user: AuthUser) {
     return this.service.getPropertyReport(user);

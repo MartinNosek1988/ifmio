@@ -30,7 +30,7 @@ describe('Auth (e2e)', () => {
       expect(res.body.user).toMatchObject({
         email,
         name: 'Jan Novák',
-        role: 'owner',
+        role: 'tenant_owner',
       })
     })
 

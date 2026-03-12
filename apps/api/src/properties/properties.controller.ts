@@ -25,7 +25,7 @@ export class PropertiesController {
   constructor(private service: PropertiesService) {}
 
   @Post()
-  @Roles('owner', 'admin', 'manager')
+  @Roles('tenant_owner', 'tenant_admin', 'property_manager')
   @AuditAction('property', 'create')
   @ApiOperation({ summary: 'Vytvořit nemovitost' })
   create(@CurrentUser() user: AuthUser, @Body() dto: CreatePropertyDto) {
@@ -45,7 +45,7 @@ export class PropertiesController {
   }
 
   @Patch(':id')
-  @Roles('owner', 'admin', 'manager')
+  @Roles('tenant_owner', 'tenant_admin', 'property_manager')
   @AuditAction('property', 'update')
   @ApiOperation({ summary: 'Upravit nemovitost' })
   update(
@@ -57,7 +57,7 @@ export class PropertiesController {
   }
 
   @Delete(':id')
-  @Roles('owner', 'admin')
+  @Roles('tenant_owner', 'tenant_admin')
   @AuditAction('property', 'archive')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Archivovat nemovitost (soft delete)' })

@@ -2,7 +2,7 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string;
-  role: 'owner' | 'admin' | 'manager' | 'technician' | 'viewer';
+  role: 'tenant_owner' | 'tenant_admin' | 'property_manager' | 'finance_manager' | 'operations' | 'viewer';
   tenantId: string;
 }
 

@@ -7,7 +7,7 @@ import { InvoicesService } from './invoices.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuditAction } from '../common/decorators/audit.decorator';
-import { ROLES_WRITE } from '../common/constants/roles.constants';
+import { ROLES_MANAGE, ROLES_FINANCE, ROLES_FINANCE_DRAFT } from '../common/constants/roles.constants';
 import { CreateInvoiceDto, UpdateInvoiceDto, InvoiceListQueryDto, MarkPaidDto } from './dto/invoice.dto';
 import type { FastifyRequest } from 'fastify';
 import type { AuthUser } from '@ifmio/shared-types';
@@ -37,7 +37,7 @@ export class FinanceController {
   }
 
   @Post('bank-accounts')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_FINANCE)
   @AuditAction('bankAccount', 'create')
   @ApiOperation({ summary: 'Přidat bankovní účet' })
   createBankAccount(@CurrentUser() user: AuthUser, @Body() dto: {
@@ -58,7 +58,7 @@ export class FinanceController {
   }
 
   @Post('transactions')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_FINANCE)
   @AuditAction('bankTransaction', 'create')
   @ApiOperation({ summary: 'Přidat transakci' })
   createTransaction(@CurrentUser() user: AuthUser, @Body() dto: {
@@ -79,7 +79,7 @@ export class FinanceController {
   }
 
   @Post('prescriptions')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_FINANCE_DRAFT)
   @AuditAction('prescription', 'create')
   @ApiOperation({ summary: 'Vytvořit předpis' })
   createPrescription(@CurrentUser() user: AuthUser, @Body() dto: {
@@ -103,7 +103,7 @@ export class FinanceController {
   }
 
   @Post('billing-periods')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_FINANCE)
   @AuditAction('billingPeriod', 'create')
   @ApiOperation({ summary: 'Vytvořit zúčtovací období' })
   createBillingPeriod(@CurrentUser() user: AuthUser, @Body() dto: {
@@ -115,7 +115,7 @@ export class FinanceController {
   // ─── IMPORT ─────────────────────────────────────────────────
 
   @Post('import/:bankAccountId')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_FINANCE)
   @AuditAction('BankTransaction', 'IMPORT')
   @ApiOperation({ summary: 'Import CSV/ABO transakcí' })
   async importTransactions(
@@ -140,7 +140,7 @@ export class FinanceController {
   // ─── PÁROVÁNÍ ───────────────────────────────────────────────
 
   @Post('match')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_FINANCE)
   @AuditAction('BankTransaction', 'MATCH')
   @ApiOperation({ summary: 'Auto-párování transakcí s předpisy' })
   matchTransactions(
@@ -153,7 +153,7 @@ export class FinanceController {
   // ─── GENEROVÁNÍ PŘEDPISŮ ───────────────────────────────────
 
   @Post('prescriptions/generate')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_FINANCE)
   @AuditAction('Prescription', 'BULK_GENERATE')
   @ApiOperation({ summary: 'Hromadné generování předpisů' })
   generatePrescriptions(
@@ -171,7 +171,7 @@ export class FinanceController {
   // ─── MANUÁLNÍ PÁROVÁNÍ 1:1 ─────────────────────────────────
 
   @Post('match-single')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_FINANCE)
   @AuditAction('BankTransaction', 'MATCH_SINGLE')
   @ApiOperation({ summary: 'Manuální párování 1 transakce ↔ 1 předpis' })
   matchSingle(
@@ -188,7 +188,7 @@ export class FinanceController {
   // ─── DELETE ───────────────────────────────────────────────────
 
   @Delete('prescriptions/:id')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_MANAGE)
   @AuditAction('Prescription', 'DELETE')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Smazat předpis' })
@@ -200,7 +200,7 @@ export class FinanceController {
   }
 
   @Delete('transactions/:id')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_MANAGE)
   @AuditAction('BankTransaction', 'DELETE')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Smazat transakci' })
@@ -226,7 +226,7 @@ export class FinanceController {
   }
 
   @Post('invoices')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_FINANCE_DRAFT)
   @AuditAction('invoice', 'create')
   @ApiOperation({ summary: 'Vytvořit doklad' })
   createInvoice(@CurrentUser() user: AuthUser, @Body() dto: CreateInvoiceDto) {
@@ -234,7 +234,7 @@ export class FinanceController {
   }
 
   @Post('invoices/import-isdoc')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_FINANCE_DRAFT)
   @AuditAction('invoice', 'import_isdoc')
   @ApiOperation({ summary: 'Import dokladu z ISDOC XML' })
   importIsdoc(@CurrentUser() user: AuthUser, @Body() body: { xmlContent: string }) {
@@ -248,7 +248,7 @@ export class FinanceController {
   }
 
   @Put('invoices/:id')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_FINANCE_DRAFT)
   @AuditAction('invoice', 'update')
   @ApiOperation({ summary: 'Aktualizovat doklad' })
   updateInvoice(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: UpdateInvoiceDto) {
@@ -256,14 +256,14 @@ export class FinanceController {
   }
 
   @Post('invoices/:id/mark-paid')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_FINANCE)
   @ApiOperation({ summary: 'Označit doklad jako uhrazený' })
   markInvoicePaid(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto?: MarkPaidDto) {
     return this.invoicesService.markPaid(user, id, dto);
   }
 
   @Post('invoices/:id/pair')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_FINANCE)
   @AuditAction('invoice', 'pair')
   @ApiOperation({ summary: 'Párovat doklad s bankovní transakcí' })
   pairInvoice(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: { transactionId: string }) {
@@ -271,7 +271,7 @@ export class FinanceController {
   }
 
   @Delete('invoices/:id')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_MANAGE)
   @AuditAction('invoice', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Smazat doklad' })

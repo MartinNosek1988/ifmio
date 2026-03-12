@@ -1,6 +1,6 @@
 import type { UUID } from './common';
 
-export type UserRole = 'owner' | 'admin' | 'manager' | 'technician' | 'viewer';
+export type UserRole = 'tenant_owner' | 'tenant_admin' | 'property_manager' | 'finance_manager' | 'operations' | 'viewer';
 export type TenantPlan = 'free' | 'starter' | 'pro' | 'enterprise';
 
 export interface AuthUser {

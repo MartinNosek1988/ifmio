@@ -10,21 +10,23 @@ import {
   useAdminUsers, useInviteUser, useUpdateUser, useDeactivateUser,
 } from '../admin/api/admin.queries';
 
-const ROLES = ['owner', 'admin', 'manager', 'technician', 'viewer'] as const;
+const ROLES = ['tenant_owner', 'tenant_admin', 'property_manager', 'finance_manager', 'operations', 'viewer'] as const;
 
 const ROLE_LABELS: Record<string, string> = {
-  owner: 'Vlastník',
-  admin: 'Admin',
-  manager: 'Manažer',
-  technician: 'Technik',
+  tenant_owner: 'Vlastník',
+  tenant_admin: 'Admin',
+  property_manager: 'Správce',
+  finance_manager: 'Finance',
+  operations: 'Provoz',
   viewer: 'Čtenář',
 };
 
 const ROLE_COLOR: Record<string, BadgeVariant> = {
-  owner: 'purple',
-  admin: 'red',
-  manager: 'blue',
-  technician: 'yellow',
+  tenant_owner: 'purple',
+  tenant_admin: 'red',
+  property_manager: 'blue',
+  finance_manager: 'green',
+  operations: 'yellow',
   viewer: 'muted',
 };
 
@@ -85,8 +87,8 @@ export default function TeamPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginBottom: 24 }}>
         <KpiCard label="Celkem" value={String(total)} color="var(--accent-blue)" />
         <KpiCard label="Aktivni" value={String(active)} color="var(--accent-green)" />
-        <KpiCard label="Admini" value={String((byRole.owner ?? 0) + (byRole.admin ?? 0))} color="var(--accent-purple, #8b5cf6)" />
-        <KpiCard label="Technici" value={String(byRole.technician ?? 0)} color="var(--accent-orange)" />
+        <KpiCard label="Admini" value={String((byRole.tenant_owner ?? 0) + (byRole.tenant_admin ?? 0))} color="var(--accent-purple, #8b5cf6)" />
+        <KpiCard label="Provoz" value={String(byRole.operations ?? 0)} color="var(--accent-orange)" />
         <KpiCard label="Neaktivni" value={String(total - active)} color={total - active > 0 ? 'var(--danger)' : 'var(--accent-green)'} />
       </div>
 

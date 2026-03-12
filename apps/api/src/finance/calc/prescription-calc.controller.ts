@@ -4,7 +4,7 @@ import { PrescriptionCalcService } from './prescription-calc.service';
 import type { CalcInput } from './prescription-calc.service';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { ROLES_WRITE } from '../../common/constants/roles.constants';
+import { ROLES_FINANCE, ROLES_FINANCE_DRAFT } from '../../common/constants/roles.constants';
 import type { AuthUser } from '@ifmio/shared-types';
 
 @ApiTags('Prescription Calculator')
@@ -15,7 +15,7 @@ export class PrescriptionCalcController {
 
   @Post('preview')
   @HttpCode(200)
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_FINANCE_DRAFT)
   @ApiOperation({ summary: 'Nahlед rozložení nákladů na jednotky' })
   preview(@CurrentUser() user: AuthUser, @Body() body: CalcInput) {
     return this.service.preview(user, body);
@@ -23,7 +23,7 @@ export class PrescriptionCalcController {
 
   @Post('execute')
   @HttpCode(200)
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_FINANCE)
   @ApiOperation({ summary: 'Vytvořit předpisy podle kalkulace' })
   execute(@CurrentUser() user: AuthUser, @Body() body: CalcInput) {
     return this.service.execute(user, body);
