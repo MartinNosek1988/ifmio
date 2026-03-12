@@ -86,6 +86,7 @@ model User {
   assignedTickets         HelpdeskTicket[]
   createdDocuments        Document[]
   notifications           Notification[]
+  propertyAssignments     UserPropertyAssignment[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -181,8 +182,28 @@ model Property {
   assets          Asset[]
   invoices        Invoice[]
 
+  userAssignments UserPropertyAssignment[]
+
   @@index([tenantId])
   @@map("properties")
+}
+
+// ─── USER ↔ PROPERTY ASSIGNMENT ─────────────────────────────────
+
+model UserPropertyAssignment {
+  id         String   @id @default(uuid())
+  userId     String
+  propertyId String
+  assignedBy String?
+  assignedAt DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, propertyId])
+  @@index([userId])
+  @@index([propertyId])
+  @@map("user_property_assignments")
 }
 
 enum PropertyType {

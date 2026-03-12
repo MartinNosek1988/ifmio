@@ -115,6 +115,51 @@ export class AdminController {
     return this.service.exportData(user)
   }
 
+  // ─── PROPERTY ASSIGNMENTS ─────────────────────────────────────
+
+  @Get('users/:id/properties')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Seznam přiřazených nemovitostí uživatele' })
+  listUserProperties(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ) {
+    return this.service.listUserPropertyAssignments(user, id)
+  }
+
+  @Get('properties/:id/users')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Seznam uživatelů přiřazených k nemovitosti' })
+  listPropertyUsers(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ) {
+    return this.service.listPropertyUserAssignments(user, id)
+  }
+
+  @Post('property-assignments')
+  @Roles(...ROLES_MANAGE)
+  @AuditAction('UserPropertyAssignment', 'CREATE')
+  @ApiOperation({ summary: 'Přiřadit uživatele k nemovitosti' })
+  createPropertyAssignment(
+    @CurrentUser() user: AuthUser,
+    @Body() body: { userId: string; propertyId: string },
+  ) {
+    return this.service.createPropertyAssignment(user, body.userId, body.propertyId)
+  }
+
+  @Delete('property-assignments')
+  @Roles(...ROLES_MANAGE)
+  @AuditAction('UserPropertyAssignment', 'DELETE')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Odebrat přiřazení uživatele k nemovitosti' })
+  deletePropertyAssignment(
+    @CurrentUser() user: AuthUser,
+    @Body() body: { userId: string; propertyId: string },
+  ) {
+    return this.service.deletePropertyAssignment(user, body.userId, body.propertyId)
+  }
+
   @Post('email/test')
   @Roles(...ROLES_MANAGE)
   @ApiOperation({ summary: 'Test SMTP spojeni a odeslani testovacího emailu' })
