@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
+import { PropertyScopeService } from '../common/services/property-scope.service'
 import type { AuthUser } from '@ifmio/shared-types';
 
 function serialize(item: any) {
@@ -17,13 +18,17 @@ function serialize(item: any) {
 
 @Injectable()
 export class WorkOrdersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private scope: PropertyScopeService,
+  ) {}
 
   async list(
     user: AuthUser,
     query: { status?: string; priority?: string; propertyId?: string; search?: string },
   ) {
-    const where: any = { tenantId: user.tenantId }
+    const scopeWhere = await this.scope.scopeByPropertyId(user)
+    const where: any = { tenantId: user.tenantId, ...scopeWhere }
 
     if (query.status && query.status !== 'all') where.status = query.status
     if (query.priority && query.priority !== 'all') where.priority = query.priority
@@ -51,28 +56,30 @@ export class WorkOrdersService {
 
   async getStats(user: AuthUser) {
     const tenantId = user.tenantId
+    const scopeWhere = await this.scope.scopeByPropertyId(user)
+    const base = { tenantId, ...scopeWhere }
     const now = new Date()
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const todayEnd = new Date(todayStart.getTime() + 86400000)
 
     const [total, open, completedToday, overdue] = await Promise.all([
-      this.prisma.workOrder.count({ where: { tenantId } }),
+      this.prisma.workOrder.count({ where: base as any }),
       this.prisma.workOrder.count({
-        where: { tenantId, status: { in: ['nova', 'v_reseni'] } },
+        where: { ...base, status: { in: ['nova', 'v_reseni'] } } as any,
       }),
       this.prisma.workOrder.count({
         where: {
-          tenantId,
+          ...base,
           status: { in: ['vyresena', 'uzavrena'] },
           completedAt: { gte: todayStart, lt: todayEnd },
-        },
+        } as any,
       }),
       this.prisma.workOrder.count({
         where: {
-          tenantId,
+          ...base,
           status: { in: ['nova', 'v_reseni'] },
           deadline: { lt: now },
-        },
+        } as any,
       }),
     ])
 
@@ -90,6 +97,7 @@ export class WorkOrdersService {
     })
 
     if (!item) throw new NotFoundException('Work order nenalezen')
+    await this.scope.verifyEntityAccess(user, item.propertyId)
     return serialize(item)
   }
 
@@ -108,6 +116,9 @@ export class WorkOrdersService {
     materialCost?: number
     note?: string
   }) {
+    if (dto.propertyId) {
+      await this.scope.verifyPropertyAccess(user, dto.propertyId)
+    }
     const totalCost = (dto.laborCost ?? 0) + (dto.materialCost ?? 0)
 
     const item = await this.prisma.workOrder.create({
@@ -154,10 +165,7 @@ export class WorkOrdersService {
     materialCost?: number
     note?: string
   }) {
-    const existing = await this.prisma.workOrder.findFirst({
-      where: { id, tenantId: user.tenantId },
-    })
-    if (!existing) throw new NotFoundException('Work order nenalezen')
+    const existing = await this.getById(user, id)
 
     const data: any = {}
     if (dto.title !== undefined) data.title = dto.title
@@ -177,8 +185,8 @@ export class WorkOrdersService {
 
     // Recalculate total cost if either cost field changed
     if (dto.laborCost !== undefined || dto.materialCost !== undefined) {
-      const labor = dto.laborCost ?? (existing.laborCost ? Number(existing.laborCost) : 0)
-      const material = dto.materialCost ?? (existing.materialCost ? Number(existing.materialCost) : 0)
+      const labor = dto.laborCost ?? (existing.laborCost ?? 0)
+      const material = dto.materialCost ?? (existing.materialCost ?? 0)
       data.totalCost = labor + material
     }
 
@@ -196,10 +204,7 @@ export class WorkOrdersService {
   }
 
   async changeStatus(user: AuthUser, id: string, status: string) {
-    const existing = await this.prisma.workOrder.findFirst({
-      where: { id, tenantId: user.tenantId },
-    })
-    if (!existing) throw new NotFoundException('Work order nenalezen')
+    await this.getById(user, id)
 
     const data: any = { status }
     if (status === 'vyresena' || status === 'uzavrena') {
@@ -223,10 +228,7 @@ export class WorkOrdersService {
   }
 
   async addComment(user: AuthUser, id: string, text: string) {
-    const existing = await this.prisma.workOrder.findFirst({
-      where: { id, tenantId: user.tenantId },
-    })
-    if (!existing) throw new NotFoundException('Work order nenalezen')
+    await this.getById(user, id)
 
     // Get user name for author
     const dbUser = await this.prisma.user.findUnique({
@@ -249,11 +251,7 @@ export class WorkOrdersService {
   }
 
   async remove(user: AuthUser, id: string) {
-    const existing = await this.prisma.workOrder.findFirst({
-      where: { id, tenantId: user.tenantId },
-    })
-    if (!existing) throw new NotFoundException('Work order nenalezen')
-
+    await this.getById(user, id)
     await this.prisma.workOrder.delete({ where: { id } })
     return { success: true }
   }

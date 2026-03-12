@@ -25,7 +25,7 @@ export class PropertiesController {
   constructor(private service: PropertiesService) {}
 
   @Post()
-  @Roles('tenant_owner', 'tenant_admin', 'property_manager')
+  @Roles('tenant_owner', 'tenant_admin')
   @AuditAction('property', 'create')
   @ApiOperation({ summary: 'Vytvořit nemovitost' })
   create(@CurrentUser() user: AuthUser, @Body() dto: CreatePropertyDto) {
@@ -35,13 +35,13 @@ export class PropertiesController {
   @Get()
   @ApiOperation({ summary: 'Seznam nemovitostí' })
   findAll(@CurrentUser() user: AuthUser) {
-    return this.service.findAll(user.tenantId);
+    return this.service.findAll(user);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Detail nemovitosti' })
   findOne(@CurrentUser() user: AuthUser, @Param('id') id: string) {
-    return this.service.findOne(user.tenantId, id);
+    return this.service.findOne(user, id);
   }
 
   @Patch(':id')
@@ -53,7 +53,7 @@ export class PropertiesController {
     @Param('id') id: string,
     @Body() dto: UpdatePropertyDto,
   ) {
-    return this.service.update(user.tenantId, id, dto);
+    return this.service.update(user, id, dto);
   }
 
   @Delete(':id')
@@ -62,6 +62,6 @@ export class PropertiesController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Archivovat nemovitost (soft delete)' })
   async archive(@CurrentUser() user: AuthUser, @Param('id') id: string) {
-    await this.service.archive(user.tenantId, id);
+    await this.service.archive(user, id);
   }
 }

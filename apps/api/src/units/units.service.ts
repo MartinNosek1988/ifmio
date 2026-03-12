@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PropertyScopeService } from '../common/services/property-scope.service';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
 import { CreateOccupancyDto } from './dto/create-occupancy.dto';
@@ -7,18 +8,22 @@ import type { AuthUser } from '@ifmio/shared-types';
 
 @Injectable()
 export class UnitsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private scope: PropertyScopeService,
+  ) {}
 
-  private async verifyProperty(tenantId: string, propertyId: string) {
+  private async verifyProperty(user: AuthUser, propertyId: string) {
+    await this.scope.verifyPropertyAccess(user, propertyId);
     const property = await this.prisma.property.findFirst({
-      where: { id: propertyId, tenantId },
+      where: { id: propertyId, tenantId: user.tenantId },
     });
     if (!property) throw new NotFoundException('Nemovitost nenalezena');
     return property;
   }
 
   async findAll(user: AuthUser, propertyId: string) {
-    await this.verifyProperty(user.tenantId, propertyId);
+    await this.verifyProperty(user, propertyId);
     return this.prisma.unit.findMany({
       where: { propertyId },
       orderBy: { name: 'asc' },
@@ -34,7 +39,7 @@ export class UnitsService {
   }
 
   async findOne(user: AuthUser, propertyId: string, id: string) {
-    await this.verifyProperty(user.tenantId, propertyId);
+    await this.verifyProperty(user, propertyId);
     const unit = await this.prisma.unit.findFirst({
       where: { id, propertyId },
       include: {
@@ -49,7 +54,7 @@ export class UnitsService {
   }
 
   async create(user: AuthUser, propertyId: string, dto: CreateUnitDto) {
-    await this.verifyProperty(user.tenantId, propertyId);
+    await this.verifyProperty(user, propertyId);
     return this.prisma.unit.create({
       data: { propertyId, ...dto },
     });

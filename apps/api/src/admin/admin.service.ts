@@ -279,4 +279,89 @@ export class AdminService {
     if (!tenant) throw new NotFoundException('Tenant nenalezen')
     return tenant
   }
+
+  // ─── PROPERTY ASSIGNMENTS ──────────────────────────────────
+
+  async listUserPropertyAssignments(user: AuthUser, targetUserId: string) {
+    const target = await this.prisma.user.findFirst({
+      where: { id: targetUserId, tenantId: user.tenantId },
+    })
+    if (!target) throw new NotFoundException('Uživatel nenalezen')
+
+    return this.prisma.userPropertyAssignment.findMany({
+      where: { userId: targetUserId },
+      include: {
+        property: {
+          select: { id: true, name: true, address: true, city: true, status: true },
+        },
+      },
+      orderBy: { assignedAt: 'desc' },
+    })
+  }
+
+  async listPropertyUserAssignments(user: AuthUser, propertyId: string) {
+    const property = await this.prisma.property.findFirst({
+      where: { id: propertyId, tenantId: user.tenantId },
+    })
+    if (!property) throw new NotFoundException('Nemovitost nenalezena')
+
+    return this.prisma.userPropertyAssignment.findMany({
+      where: { propertyId },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true, role: true, isActive: true },
+        },
+      },
+      orderBy: { assignedAt: 'desc' },
+    })
+  }
+
+  async createPropertyAssignment(user: AuthUser, targetUserId: string, propertyId: string) {
+    // Verify target user belongs to same tenant
+    const target = await this.prisma.user.findFirst({
+      where: { id: targetUserId, tenantId: user.tenantId },
+    })
+    if (!target) throw new NotFoundException('Uživatel nenalezen')
+
+    // Verify property belongs to same tenant
+    const property = await this.prisma.property.findFirst({
+      where: { id: propertyId, tenantId: user.tenantId },
+    })
+    if (!property) throw new NotFoundException('Nemovitost nenalezena')
+
+    // Check not already assigned
+    const existing = await this.prisma.userPropertyAssignment.findUnique({
+      where: { userId_propertyId: { userId: targetUserId, propertyId } },
+    })
+    if (existing) throw new ConflictException('Uživatel je k nemovitosti již přiřazen')
+
+    return this.prisma.userPropertyAssignment.create({
+      data: {
+        userId: targetUserId,
+        propertyId,
+        assignedBy: user.id,
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true, role: true } },
+        property: { select: { id: true, name: true, address: true } },
+      },
+    })
+  }
+
+  async deletePropertyAssignment(user: AuthUser, targetUserId: string, propertyId: string) {
+    // Verify target user belongs to same tenant
+    const target = await this.prisma.user.findFirst({
+      where: { id: targetUserId, tenantId: user.tenantId },
+    })
+    if (!target) throw new NotFoundException('Uživatel nenalezen')
+
+    const assignment = await this.prisma.userPropertyAssignment.findUnique({
+      where: { userId_propertyId: { userId: targetUserId, propertyId } },
+    })
+    if (!assignment) throw new NotFoundException('Přiřazení nenalezeno')
+
+    await this.prisma.userPropertyAssignment.delete({
+      where: { id: assignment.id },
+    })
+  }
 }

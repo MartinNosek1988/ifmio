@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
+import { PropertyScopeService } from '../common/services/property-scope.service'
 import type { HelpdeskListQueryDto, CreateTicketDto, UpdateTicketDto, CreateItemDto, CreateProtocolDto } from './dto/helpdesk.dto'
 import type { AuthUser } from '@ifmio/shared-types'
 
 @Injectable()
 export class HelpdeskService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private scope: PropertyScopeService,
+  ) {}
 
   private async nextTicketNumber(tenantId: string): Promise<number> {
     const last = await this.prisma.helpdeskTicket.findFirst({
@@ -22,8 +26,10 @@ export class HelpdeskService {
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 20))
     const skip = (page - 1) * limit
 
+    const scopeWhere = await this.scope.scopeByPropertyId(user)
     const where: Record<string, unknown> = {
       tenantId: user.tenantId,
+      ...scopeWhere,
       ...(status     ? { status }     : {}),
       ...(priority   ? { priority }   : {}),
       ...(propertyId ? { propertyId } : {}),
@@ -77,6 +83,7 @@ export class HelpdeskService {
       },
     })
     if (!ticket) throw new NotFoundException(`Ticket ${id} nenalezen`)
+    await this.scope.verifyEntityAccess(user, ticket.propertyId)
     return {
       ...ticket,
       items: ticket.items.map((i) => ({
@@ -92,6 +99,9 @@ export class HelpdeskService {
   }
 
   async createTicket(user: AuthUser, dto: CreateTicketDto) {
+    if (dto.propertyId) {
+      await this.scope.verifyPropertyAccess(user, dto.propertyId)
+    }
     const number = await this.nextTicketNumber(user.tenantId)
     const ticket = await this.prisma.helpdeskTicket.create({
       data: {

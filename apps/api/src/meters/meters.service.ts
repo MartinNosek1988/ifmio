@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
+import { PropertyScopeService } from '../common/services/property-scope.service'
 import type { AuthUser } from '@ifmio/shared-types';
 
 function serializeMeter(item: any) {
@@ -28,10 +29,14 @@ function serializeReading(r: any) {
 
 @Injectable()
 export class MetersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private scope: PropertyScopeService,
+  ) {}
 
   async list(user: AuthUser, query: { meterType?: string; propertyId?: string; search?: string }) {
-    const where: any = { tenantId: user.tenantId }
+    const scopeWhere = await this.scope.scopeByPropertyId(user)
+    const where: any = { tenantId: user.tenantId, ...scopeWhere }
 
     if (query.meterType && query.meterType !== 'all') where.meterType = query.meterType
     if (query.propertyId) where.propertyId = query.propertyId
@@ -57,17 +62,19 @@ export class MetersService {
 
   async getStats(user: AuthUser) {
     const tenantId = user.tenantId
+    const scopeWhere = await this.scope.scopeByPropertyId(user)
+    const base = { tenantId, isActive: true, ...scopeWhere }
     const now = new Date()
 
     const [total, elektrina, vodaStudena, vodaTepla, plyn, teplo, calibrationDue] = await Promise.all([
-      this.prisma.meter.count({ where: { tenantId, isActive: true } }),
-      this.prisma.meter.count({ where: { tenantId, isActive: true, meterType: 'elektrina' } }),
-      this.prisma.meter.count({ where: { tenantId, isActive: true, meterType: 'voda_studena' } }),
-      this.prisma.meter.count({ where: { tenantId, isActive: true, meterType: 'voda_tepla' } }),
-      this.prisma.meter.count({ where: { tenantId, isActive: true, meterType: 'plyn' } }),
-      this.prisma.meter.count({ where: { tenantId, isActive: true, meterType: 'teplo' } }),
+      this.prisma.meter.count({ where: base as any }),
+      this.prisma.meter.count({ where: { ...base, meterType: 'elektrina' } as any }),
+      this.prisma.meter.count({ where: { ...base, meterType: 'voda_studena' } as any }),
+      this.prisma.meter.count({ where: { ...base, meterType: 'voda_tepla' } as any }),
+      this.prisma.meter.count({ where: { ...base, meterType: 'plyn' } as any }),
+      this.prisma.meter.count({ where: { ...base, meterType: 'teplo' } as any }),
       this.prisma.meter.count({
-        where: { tenantId, isActive: true, calibrationDue: { lt: now } },
+        where: { ...base, calibrationDue: { lt: now } } as any,
       }),
     ])
 
@@ -84,6 +91,7 @@ export class MetersService {
       },
     })
     if (!item) throw new NotFoundException('Měřidlo nenalezeno')
+    await this.scope.verifyEntityAccess(user, item.propertyId)
     return serializeMeter(item)
   }
 
@@ -100,6 +108,9 @@ export class MetersService {
     location?: string
     note?: string
   }) {
+    if (dto.propertyId) {
+      await this.scope.verifyPropertyAccess(user, dto.propertyId)
+    }
     const item = await this.prisma.meter.create({
       data: {
         tenantId: user.tenantId,
@@ -138,10 +149,7 @@ export class MetersService {
     isActive?: boolean
     note?: string
   }) {
-    const existing = await this.prisma.meter.findFirst({
-      where: { id, tenantId: user.tenantId },
-    })
-    if (!existing) throw new NotFoundException('Měřidlo nenalezeno')
+    await this.getById(user, id)
 
     const data: any = {}
     if (dto.name !== undefined) data.name = dto.name
@@ -170,10 +178,7 @@ export class MetersService {
   }
 
   async remove(user: AuthUser, id: string) {
-    const existing = await this.prisma.meter.findFirst({
-      where: { id, tenantId: user.tenantId },
-    })
-    if (!existing) throw new NotFoundException('Měřidlo nenalezeno')
+    await this.getById(user, id)
     await this.prisma.meter.delete({ where: { id } })
     return { success: true }
   }
@@ -185,10 +190,7 @@ export class MetersService {
     value: number
     note?: string
   }) {
-    const meter = await this.prisma.meter.findFirst({
-      where: { id: meterId, tenantId: user.tenantId },
-    })
-    if (!meter) throw new NotFoundException('Měřidlo nenalezeno')
+    await this.getById(user, meterId)
 
     // Get previous reading for consumption calc
     const prev = await this.prisma.meterReading.findFirst({
@@ -228,10 +230,7 @@ export class MetersService {
   }
 
   async getReadings(user: AuthUser, meterId: string) {
-    const meter = await this.prisma.meter.findFirst({
-      where: { id: meterId, tenantId: user.tenantId },
-    })
-    if (!meter) throw new NotFoundException('Měřidlo nenalezeno')
+    await this.getById(user, meterId)
 
     const readings = await this.prisma.meterReading.findMany({
       where: { meterId },
@@ -241,10 +240,7 @@ export class MetersService {
   }
 
   async deleteReading(user: AuthUser, meterId: string, readingId: string) {
-    const meter = await this.prisma.meter.findFirst({
-      where: { id: meterId, tenantId: user.tenantId },
-    })
-    if (!meter) throw new NotFoundException('Měřidlo nenalezeno')
+    await this.getById(user, meterId)
 
     await this.prisma.meterReading.delete({ where: { id: readingId } })
 

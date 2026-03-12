@@ -1,12 +1,17 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PropertyScopeService } from '../common/services/property-scope.service';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
 import type { PropertyType, OwnershipType } from '@prisma/client';
+import type { AuthUser } from '@ifmio/shared-types';
 
 @Injectable()
 export class PropertiesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private scope: PropertyScopeService,
+  ) {}
 
   create(tenantId: string, dto: CreatePropertyDto) {
     return this.prisma.property.create({
@@ -23,25 +28,36 @@ export class PropertiesService {
     });
   }
 
-  findAll(tenantId: string) {
+  async findAll(user: AuthUser) {
+    const ids = await this.scope.getAccessiblePropertyIds(user);
+    const where: Record<string, unknown> = {
+      tenantId: user.tenantId,
+      status: { not: 'archived' },
+    };
+    if (ids !== null) {
+      where.id = { in: ids };
+    }
+
     return this.prisma.property.findMany({
-      where: { tenantId, status: { not: 'archived' } },
+      where,
       include: { units: true, _count: { select: { residents: true } } },
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(tenantId: string, id: string) {
+  async findOne(user: AuthUser, id: string) {
+    await this.scope.verifyPropertyAccess(user, id);
+
     const property = await this.prisma.property.findFirst({
-      where: { id, tenantId },
+      where: { id, tenantId: user.tenantId },
       include: { units: true, _count: { select: { residents: true } } },
     });
     if (!property) throw new NotFoundException('Nemovitost nenalezena');
     return property;
   }
 
-  async update(tenantId: string, id: string, dto: UpdatePropertyDto) {
-    await this.findOne(tenantId, id);
+  async update(user: AuthUser, id: string, dto: UpdatePropertyDto) {
+    await this.findOne(user, id);
     return this.prisma.property.update({
       where: { id },
       data: {
@@ -56,8 +72,8 @@ export class PropertiesService {
     });
   }
 
-  async archive(tenantId: string, id: string) {
-    await this.findOne(tenantId, id);
+  async archive(user: AuthUser, id: string) {
+    await this.findOne(user, id);
     return this.prisma.property.update({
       where: { id },
       data: { status: 'archived' },

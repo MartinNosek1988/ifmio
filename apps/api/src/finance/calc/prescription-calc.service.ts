@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PropertyScopeService } from '../../common/services/property-scope.service';
 import { Decimal } from '@prisma/client/runtime/library';
 import type { AuthUser } from '@ifmio/shared-types';
 
@@ -31,9 +32,13 @@ export interface CalcPreview {
 
 @Injectable()
 export class PrescriptionCalcService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private scope: PropertyScopeService,
+  ) {}
 
   async preview(user: AuthUser, input: CalcInput): Promise<CalcPreview> {
+    await this.scope.verifyPropertyAccess(user, input.propertyId);
     const units = await this.prisma.unit.findMany({
       where: { propertyId: input.propertyId, property: { tenantId: user.tenantId } },
       orderBy: { name: 'asc' },
@@ -54,6 +59,7 @@ export class PrescriptionCalcService {
   }
 
   async execute(user: AuthUser, input: CalcInput) {
+    await this.scope.verifyPropertyAccess(user, input.propertyId);
     const units = await this.prisma.unit.findMany({
       where: { propertyId: input.propertyId, property: { tenantId: user.tenantId } },
       orderBy: { name: 'asc' },

@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PropertyScopeService } from '../common/services/property-scope.service';
 import type { CreateInvoiceDto, UpdateInvoiceDto, InvoiceListQueryDto, MarkPaidDto } from './dto/invoice.dto';
 import type { AuthUser } from '@ifmio/shared-types';
 
 @Injectable()
 export class InvoicesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private scope: PropertyScopeService,
+  ) {}
 
   async list(user: AuthUser, query: InvoiceListQueryDto) {
     const { type, isPaid, search } = query;
@@ -13,9 +17,11 @@ export class InvoicesService {
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 50));
     const skip = (page - 1) * limit;
 
+    const scopeWhere = await this.scope.scopeByPropertyId(user);
     const where: any = {
       tenantId: user.tenantId,
       deletedAt: null,
+      ...scopeWhere,
       ...(type ? { type } : {}),
       ...(isPaid !== undefined ? { isPaid: isPaid === 'true' } : {}),
       ...(search ? {
@@ -64,7 +70,8 @@ export class InvoicesService {
   }
 
   async stats(user: AuthUser) {
-    const where = { tenantId: user.tenantId, deletedAt: null };
+    const scopeWhere = await this.scope.scopeByPropertyId(user);
+    const where = { tenantId: user.tenantId, deletedAt: null, ...scopeWhere } as any;
     const [total, unpaid, overdue, totalAmount] = await Promise.all([
       this.prisma.invoice.count({ where }),
       this.prisma.invoice.count({ where: { ...where, isPaid: false } }),
@@ -84,7 +91,19 @@ export class InvoicesService {
     };
   }
 
+  private async findOneInternal(user: AuthUser, id: string) {
+    const invoice = await this.prisma.invoice.findFirst({
+      where: { id, tenantId: user.tenantId, deletedAt: null },
+    });
+    if (!invoice) throw new NotFoundException('Doklad nenalezen');
+    await this.scope.verifyEntityAccess(user, invoice.propertyId);
+    return invoice;
+  }
+
   async create(user: AuthUser, dto: CreateInvoiceDto & { supplierId?: string | null; buyerId?: string | null; isdocXml?: string | null }) {
+    if (dto.propertyId) {
+      await this.scope.verifyPropertyAccess(user, dto.propertyId);
+    }
     const invoice = await this.prisma.invoice.create({
       data: {
         tenantId: user.tenantId,
@@ -130,10 +149,7 @@ export class InvoicesService {
   }
 
   async update(user: AuthUser, id: string, dto: UpdateInvoiceDto) {
-    const existing = await this.prisma.invoice.findFirst({
-      where: { id, tenantId: user.tenantId, deletedAt: null },
-    });
-    if (!existing) throw new NotFoundException('Doklad nenalezen');
+    await this.findOneInternal(user, id);
 
     const data: Record<string, unknown> = {};
     if (dto.number !== undefined) data.number = dto.number;
@@ -178,10 +194,7 @@ export class InvoicesService {
   }
 
   async remove(user: AuthUser, id: string) {
-    const existing = await this.prisma.invoice.findFirst({
-      where: { id, tenantId: user.tenantId, deletedAt: null },
-    });
-    if (!existing) throw new NotFoundException('Doklad nenalezen');
+    await this.findOneInternal(user, id);
     await this.prisma.invoice.update({
       where: { id },
       data: { deletedAt: new Date() },
@@ -189,10 +202,7 @@ export class InvoicesService {
   }
 
   async markPaid(user: AuthUser, id: string, dto?: MarkPaidDto) {
-    const existing = await this.prisma.invoice.findFirst({
-      where: { id, tenantId: user.tenantId, deletedAt: null },
-    });
-    if (!existing) throw new NotFoundException('Doklad nenalezen');
+    const existing = await this.findOneInternal(user, id);
 
     const paidAmount = dto?.paidAmount ?? Number(existing.amountTotal);
     const isFullyPaid = paidAmount >= Number(existing.amountTotal);
@@ -221,15 +231,14 @@ export class InvoicesService {
   }
 
   async pairWithTransaction(user: AuthUser, invoiceId: string, transactionId: string) {
-    const invoice = await this.prisma.invoice.findFirst({
-      where: { id: invoiceId, tenantId: user.tenantId, deletedAt: null },
-    });
-    if (!invoice) throw new NotFoundException('Doklad nenalezen');
+    await this.findOneInternal(user, invoiceId);
 
     const transaction = await this.prisma.bankTransaction.findFirst({
       where: { id: transactionId, tenantId: user.tenantId },
+      include: { bankAccount: { select: { propertyId: true } } },
     });
     if (!transaction) throw new NotFoundException('Transakce nenalezena');
+    await this.scope.verifyEntityAccess(user, transaction.bankAccount?.propertyId ?? null);
 
     const updated = await this.prisma.invoice.update({
       where: { id: invoiceId },
@@ -274,14 +283,12 @@ export class InvoicesService {
     let supplierId: string | null = null;
 
     if (supplierIco || supplierName) {
-      // Try to find existing resident by IČO first, then by name
       let existing = supplierIco
         ? await this.prisma.resident.findFirst({
             where: { tenantId: user.tenantId, email: supplierIco, isActive: true },
           })
         : null;
 
-      // Also search by lastName matching supplierName
       if (!existing && supplierName) {
         existing = await this.prisma.resident.findFirst({
           where: {
@@ -298,14 +305,13 @@ export class InvoicesService {
       if (existing) {
         supplierId = existing.id;
       } else {
-        // Create new resident as supplier contact
         const nameParts = supplierName ? supplierName.split(' ') : ['Dodavatel'];
         const created = await this.prisma.resident.create({
           data: {
             tenantId: user.tenantId,
             firstName: nameParts[0] || '',
             lastName: nameParts.slice(1).join(' ') || nameParts[0] || 'ISDOC',
-            email: supplierIco || undefined, // store IČO in email temporarily for lookups
+            email: supplierIco || undefined,
             role: 'contact',
             isActive: true,
           },
@@ -321,7 +327,6 @@ export class InvoicesService {
     let buyerId: string | null = null;
 
     if (buyerIco || buyerName) {
-      // Check if buyer is us (the tenant) — skip creating duplicate
       const tenantSettings = await this.prisma.tenantSettings.findUnique({
         where: { tenantId: user.tenantId },
         select: { companyNumber: true, orgName: true },
@@ -359,7 +364,6 @@ export class InvoicesService {
         if (existingBuyer) {
           buyerId = existingBuyer.id;
         } else {
-          // Create new resident as buyer contact
           const nameParts = buyerName ? buyerName.split(' ') : ['Odběratel'];
           const created = await this.prisma.resident.create({
             data: {
@@ -385,10 +389,7 @@ export class InvoicesService {
   }
 
   async exportIsdoc(user: AuthUser, id: string): Promise<string> {
-    const invoice = await this.prisma.invoice.findFirst({
-      where: { id, tenantId: user.tenantId, deletedAt: null },
-    });
-    if (!invoice) throw new NotFoundException('Doklad nenalezen');
+    const invoice = await this.findOneInternal(user, id);
 
     // If we have stored ISDOC XML, return it
     if (invoice.isdocXml) return invoice.isdocXml;
@@ -398,7 +399,6 @@ export class InvoicesService {
   }
 
   private parseIsdocXml(xml: string): Record<string, unknown> {
-    // Helper: get first tag value from a section of XML
     const getFrom = (section: string, tag: string) => {
       const match = section.match(new RegExp(`<${tag}[^>]*>([^<]*)</${tag}>`, 'i'));
       return match?.[1]?.trim() || '';
@@ -406,15 +406,12 @@ export class InvoicesService {
     const get = (tag: string) => getFrom(xml, tag);
     const getNum = (tag: string) => parseFloat(get(tag)) || 0;
 
-    // Extract supplier section (AccountingSupplierParty)
     const supplierMatch = xml.match(/<AccountingSupplierParty[^>]*>([\s\S]*?)<\/AccountingSupplierParty>/i);
     const supplierXml = supplierMatch?.[1] || '';
 
-    // Extract buyer section (AccountingCustomerParty)
     const buyerMatch = xml.match(/<AccountingCustomerParty[^>]*>([\s\S]*?)<\/AccountingCustomerParty>/i);
     const buyerXml = buyerMatch?.[1] || '';
 
-    // Parse party info from a section
     const parseParty = (section: string) => ({
       name: getFrom(section, 'Name') || getFrom(section, 'TradeName'),
       ico: getFrom(section, 'CompanyID') || getFrom(section, 'IČ'),
@@ -424,7 +421,6 @@ export class InvoicesService {
     const supplier = parseParty(supplierXml);
     const buyer = parseParty(buyerXml);
 
-    // Parse InvoiceLine items
     const lines: Array<Record<string, unknown>> = [];
     const lineRegex = /<InvoiceLine[^>]*>([\s\S]*?)<\/InvoiceLine>/gi;
     let lineMatch: RegExpExecArray | null;
@@ -459,13 +455,11 @@ export class InvoicesService {
       issueDate: get('IssueDate') || new Date().toISOString().slice(0, 10),
       duzp: get('TaxPointDate') || get('IssueDate') || '',
       dueDate: get('PaymentDueDate') || get('DueDate') || (() => {
-        // Try PaymentMeans > PaymentDueDate
         const pmMatch = xml.match(/<PaymentMeans[^>]*>([\s\S]*?)<\/PaymentMeans>/i);
         if (pmMatch) {
           const pmDue = pmMatch[1].match(/<PaymentDueDate[^>]*>([^<]+)<\/PaymentDueDate>/i);
           if (pmDue) return pmDue[1].trim();
         }
-        // Try PaymentTerms > PaymentDueDate
         const ptMatch = xml.match(/<PaymentTerms[^>]*>([\s\S]*?)<\/PaymentTerms>/i);
         if (ptMatch) {
           const ptDue = ptMatch[1].match(/<PaymentDueDate[^>]*>([^<]+)<\/PaymentDueDate>/i);
@@ -479,18 +473,19 @@ export class InvoicesService {
   }
 
   async findForResident(user: AuthUser, residentId: string) {
-    // Get resident name for fallback matching
     const resident = await this.prisma.resident.findFirst({
       where: { id: residentId, tenantId: user.tenantId },
     });
     if (!resident) throw new NotFoundException('Kontakt nenalezen');
 
     const fullName = `${resident.firstName} ${resident.lastName}`.trim();
+    const scopeWhere = await this.scope.scopeByPropertyId(user);
 
     const invoices = await this.prisma.invoice.findMany({
       where: {
         tenantId: user.tenantId,
         deletedAt: null,
+        ...scopeWhere,
         OR: [
           { supplierId: residentId },
           { buyerId: residentId },

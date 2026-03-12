@@ -5,9 +5,10 @@ import { FinanceController } from './finance.controller';
 import { PrescriptionCalcService } from './calc/prescription-calc.service';
 import { PrescriptionCalcController } from './calc/prescription-calc.controller';
 import { PrismaModule } from '../prisma/prisma.module';
+import { PropertyScopeModule } from '../common/services/property-scope.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, PropertyScopeModule],
   providers: [FinanceService, InvoicesService, PrescriptionCalcService],
   controllers: [FinanceController, PrescriptionCalcController],
   exports: [FinanceService, InvoicesService],
