@@ -478,6 +478,10 @@ export class FinanceService {
       }
 
       if (matchedPrescription) {
+        // Defense-in-depth: prescriptions are already fetched with scope filter,
+        // but verify explicitly to prevent cross-property matching after refactors
+        await this.scope.verifyPropertyAccess(user, matchedPrescription.propertyId)
+
         await this.prisma.bankTransaction.update({
           where: { id: tx.id },
           data:  {
