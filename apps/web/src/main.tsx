@@ -1,3 +1,5 @@
+// Sentry must be initialized before React
+import './core/sentry';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
