@@ -8,7 +8,7 @@ import { JwtAuthGuard }     from '../common/guards/jwt-auth.guard'
 import { Roles }            from '../common/decorators/roles.decorator'
 import { CurrentUser }      from '../common/decorators/current-user.decorator'
 import { AuditAction }      from '../common/decorators/audit.decorator'
-import { ROLES_WRITE, ROLES_MANAGE } from '../common/constants/roles.constants'
+import { ROLES_FINANCE } from '../common/constants/roles.constants'
 import { ReminderListQueryDto, CreateReminderDto, BulkCreateRemindersDto, UpdateTemplateDto } from './dto/reminders.dto'
 import type { AuthUser }    from '@ifmio/shared-types'
 
@@ -27,14 +27,14 @@ export class RemindersController {
   }
 
   @Post('templates/seed')
-  @Roles(...ROLES_MANAGE)
+  @Roles(...ROLES_FINANCE)
   @ApiOperation({ summary: 'Vytvoř výchozí šablony' })
   seedTemplates(@CurrentUser() user: AuthUser) {
     return this.service.seedDefaultTemplates(user)
   }
 
   @Put('templates/:id')
-  @Roles(...ROLES_MANAGE)
+  @Roles(...ROLES_FINANCE)
   @AuditAction('ReminderTemplate', 'UPDATE')
   @ApiOperation({ summary: 'Upravit šablonu' })
   updateTemplate(
@@ -60,7 +60,7 @@ export class RemindersController {
   }
 
   @Post()
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_FINANCE)
   @AuditAction('Reminder', 'CREATE')
   @ApiOperation({ summary: 'Vytvořit upomínku' })
   createReminder(@CurrentUser() user: AuthUser, @Body() dto: CreateReminderDto) {
@@ -68,7 +68,7 @@ export class RemindersController {
   }
 
   @Post('bulk')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_FINANCE)
   @AuditAction('Reminder', 'BULK_CREATE')
   @ApiOperation({ summary: 'Hromadné vytvoření upomínek' })
   bulkCreate(@CurrentUser() user: AuthUser, @Body() dto: BulkCreateRemindersDto) {
@@ -76,7 +76,7 @@ export class RemindersController {
   }
 
   @Patch(':id/send')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_FINANCE)
   @AuditAction('Reminder', 'SEND')
   @ApiOperation({ summary: 'Označit jako odeslanou' })
   markAsSent(@CurrentUser() user: AuthUser, @Param('id') id: string) {
@@ -84,7 +84,7 @@ export class RemindersController {
   }
 
   @Patch(':id/paid')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_FINANCE)
   @AuditAction('Reminder', 'PAID')
   @ApiOperation({ summary: 'Označit jako uhrazenou' })
   markAsPaid(@CurrentUser() user: AuthUser, @Param('id') id: string) {

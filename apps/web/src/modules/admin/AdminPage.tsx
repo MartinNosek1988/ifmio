@@ -12,8 +12,8 @@ const TABS = [
   { key: 'roles', label: 'Role' },
 ] as const;
 
-const ROLE_COLOR: Record<string, BadgeVariant> = { admin: 'red', manager: 'blue', viewer: 'muted' };
-const ROLE_LABELS: Record<string, string> = { admin: 'Administrátor', manager: 'Manažer', viewer: 'Čtenář' };
+const ROLE_COLOR: Record<string, BadgeVariant> = { tenant_owner: 'purple', tenant_admin: 'red', property_manager: 'blue', finance_manager: 'green', operations: 'yellow', viewer: 'muted' };
+const ROLE_LABELS: Record<string, string> = { tenant_owner: 'Vlastník', tenant_admin: 'Admin', property_manager: 'Správce', finance_manager: 'Finance', operations: 'Provoz', viewer: 'Čtenář' };
 
 export default function AdminPage() {
   const [params, setParams] = useSearchParams();
@@ -23,7 +23,7 @@ export default function AdminPage() {
   const stats = useMemo(() => ({
     total: team.length,
     active: team.filter((t) => t.accountEnabled).length,
-    admins: team.filter((t) => t.role === 'admin').length,
+    admins: team.filter((t) => t.role === 'tenant_admin' || t.role === 'tenant_owner').length,
   }), [team]);
 
   const teamColumns: Column<R>[] = [

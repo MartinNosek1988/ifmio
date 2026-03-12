@@ -81,9 +81,9 @@ export function seedLocalStorage() {
 
   // Tenant users (P0-5: user↔tenant junction)
   s('estateos_tenant_users', [
-    { ...base('tu1'), user_id: 'tm1', role: 'owner', permissions: {}, invited_at: TS, accepted_at: TS },
-    { ...base('tu2'), user_id: 'tm2', role: 'manager', permissions: {}, invited_at: TS, accepted_at: TS },
-    { ...base('tu3'), user_id: 'tm3', role: 'manager', permissions: {}, invited_at: TS, accepted_at: TS },
+    { ...base('tu1'), user_id: 'tm1', role: 'tenant_owner', permissions: {}, invited_at: TS, accepted_at: TS },
+    { ...base('tu2'), user_id: 'tm2', role: 'property_manager', permissions: {}, invited_at: TS, accepted_at: TS },
+    { ...base('tu3'), user_id: 'tm3', role: 'property_manager', permissions: {}, invited_at: TS, accepted_at: TS },
     { ...base('tu4'), user_id: 'tm4', role: 'viewer', permissions: {}, invited_at: TS, accepted_at: TS },
   ]);
 
@@ -188,10 +188,10 @@ export function seedLocalStorage() {
 
   // Team members
   s('estateos_team', [
-    { ...base('tm1'), jmeno: 'Martin Nosek', email: 'martin@ifmio.cz', role: 'admin', pozice: 'CEO', telefon: '+420601000001', accountEnabled: true },
-    { ...base('tm2'), jmeno: 'Jana Vesela', email: 'jana@ifmio.cz', role: 'manager', pozice: 'Property Manager', telefon: '+420601000002', accountEnabled: true },
-    { ...base('tm3'), jmeno: 'Petr Cerny', email: 'petr@ifmio.cz', role: 'manager', pozice: 'Facility Manager', telefon: '+420601000003', accountEnabled: true },
-    { ...base('tm4'), jmeno: 'Lucie Mala', email: 'lucie@ifmio.cz', role: 'viewer', pozice: 'Uctovka', telefon: '+420601000004', accountEnabled: true },
+    { ...base('tm1'), jmeno: 'Martin Nosek', email: 'martin@ifmio.cz', role: 'tenant_admin', pozice: 'CEO', telefon: '+420601000001', accountEnabled: true },
+    { ...base('tm2'), jmeno: 'Jana Vesela', email: 'jana@ifmio.cz', role: 'property_manager', pozice: 'Property Manager', telefon: '+420601000002', accountEnabled: true },
+    { ...base('tm3'), jmeno: 'Petr Cerny', email: 'petr@ifmio.cz', role: 'operations', pozice: 'Facility Manager', telefon: '+420601000003', accountEnabled: true },
+    { ...base('tm4'), jmeno: 'Lucie Mala', email: 'lucie@ifmio.cz', role: 'finance_manager', pozice: 'Uctovka', telefon: '+420601000004', accountEnabled: true },
   ]);
 
   // Calendar events

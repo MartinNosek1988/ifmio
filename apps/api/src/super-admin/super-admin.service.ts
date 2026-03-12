@@ -81,7 +81,7 @@ export class SuperAdminService {
         include: {
           _count: { select: { users: true, properties: true } },
           users: {
-            where: { role: 'owner' },
+            where: { role: 'tenant_owner' },
             take: 1,
             select: { email: true, name: true },
           },
@@ -139,7 +139,7 @@ export class SuperAdminService {
 
   async impersonate(tenantId: string) {
     const owner = await this.prisma.user.findFirst({
-      where: { tenantId, role: 'owner', isActive: true },
+      where: { tenantId, role: 'tenant_owner', isActive: true },
     });
     if (!owner) throw new NotFoundException('Tenant nemá aktivního ownera');
 

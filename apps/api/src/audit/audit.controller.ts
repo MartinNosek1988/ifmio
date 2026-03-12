@@ -13,7 +13,7 @@ export class AuditController {
   constructor(private prisma: PrismaService) {}
 
   @Get()
-  @Roles('owner', 'admin')
+  @Roles('tenant_owner', 'tenant_admin')
   @ApiOperation({ summary: 'Seznam audit logů s filtrováním (owner/admin)' })
   async list(
     @CurrentUser() user: AuthUser,
@@ -60,7 +60,7 @@ export class AuditController {
   }
 
   @Get('entities')
-  @Roles('owner', 'admin')
+  @Roles('tenant_owner', 'tenant_admin')
   @ApiOperation({ summary: 'Distinct entity values pro filtr' })
   async entities(@CurrentUser() user: AuthUser) {
     const result = await this.prisma.auditLog.findMany({

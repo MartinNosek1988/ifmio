@@ -23,16 +23,46 @@ const DEFAULT_PERMISSIONS: Permissions = {
 };
 
 export function getPermissions(role: string): Permissions {
-  if (role === 'admin') {
+  if (role === 'tenant_owner') {
     return Object.fromEntries(
       Object.keys(DEFAULT_PERMISSIONS).map((k) => [k, 'admin'])
     ) as unknown as Permissions;
+  }
+  if (role === 'tenant_admin') {
+    return Object.fromEntries(
+      Object.keys(DEFAULT_PERMISSIONS).map((k) => [k, 'admin'])
+    ) as unknown as Permissions;
+  }
+  if (role === 'finance_manager') {
+    return {
+      properties: 'read',
+      finance: 'write',
+      workorders: 'none',
+      helpdesk: 'none',
+      assets: 'none',
+      documents: 'write',
+      team: 'none',
+      settings: 'none',
+    };
+  }
+  if (role === 'operations') {
+    return {
+      properties: 'read',
+      finance: 'none',
+      workorders: 'write',
+      helpdesk: 'write',
+      assets: 'write',
+      documents: 'write',
+      team: 'none',
+      settings: 'none',
+    };
   }
   if (role === 'viewer') {
     return Object.fromEntries(
       Object.keys(DEFAULT_PERMISSIONS).map((k) => [k, 'read'])
     ) as unknown as Permissions;
   }
+  // property_manager (default)
   return DEFAULT_PERMISSIONS;
 }
 

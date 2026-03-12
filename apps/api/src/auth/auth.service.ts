@@ -94,7 +94,7 @@ export class AuthService {
           email: dto.email,
           name: dto.name,
           passwordHash,
-          role: 'owner',
+          role: 'tenant_owner',
         },
       });
 

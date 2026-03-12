@@ -8,7 +8,7 @@ import { JwtAuthGuard }    from '../common/guards/jwt-auth.guard'
 import { Roles }           from '../common/decorators/roles.decorator'
 import { CurrentUser }     from '../common/decorators/current-user.decorator'
 import { AuditAction }     from '../common/decorators/audit.decorator'
-import { ROLES_WRITE }     from '../common/constants/roles.constants'
+import { ROLES_OPS }       from '../common/constants/roles.constants'
 import { HelpdeskListQueryDto, CreateTicketDto, UpdateTicketDto, CreateItemDto, CreateProtocolDto } from './dto/helpdesk.dto'
 import type { AuthUser }   from '@ifmio/shared-types'
 
@@ -32,7 +32,7 @@ export class HelpdeskController {
   }
 
   @Post()
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_OPS)
   @AuditAction('HelpdeskTicket', 'CREATE')
   @ApiOperation({ summary: 'Vytvořit ticket' })
   createTicket(@CurrentUser() user: AuthUser, @Body() dto: CreateTicketDto) {
@@ -40,7 +40,7 @@ export class HelpdeskController {
   }
 
   @Put(':id')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_OPS)
   @AuditAction('HelpdeskTicket', 'UPDATE')
   @ApiOperation({ summary: 'Aktualizovat ticket' })
   updateTicket(
@@ -52,7 +52,7 @@ export class HelpdeskController {
   }
 
   @Delete(':id')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_OPS)
   @AuditAction('HelpdeskTicket', 'DELETE')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Smazat ticket' })
@@ -65,7 +65,7 @@ export class HelpdeskController {
 
   // Items
   @Post(':ticketId/items')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_OPS)
   @ApiOperation({ summary: 'Přidat položku protokolu' })
   addItem(
     @CurrentUser() user: AuthUser,
@@ -76,7 +76,7 @@ export class HelpdeskController {
   }
 
   @Delete(':ticketId/items/:itemId')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_OPS)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Odstranit položku' })
   removeItem(
@@ -89,7 +89,7 @@ export class HelpdeskController {
 
   // Protocol
   @Post(':ticketId/protocol')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_OPS)
   @AuditAction('HelpdeskProtocol', 'CREATE')
   @ApiOperation({ summary: 'Vytvořit/aktualizovat protokol' })
   createProtocol(

@@ -7,7 +7,7 @@ import { WorkOrdersService } from './work-orders.service'
 import { Roles } from '../common/decorators/roles.decorator'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
 import { AuditAction } from '../common/decorators/audit.decorator'
-import { ROLES_WRITE } from '../common/constants/roles.constants'
+import { ROLES_OPS } from '../common/constants/roles.constants'
 import type { AuthUser } from '@ifmio/shared-types';
 
 @ApiTags('WorkOrders')
@@ -41,7 +41,7 @@ export class WorkOrdersController {
   }
 
   @Post()
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_OPS)
   @AuditAction('workOrder', 'create')
   @ApiOperation({ summary: 'Vytvořit WO' })
   create(@CurrentUser() user: AuthUser, @Body() dto: {
@@ -63,7 +63,7 @@ export class WorkOrdersController {
   }
 
   @Put(':id')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_OPS)
   @AuditAction('workOrder', 'update')
   @ApiOperation({ summary: 'Upravit WO' })
   update(
@@ -90,7 +90,7 @@ export class WorkOrdersController {
   }
 
   @Put(':id/status')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_OPS)
   @AuditAction('workOrder', 'statusChange')
   @ApiOperation({ summary: 'Změna statusu WO' })
   changeStatus(
@@ -113,7 +113,7 @@ export class WorkOrdersController {
   }
 
   @Delete(':id')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_OPS)
   @AuditAction('workOrder', 'delete')
   @ApiOperation({ summary: 'Smazat WO' })
   remove(@CurrentUser() user: AuthUser, @Param('id') id: string) {

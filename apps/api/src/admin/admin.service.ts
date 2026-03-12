@@ -63,7 +63,7 @@ export class AdminService {
     role:     string
     password: string
   }) {
-    if (!['owner', 'admin'].includes(user.role)) {
+    if (!['tenant_owner', 'tenant_admin'].includes(user.role)) {
       throw new ForbiddenException('Nemáte oprávnění pro tuto akci')
     }
 
@@ -111,7 +111,7 @@ export class AdminService {
     role?:     string
     isActive?: boolean
   }) {
-    if (!['owner', 'admin'].includes(user.role)) {
+    if (!['tenant_owner', 'tenant_admin'].includes(user.role)) {
       throw new ForbiddenException('Nemáte oprávnění pro tuto akci')
     }
     if (targetUserId === user.id && dto.role !== undefined) {
@@ -142,7 +142,7 @@ export class AdminService {
   }
 
   async updateUserRole(user: AuthUser, targetUserId: string, role: string) {
-    if (!['owner', 'admin'].includes(user.role)) {
+    if (!['tenant_owner', 'tenant_admin'].includes(user.role)) {
       throw new ForbiddenException('Nemáte oprávnění pro tuto akci')
     }
     if (targetUserId === user.id) {
@@ -162,7 +162,7 @@ export class AdminService {
   }
 
   async deactivateUser(user: AuthUser, targetUserId: string) {
-    if (!['owner', 'admin'].includes(user.role)) {
+    if (!['tenant_owner', 'tenant_admin'].includes(user.role)) {
       throw new ForbiddenException('Nemáte oprávnění pro tuto akci')
     }
     if (targetUserId === user.id) {

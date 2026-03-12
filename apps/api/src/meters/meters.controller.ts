@@ -7,7 +7,7 @@ import { MetersService } from './meters.service'
 import { Roles } from '../common/decorators/roles.decorator'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
 import { AuditAction } from '../common/decorators/audit.decorator'
-import { ROLES_WRITE } from '../common/constants/roles.constants'
+import { ROLES_OPS } from '../common/constants/roles.constants'
 import type { AuthUser } from '@ifmio/shared-types';
 
 @ApiTags('Meters')
@@ -40,7 +40,7 @@ export class MetersController {
   }
 
   @Post()
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_OPS)
   @AuditAction('meter', 'create')
   @ApiOperation({ summary: 'Vytvořit měřidlo' })
   create(@CurrentUser() user: AuthUser, @Body() dto: {
@@ -60,7 +60,7 @@ export class MetersController {
   }
 
   @Put(':id')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_OPS)
   @AuditAction('meter', 'update')
   @ApiOperation({ summary: 'Upravit měřidlo' })
   update(
@@ -85,7 +85,7 @@ export class MetersController {
   }
 
   @Delete(':id')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_OPS)
   @AuditAction('meter', 'delete')
   @ApiOperation({ summary: 'Smazat měřidlo' })
   remove(@CurrentUser() user: AuthUser, @Param('id') id: string) {
@@ -101,7 +101,7 @@ export class MetersController {
   }
 
   @Post(':id/readings')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_OPS)
   @AuditAction('meterReading', 'create')
   @ApiOperation({ summary: 'Přidat odpočet' })
   addReading(
@@ -113,7 +113,7 @@ export class MetersController {
   }
 
   @Delete(':meterId/readings/:readingId')
-  @Roles(...ROLES_WRITE)
+  @Roles(...ROLES_OPS)
   @AuditAction('meterReading', 'delete')
   @ApiOperation({ summary: 'Smazat odpočet' })
   deleteReading(
