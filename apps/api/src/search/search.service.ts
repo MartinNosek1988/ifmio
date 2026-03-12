@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PropertyScopeService } from '../common/services/property-scope.service';
+import type { AuthUser } from '@ifmio/shared-types';
 
 export interface SearchResultItem {
   id: string;
@@ -17,10 +19,13 @@ export interface SearchResult {
 
 @Injectable()
 export class SearchService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private scope: PropertyScopeService,
+  ) {}
 
   async search(
-    tenantId: string,
+    user: AuthUser,
     query: string,
     limit = 20,
   ): Promise<SearchResult> {
@@ -28,11 +33,11 @@ export class SearchService {
 
     const [properties, units, residents, tickets, documents] =
       await Promise.all([
-        this.searchProperties(tenantId, query, perType),
-        this.searchUnits(tenantId, query, perType),
-        this.searchResidents(tenantId, query, perType),
-        this.searchTickets(tenantId, query, perType),
-        this.searchDocuments(tenantId, query, perType),
+        this.searchProperties(user, query, perType),
+        this.searchUnits(user, query, perType),
+        this.searchResidents(user, query, perType),
+        this.searchTickets(user, query, perType),
+        this.searchDocuments(user.tenantId, query, perType),
       ]);
 
     const results = [
@@ -47,18 +52,22 @@ export class SearchService {
   }
 
   private async searchProperties(
-    tenantId: string,
+    user: AuthUser,
     query: string,
     limit: number,
   ): Promise<SearchResultItem[]> {
+    const ids = await this.scope.getAccessiblePropertyIds(user);
+    const idFilter = ids !== null ? { id: { in: ids } } : {};
+
     const rows = await this.prisma.property.findMany({
       where: {
-        tenantId,
+        tenantId: user.tenantId,
+        ...idFilter,
         OR: [
           { name: { contains: query, mode: 'insensitive' } },
           { address: { contains: query, mode: 'insensitive' } },
         ],
-      },
+      } as any,
       take: limit,
       orderBy: { name: 'asc' },
     });
@@ -73,15 +82,18 @@ export class SearchService {
   }
 
   private async searchUnits(
-    tenantId: string,
+    user: AuthUser,
     query: string,
     limit: number,
   ): Promise<SearchResultItem[]> {
+    const ids = await this.scope.getAccessiblePropertyIds(user);
+    const propFilter = ids !== null ? { id: { in: ids } } : {};
+
     const rows = await this.prisma.unit.findMany({
       where: {
-        property: { tenantId },
+        property: { tenantId: user.tenantId, ...propFilter },
         name: { contains: query, mode: 'insensitive' },
-      },
+      } as any,
       include: { property: { select: { name: true } } },
       take: limit,
       orderBy: { name: 'asc' },
@@ -97,20 +109,23 @@ export class SearchService {
   }
 
   private async searchResidents(
-    tenantId: string,
+    user: AuthUser,
     query: string,
     limit: number,
   ): Promise<SearchResultItem[]> {
+    const scopeWhere = await this.scope.scopeByPropertyId(user);
+
     const rows = await this.prisma.resident.findMany({
       where: {
-        tenantId,
+        tenantId: user.tenantId,
+        ...scopeWhere,
         OR: [
           { firstName: { contains: query, mode: 'insensitive' } },
           { lastName: { contains: query, mode: 'insensitive' } },
           { email: { contains: query, mode: 'insensitive' } },
           { phone: { contains: query, mode: 'insensitive' } },
         ],
-      },
+      } as any,
       take: limit,
       orderBy: { lastName: 'asc' },
     });
@@ -125,21 +140,23 @@ export class SearchService {
   }
 
   private async searchTickets(
-    tenantId: string,
+    user: AuthUser,
     query: string,
     limit: number,
   ): Promise<SearchResultItem[]> {
+    const scopeWhere = await this.scope.scopeByPropertyId(user);
     const numberQuery = parseInt(query, 10);
 
     const rows = await this.prisma.helpdeskTicket.findMany({
       where: {
-        tenantId,
+        tenantId: user.tenantId,
+        ...scopeWhere,
         OR: [
           { title: { contains: query, mode: 'insensitive' } },
           { description: { contains: query, mode: 'insensitive' } },
           ...(Number.isFinite(numberQuery) ? [{ number: numberQuery }] : []),
         ],
-      },
+      } as any,
       take: limit,
       orderBy: { createdAt: 'desc' },
     });
@@ -153,6 +170,7 @@ export class SearchService {
     }));
   }
 
+  // Documents are tenant-wide by V1 design — no property scope
   private async searchDocuments(
     tenantId: string,
     query: string,
@@ -165,7 +183,6 @@ export class SearchService {
           { name: { contains: query, mode: 'insensitive' } },
           { description: { contains: query, mode: 'insensitive' } },
           { originalName: { contains: query, mode: 'insensitive' } },
-          { category: { equals: query as any } },
         ],
       },
       take: limit,

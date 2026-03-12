@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
+import { PropertyScopeService } from '../../common/services/property-scope.service'
 import * as XLSX from 'xlsx'
 import type { AuthUser } from '@ifmio/shared-types'
 
@@ -37,7 +38,10 @@ const COLUMN_ALIASES: Record<string, string> = {
 export class ResidentsImportService {
   private readonly logger = new Logger(ResidentsImportService.name)
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private scope: PropertyScopeService,
+  ) {}
 
   parseFile(buffer: Buffer, _mimetype: string): ResidentImportRow[] {
     const wb = XLSX.read(buffer, { type: 'buffer' })
@@ -73,14 +77,18 @@ export class ResidentsImportService {
     }
   }
 
-  async validate(rows: ResidentImportRow[], tenantId: string): Promise<ImportValidationResult> {
+  async validate(user: AuthUser, rows: ResidentImportRow[]): Promise<ImportValidationResult> {
+    // Fetch only accessible properties for scoped users
+    const ids = await this.scope.getAccessiblePropertyIds(user)
+    const propertyFilter = ids !== null ? { id: { in: ids } } : {}
+
     const properties = await this.prisma.property.findMany({
-      where: { tenantId, status: 'active' },
+      where: { tenantId: user.tenantId, status: 'active', ...propertyFilter } as any,
       include: { units: true },
     })
 
     const existingEmails = await this.prisma.resident.findMany({
-      where: { tenantId, isActive: true },
+      where: { tenantId: user.tenantId, isActive: true },
       select: { email: true },
     })
     const emailSet = new Set(
@@ -132,8 +140,12 @@ export class ResidentsImportService {
   }
 
   async executeImport(user: AuthUser, rows: ResidentImportRow[]) {
+    // Fetch only accessible properties for scoped users
+    const ids = await this.scope.getAccessiblePropertyIds(user)
+    const propertyFilter = ids !== null ? { id: { in: ids } } : {}
+
     const properties = await this.prisma.property.findMany({
-      where: { tenantId: user.tenantId, status: 'active' },
+      where: { tenantId: user.tenantId, status: 'active', ...propertyFilter } as any,
       include: { units: true },
     })
 
@@ -159,6 +171,11 @@ export class ResidentsImportService {
               if (unit) unitId = unit.id
             }
           }
+        }
+
+        // Defense-in-depth: verify property access for each row
+        if (propertyId) {
+          await this.scope.verifyPropertyAccess(user, propertyId)
         }
 
         await this.prisma.resident.create({
