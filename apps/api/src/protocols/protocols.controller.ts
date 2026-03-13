@@ -3,6 +3,8 @@ import {
   Body, Param, Query, Req, Res, UseGuards, HttpCode, HttpStatus,
 } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
+import * as fs from 'fs'
+import * as path from 'path'
 import type { FastifyRequest, FastifyReply } from 'fastify'
 import { ProtocolsService } from './protocols.service'
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard'
@@ -117,8 +119,6 @@ export class ProtocolsController {
   ) {
     const { storageKey, name, mimeType } = await this.service.getPdf(user, id)
     const uploadDir = process.env.UPLOAD_DIR ?? './uploads'
-    const path = await import('path')
-    const fs = await import('fs')
     const filePath = path.join(uploadDir, storageKey)
 
     if (!fs.existsSync(filePath)) {
