@@ -484,6 +484,167 @@ describe('Revisions & Compliance (e2e)', () => {
     expect(res.body.kpi.performedInPeriod).toBeGreaterThanOrEqual(1)
   })
 
+  // ─── PROTOCOL AUTOMATION (P6.3b) ────────────────────────────
+
+  let protocolTypeId: string
+  let protocolPlanId: string
+
+  it('creates a type with requiresProtocol=true', async () => {
+    const res = await api
+      .post('/api/v1/revisions/types', {
+        code: `PLYN-${Date.now()}`,
+        name: 'Plyn revize (protocol)',
+        defaultIntervalDays: 365,
+        requiresProtocol: true,
+        defaultProtocolType: 'revision_report',
+        requiresSupplierSignature: true,
+        requiresCustomerSignature: false,
+        graceDaysAfterEvent: 14,
+      })
+      .expect(201)
+
+    expect(res.body.requiresProtocol).toBe(true)
+    expect(res.body.requiresSupplierSignature).toBe(true)
+    protocolTypeId = res.body.id
+  })
+
+  it('creates a plan for protocol-required type', async () => {
+    const nextDue = new Date()
+    nextDue.setDate(nextDue.getDate() + 180)
+
+    const res = await api
+      .post('/api/v1/revisions/plans', {
+        title: 'Plyn plan (auto-protocol)',
+        revisionSubjectId: subjectId,
+        revisionTypeId: protocolTypeId,
+        intervalDays: 365,
+        nextDueAt: nextDue.toISOString(),
+      })
+      .expect(201)
+
+    protocolPlanId = res.body.id
+  })
+
+  it('record-event auto-creates protocol when requiresProtocol=true', async () => {
+    const res = await api
+      .post(`/api/v1/revisions/plans/${protocolPlanId}/record-event`, {
+        resultStatus: 'passed',
+        summary: 'Auto-protocol test',
+        performedBy: 'Technik',
+        vendorName: 'Servis s.r.o.',
+        performedAt: new Date().toISOString(),
+      })
+      .expect(201)
+
+    // Response should include autoProtocol info
+    expect(res.body.autoProtocol).toBeDefined()
+    expect(res.body.autoProtocol.number).toMatch(/^PROT-REV-/)
+    expect(res.body.autoProtocol.status).toBe('draft')
+  }, 15000)
+
+  it('history includes protocol info per event', async () => {
+    const res = await api
+      .get(`/api/v1/revisions/plans/${protocolPlanId}/history`)
+      .expect(200)
+
+    expect(res.body.length).toBeGreaterThanOrEqual(1)
+    const ev = res.body[0]
+    expect(ev.protocol).toBeDefined()
+    expect(ev.protocol.number).toMatch(/^PROT-REV-/)
+    expect(ev.protocol.status).toBe('draft')
+  })
+
+  it('compliance shows performed_unconfirmed after auto-protocol (draft)', async () => {
+    const res = await api
+      .get(`/api/v1/revisions/plans/${protocolPlanId}`)
+      .expect(200)
+
+    // Plan has a draft protocol → unconfirmed
+    expect(res.body.complianceStatus).toBe('performed_unconfirmed')
+  })
+
+  it('completing protocol transitions to performed_pending_signature', async () => {
+    // Get protocol ID from history
+    const histRes = await api
+      .get(`/api/v1/revisions/plans/${protocolPlanId}/history`)
+      .expect(200)
+    const protocolId = histRes.body[0].protocol.id
+
+    // Complete protocol (no signatures yet)
+    await api
+      .post(`/api/v1/protocols/${protocolId}/complete`, {})
+      .expect(201)
+
+    // Plan should now be pending_signature (type requires supplier signature)
+    const planRes = await api
+      .get(`/api/v1/revisions/plans/${protocolPlanId}`)
+      .expect(200)
+
+    expect(planRes.body.complianceStatus).toBe('performed_pending_signature')
+  }, 15000)
+
+  it('confirming protocol transitions plan to compliant', async () => {
+    // Get protocol ID
+    const histRes = await api
+      .get(`/api/v1/revisions/plans/${protocolPlanId}/history`)
+      .expect(200)
+    const protocolId = histRes.body[0].protocol.id
+
+    // Add supplier signature via update
+    await api
+      .patch(`/api/v1/protocols/${protocolId}`, {
+        supplierSignatureName: 'Jan Technik',
+        supplierSignedAt: new Date().toISOString(),
+      })
+      .expect(200)
+
+    // Confirm protocol
+    await api
+      .post(`/api/v1/protocols/${protocolId}/confirm`)
+      .expect(201)
+
+    // Plan should now be compliant
+    const planRes = await api
+      .get(`/api/v1/revisions/plans/${protocolPlanId}`)
+      .expect(200)
+
+    expect(planRes.body.complianceStatus).toBe('compliant')
+  }, 15000)
+
+  it('does not create duplicate protocol on repeated record-event', async () => {
+    // Record another event
+    const res = await api
+      .post(`/api/v1/revisions/plans/${protocolPlanId}/record-event`, {
+        resultStatus: 'passed',
+        summary: 'Second event',
+        performedAt: new Date().toISOString(),
+      })
+      .expect(201)
+
+    // Should still auto-create a protocol for the new event
+    expect(res.body.autoProtocol).toBeDefined()
+    expect(res.body.autoProtocol.status).toBe('draft')
+
+    // But each event has its own protocol, not duplicated
+    const histRes = await api
+      .get(`/api/v1/revisions/plans/${protocolPlanId}/history`)
+      .expect(200)
+
+    const protocols = histRes.body
+      .filter((ev: any) => ev.protocol)
+      .map((ev: any) => ev.protocol.id)
+
+    // All protocol IDs should be unique
+    const unique = new Set(protocols)
+    expect(unique.size).toBe(protocols.length)
+  }, 15000)
+
+  // Cleanup protocol test data
+  it('cleans up protocol test plan and type', async () => {
+    await api.delete(`/api/v1/revisions/plans/${protocolPlanId}`).expect(204)
+    await api.delete(`/api/v1/revisions/types/${protocolTypeId}`).expect(204)
+  }, 15000)
+
   // ─── TENANT ISOLATION ───────────────────────────────────────
 
   it('isolates data between tenants', async () => {

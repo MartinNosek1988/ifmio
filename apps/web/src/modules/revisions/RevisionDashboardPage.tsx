@@ -59,9 +59,15 @@ export default function RevisionDashboardPage() {
       </div>
       {((kpi.pendingProtocol ?? 0) > 0 || (kpi.pendingSignature ?? 0) > 0 || (kpi.unconfirmed ?? 0) > 0) && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 24 }}>
-          <KpiCard label="Bez protokolu" value={String(kpi.pendingProtocol ?? 0)} color="var(--accent-yellow, #e6a817)" />
-          <KpiCard label="Čeká podpis" value={String(kpi.pendingSignature ?? 0)} color="var(--accent-yellow, #e6a817)" />
-          <KpiCard label="Nepotvrzeno" value={String(kpi.unconfirmed ?? 0)} color="var(--accent-blue)" />
+          <div style={{ cursor: 'pointer' }} onClick={() => navigate('/revisions?complianceStatus=performed_pending_protocol')}>
+            <KpiCard label="Bez protokolu" value={String(kpi.pendingProtocol ?? 0)} color="var(--accent-yellow, #e6a817)" />
+          </div>
+          <div style={{ cursor: 'pointer' }} onClick={() => navigate('/revisions?complianceStatus=performed_pending_signature')}>
+            <KpiCard label="Čeká podpis" value={String(kpi.pendingSignature ?? 0)} color="var(--accent-yellow, #e6a817)" />
+          </div>
+          <div style={{ cursor: 'pointer' }} onClick={() => navigate('/revisions?complianceStatus=performed_unconfirmed')}>
+            <KpiCard label="Nepotvrzeno" value={String(kpi.unconfirmed ?? 0)} color="var(--accent-blue)" />
+          </div>
         </div>
       )}
 

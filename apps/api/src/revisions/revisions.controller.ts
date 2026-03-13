@@ -31,7 +31,7 @@ export class RevisionsController {
     @CurrentUser() user: AuthUser,
     @Query('days') days?: string,
   ) {
-    return this.service.getDashboard(user, Math.min(90, Math.max(1, Number(days) || 30)))
+    return this.service.getDashboard(user, Math.min(365, Math.max(1, Number(days) || 30)))
   }
 
   // ─── Subjects ───────────────────────────────────────────────────

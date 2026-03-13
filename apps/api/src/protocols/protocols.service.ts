@@ -168,6 +168,22 @@ export class ProtocolsService {
       include: PROTOCOL_INCLUDE,
     })
 
+    // Dismiss missing-protocol notifications now that protocol is completed
+    if (result.sourceType === 'revision') {
+      await this.notifications.dismissByEntityId(
+        user.tenantId,
+        `revision_protocol_missing:${result.sourceId}`,
+      )
+    }
+
+    // If signatures were provided, dismiss pending-signature notification
+    if (dto.supplierSignatureName || dto.customerSignatureName) {
+      await this.notifications.dismissByEntityId(
+        user.tenantId,
+        `protocol_pending_signature:${id}`,
+      )
+    }
+
     // Fire dissatisfaction notification
     if (dto.satisfaction === 'dissatisfied') {
       await this.notifications.notifyProtocolDissatisfaction({
@@ -186,11 +202,26 @@ export class ProtocolsService {
     if (protocol.status !== 'completed') {
       throw new BadRequestException('Protokol musí být ve stavu "dokončený" pro potvrzení')
     }
-    return this.prisma.protocol.update({
+    const result = await this.prisma.protocol.update({
       where: { id },
       data: { status: 'confirmed' },
       include: PROTOCOL_INCLUDE,
     })
+
+    // Dismiss related notifications on confirm
+    await this.notifications.dismissByEntityId(
+      user.tenantId,
+      `protocol_pending_signature:${id}`,
+    )
+    // If this is a revision protocol, dismiss the missing-protocol notification too
+    if (protocol.sourceType === 'revision') {
+      await this.notifications.dismissByEntityId(
+        user.tenantId,
+        `revision_protocol_missing:${protocol.sourceId}`,
+      )
+    }
+
+    return result
   }
 
   async delete(user: AuthUser, id: string) {

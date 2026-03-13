@@ -2,6 +2,8 @@ import { Injectable, NotFoundException, ConflictException } from '@nestjs/common
 import { Prisma } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
 import { PropertyScopeService } from '../common/services/property-scope.service'
+import { ProtocolsService } from '../protocols/protocols.service'
+import { NotificationsService } from '../notifications/notifications.service'
 import type {
   CreateRevisionSubjectDto, UpdateRevisionSubjectDto,
   CreateRevisionTypeDto, UpdateRevisionTypeDto,
@@ -28,6 +30,8 @@ export class RevisionsService {
   constructor(
     private prisma: PrismaService,
     private scope: PropertyScopeService,
+    private protocols: ProtocolsService,
+    private notifications: NotificationsService,
   ) {}
 
   // ═══════════════════════════════════════════════════════════════════
@@ -326,9 +330,27 @@ export class RevisionsService {
 
   async getPlanHistory(user: AuthUser, id: string) {
     await this.getPlan(user, id)
-    return this.prisma.revisionEvent.findMany({
+    const events = await this.prisma.revisionEvent.findMany({
       where: { revisionPlanId: id, tenantId: user.tenantId },
       orderBy: { performedAt: { sort: 'desc', nulls: 'last' } },
+    })
+
+    // Enrich with linked protocol info
+    const eventIds = events.map((e) => e.id)
+    const protocols = eventIds.length > 0
+      ? await this.prisma.protocol.findMany({
+          where: { tenantId: user.tenantId, sourceType: 'revision', sourceId: { in: eventIds } },
+          select: { id: true, sourceId: true, number: true, status: true },
+        })
+      : []
+    const protocolMap = new Map(protocols.map((p) => [p.sourceId, p]))
+
+    return events.map((e) => {
+      const proto = protocolMap.get(e.id)
+      return {
+        ...e,
+        protocol: proto ? { id: proto.id, number: proto.number, status: proto.status } : null,
+      }
     })
   }
 
@@ -428,12 +450,50 @@ export class RevisionsService {
     await this.prisma.revisionEvent.delete({ where: { id } })
   }
 
-  /** Shortcut: record a performed event and recalculate plan in one step */
+  /** Shortcut: record a performed event and recalculate plan in one step.
+   *  Auto-creates protocol if RevisionType.requiresProtocol is true. */
   async recordEvent(user: AuthUser, planId: string, dto: CreateRevisionEventDto) {
     dto.revisionPlanId = planId
     if (!dto.performedAt) dto.performedAt = new Date().toISOString()
     if (!dto.resultStatus) dto.resultStatus = 'passed'
-    return this.createEvent(user, dto)
+    const event = await this.createEvent(user, dto)
+
+    // Auto-create protocol if type requires it
+    const plan = await this.prisma.revisionPlan.findFirst({
+      where: { id: planId, tenantId: user.tenantId },
+      include: {
+        revisionType: { select: { requiresProtocol: true, defaultProtocolType: true, name: true } },
+        property: { select: { name: true } },
+      },
+    })
+
+    if (plan?.revisionType.requiresProtocol) {
+      // Check dedup — don't create if protocol already exists for this event
+      const existing = await this.prisma.protocol.findFirst({
+        where: { tenantId: user.tenantId, sourceType: 'revision', sourceId: event.id },
+        select: { id: true },
+      })
+
+      if (!existing) {
+        try {
+          const protocol = await this.protocols.generateFromSource(user, {
+            sourceType: 'revision',
+            sourceId: event.id,
+            protocolType: plan.revisionType.defaultProtocolType ?? 'revision_report',
+          })
+          // Dismiss any pending "missing protocol" notification for this event
+          await this.notifications.dismissByEntityId(
+            user.tenantId,
+            `revision_protocol_missing:${event.id}`,
+          )
+          return { ...event, autoProtocol: { id: protocol.id, number: protocol.number, status: protocol.status } }
+        } catch {
+          // Protocol creation failed — event still recorded, notification will fire from cron
+        }
+      }
+    }
+
+    return event
   }
 
   // ═══════════════════════════════════════════════════════════════════

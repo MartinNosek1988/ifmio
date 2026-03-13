@@ -509,6 +509,13 @@ export class NotificationsService {
     })
   }
 
+  /** Dismiss (delete) notifications matching an entityId pattern */
+  async dismissByEntityId(tenantId: string, entityId: string) {
+    await this.prisma.notification.deleteMany({
+      where: { tenantId, entityId },
+    })
+  }
+
   async notifyProtocolPendingSignature(params: {
     tenantId: string
     protocolId: string
