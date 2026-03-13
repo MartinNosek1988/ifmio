@@ -53,6 +53,23 @@ const AUDIT_FIELDS: Record<string, string[]> = {
     'id', 'name', 'slug', 'plan', 'isActive',
     'maxUsers', 'maxProperties', 'trialEndsAt', 'notes',
   ],
+  RevisionSubject: [
+    'id', 'propertyId', 'name', 'category', 'description',
+    'location', 'assetTag', 'manufacturer', 'model', 'serialNumber', 'isActive',
+  ],
+  RevisionType: [
+    'id', 'code', 'name', 'description', 'defaultIntervalDays',
+    'defaultReminderDaysBefore', 'color', 'isActive',
+  ],
+  RevisionPlan: [
+    'id', 'propertyId', 'revisionSubjectId', 'revisionTypeId',
+    'title', 'intervalDays', 'reminderDaysBefore', 'vendorName',
+    'responsibleUserId', 'lastPerformedAt', 'nextDueAt', 'status', 'isMandatory',
+  ],
+  RevisionEvent: [
+    'id', 'revisionPlanId', 'scheduledAt', 'performedAt', 'validUntil',
+    'resultStatus', 'summary', 'vendorName', 'performedBy', 'protocolDocumentId',
+  ],
 };
 
 /**
@@ -80,6 +97,10 @@ export class AuditInterceptor implements NestInterceptor {
       User: this.prisma.user as unknown as PrismaModel,
       TenantSettings: this.prisma.tenantSettings as unknown as PrismaModel,
       Tenant: this.prisma.tenant as unknown as PrismaModel,
+      RevisionSubject: this.prisma.revisionSubject as unknown as PrismaModel,
+      RevisionType: this.prisma.revisionType as unknown as PrismaModel,
+      RevisionPlan: this.prisma.revisionPlan as unknown as PrismaModel,
+      RevisionEvent: this.prisma.revisionEvent as unknown as PrismaModel,
     };
   }
 

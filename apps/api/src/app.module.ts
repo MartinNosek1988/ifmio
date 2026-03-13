@@ -30,6 +30,7 @@ import { MetersModule } from './meters/meters.module';
 import { CalendarModule } from './calendar/calendar.module';
 import { SuperAdminModule } from './super-admin/super-admin.module';
 import { AssetsModule } from './assets/assets.module';
+import { RevisionsModule } from './revisions/revisions.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
@@ -86,6 +87,7 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
     CalendarModule,
     SuperAdminModule,
     AssetsModule,
+    RevisionsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerBehindProxyGuard },

@@ -47,6 +47,11 @@ model Tenant {
   assets              Asset[]
   assetServiceRecords AssetServiceRecord[]
   invoices            Invoice[]
+  slaPolicies         SlaPolicy[]
+  revisionSubjects    RevisionSubject[]
+  revisionTypes       RevisionType[]
+  revisionPlans       RevisionPlan[]
+  revisionEvents      RevisionEvent[]
 
   @@map("tenants")
 }
@@ -90,6 +95,7 @@ model User {
   submittedInvoices       Invoice[]                @relation("InvoiceSubmitter")
   approvedInvoices        Invoice[]                @relation("InvoiceApprover")
   rejectedInvoices        Invoice[]                @relation("InvoiceRejecter")
+  responsiblePlans        RevisionPlan[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -185,7 +191,11 @@ model Property {
   assets          Asset[]
   invoices        Invoice[]
 
-  userAssignments UserPropertyAssignment[]
+  userAssignments  UserPropertyAssignment[]
+  slaPolicies      SlaPolicy[]
+  revisionSubjects RevisionSubject[]
+  revisionPlans    RevisionPlan[]
+  revisionEvents   RevisionEvent[]
 
   @@index([tenantId])
   @@map("properties")
@@ -759,6 +769,156 @@ model HelpdeskProtocol {
   ticket HelpdeskTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@map("helpdesk_protocols")
+}
+
+model SlaPolicy {
+  id         String    @id @default(uuid())
+  tenantId   String
+  propertyId String?
+
+  // Hours per priority
+  lowResponseH      Int @default(72)
+  lowResolutionH    Int @default(336)
+  mediumResponseH   Int @default(24)
+  mediumResolutionH Int @default(120)
+  highResponseH     Int @default(8)
+  highResolutionH   Int @default(48)
+  urgentResponseH   Int @default(1)
+  urgentResolutionH Int @default(8)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property Property? @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, propertyId])
+  @@index([tenantId])
+  @@map("sla_policies")
+}
+
+// ─── REVISIONS & COMPLIANCE ───────────────────────────────────────
+
+model RevisionSubject {
+  id           String   @id @default(uuid())
+  tenantId     String
+  propertyId   String?
+  name         String
+  category     String   @default("obecne")
+  description  String?  @db.Text
+  location     String?
+  assetTag     String?
+  manufacturer String?
+  model        String?
+  serialNumber String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  plans    RevisionPlan[]
+
+  @@index([tenantId])
+  @@index([tenantId, propertyId])
+  @@map("revision_subjects")
+}
+
+model RevisionType {
+  id                      String   @id @default(uuid())
+  tenantId                String
+  code                    String
+  name                    String
+  description             String?  @db.Text
+  defaultIntervalDays     Int      @default(365)
+  defaultReminderDaysBefore Int    @default(30)
+  color                   String?
+  isActive                Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  tenant Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plans  RevisionPlan[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+  @@map("revision_types")
+}
+
+enum RevisionPlanStatus {
+  active
+  paused
+  archived
+}
+
+model RevisionPlan {
+  id                  String             @id @default(uuid())
+  tenantId            String
+  propertyId          String?
+  revisionSubjectId   String
+  revisionTypeId      String
+  title               String
+  description         String?            @db.Text
+  intervalDays        Int
+  reminderDaysBefore  Int                @default(30)
+  vendorName          String?
+  responsibleUserId   String?
+  lastPerformedAt     DateTime?
+  nextDueAt           DateTime
+  status              RevisionPlanStatus @default(active)
+  isMandatory         Boolean            @default(true)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property        Property?       @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  revisionSubject RevisionSubject @relation(fields: [revisionSubjectId], references: [id], onDelete: Cascade)
+  revisionType    RevisionType    @relation(fields: [revisionTypeId], references: [id], onDelete: Cascade)
+  responsibleUser User?           @relation(fields: [responsibleUserId], references: [id], onDelete: SetNull)
+  events          RevisionEvent[]
+
+  @@index([tenantId])
+  @@index([tenantId, propertyId, nextDueAt])
+  @@index([tenantId, status])
+  @@index([revisionSubjectId])
+  @@index([revisionTypeId])
+  @@map("revision_plans")
+}
+
+enum RevisionResultStatus {
+  passed
+  passed_with_notes
+  failed
+  cancelled
+  planned
+}
+
+model RevisionEvent {
+  id                 String               @id @default(uuid())
+  tenantId           String
+  propertyId         String?
+  revisionPlanId     String
+  scheduledAt        DateTime?
+  performedAt        DateTime?
+  validUntil         DateTime?
+  resultStatus       RevisionResultStatus @default(planned)
+  summary            String?
+  notes              String?              @db.Text
+  vendorName         String?
+  performedBy        String?
+  protocolDocumentId String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property     Property?    @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  revisionPlan RevisionPlan @relation(fields: [revisionPlanId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, revisionPlanId, performedAt])
+  @@index([revisionPlanId])
+  @@map("revision_events")
 }
 
 // ─── DOCUMENTS ────────────────────────────────────────────────────
