@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { helpdeskApi } from './helpdesk.api'
-import type { CreateTicketPayload, UpdateTicketPayload, CreateItemPayload } from './helpdesk.api'
+import type { CreateTicketPayload, UpdateTicketPayload, CreateItemPayload, UpsertSlaPolicyPayload } from './helpdesk.api'
 
 export const helpdeskKeys = {
   all:      ['helpdesk'] as const,
@@ -10,6 +10,7 @@ export const helpdeskKeys = {
   protocol: (id: string) => ['helpdesk', 'protocol', id] as const,
   slaStats: () => ['helpdesk', 'sla-stats'] as const,
   dashboard: (days: number) => ['helpdesk', 'dashboard', days] as const,
+  slaPolicies: () => ['helpdesk', 'sla-policies'] as const,
 }
 
 export function useTickets(params?: Record<string, unknown>) {
@@ -142,5 +143,29 @@ export function useSaveProtocol() {
       qc.invalidateQueries({ queryKey: helpdeskKeys.detail(ticketId) })
       qc.invalidateQueries({ queryKey: helpdeskKeys.protocol(ticketId) })
     },
+  })
+}
+
+// SLA Policies
+export function useSlaPolicies() {
+  return useQuery({
+    queryKey: helpdeskKeys.slaPolicies(),
+    queryFn:  () => helpdeskApi.slaPolicies.list(),
+  })
+}
+
+export function useUpsertSlaPolicy() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (dto: UpsertSlaPolicyPayload) => helpdeskApi.slaPolicies.upsert(dto),
+    onSuccess: () => qc.invalidateQueries({ queryKey: helpdeskKeys.slaPolicies() }),
+  })
+}
+
+export function useDeleteSlaPolicy() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => helpdeskApi.slaPolicies.remove(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: helpdeskKeys.slaPolicies() }),
   })
 }

@@ -4,12 +4,14 @@ import {
 } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { HelpdeskService } from './helpdesk.service'
+import { SlaPolicyService } from './sla-policy.service'
 import { JwtAuthGuard }    from '../common/guards/jwt-auth.guard'
 import { Roles }           from '../common/decorators/roles.decorator'
 import { CurrentUser }     from '../common/decorators/current-user.decorator'
 import { AuditAction }     from '../common/decorators/audit.decorator'
 import { ROLES_OPS }       from '../common/constants/roles.constants'
 import { HelpdeskListQueryDto, CreateTicketDto, UpdateTicketDto, AssignTicketDto, CreateItemDto, CreateProtocolDto } from './dto/helpdesk.dto'
+import { UpsertSlaPolicyDto } from './dto/sla-policy.dto'
 import type { AuthUser }   from '@ifmio/shared-types'
 
 @ApiTags('Helpdesk')
@@ -17,7 +19,10 @@ import type { AuthUser }   from '@ifmio/shared-types'
 @UseGuards(JwtAuthGuard)
 @Controller('helpdesk')
 export class HelpdeskController {
-  constructor(private service: HelpdeskService) {}
+  constructor(
+    private service: HelpdeskService,
+    private slaPolicy: SlaPolicyService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Seznam ticketů' })
@@ -38,6 +43,37 @@ export class HelpdeskController {
     @Query('days') days?: string,
   ) {
     return this.service.getDashboard(user, Math.min(90, Math.max(1, Number(days) || 30)))
+  }
+
+  // SLA Policies (must be before :id param routes)
+  @Get('sla-policies')
+  @Roles(...ROLES_OPS)
+  @ApiOperation({ summary: 'Seznam SLA pravidel' })
+  listSlaPolicies(@CurrentUser() user: AuthUser) {
+    return this.slaPolicy.list(user.tenantId)
+  }
+
+  @Post('sla-policies')
+  @Roles(...ROLES_OPS)
+  @AuditAction('SlaPolicy', 'UPSERT')
+  @ApiOperation({ summary: 'Vytvořit/aktualizovat SLA pravidlo' })
+  upsertSlaPolicy(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: UpsertSlaPolicyDto,
+  ) {
+    return this.slaPolicy.upsert(user.tenantId, dto)
+  }
+
+  @Delete('sla-policies/:id')
+  @Roles(...ROLES_OPS)
+  @AuditAction('SlaPolicy', 'DELETE')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Smazat SLA pravidlo' })
+  deleteSlaPolicy(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ) {
+    return this.slaPolicy.remove(user.tenantId, id)
   }
 
   @Get(':id')
