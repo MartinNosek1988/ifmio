@@ -256,8 +256,8 @@ describe('Helpdesk SLA (e2e)', () => {
       data: { resolutionDueAt: new Date('2020-01-01') },
     })
 
-    // Call escalation via service
-    const helpdeskService = testApp.app.get(HelpdeskService)
+    // Call escalation via service (resolve() needed for request-scoped provider)
+    const helpdeskService = await testApp.app.resolve(HelpdeskService)
     const result = await helpdeskService.escalateOverdueTickets()
 
     expect(result.escalated).toBeGreaterThanOrEqual(1)
