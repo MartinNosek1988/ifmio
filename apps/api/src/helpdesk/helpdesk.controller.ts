@@ -25,6 +25,12 @@ export class HelpdeskController {
     return this.service.listTickets(user, query)
   }
 
+  @Get('sla-stats')
+  @ApiOperation({ summary: 'SLA statistiky' })
+  getSlaStats(@CurrentUser() user: AuthUser) {
+    return this.service.getSlaStats(user)
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Detail ticketu s položkami' })
   findOne(@CurrentUser() user: AuthUser, @Param('id') id: string) {

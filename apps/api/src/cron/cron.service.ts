@@ -1,9 +1,11 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { HelpdeskService } from '../helpdesk/helpdesk.service';
 
-const SIX_HOURS = 6 * 60 * 60 * 1000;
-const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+const ONE_HOUR = 60 * 60 * 1000;
+const SIX_HOURS = 6 * ONE_HOUR;
+const TWENTY_FOUR_HOURS = 24 * ONE_HOUR;
 const BATCH_SIZE = 1000;
 
 @Injectable()
@@ -11,15 +13,18 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(CronService.name);
   private keepaliveInterval: ReturnType<typeof setInterval> | null = null;
   private retentionInterval: ReturnType<typeof setInterval> | null = null;
+  private slaInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly helpdesk: HelpdeskService,
   ) {}
 
   onModuleInit() {
     this.initKeepalive();
     this.initAuditRetention();
+    this.initSlaEscalation();
   }
 
   onModuleDestroy() {
@@ -30,6 +35,10 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     if (this.retentionInterval) {
       clearInterval(this.retentionInterval);
       this.retentionInterval = null;
+    }
+    if (this.slaInterval) {
+      clearInterval(this.slaInterval);
+      this.slaInterval = null;
     }
     this.logger.log('Cron intervals cleared');
   }
@@ -55,6 +64,32 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     } catch (err) {
       this.logger.error(
         'Supabase keepalive FAILED',
+        (err as Error).stack,
+      );
+    }
+  }
+
+  // ─── SLA Escalation ─────────────────────────────────────────
+
+  private initSlaEscalation() {
+    this.logger.log('SLA escalation enabled — checking overdue tickets every hour');
+
+    // Run once on startup (delayed by 60s)
+    setTimeout(() => this.runSlaEscalation(), 60_000);
+
+    // Then every hour
+    this.slaInterval = setInterval(() => this.runSlaEscalation(), ONE_HOUR);
+  }
+
+  private async runSlaEscalation() {
+    try {
+      const result = await this.helpdesk.escalateOverdueTickets();
+      this.logger.log(
+        `SLA escalation: checked ${result.checked} tickets, escalated ${result.escalated}`,
+      );
+    } catch (err) {
+      this.logger.error(
+        'SLA escalation job FAILED',
         (err as Error).stack,
       );
     }

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { PropertyScopeService } from '../common/services/property-scope.service'
+import { calculateSlaDates } from './sla.constants'
 import type { HelpdeskListQueryDto, CreateTicketDto, UpdateTicketDto, CreateItemDto, CreateProtocolDto } from './dto/helpdesk.dto'
 import type { AuthUser } from '@ifmio/shared-types'
 
@@ -27,12 +28,20 @@ export class HelpdeskService {
     const skip = (page - 1) * limit
 
     const scopeWhere = await this.scope.scopeByPropertyId(user)
+    const now = new Date()
     const where: Record<string, unknown> = {
       tenantId: user.tenantId,
       ...scopeWhere,
       ...(status     ? { status }     : {}),
       ...(priority   ? { priority }   : {}),
       ...(propertyId ? { propertyId } : {}),
+      ...(query.overdue === 'true' ? {
+        status: { in: ['open', 'in_progress'] },
+        resolutionDueAt: { lt: now },
+      } : {}),
+      ...(query.escalated === 'true' ? {
+        escalationLevel: { gt: 0 },
+      } : {}),
       ...(search ? {
         OR: [
           { title:       { contains: search, mode: 'insensitive' } },
@@ -59,12 +68,7 @@ export class HelpdeskService {
     ])
 
     return {
-      data: items.map((t) => ({
-        ...t,
-        createdAt:  t.createdAt.toISOString(),
-        updatedAt:  t.updatedAt.toISOString(),
-        resolvedAt: t.resolvedAt?.toISOString() ?? null,
-      })),
+      data: items.map((t) => this.serializeTicket(t)),
       total, page, limit,
       totalPages: Math.ceil(total / limit),
     }
@@ -85,16 +89,13 @@ export class HelpdeskService {
     if (!ticket) throw new NotFoundException(`Ticket ${id} nenalezen`)
     await this.scope.verifyEntityAccess(user, ticket.propertyId)
     return {
-      ...ticket,
+      ...this.serializeTicket(ticket),
       items: ticket.items.map((i) => ({
         ...i,
         quantity:   Number(i.quantity),
         unitPrice:  Number(i.unitPrice),
         totalPrice: Number(i.totalPrice),
       })),
-      createdAt:  ticket.createdAt.toISOString(),
-      updatedAt:  ticket.updatedAt.toISOString(),
-      resolvedAt: ticket.resolvedAt?.toISOString() ?? null,
     }
   }
 
@@ -103,32 +104,53 @@ export class HelpdeskService {
       await this.scope.verifyPropertyAccess(user, dto.propertyId)
     }
     const number = await this.nextTicketNumber(user.tenantId)
+    const priority = dto.priority ?? 'medium'
+    const now = new Date()
+    const sla = calculateSlaDates(priority, now)
+
     const ticket = await this.prisma.helpdeskTicket.create({
       data: {
-        tenantId:    user.tenantId,
+        tenantId:        user.tenantId,
         number,
-        title:       dto.title,
-        description: dto.description,
-        category:    (dto.category ?? 'general') as any,
-        priority:    (dto.priority ?? 'medium') as any,
-        propertyId:  dto.propertyId ?? null,
-        unitId:      dto.unitId    ?? null,
-        residentId:  dto.residentId ?? null,
+        title:           dto.title,
+        description:     dto.description,
+        category:        (dto.category ?? 'general') as any,
+        priority:        priority as any,
+        propertyId:      dto.propertyId ?? null,
+        unitId:          dto.unitId    ?? null,
+        residentId:      dto.residentId ?? null,
+        responseDueAt:   sla.responseDueAt,
+        resolutionDueAt: sla.resolutionDueAt,
       },
     })
-    return { ...ticket, createdAt: ticket.createdAt.toISOString(), updatedAt: ticket.updatedAt.toISOString() }
+    return this.serializeTicket(ticket)
   }
 
   async updateTicket(user: AuthUser, id: string, dto: UpdateTicketDto) {
-    await this.findOne(user, id)
+    const existing = await this.findOne(user, id)
     const data: Record<string, unknown> = { ...dto }
+
+    // Auto-set resolvedAt when resolving
     if (dto.status === 'resolved' && !dto.resolvedAt) {
       data.resolvedAt = new Date()
     }
+
+    // Track first response (open → in_progress)
+    if (dto.status === 'in_progress' && existing.status === 'open' && !existing.firstResponseAt) {
+      data.firstResponseAt = new Date()
+    }
+
+    // Recalculate SLA if priority changed
+    if (dto.priority && dto.priority !== existing.priority) {
+      const sla = calculateSlaDates(dto.priority, new Date(existing.createdAt))
+      data.responseDueAt = sla.responseDueAt
+      data.resolutionDueAt = sla.resolutionDueAt
+    }
+
     const ticket = await this.prisma.helpdeskTicket.update({
       where: { id }, data,
     })
-    return { ...ticket, createdAt: ticket.createdAt.toISOString(), updatedAt: ticket.updatedAt.toISOString() }
+    return this.serializeTicket(ticket)
   }
 
   async deleteTicket(user: AuthUser, id: string) {
@@ -174,6 +196,109 @@ export class HelpdeskService {
       create: { ticketId, number, ...data } as any,
       update: data as any,
     })
+  }
+
+  private serializeTicket(t: any) {
+    return {
+      ...t,
+      createdAt:       t.createdAt.toISOString(),
+      updatedAt:       t.updatedAt.toISOString(),
+      resolvedAt:      t.resolvedAt?.toISOString() ?? null,
+      responseDueAt:   t.responseDueAt?.toISOString() ?? null,
+      resolutionDueAt: t.resolutionDueAt?.toISOString() ?? null,
+      firstResponseAt: t.firstResponseAt?.toISOString() ?? null,
+      escalatedAt:     t.escalatedAt?.toISOString() ?? null,
+    }
+  }
+
+  // ─── SLA ESCALATION (called from cron) ─────────────────────────
+
+  /** Max escalation level — stops auto-escalating beyond this */
+  private static readonly MAX_ESCALATION_LEVEL = 5
+
+  async escalateOverdueTickets() {
+    const now = new Date()
+
+    // Find active tickets past resolution SLA that haven't hit max escalation
+    const overdue = await this.prisma.helpdeskTicket.findMany({
+      where: {
+        status: { in: ['open', 'in_progress'] },
+        resolutionDueAt: { lt: now },
+        escalationLevel: { lt: HelpdeskService.MAX_ESCALATION_LEVEL },
+      },
+      include: {
+        property: { select: { id: true, name: true } },
+      },
+    })
+
+    let escalated = 0
+    for (const ticket of overdue) {
+      const oldLevel = ticket.escalationLevel
+      const newLevel = oldLevel + 1
+
+      await this.prisma.helpdeskTicket.update({
+        where: { id: ticket.id },
+        data: {
+          escalationLevel: newLevel,
+          escalatedAt: now,
+        },
+      })
+
+      // Audit log with old/new data
+      await this.prisma.auditLog.create({
+        data: {
+          tenantId: ticket.tenantId,
+          action: 'TICKET_ESCALATED',
+          entity: 'HelpdeskTicket',
+          entityId: ticket.id,
+          oldData: {
+            escalationLevel: oldLevel,
+            propertyId: ticket.propertyId,
+            priority: ticket.priority,
+          },
+          newData: {
+            escalationLevel: newLevel,
+            propertyId: ticket.propertyId,
+            priority: ticket.priority,
+          },
+        },
+      })
+
+      escalated++
+    }
+
+    return { checked: overdue.length, escalated }
+  }
+
+  async getSlaStats(user: AuthUser) {
+    const scopeWhere = await this.scope.scopeByPropertyId(user)
+    const now = new Date()
+    const baseWhere = {
+      tenantId: user.tenantId,
+      status: { in: ['open', 'in_progress'] } as any,
+      ...scopeWhere,
+    }
+
+    const [total, overdue, escalated, dueSoon] = await Promise.all([
+      this.prisma.helpdeskTicket.count({ where: baseWhere }),
+      this.prisma.helpdeskTicket.count({
+        where: { ...baseWhere, resolutionDueAt: { lt: now } },
+      }),
+      this.prisma.helpdeskTicket.count({
+        where: { ...baseWhere, escalationLevel: { gt: 0 } },
+      }),
+      this.prisma.helpdeskTicket.count({
+        where: {
+          ...baseWhere,
+          resolutionDueAt: {
+            gt: now,
+            lt: new Date(now.getTime() + 24 * 3_600_000), // next 24h
+          },
+        },
+      }),
+    ])
+
+    return { total, overdue, escalated, dueSoon }
   }
 
   async getProtocol(user: AuthUser, ticketId: string) {

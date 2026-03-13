@@ -16,6 +16,11 @@ export interface ApiTicket {
   createdAt: string
   updatedAt: string
   resolvedAt: string | null
+  responseDueAt: string | null
+  resolutionDueAt: string | null
+  firstResponseAt: string | null
+  escalationLevel: number
+  escalatedAt: string | null
   property?: { id: string; name: string } | null
   unit?: { id: string; name: string } | null
   resident?: { id: string; firstName: string; lastName: string } | null
@@ -82,12 +87,22 @@ export interface CreateItemPayload {
   unitPrice?: number
 }
 
+export interface SlaStats {
+  total: number
+  overdue: number
+  escalated: number
+  dueSoon: number
+}
+
 export const helpdeskApi = {
   list: (params?: Record<string, unknown>) =>
     apiClient.get<PaginatedTickets>('/helpdesk', { params }).then((r) => r.data),
 
   detail: (id: string) =>
     apiClient.get<ApiTicket>(`/helpdesk/${id}`).then((r) => r.data),
+
+  slaStats: () =>
+    apiClient.get<SlaStats>('/helpdesk/sla-stats').then((r) => r.data),
 
   create: (dto: CreateTicketPayload) =>
     apiClient.post<ApiTicket>('/helpdesk', dto).then((r) => r.data),
