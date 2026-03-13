@@ -163,6 +163,13 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
             <Badge variant={STATUS_COLOR[ticket.status] || 'muted'}>{STATUS_LABELS[ticket.status] || ticket.status}</Badge>
             <Badge variant={PRIO_COLOR[ticket.priority] || 'muted'}>{PRIORITY_LABELS[ticket.priority] || ticket.priority}</Badge>
             <Badge variant="blue">{CATEGORY_LABELS[ticket.category] || ticket.category}</Badge>
+            {ticket.escalationLevel > 0 && (
+              <Badge variant="red">Eskalace L{ticket.escalationLevel}</Badge>
+            )}
+            {ticket.resolutionDueAt && new Date(ticket.resolutionDueAt).getTime() < Date.now() &&
+              (ticket.status === 'open' || ticket.status === 'in_progress') && (
+              <Badge variant="red">Po termínu</Badge>
+            )}
           </div>
 
           {allowed.length > 0 && (
@@ -214,6 +221,27 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
               )}
             </div>
           </div>
+
+          {/* SLA info */}
+          {ticket.responseDueAt && (
+            <div style={{
+              marginBottom: 16, padding: 12, borderRadius: 8,
+              background: 'var(--surface-2, var(--surface))', border: '1px solid var(--border)',
+            }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 10 }}>SLA</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <InfoField label="Odezva do" value={fmtDateTime(ticket.responseDueAt)} />
+                <InfoField label="Vyřešení do" value={fmtDateTime(ticket.resolutionDueAt)} />
+                <InfoField label="První odezva" value={ticket.firstResponseAt ? fmtDateTime(ticket.firstResponseAt) : '—'} />
+                <InfoField
+                  label="Eskalace"
+                  value={ticket.escalationLevel > 0
+                    ? `Level ${ticket.escalationLevel} (${ticket.escalatedAt ? fmtDateTime(ticket.escalatedAt) : '—'})`
+                    : 'Žádná'}
+                />
+              </div>
+            </div>
+          )}
 
           <div style={{ marginBottom: 16 }}>
             {editing ? (
@@ -364,6 +392,12 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
       )}
     </Modal>
   );
+}
+
+function fmtDateTime(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  return `${d.toLocaleDateString('cs-CZ')} ${d.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })}`
 }
 
 function InfoField({ label, value }: { label: string; value: string }) {

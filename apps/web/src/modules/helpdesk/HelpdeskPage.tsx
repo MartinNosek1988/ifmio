@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { KpiCard, Table, Badge, SearchBar, Button, EmptyState, Modal, LoadingState, ErrorState } from '../../shared/components';
 import type { Column, BadgeVariant } from '../../shared/components';
-import { useTickets, useDeleteTicket } from './api/helpdesk.queries';
+import { useTickets, useDeleteTicket, useSlaStats } from './api/helpdesk.queries';
 import type { ApiTicket } from './api/helpdesk.api';
 import TicketDetailModal from './TicketDetailModal';
 import TicketForm from './TicketForm';
@@ -39,10 +39,23 @@ const PRIO_COLOR: Record<string, BadgeVariant> = {
   low: 'muted', medium: 'blue', high: 'yellow', urgent: 'red',
 };
 
+function getSlaStatus(ticket: ApiTicket): { label: string; variant: BadgeVariant } | null {
+  const isActive = ticket.status === 'open' || ticket.status === 'in_progress'
+  if (!isActive || !ticket.resolutionDueAt) return null
+  if (ticket.escalationLevel > 0) return { label: 'Eskalováno', variant: 'red' }
+  const now = Date.now()
+  const due = new Date(ticket.resolutionDueAt).getTime()
+  if (due < now) return { label: 'Po termínu', variant: 'red' }
+  if (due - now < 24 * 3_600_000) return { label: 'Blíží se termín', variant: 'yellow' }
+  return { label: 'V termínu', variant: 'green' }
+}
+
 export default function HelpdeskPage() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterPriority, setFilterPriority] = useState('');
+  const [filterOverdue, setFilterOverdue] = useState(false);
+  const [filterEscalated, setFilterEscalated] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<ApiTicket | null>(null);
   const [deleteTicket, setDeleteTicket] = useState<ApiTicket | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -51,8 +64,12 @@ export default function HelpdeskPage() {
     ...(search ? { search } : {}),
     ...(filterStatus ? { status: filterStatus } : {}),
     ...(filterPriority ? { priority: filterPriority } : {}),
+    ...(filterOverdue ? { overdue: 'true' } : {}),
+    ...(filterEscalated ? { escalated: 'true' } : {}),
     limit: 100,
   });
+
+  const { data: slaStats } = useSlaStats();
 
   const deleteMutation = useDeleteTicket();
 
@@ -84,6 +101,14 @@ export default function HelpdeskPage() {
     {
       key: 'status', label: 'Stav',
       render: (t) => <Badge variant={STATUS_COLOR[t.status] || 'muted'}>{STATUS_LABELS[t.status] || t.status}</Badge>,
+    },
+    {
+      key: 'sla', label: 'SLA',
+      render: (t) => {
+        const sla = getSlaStatus(t)
+        if (!sla) return <span className="text-muted">—</span>
+        return <Badge variant={sla.variant}>{sla.label}</Badge>
+      },
     },
     {
       key: 'property', label: 'Nemovitost',
@@ -123,10 +148,11 @@ export default function HelpdeskPage() {
         <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)}>Nový tiket</Button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
-        <KpiCard label="Celkem tiketů" value={String(stats.total)} color="var(--accent-blue)" />
-        <KpiCard label="Otevřených" value={String(stats.open)} color="var(--accent-orange)" />
-        <KpiCard label="Dnes" value={String(stats.today)} color="var(--accent-green)" />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 16, marginBottom: 24 }}>
+        <KpiCard label="Otevřených" value={String(slaStats?.total ?? stats.open)} color="var(--accent-blue)" />
+        <KpiCard label="Po termínu" value={String(slaStats?.overdue ?? 0)} color="var(--accent-red, var(--danger))" />
+        <KpiCard label="Eskalovaných" value={String(slaStats?.escalated ?? 0)} color="var(--accent-orange)" />
+        <KpiCard label="Blíží se termín" value={String(slaStats?.dueSoon ?? 0)} color="var(--accent-yellow, #e6a817)" />
         <KpiCard label="Urgentních" value={String(stats.urgent)} color="var(--accent-red, var(--danger))" />
       </div>
 
@@ -140,6 +166,20 @@ export default function HelpdeskPage() {
           <option value="">Všechny priority</option>
           {Object.entries(PRIORITY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
+        <Button
+          size="sm"
+          variant={filterOverdue ? 'danger' : undefined}
+          onClick={() => setFilterOverdue(!filterOverdue)}
+        >
+          Po termínu
+        </Button>
+        <Button
+          size="sm"
+          variant={filterEscalated ? 'danger' : undefined}
+          onClick={() => setFilterEscalated(!filterEscalated)}
+        >
+          Eskalované
+        </Button>
       </div>
 
       {tickets.length === 0 ? (

@@ -8,12 +8,20 @@ export const helpdeskKeys = {
   list:     (p?: Record<string, unknown>) => ['helpdesk', 'list', p] as const,
   detail:   (id: string) => ['helpdesk', 'detail', id] as const,
   protocol: (id: string) => ['helpdesk', 'protocol', id] as const,
+  slaStats: () => ['helpdesk', 'sla-stats'] as const,
 }
 
 export function useTickets(params?: Record<string, unknown>) {
   return useQuery({
     queryKey: helpdeskKeys.list(params),
     queryFn:  () => helpdeskApi.list(params),
+  })
+}
+
+export function useSlaStats() {
+  return useQuery({
+    queryKey: helpdeskKeys.slaStats(),
+    queryFn:  () => helpdeskApi.slaStats(),
   })
 }
 
