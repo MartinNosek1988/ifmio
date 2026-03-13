@@ -191,6 +191,9 @@ export class InvoiceListQueryDto {
   @IsOptional() @IsString()
   isPaid?: string;
 
+  @IsOptional() @IsEnum(['draft', 'submitted', 'approved'])
+  approvalStatus?: string;
+
   @IsOptional() @IsString()
   search?: string;
 
@@ -199,6 +202,11 @@ export class InvoiceListQueryDto {
 
   @IsOptional() @Type(() => Number) @IsNumber()
   limit?: number;
+}
+
+export class ReturnToDraftDto {
+  @IsOptional() @IsString()
+  reason?: string;
 }
 
 export class MarkPaidDto {
