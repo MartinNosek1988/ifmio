@@ -39,6 +39,11 @@ export class CreateRevisionTypeDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) defaultIntervalDays?: number
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) defaultReminderDaysBefore?: number
   @IsOptional() @IsString() color?: string
+  @IsOptional() @IsBoolean() requiresProtocol?: boolean
+  @IsOptional() @IsString() defaultProtocolType?: string
+  @IsOptional() @IsBoolean() requiresSupplierSignature?: boolean
+  @IsOptional() @IsBoolean() requiresCustomerSignature?: boolean
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) graceDaysAfterEvent?: number
 }
 
 export class UpdateRevisionTypeDto {
@@ -49,6 +54,11 @@ export class UpdateRevisionTypeDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) defaultReminderDaysBefore?: number
   @IsOptional() @IsString() color?: string
   @IsOptional() @IsBoolean() isActive?: boolean
+  @IsOptional() @IsBoolean() requiresProtocol?: boolean
+  @IsOptional() @IsString() defaultProtocolType?: string
+  @IsOptional() @IsBoolean() requiresSupplierSignature?: boolean
+  @IsOptional() @IsBoolean() requiresCustomerSignature?: boolean
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) graceDaysAfterEvent?: number
 }
 
 // ─── RevisionPlan ─────────────────────────────────────────────────
@@ -84,7 +94,7 @@ export class RevisionPlanListQueryDto {
   @IsOptional() @IsString() revisionTypeId?: string
   @IsOptional() @IsString() subjectId?: string
   @IsOptional() @IsEnum(['active', 'paused', 'archived']) status?: string
-  @IsOptional() @IsEnum(['compliant', 'due_soon', 'overdue']) complianceStatus?: string
+  @IsOptional() @IsEnum(['compliant', 'due_soon', 'overdue', 'overdue_critical', 'performed_pending_protocol', 'performed_pending_signature', 'performed_unconfirmed']) complianceStatus?: string
   @IsOptional() @IsString() search?: string
   @IsOptional() @Type(() => Number) @IsNumber() page?: number
   @IsOptional() @Type(() => Number) @IsNumber() limit?: number

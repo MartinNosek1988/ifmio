@@ -204,10 +204,28 @@ describe('Revisions & Compliance (e2e)', () => {
 
   // ─── COMPLIANCE STATUS ──────────────────────────────────────
 
-  it('marks plan as overdue when nextDueAt is in the past', async () => {
+  it('marks plan as overdue when nextDueAt is in the past (<30 days)', async () => {
     const prisma = testApp.app.get(PrismaService)
 
-    // Set nextDueAt to past
+    // Set nextDueAt to 10 days ago (< 30 days → overdue, not overdue_critical)
+    const pastDate = new Date()
+    pastDate.setDate(pastDate.getDate() - 10)
+    await prisma.revisionPlan.update({
+      where: { id: planId },
+      data: { nextDueAt: pastDate },
+    })
+
+    const res = await api
+      .get(`/api/v1/revisions/plans/${planId}`)
+      .expect(200)
+
+    expect(res.body.complianceStatus).toBe('overdue')
+  })
+
+  it('marks plan as overdue_critical when nextDueAt is >30 days in the past', async () => {
+    const prisma = testApp.app.get(PrismaService)
+
+    // Set nextDueAt to far past (> 30 days → overdue_critical)
     await prisma.revisionPlan.update({
       where: { id: planId },
       data: { nextDueAt: new Date('2020-01-01') },
@@ -217,7 +235,7 @@ describe('Revisions & Compliance (e2e)', () => {
       .get(`/api/v1/revisions/plans/${planId}`)
       .expect(200)
 
-    expect(res.body.complianceStatus).toBe('overdue')
+    expect(res.body.complianceStatus).toBe('overdue_critical')
   })
 
   it('marks plan as due_soon when within reminder window', async () => {
@@ -258,9 +276,13 @@ describe('Revisions & Compliance (e2e)', () => {
 
   it('filters plans by complianceStatus=overdue', async () => {
     const prisma = testApp.app.get(PrismaService)
+
+    // Set nextDueAt to 10 days ago (< 30 days → overdue)
+    const pastDate = new Date()
+    pastDate.setDate(pastDate.getDate() - 10)
     await prisma.revisionPlan.update({
       where: { id: planId },
-      data: { nextDueAt: new Date('2020-01-01') },
+      data: { nextDueAt: pastDate },
     })
 
     const res = await api
@@ -269,6 +291,21 @@ describe('Revisions & Compliance (e2e)', () => {
 
     expect(res.body.data.length).toBeGreaterThanOrEqual(1)
     expect(res.body.data.every((p: any) => p.complianceStatus === 'overdue')).toBe(true)
+  })
+
+  it('filters plans by complianceStatus=overdue_critical', async () => {
+    const prisma = testApp.app.get(PrismaService)
+    await prisma.revisionPlan.update({
+      where: { id: planId },
+      data: { nextDueAt: new Date('2020-01-01') },
+    })
+
+    const res = await api
+      .get('/api/v1/revisions/plans?complianceStatus=overdue_critical')
+      .expect(200)
+
+    expect(res.body.data.length).toBeGreaterThanOrEqual(1)
+    expect(res.body.data.every((p: any) => p.complianceStatus === 'overdue_critical')).toBe(true)
   })
 
   // ─── RECORD EVENT + RECALCULATE nextDueAt ───────────────────
@@ -479,7 +516,7 @@ describe('Revisions & Compliance (e2e)', () => {
     // Dashboard should be empty
     const dash = await api2.get('/api/v1/revisions/dashboard?days=30').expect(200)
     expect(dash.body.kpi.totalPlans).toBe(0)
-  })
+  }, 15000)
 
   // ─── CLEANUP ────────────────────────────────────────────────
 

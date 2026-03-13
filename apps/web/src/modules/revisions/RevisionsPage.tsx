@@ -13,11 +13,19 @@ const COMPLIANCE_LABEL: Record<string, string> = {
   compliant: 'V pořádku',
   due_soon: 'Blíží se',
   overdue: 'Po termínu',
+  overdue_critical: 'Kritické',
+  performed_pending_protocol: 'Bez protokolu',
+  performed_pending_signature: 'Čeká podpis',
+  performed_unconfirmed: 'Nepotvrzeno',
 }
 const COMPLIANCE_COLOR: Record<string, BadgeVariant> = {
   compliant: 'green',
   due_soon: 'yellow',
   overdue: 'red',
+  overdue_critical: 'red',
+  performed_pending_protocol: 'yellow',
+  performed_pending_signature: 'yellow',
+  performed_unconfirmed: 'muted',
 }
 const STATUS_LABEL: Record<string, string> = {
   active: 'Aktivní',

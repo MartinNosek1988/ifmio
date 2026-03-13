@@ -945,10 +945,15 @@ model RevisionType {
   description               String?  @db.Text
   defaultIntervalDays       Int      @default(365)
   defaultReminderDaysBefore Int      @default(30)
-  color                     String?
-  isActive                  Boolean  @default(true)
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
+  color                       String?
+  isActive                    Boolean  @default(true)
+  requiresProtocol            Boolean  @default(false)
+  defaultProtocolType         String?
+  requiresSupplierSignature   Boolean  @default(false)
+  requiresCustomerSignature   Boolean  @default(false)
+  graceDaysAfterEvent         Int      @default(14)
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
 
   tenant Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   plans  RevisionPlan[]

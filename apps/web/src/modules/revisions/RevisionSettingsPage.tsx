@@ -29,7 +29,10 @@ export default function RevisionSettingsPage() {
 
   // Type form
   const [showTypeForm, setShowTypeForm] = useState(false)
-  const [tf, setTf] = useState({ code: '', name: '', defaultIntervalDays: '365', defaultReminderDaysBefore: '30', color: '' })
+  const [tf, setTf] = useState({
+    code: '', name: '', defaultIntervalDays: '365', defaultReminderDaysBefore: '30', color: '',
+    requiresProtocol: false, defaultProtocolType: '', requiresSupplierSignature: false, requiresCustomerSignature: false, graceDaysAfterEvent: '14',
+  })
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '8px 12px', borderRadius: 6,
@@ -58,7 +61,15 @@ export default function RevisionSettingsPage() {
       defaultIntervalDays: parseInt(tf.defaultIntervalDays) || 365,
       defaultReminderDaysBefore: parseInt(tf.defaultReminderDaysBefore) || 30,
       color: tf.color || undefined,
-    }, { onSuccess: () => { setShowTypeForm(false); setTf({ code: '', name: '', defaultIntervalDays: '365', defaultReminderDaysBefore: '30', color: '' }) } })
+      requiresProtocol: tf.requiresProtocol,
+      defaultProtocolType: tf.defaultProtocolType || undefined,
+      requiresSupplierSignature: tf.requiresSupplierSignature,
+      requiresCustomerSignature: tf.requiresCustomerSignature,
+      graceDaysAfterEvent: parseInt(tf.graceDaysAfterEvent) || 14,
+    }, { onSuccess: () => { setShowTypeForm(false); setTf({
+      code: '', name: '', defaultIntervalDays: '365', defaultReminderDaysBefore: '30', color: '',
+      requiresProtocol: false, defaultProtocolType: '', requiresSupplierSignature: false, requiresCustomerSignature: false, graceDaysAfterEvent: '14',
+    }) } })
   }
 
   const CATEGORIES = [
@@ -117,6 +128,24 @@ export default function RevisionSettingsPage() {
                   <input type="number" value={tf.defaultReminderDaysBefore} onChange={(e) => setTf({ ...tf, defaultReminderDaysBefore: e.target.value })} style={inputStyle} min="1" />
                 </div>
               </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <input type="checkbox" checked={tf.requiresProtocol} onChange={(e) => setTf({ ...tf, requiresProtocol: e.target.checked })} id="req-protocol" />
+                  <label htmlFor="req-protocol" style={{ fontSize: '0.85rem' }}>Vyžaduje protokol</label>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <input type="checkbox" checked={tf.requiresSupplierSignature} onChange={(e) => setTf({ ...tf, requiresSupplierSignature: e.target.checked })} id="req-supplier-sig" />
+                  <label htmlFor="req-supplier-sig" style={{ fontSize: '0.85rem' }}>Podpis dodavatele</label>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <input type="checkbox" checked={tf.requiresCustomerSignature} onChange={(e) => setTf({ ...tf, requiresCustomerSignature: e.target.checked })} id="req-customer-sig" />
+                  <label htmlFor="req-customer-sig" style={{ fontSize: '0.85rem' }}>Podpis odběratele</label>
+                </div>
+                <div>
+                  <label className="form-label">Grace (dní)</label>
+                  <input type="number" value={tf.graceDaysAfterEvent} onChange={(e) => setTf({ ...tf, graceDaysAfterEvent: e.target.value })} style={inputStyle} min="0" />
+                </div>
+              </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <Button size="sm" variant="primary" onClick={handleCreateType} disabled={createType.isPending}>
                   {createType.isPending ? 'Vytvářím...' : 'Vytvořit'}
@@ -136,6 +165,7 @@ export default function RevisionSettingsPage() {
                   <th style={{ textAlign: 'left', padding: '8px 0' }} className="text-muted">Název</th>
                   <th style={{ textAlign: 'right', padding: '8px 0' }} className="text-muted">Interval</th>
                   <th style={{ textAlign: 'right', padding: '8px 0' }} className="text-muted">Reminder</th>
+                  <th style={{ textAlign: 'left', padding: '8px 0' }} className="text-muted">Pravidla</th>
                   <th style={{ textAlign: 'center', padding: '8px 0' }} className="text-muted">Aktivní</th>
                   <th style={{ width: 40 }} />
                 </tr>
@@ -147,6 +177,14 @@ export default function RevisionSettingsPage() {
                     <td style={{ padding: '8px 0' }}>{t.name}</td>
                     <td style={{ padding: '8px 0', textAlign: 'right' }}>{t.defaultIntervalDays}d</td>
                     <td style={{ padding: '8px 0', textAlign: 'right' }}>{t.defaultReminderDaysBefore}d</td>
+                    <td style={{ padding: '8px 0' }}>
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        {t.requiresProtocol && <Badge variant="blue">Protokol</Badge>}
+                        {t.requiresSupplierSignature && <Badge variant="muted">Podpis D</Badge>}
+                        {t.requiresCustomerSignature && <Badge variant="muted">Podpis O</Badge>}
+                        {!t.requiresProtocol && !t.requiresSupplierSignature && !t.requiresCustomerSignature && <span className="text-muted">—</span>}
+                      </div>
+                    </td>
                     <td style={{ padding: '8px 0', textAlign: 'center' }}>
                       <Badge variant={t.isActive ? 'green' : 'muted'}>{t.isActive ? 'Ano' : 'Ne'}</Badge>
                     </td>
