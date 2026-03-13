@@ -8,7 +8,9 @@ import type { FinTransaction } from '../types';
 import { InvoiceLinesDetail } from './InvoiceLinesDetail';
 import { PaymentModal } from './PaymentModal';
 import { PairTransactionModal } from './PairTransactionModal';
-import { INVOICE_TYPE_LABELS } from './DokladyTab';
+import { INVOICE_TYPE_LABELS, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_VARIANTS } from './DokladyTab';
+import { useSubmitInvoice, useApproveInvoice, useReturnInvoiceToDraft } from '../api/finance.queries';
+import { useAuthStore } from '../../../core/auth';
 
 export const PAYMENT_METHODS = [
   { value: 'bank_transfer', label: 'Bankovní převod' },
@@ -29,8 +31,18 @@ export function InvoiceDetailModal({ invoice, transactions, onClose, onEdit, onM
 }) {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showPairModal, setShowPairModal] = useState(false);
+  const [returnReason, setReturnReason] = useState('');
+  const [showReturnModal, setShowReturnModal] = useState(false);
   const navigate = useNavigate();
   const overdue = !invoice.isPaid && invoice.dueDate && invoice.dueDate < new Date().toISOString().slice(0, 10);
+  const userRole = useAuthStore((s) => s.user?.role) ?? 'viewer';
+  const canApprove = ['tenant_owner', 'tenant_admin', 'finance_manager'].includes(userRole);
+  const isDraft = invoice.approvalStatus === 'draft';
+  const isSubmitted = invoice.approvalStatus === 'submitted';
+  const isApproved = invoice.approvalStatus === 'approved';
+  const submitMut = useSubmitInvoice();
+  const approveMut = useApproveInvoice();
+  const returnMut = useReturnInvoiceToDraft();
 
   const row = (label: string, value: React.ReactNode) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: '0.88rem' }}>
@@ -60,22 +72,45 @@ export function InvoiceDetailModal({ invoice, transactions, onClose, onEdit, onM
       subtitle={
         <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
           <Badge variant="blue">{INVOICE_TYPE_LABELS[invoice.type] || invoice.type}</Badge>
-          {invoice.isPaid
-            ? <Badge variant="green">Uhrazeno</Badge>
-            : <Badge variant={overdue ? 'red' : 'yellow'}>{overdue ? 'Po splatnosti' : 'Neuhrazeno'}</Badge>}
+          <Badge variant={invoice.isPaid ? 'green' : (APPROVAL_STATUS_VARIANTS[invoice.approvalStatus] || 'muted')}>
+            {invoice.isPaid ? 'Uhrazeno' : (APPROVAL_STATUS_LABELS[invoice.approvalStatus] || invoice.approvalStatus)}
+          </Badge>
+          {!invoice.isPaid && invoice.dueDate && overdue && <Badge variant="red">Po splatnosti</Badge>}
           {invoice.isdocXml && <Badge variant="blue">ISDOC</Badge>}
         </div>
       }
       footer={
         <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', width: '100%' }}>
-          <Button variant="danger" onClick={onDelete}>Smazat</Button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {isDraft && <Button variant="danger" onClick={onDelete}>Smazat</Button>}
+            {(isSubmitted || isApproved) && canApprove && !invoice.isPaid && (
+              <Button onClick={() => setShowReturnModal(true)}>Vrátit do draftu</Button>
+            )}
+          </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <Button onClick={onExport} icon={<Download size={14} />}>Export ISDOC</Button>
-            {!invoice.isPaid && !invoice.transactionId && (
+            {/* Submit: draft → submitted */}
+            {isDraft && !invoice.isPaid && (
+              <Button variant="primary" onClick={() => submitMut.mutate(invoice.id, { onSuccess: onClose })} disabled={submitMut.isPending}>
+                {submitMut.isPending ? 'Odesílám...' : 'Ke schválení'}
+              </Button>
+            )}
+            {/* Approve: submitted → approved */}
+            {isSubmitted && canApprove && (
+              <Button variant="primary" onClick={() => approveMut.mutate(invoice.id, { onSuccess: onClose })} disabled={approveMut.isPending}>
+                {approveMut.isPending ? 'Schvaluji...' : 'Schválit'}
+              </Button>
+            )}
+            {/* Pair: approved + not paid */}
+            {isApproved && !invoice.isPaid && !invoice.transactionId && canApprove && (
               <Button onClick={() => setShowPairModal(true)} icon={<Link2 size={14} />}>Párovat s bankou</Button>
             )}
-            {!invoice.isPaid && <Button variant="primary" onClick={() => setShowPaymentModal(true)}>Uhradit</Button>}
-            <Button variant="primary" onClick={onEdit}>Upravit</Button>
+            {/* Mark paid: approved + not paid */}
+            {isApproved && !invoice.isPaid && canApprove && (
+              <Button variant="primary" onClick={() => setShowPaymentModal(true)}>Uhradit</Button>
+            )}
+            {/* Edit: only draft */}
+            {isDraft && <Button variant="primary" onClick={onEdit}>Upravit</Button>}
           </div>
         </div>
       }>
@@ -168,6 +203,14 @@ export function InvoiceDetailModal({ invoice, transactions, onClose, onEdit, onM
           {row('Nemovitost', invoice.property.name)}
         </div>
       )}
+
+      {/* Rejection reason */}
+      {invoice.rejectionReason && (
+        <div style={{ marginTop: 14, padding: '10px 14px', background: '#2d1b1b', borderRadius: 8, border: '1px solid #ef4444' }}>
+          <div style={{ fontSize: '0.78rem', color: '#ef4444', fontWeight: 600, marginBottom: 4 }}>Důvod vrácení</div>
+          <div style={{ fontSize: '0.88rem', color: 'var(--text)' }}>{invoice.rejectionReason}</div>
+        </div>
+      )}
     </Modal>
 
     {/* Payment Modal */}
@@ -187,6 +230,28 @@ export function InvoiceDetailModal({ invoice, transactions, onClose, onEdit, onM
         onClose={() => setShowPairModal(false)}
         onPair={(txId) => { setShowPairModal(false); onPair(txId); }}
       />
+    )}
+
+    {/* Return to Draft Modal */}
+    {showReturnModal && (
+      <Modal open onClose={() => setShowReturnModal(false)} title="Vrátit doklad do draftu"
+        subtitle={invoice.number}
+        footer={
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <Button onClick={() => setShowReturnModal(false)}>Zrušit</Button>
+            <Button variant="danger" disabled={returnMut.isPending}
+              onClick={() => returnMut.mutate({ id: invoice.id, reason: returnReason }, { onSuccess: () => { setShowReturnModal(false); onClose(); } })}>
+              {returnMut.isPending ? 'Vracím...' : 'Vrátit do draftu'}
+            </Button>
+          </div>
+        }>
+        <div style={{ marginBottom: 8 }}>
+          <label className="form-label">Důvod vrácení</label>
+          <textarea value={returnReason} onChange={(e) => setReturnReason(e.target.value)}
+            style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface-2, var(--surface))', color: 'var(--text)', minHeight: 60, boxSizing: 'border-box' }}
+            placeholder="Volitelný důvod..." />
+        </div>
+      </Modal>
     )}
     </>
   );
