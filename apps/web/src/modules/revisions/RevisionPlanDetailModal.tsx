@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Modal, Badge, Button, LoadingState } from '../../shared/components'
 import type { BadgeVariant } from '../../shared/components'
 import { useRevisionPlan, usePlanHistory, useRecordRevisionEvent } from './api/revisions.queries'
+import ProtocolPanel from '../protocols/ProtocolPanel'
 
 interface Props {
   planId: string
@@ -23,7 +24,7 @@ const RESULT_COLOR: Record<string, BadgeVariant> = {
   cancelled: 'muted', planned: 'blue',
 }
 
-type TabKey = 'detail' | 'history'
+type TabKey = 'detail' | 'history' | 'protocol'
 
 export default function RevisionPlanDetailModal({ planId, onClose }: Props) {
   const { data: plan, isLoading } = useRevisionPlan(planId)
@@ -31,6 +32,7 @@ export default function RevisionPlanDetailModal({ planId, onClose }: Props) {
   const recordMutation = useRecordRevisionEvent()
 
   const [tab, setTab] = useState<TabKey>('detail')
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
   const [showRecord, setShowRecord] = useState(false)
   const [eventSummary, setEventSummary] = useState('')
   const [eventVendor, setEventVendor] = useState('')
@@ -73,6 +75,7 @@ export default function RevisionPlanDetailModal({ planId, onClose }: Props) {
   const tabItems = [
     { key: 'detail' as const, label: 'Detail' },
     { key: 'history' as const, label: `Historie (${history?.length ?? 0})` },
+    { key: 'protocol' as const, label: 'Protokol' },
   ]
 
   return (
@@ -149,6 +152,7 @@ export default function RevisionPlanDetailModal({ planId, onClose }: Props) {
                   <th style={{ textAlign: 'left', padding: '6px 0' }} className="text-muted">Výsledek</th>
                   <th style={{ textAlign: 'left', padding: '6px 0' }} className="text-muted">Provedl</th>
                   <th style={{ textAlign: 'left', padding: '6px 0' }} className="text-muted">Shrnutí</th>
+                  <th style={{ width: 80 }} />
                 </tr>
               </thead>
               <tbody>
@@ -162,10 +166,27 @@ export default function RevisionPlanDetailModal({ planId, onClose }: Props) {
                     </td>
                     <td style={{ padding: '8px 0' }}>{ev.performedBy ?? ev.vendorName ?? '—'}</td>
                     <td style={{ padding: '8px 0' }} className="text-muted">{ev.summary ?? '—'}</td>
+                    <td style={{ padding: '8px 0' }}>
+                      <Button size="sm" onClick={() => { setSelectedEventId(ev.id); setTab('protocol') }}>
+                        Protokol
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          )}
+        </div>
+      )}
+
+      {tab === 'protocol' && (
+        <div>
+          {selectedEventId ? (
+            <ProtocolPanel sourceType="revision" sourceId={selectedEventId} protocolType="revision_report" />
+          ) : (
+            <div className="text-muted" style={{ textAlign: 'center', padding: 24 }}>
+              Vyberte událost z historie pro zobrazení nebo vytvoření protokolu.
+            </div>
           )}
         </div>
       )}

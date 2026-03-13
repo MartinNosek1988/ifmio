@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Trash2, UserCheck, CheckCircle } from 'lucide-react';
 import { Modal, Badge, Button, LoadingState } from '../../shared/components';
 import type { BadgeVariant } from '../../shared/components';
-import { useTicket, useUpdateTicket, useAddTicketItem, useRemoveTicketItem, useSaveProtocol, useClaimTicket, useResolveTicket } from './api/helpdesk.queries';
+import { useTicket, useUpdateTicket, useAddTicketItem, useRemoveTicketItem, useClaimTicket, useResolveTicket } from './api/helpdesk.queries';
 import type { ApiTicketItem } from './api/helpdesk.api';
 import { useAuthStore } from '../../core/auth/auth.store';
+import ProtocolPanel from '../protocols/ProtocolPanel';
 
 interface Props {
   ticketId: string;
@@ -46,7 +47,6 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
   const resolveMutation = useResolveTicket();
   const addItemMutation = useAddTicketItem();
   const removeItemMutation = useRemoveTicketItem();
-  const saveProtocolMutation = useSaveProtocol();
   const currentUser = useAuthStore((s) => s.user);
 
   const [tab, setTab] = useState<TabKey>('detail');
@@ -58,11 +58,6 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
   const [itemUnit, setItemUnit] = useState('');
   const [itemQty, setItemQty] = useState('1');
   const [itemPrice, setItemPrice] = useState('0');
-
-  // Protocol form
-  const [protoWorker, setProtoWorker] = useState('');
-  const [protoClient, setProtoClient] = useState('');
-  const [protoNote, setProtoNote] = useState('');
 
   if (isLoading || !ticket) {
     return (
@@ -111,17 +106,6 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
         },
       },
     );
-  };
-
-  const handleSaveProtocol = () => {
-    saveProtocolMutation.mutate({
-      ticketId: ticket.id,
-      dto: {
-        workerName: protoWorker || undefined,
-        clientName: protoClient || undefined,
-        note: protoNote || undefined,
-      },
-    });
   };
 
   const inputStyle: React.CSSProperties = {
@@ -363,56 +347,7 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
 
       {/* ── PROTOCOL TAB ─────────────────────────────────────────── */}
       {tab === 'protocol' && (
-        <div>
-          {ticket.protocol ? (
-            <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, padding: 14, marginBottom: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={{ fontWeight: 600 }}>{ticket.protocol.number}</span>
-                <Badge variant="green">Vytvořen</Badge>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: '0.85rem' }}>
-                <InfoField label="Pracovník" value={ticket.protocol.workerName ?? '—'} />
-                <InfoField label="Klient" value={ticket.protocol.clientName ?? '—'} />
-                {ticket.protocol.note && (
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <div className="text-muted" style={{ fontSize: '0.78rem', marginBottom: 2 }}>Poznámka</div>
-                    <div style={{ whiteSpace: 'pre-wrap' }}>{ticket.protocol.note}</div>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="text-muted" style={{ textAlign: 'center', padding: 16, marginBottom: 16 }}>
-              Protokol dosud nebyl vytvořen.
-            </div>
-          )}
-
-          <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 12 }}>
-            <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 10 }}>
-              {ticket.protocol ? 'Aktualizovat protokol' : 'Vytvořit protokol'}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 10 }}>
-              <div>
-                <label className="form-label">Pracovník</label>
-                <input value={protoWorker} onChange={(e) => setProtoWorker(e.target.value)} style={inputStyle} placeholder="Jméno pracovníka" />
-              </div>
-              <div>
-                <label className="form-label">Klient</label>
-                <input value={protoClient} onChange={(e) => setProtoClient(e.target.value)} style={inputStyle} placeholder="Jméno klienta" />
-              </div>
-            </div>
-            <div style={{ marginBottom: 10 }}>
-              <label className="form-label">Poznámka</label>
-              <textarea value={protoNote} onChange={(e) => setProtoNote(e.target.value)} rows={3} style={{ ...inputStyle, resize: 'vertical' as const }} placeholder="Poznámka k protokolu..." />
-            </div>
-            <Button size="sm" variant="primary" onClick={handleSaveProtocol} disabled={saveProtocolMutation.isPending}>
-              {saveProtocolMutation.isPending ? 'Ukládám...' : ticket.protocol ? 'Aktualizovat' : 'Vytvořit protokol'}
-            </Button>
-            {saveProtocolMutation.isError && (
-              <div style={{ color: 'var(--danger)', fontSize: '0.85rem', marginTop: 8 }}>Nepodařilo se uložit protokol.</div>
-            )}
-          </div>
-        </div>
+        <ProtocolPanel sourceType="helpdesk" sourceId={ticket.id} />
       )}
     </Modal>
   );
