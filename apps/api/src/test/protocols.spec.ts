@@ -283,4 +283,152 @@ describe('Protocols API', () => {
       sourceId: 'wo-1',
     }).expect(400)
   })
+
+  // ─── Generate populates new fields ────────────────────────
+
+  it('POST /protocols/generate — populates propertyId, title, categoryLabel from ticket', async () => {
+    const propRes = await api.post('/api/v1/properties', {
+      name: 'Budova Metadata Test',
+      address: 'Ulice 99',
+      city: 'Brno',
+      postalCode: '60200',
+      type: 'bytdum',
+      ownership: 'vlastnictvi',
+    }).expect(201)
+
+    const ticketRes = await api.post('/api/v1/helpdesk', {
+      title: 'Test metadata enrichment',
+      description: 'Popis pro metadata test',
+      propertyId: propRes.body.id,
+      category: 'electrical',
+      priority: 'medium',
+    }).expect(201)
+
+    const res = await api.post('/api/v1/protocols/generate', {
+      sourceType: 'helpdesk',
+      sourceId: ticketRes.body.id,
+    }).expect(201)
+
+    expect(res.body.propertyId).toBe(propRes.body.id)
+    expect(res.body.title).toBe('Test metadata enrichment')
+    expect(res.body.categoryLabel).toBe('electrical')
+    expect(res.body.spaceLabel).toBe('Budova Metadata Test')
+    expect(res.body.submittedAt).toBeDefined()
+    expect(res.body.property).toBeDefined()
+    expect(res.body.property.name).toBe('Budova Metadata Test')
+  })
+
+  // ─── New metadata fields on create ─────────────────────────
+
+  it('POST /protocols — creates with new metadata fields', async () => {
+    const res = await api.post('/api/v1/protocols', {
+      sourceType: 'helpdesk',
+      sourceId: 'fake-meta-1',
+      title: 'Protokol s metadaty',
+      categoryLabel: 'plumbing',
+      activityLabel: 'Oprava',
+      spaceLabel: 'Koupelna',
+      tenantUnitLabel: 'Byt 3A',
+      publicNote: 'Veřejná poznámka',
+      internalNote: 'Interní poznámka',
+      transportDescription: 'Vlastní auto',
+    }).expect(201)
+
+    expect(res.body.title).toBe('Protokol s metadaty')
+    expect(res.body.categoryLabel).toBe('plumbing')
+    expect(res.body.activityLabel).toBe('Oprava')
+    expect(res.body.spaceLabel).toBe('Koupelna')
+    expect(res.body.tenantUnitLabel).toBe('Byt 3A')
+    expect(res.body.publicNote).toBe('Veřejná poznámka')
+    expect(res.body.internalNote).toBe('Interní poznámka')
+    expect(res.body.transportDescription).toBe('Vlastní auto')
+  })
+
+  // ─── Confirm flow ──────────────────────────────────────────
+
+  it('POST /protocols/:id/confirm — confirms completed protocol', async () => {
+    const res = await api.post(`/api/v1/protocols/${protocolId}/confirm`).expect(201)
+    expect(res.body.status).toBe('confirmed')
+  })
+
+  it('POST /protocols/:id/confirm — 400 for draft protocol', async () => {
+    const createRes = await api.post('/api/v1/protocols', {
+      sourceType: 'helpdesk',
+      sourceId: 'confirm-test-draft',
+    }).expect(201)
+
+    await api.post(`/api/v1/protocols/${createRes.body.id}/confirm`).expect(400)
+  })
+
+  // ─── Reorder lines ────────────────────────────────────────
+
+  it('POST /protocols/:id/lines/reorder — reorders lines', async () => {
+    const createRes = await api.post('/api/v1/protocols', {
+      sourceType: 'helpdesk',
+      sourceId: 'reorder-test',
+    }).expect(201)
+
+    const l1 = await api.post(`/api/v1/protocols/${createRes.body.id}/lines`, {
+      name: 'First', lineType: 'labor',
+    }).expect(201)
+
+    const l2 = await api.post(`/api/v1/protocols/${createRes.body.id}/lines`, {
+      name: 'Second', lineType: 'material',
+    }).expect(201)
+
+    // Reverse order
+    const reorderRes = await api.post(`/api/v1/protocols/${createRes.body.id}/lines/reorder`, {
+      items: [
+        { lineId: l1.body.id, sortOrder: 10 },
+        { lineId: l2.body.id, sortOrder: 0 },
+      ],
+    }).expect(201)
+
+    expect(reorderRes.body.lines[0].name).toBe('Second')
+    expect(reorderRes.body.lines[1].name).toBe('First')
+  })
+
+  // ─── Extended list filters ─────────────────────────────────
+
+  it('GET /protocols — filters by protocolType', async () => {
+    const res = await api.get('/api/v1/protocols?protocolType=work_report').expect(200)
+    expect(res.body.data.every((p: any) => p.protocolType === 'work_report')).toBe(true)
+  })
+
+  it('GET /protocols — filters by satisfaction', async () => {
+    const res = await api.get('/api/v1/protocols?satisfaction=satisfied').expect(200)
+    expect(res.body.data.every((p: any) => p.satisfaction === 'satisfied')).toBe(true)
+  })
+
+  it('GET /protocols — search by title', async () => {
+    const res = await api.get('/api/v1/protocols?search=Protokol s metadaty').expect(200)
+    expect(res.body.data.length).toBeGreaterThanOrEqual(1)
+    expect(res.body.data[0].title).toBe('Protokol s metadaty')
+  })
+
+  // ─── Full workflow: draft → completed → confirmed ──────────
+
+  it('full workflow: draft → completed → confirmed', async () => {
+    const createRes = await api.post('/api/v1/protocols', {
+      sourceType: 'helpdesk',
+      sourceId: 'workflow-test',
+      title: 'Workflow test',
+    }).expect(201)
+    expect(createRes.body.status).toBe('draft')
+
+    await api.post(`/api/v1/protocols/${createRes.body.id}/lines`, {
+      name: 'Test work', lineType: 'labor', quantity: 1,
+    }).expect(201)
+
+    const completeRes = await api.post(`/api/v1/protocols/${createRes.body.id}/complete`, {
+      satisfaction: 'neutral',
+    }).expect(201)
+    expect(completeRes.body.status).toBe('completed')
+    expect(completeRes.body.completedAt).toBeDefined()
+    expect(completeRes.body.handoverAt).toBeDefined()
+    expect(completeRes.body.satisfaction).toBe('neutral')
+
+    const confirmRes = await api.post(`/api/v1/protocols/${createRes.body.id}/confirm`).expect(201)
+    expect(confirmRes.body.status).toBe('confirmed')
+  })
 })

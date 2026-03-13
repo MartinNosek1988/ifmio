@@ -17,21 +17,33 @@ export interface ApiProtocolLine {
 export interface ApiProtocol {
   id: string
   tenantId: string
+  propertyId: string | null
   sourceType: 'helpdesk' | 'revision' | 'work_order'
   sourceId: string
   protocolType: 'work_report' | 'handover' | 'revision_report' | 'service_protocol'
   number: string
   status: 'draft' | 'completed' | 'confirmed'
+  title: string | null
   supplierSnapshot: Record<string, unknown> | null
   customerSnapshot: Record<string, unknown> | null
   requesterName: string | null
   dispatcherName: string | null
   resolverName: string | null
+  categoryLabel: string | null
+  activityLabel: string | null
+  spaceLabel: string | null
+  tenantUnitLabel: string | null
   description: string | null
+  publicNote: string | null
+  internalNote: string | null
+  submittedAt: string | null
+  dueAt: string | null
+  completedAt: string | null
   transportKm: number | null
   transportMode: string | null
+  transportDescription: string | null
   handoverAt: string | null
-  satisfaction: 'satisfied' | 'partially_satisfied' | 'dissatisfied' | null
+  satisfaction: 'satisfied' | 'partially_satisfied' | 'dissatisfied' | 'neutral' | null
   satisfactionComment: string | null
   supplierSignatureName: string | null
   customerSignatureName: string | null
@@ -42,6 +54,7 @@ export interface ApiProtocol {
   createdAt: string
   updatedAt: string
   lines: ApiProtocolLine[]
+  property?: { id: string; name: string } | null
   _count?: { lines: number }
 }
 
@@ -59,23 +72,46 @@ export interface CreateProtocolPayload {
   sourceType: string
   sourceId: string
   protocolType?: string
+  propertyId?: string
+  title?: string
   description?: string
   requesterName?: string
   dispatcherName?: string
   resolverName?: string
+  categoryLabel?: string
+  activityLabel?: string
+  spaceLabel?: string
+  tenantUnitLabel?: string
+  submittedAt?: string
+  dueAt?: string
   transportKm?: number
   transportMode?: string
+  transportDescription?: string
+  publicNote?: string
+  internalNote?: string
   supplierSnapshot?: Record<string, unknown>
   customerSnapshot?: Record<string, unknown>
 }
 
 export interface UpdateProtocolPayload {
+  title?: string
   description?: string
   requesterName?: string
   dispatcherName?: string
   resolverName?: string
+  categoryLabel?: string
+  activityLabel?: string
+  spaceLabel?: string
+  tenantUnitLabel?: string
+  propertyId?: string
+  submittedAt?: string
+  dueAt?: string
+  completedAt?: string
   transportKm?: number
   transportMode?: string
+  transportDescription?: string
+  publicNote?: string
+  internalNote?: string
   handoverAt?: string
   satisfaction?: string
   satisfactionComment?: string
@@ -135,6 +171,9 @@ export const protocolsApi = {
   complete: (id: string, dto: CompleteProtocolPayload) =>
     apiClient.post<ApiProtocol>(`/protocols/${id}/complete`, dto).then((r) => r.data),
 
+  confirm: (id: string) =>
+    apiClient.post<ApiProtocol>(`/protocols/${id}/confirm`).then((r) => r.data),
+
   remove: (id: string) =>
     apiClient.delete(`/protocols/${id}`),
 
@@ -147,4 +186,7 @@ export const protocolsApi = {
 
   removeLine: (protocolId: string, lineId: string) =>
     apiClient.delete(`/protocols/${protocolId}/lines/${lineId}`),
+
+  reorderLines: (protocolId: string, items: { lineId: string; sortOrder: number }[]) =>
+    apiClient.post<ApiProtocol>(`/protocols/${protocolId}/lines/reorder`, { items }).then((r) => r.data),
 }
