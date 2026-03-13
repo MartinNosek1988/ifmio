@@ -1,6 +1,6 @@
 import { createTestApp, closeTestApp, authRequest, TestApp } from './test.helpers'
 import { PrismaService } from '../prisma/prisma.service'
-import { HelpdeskService } from '../helpdesk/helpdesk.service'
+import { HelpdeskEscalationService } from '../helpdesk/helpdesk-escalation.service'
 import { SLA_POLICY } from '../helpdesk/sla.constants'
 
 describe('Helpdesk SLA (e2e)', () => {
@@ -256,9 +256,9 @@ describe('Helpdesk SLA (e2e)', () => {
       data: { resolutionDueAt: new Date('2020-01-01') },
     })
 
-    // Call escalation via service (resolve() needed for request-scoped provider)
-    const helpdeskService = await testApp.app.resolve(HelpdeskService)
-    const result = await helpdeskService.escalateOverdueTickets()
+    // Call escalation via singleton service
+    const escalationService = testApp.app.get(HelpdeskEscalationService)
+    const result = await escalationService.escalateOverdueTickets()
 
     expect(result.escalated).toBeGreaterThanOrEqual(1)
 
