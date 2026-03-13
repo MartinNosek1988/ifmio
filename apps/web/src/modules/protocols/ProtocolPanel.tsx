@@ -4,10 +4,9 @@ import { Badge, Button } from '../../shared/components'
 import type { BadgeVariant } from '../../shared/components'
 import {
   useProtocolsBySource, useGenerateProtocol,
-  useUpdateProtocol, useCompleteProtocol,
+  useCompleteProtocol,
   useAddProtocolLine, useDeleteProtocolLine,
 } from './api/protocols.queries'
-import type { ApiProtocol, ApiProtocolLine } from './api/protocols.api'
 
 interface Props {
   sourceType: 'helpdesk' | 'revision' | 'work_order'
@@ -40,7 +39,6 @@ const inputStyle: React.CSSProperties = {
 export default function ProtocolPanel({ sourceType, sourceId, protocolType }: Props) {
   const { data: protocols, isLoading } = useProtocolsBySource(sourceType, sourceId)
   const generateMutation = useGenerateProtocol()
-  const updateMutation = useUpdateProtocol()
   const completeMutation = useCompleteProtocol()
   const addLineMutation = useAddProtocolLine()
   const deleteLineMutation = useDeleteProtocolLine()
