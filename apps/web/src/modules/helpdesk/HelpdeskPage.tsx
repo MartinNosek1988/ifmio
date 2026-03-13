@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, BarChart3 } from 'lucide-react';
 import { KpiCard, Table, Badge, SearchBar, Button, EmptyState, Modal, LoadingState, ErrorState } from '../../shared/components';
 import type { Column, BadgeVariant } from '../../shared/components';
-import { useTickets, useDeleteTicket, useSlaStats } from './api/helpdesk.queries';
+import { useTickets, useDeleteTicket, useSlaStats, useClaimTicket } from './api/helpdesk.queries';
 import type { ApiTicket } from './api/helpdesk.api';
+import { useAuthStore } from '../../core/auth/auth.store';
 import TicketDetailModal from './TicketDetailModal';
 import TicketForm from './TicketForm';
 
@@ -74,6 +75,8 @@ export default function HelpdeskPage() {
   const { data: slaStats } = useSlaStats();
 
   const deleteMutation = useDeleteTicket();
+  const claimMutation = useClaimTicket();
+  const currentUser = useAuthStore((s) => s.user);
 
   const tickets = paginated?.data ?? [];
   const total = paginated?.total ?? 0;
@@ -113,12 +116,32 @@ export default function HelpdeskPage() {
       },
     },
     {
+      key: 'assignee', label: 'Řešitel',
+      render: (t) => <span className="text-muted">{t.assignee?.name ?? '—'}</span>,
+    },
+    {
       key: 'property', label: 'Nemovitost',
       render: (t) => <span className="text-muted">{t.property?.name ?? '—'}</span>,
     },
     {
       key: 'createdAt', label: 'Vytvořeno',
       render: (t) => <span className="text-muted text-sm">{new Date(t.createdAt).toLocaleDateString('cs-CZ')}</span>,
+    },
+    {
+      key: 'actions', label: '',
+      render: (t) => {
+        const isActive = t.status === 'open' || t.status === 'in_progress'
+        if (!isActive || t.assigneeId === currentUser?.id) return null
+        return (
+          <Button
+            size="sm"
+            onClick={(e) => { e.stopPropagation(); claimMutation.mutate(t.id) }}
+            disabled={claimMutation.isPending}
+          >
+            Převzít
+          </Button>
+        )
+      },
     },
   ];
 

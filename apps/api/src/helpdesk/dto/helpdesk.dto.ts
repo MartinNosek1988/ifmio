@@ -85,6 +85,11 @@ export class UpdateTicketDto {
   resolvedAt?: string;
 }
 
+export class AssignTicketDto {
+  @IsString()
+  assigneeId!: string;
+}
+
 export class CreateItemDto {
   @IsString()
   description!: string;

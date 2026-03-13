@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Trash2, UserCheck, CheckCircle } from 'lucide-react';
 import { Modal, Badge, Button, LoadingState } from '../../shared/components';
 import type { BadgeVariant } from '../../shared/components';
-import { useTicket, useUpdateTicket, useAddTicketItem, useRemoveTicketItem, useSaveProtocol } from './api/helpdesk.queries';
+import { useTicket, useUpdateTicket, useAddTicketItem, useRemoveTicketItem, useSaveProtocol, useClaimTicket, useResolveTicket, useAssignTicket } from './api/helpdesk.queries';
 import type { ApiTicketItem } from './api/helpdesk.api';
+import { useAuthStore } from '../../core/auth/auth.store';
 
 interface Props {
   ticketId: string;
@@ -41,14 +42,17 @@ type TabKey = 'detail' | 'items' | 'protocol';
 export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props) {
   const { data: ticket, isLoading } = useTicket(ticketId);
   const updateMutation = useUpdateTicket();
+  const claimMutation = useClaimTicket();
+  const resolveMutation = useResolveTicket();
+  const assignMutation = useAssignTicket();
   const addItemMutation = useAddTicketItem();
   const removeItemMutation = useRemoveTicketItem();
   const saveProtocolMutation = useSaveProtocol();
+  const currentUser = useAuthStore((s) => s.user);
 
   const [tab, setTab] = useState<TabKey>('detail');
   const [editing, setEditing] = useState(false);
   const [editPriority, setEditPriority] = useState('');
-  const [editAssignee, setEditAssignee] = useState('');
 
   // Item form
   const [itemDesc, setItemDesc] = useState('');
@@ -80,13 +84,12 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
 
   const startEdit = () => {
     setEditPriority(ticket.priority);
-    setEditAssignee(ticket.assigneeId ?? '');
     setEditing(true);
   };
 
   const handleSaveEdit = () => {
     updateMutation.mutate(
-      { id: ticket.id, dto: { priority: editPriority, assigneeId: editAssignee || undefined } },
+      { id: ticket.id, dto: { priority: editPriority } },
       { onSuccess: () => setEditing(false) },
     );
   };
@@ -172,6 +175,34 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
             )}
           </div>
 
+          {/* Ownership actions */}
+          {(ticket.status === 'open' || ticket.status === 'in_progress') && (
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+              {ticket.assigneeId !== currentUser?.id && (
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={() => claimMutation.mutate(ticket.id)}
+                  disabled={claimMutation.isPending}
+                >
+                  <UserCheck size={14} style={{ marginRight: 4 }} />
+                  {claimMutation.isPending ? 'Přebírám...' : 'Převzít'}
+                </Button>
+              )}
+              {ticket.status !== 'resolved' && (
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={() => resolveMutation.mutate(ticket.id)}
+                  disabled={resolveMutation.isPending}
+                >
+                  <CheckCircle size={14} style={{ marginRight: 4 }} />
+                  {resolveMutation.isPending ? 'Vyřizuji...' : 'Rychle vyřešit'}
+                </Button>
+              )}
+            </div>
+          )}
+
           {allowed.length > 0 && (
             <div style={{ marginBottom: 16 }}>
               <div className="text-muted" style={{ fontSize: '0.8rem', marginBottom: 6 }}>Změnit stav:</div>
@@ -200,11 +231,7 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
             />
             <div>
               <div className="text-muted" style={{ fontSize: '0.78rem', marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Řešitel</div>
-              {editing ? (
-                <input value={editAssignee} onChange={(e) => setEditAssignee(e.target.value)} style={inputStyle} placeholder="ID řešitele" />
-              ) : (
-                <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>{ticket.assignee?.name ?? '—'}</div>
-              )}
+              <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>{ticket.assignee?.name ?? '—'}</div>
             </div>
             <InfoField label="Vytvořeno" value={new Date(ticket.createdAt).toLocaleDateString('cs-CZ')} />
             {ticket.resolvedAt && (
