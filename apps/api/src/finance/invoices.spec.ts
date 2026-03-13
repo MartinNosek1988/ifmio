@@ -78,8 +78,12 @@ describe('Invoices (e2e)', () => {
   })
 
   describe('POST /api/v1/finance/invoices/:id/mark-paid', () => {
-    it('marks invoice as paid', async () => {
+    it('marks approved invoice as paid', async () => {
       const api = authRequest(testApp.server, testApp.token)
+      // Must go through approval workflow: draft → submitted → approved
+      await api.post(`/api/v1/finance/invoices/${invoiceId}/submit`).expect(201)
+      await api.post(`/api/v1/finance/invoices/${invoiceId}/approve`).expect(201)
+
       const res = await api
         .post(`/api/v1/finance/invoices/${invoiceId}/mark-paid`, {
           paidAt: new Date().toISOString(),

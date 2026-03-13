@@ -1,8 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PropertyScopeService } from '../common/services/property-scope.service';
 import type { CreateInvoiceDto, UpdateInvoiceDto, InvoiceListQueryDto, MarkPaidDto } from './dto/invoice.dto';
 import type { AuthUser } from '@ifmio/shared-types';
+
+/** Roles allowed to approve invoices */
+const APPROVAL_ROLES = ['tenant_owner', 'tenant_admin', 'finance_manager'];
 
 @Injectable()
 export class InvoicesService {
@@ -12,7 +15,7 @@ export class InvoicesService {
   ) {}
 
   async list(user: AuthUser, query: InvoiceListQueryDto) {
-    const { type, isPaid, search } = query;
+    const { type, isPaid, search, approvalStatus } = query;
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 50));
     const skip = (page - 1) * limit;
@@ -24,6 +27,7 @@ export class InvoicesService {
       ...scopeWhere,
       ...(type ? { type } : {}),
       ...(isPaid !== undefined ? { isPaid: isPaid === 'true' } : {}),
+      ...(approvalStatus ? { approvalStatus } : {}),
       ...(search ? {
         OR: [
           { number: { contains: search, mode: 'insensitive' } },
@@ -149,7 +153,10 @@ export class InvoicesService {
   }
 
   async update(user: AuthUser, id: string, dto: UpdateInvoiceDto) {
-    await this.findOneInternal(user, id);
+    const existing = await this.findOneInternal(user, id);
+    if (existing.approvalStatus !== 'draft') {
+      throw new BadRequestException('Doklad lze upravit pouze ve stavu draft');
+    }
 
     const data: Record<string, unknown> = {};
     if (dto.number !== undefined) data.number = dto.number;
@@ -194,7 +201,10 @@ export class InvoicesService {
   }
 
   async remove(user: AuthUser, id: string) {
-    await this.findOneInternal(user, id);
+    const existing = await this.findOneInternal(user, id);
+    if (existing.approvalStatus !== 'draft') {
+      throw new BadRequestException('Doklad lze smazat pouze ve stavu draft');
+    }
     await this.prisma.invoice.update({
       where: { id },
       data: { deletedAt: new Date() },
@@ -203,6 +213,9 @@ export class InvoicesService {
 
   async markPaid(user: AuthUser, id: string, dto?: MarkPaidDto) {
     const existing = await this.findOneInternal(user, id);
+    if (existing.approvalStatus !== 'approved') {
+      throw new BadRequestException('Doklad lze označit jako uhrazený pouze ve stavu approved');
+    }
 
     const paidAmount = dto?.paidAmount ?? Number(existing.amountTotal);
     const isFullyPaid = paidAmount >= Number(existing.amountTotal);
@@ -217,6 +230,96 @@ export class InvoicesService {
         ...(dto?.note !== undefined ? { note: dto.note } : {}),
       },
     });
+
+    await this.logAudit(user, 'INVOICE_MARK_PAID', id);
+
+    return this.serializeInvoice(invoice);
+  }
+
+  // ─── APPROVAL WORKFLOW ───────────────────────────────────────────
+
+  async submitInvoice(user: AuthUser, id: string) {
+    const invoice = await this.findOneInternal(user, id);
+    if (invoice.approvalStatus !== 'draft') {
+      throw new BadRequestException('Pouze doklad ve stavu draft lze odeslat ke schválení');
+    }
+
+    const updated = await this.prisma.invoice.update({
+      where: { id },
+      data: {
+        approvalStatus: 'submitted',
+        submittedAt: new Date(),
+        submittedById: user.id,
+        // Clear any previous rejection
+        rejectedAt: null,
+        rejectedById: null,
+        rejectionReason: null,
+      },
+    });
+
+    await this.logAudit(user, 'INVOICE_SUBMIT', id);
+
+    return this.serializeInvoice(updated);
+  }
+
+  async approveInvoice(user: AuthUser, id: string) {
+    if (!APPROVAL_ROLES.includes(user.role)) {
+      throw new ForbiddenException('Nemáte oprávnění schvalovat doklady');
+    }
+
+    const invoice = await this.findOneInternal(user, id);
+    if (invoice.approvalStatus !== 'submitted') {
+      throw new BadRequestException('Pouze doklad ve stavu submitted lze schválit');
+    }
+
+    const updated = await this.prisma.invoice.update({
+      where: { id },
+      data: {
+        approvalStatus: 'approved',
+        approvedAt: new Date(),
+        approvedById: user.id,
+      },
+    });
+
+    await this.logAudit(user, 'INVOICE_APPROVE', id);
+
+    return this.serializeInvoice(updated);
+  }
+
+  async returnInvoiceToDraft(user: AuthUser, id: string, reason?: string) {
+    if (!APPROVAL_ROLES.includes(user.role)) {
+      throw new ForbiddenException('Nemáte oprávnění vracet doklady');
+    }
+
+    const invoice = await this.findOneInternal(user, id);
+    if (invoice.approvalStatus === 'draft') {
+      throw new BadRequestException('Doklad je již ve stavu draft');
+    }
+    if (invoice.isPaid) {
+      throw new BadRequestException('Uhrazený doklad nelze vrátit do draftu');
+    }
+
+    const updated = await this.prisma.invoice.update({
+      where: { id },
+      data: {
+        approvalStatus: 'draft',
+        rejectedAt: new Date(),
+        rejectedById: user.id,
+        rejectionReason: reason || null,
+        // Clear approval timestamps
+        approvedAt: null,
+        approvedById: null,
+        submittedAt: null,
+        submittedById: null,
+      },
+    });
+
+    await this.logAudit(user, 'INVOICE_RETURN_TO_DRAFT', id);
+
+    return this.serializeInvoice(updated);
+  }
+
+  private serializeInvoice(invoice: any) {
     return {
       ...invoice,
       amountBase: Number(invoice.amountBase),
@@ -227,11 +330,29 @@ export class InvoicesService {
       duzp: invoice.duzp?.toISOString() ?? null,
       dueDate: invoice.dueDate?.toISOString() ?? null,
       paymentDate: invoice.paymentDate?.toISOString() ?? null,
+      submittedAt: invoice.submittedAt?.toISOString() ?? null,
+      approvedAt: invoice.approvedAt?.toISOString() ?? null,
+      rejectedAt: invoice.rejectedAt?.toISOString() ?? null,
     };
   }
 
+  private async logAudit(user: AuthUser, action: string, entityId: string) {
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId: user.tenantId,
+        userId: user.id,
+        action,
+        entity: 'Invoice',
+        entityId,
+      },
+    });
+  }
+
   async pairWithTransaction(user: AuthUser, invoiceId: string, transactionId: string) {
-    await this.findOneInternal(user, invoiceId);
+    const existing = await this.findOneInternal(user, invoiceId);
+    if (existing.approvalStatus !== 'approved') {
+      throw new BadRequestException('Doklad lze párovat pouze ve stavu approved');
+    }
 
     const transaction = await this.prisma.bankTransaction.findFirst({
       where: { id: transactionId, tenantId: user.tenantId },

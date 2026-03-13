@@ -87,6 +87,9 @@ model User {
   createdDocuments        Document[]
   notifications           Notification[]
   propertyAssignments     UserPropertyAssignment[]
+  submittedInvoices       Invoice[]                @relation("InvoiceSubmitter")
+  approvedInvoices        Invoice[]                @relation("InvoiceApprover")
+  rejectedInvoices        Invoice[]                @relation("InvoiceRejecter")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -396,16 +399,30 @@ model Invoice {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
+  // Approval workflow
+  approvalStatus    InvoiceApprovalStatus @default(draft)
+  submittedAt       DateTime?
+  submittedById     String?
+  approvedAt        DateTime?
+  approvedById      String?
+  rejectedAt        DateTime?
+  rejectedById      String?
+  rejectionReason   String?
+
   tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   property        Property?     @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   transaction     BankTransaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
   supplier        Resident?     @relation("InvoiceSupplier", fields: [supplierId], references: [id], onDelete: SetNull)
   buyer           Resident?     @relation("InvoiceBuyer", fields: [buyerId], references: [id], onDelete: SetNull)
+  submittedBy     User?         @relation("InvoiceSubmitter", fields: [submittedById], references: [id], onDelete: SetNull)
+  approvedBy      User?         @relation("InvoiceApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  rejectedBy      User?         @relation("InvoiceRejecter", fields: [rejectedById], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
   @@index([tenantId, type])
   @@index([tenantId, isPaid])
   @@index([tenantId, isPaid, dueDate])
+  @@index([tenantId, approvalStatus])
   @@index([supplierId])
   @@index([buyerId])
   @@map("invoices")
@@ -416,6 +433,12 @@ enum InvoiceType {
   issued
   proforma
   credit_note
+}
+
+enum InvoiceApprovalStatus {
+  draft
+  submitted
+  approved
 }
 
 // ─── FINANCE ROZŠÍŘENÍ ────────────────────────────────────────────

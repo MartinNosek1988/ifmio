@@ -8,7 +8,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuditAction } from '../common/decorators/audit.decorator';
 import { ROLES_MANAGE, ROLES_FINANCE, ROLES_FINANCE_DRAFT } from '../common/constants/roles.constants';
-import { CreateInvoiceDto, UpdateInvoiceDto, InvoiceListQueryDto, MarkPaidDto } from './dto/invoice.dto';
+import { CreateInvoiceDto, UpdateInvoiceDto, InvoiceListQueryDto, MarkPaidDto, ReturnToDraftDto } from './dto/invoice.dto';
 import type { FastifyRequest } from 'fastify';
 import type { AuthUser } from '@ifmio/shared-types';
 
@@ -268,6 +268,33 @@ export class FinanceController {
   @ApiOperation({ summary: 'Párovat doklad s bankovní transakcí' })
   pairInvoice(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: { transactionId: string }) {
     return this.invoicesService.pairWithTransaction(user, id, body.transactionId);
+  }
+
+  // ─── APPROVAL WORKFLOW ───────────────────────────────────────────
+
+  @Post('invoices/:id/submit')
+  @Roles(...ROLES_FINANCE_DRAFT)
+  @ApiOperation({ summary: 'Odeslat doklad ke schválení' })
+  submitInvoice(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.invoicesService.submitInvoice(user, id);
+  }
+
+  @Post('invoices/:id/approve')
+  @Roles(...ROLES_FINANCE)
+  @ApiOperation({ summary: 'Schválit doklad' })
+  approveInvoice(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.invoicesService.approveInvoice(user, id);
+  }
+
+  @Post('invoices/:id/return-to-draft')
+  @Roles(...ROLES_FINANCE)
+  @ApiOperation({ summary: 'Vrátit doklad do draftu' })
+  returnInvoiceToDraft(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto?: ReturnToDraftDto,
+  ) {
+    return this.invoicesService.returnInvoiceToDraft(user, id, dto?.reason);
   }
 
   @Delete('invoices/:id')
