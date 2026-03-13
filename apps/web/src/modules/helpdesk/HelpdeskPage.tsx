@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, BarChart3 } from 'lucide-react';
 import { KpiCard, Table, Badge, SearchBar, Button, EmptyState, Modal, LoadingState, ErrorState } from '../../shared/components';
 import type { Column, BadgeVariant } from '../../shared/components';
 import { useTickets, useDeleteTicket, useSlaStats } from './api/helpdesk.queries';
@@ -51,6 +52,7 @@ function getSlaStatus(ticket: ApiTicket): { label: string; variant: BadgeVariant
 }
 
 export default function HelpdeskPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterPriority, setFilterPriority] = useState('');
@@ -145,7 +147,10 @@ export default function HelpdeskPage() {
           <h1 className="page-title">HelpDesk</h1>
           <p className="page-subtitle">{stats.open} otevřených tiketů</p>
         </div>
-        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)}>Nový tiket</Button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button icon={<BarChart3 size={15} />} onClick={() => navigate('/helpdesk/dashboard')}>Dashboard</Button>
+          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)}>Nový tiket</Button>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 16, marginBottom: 24 }}>

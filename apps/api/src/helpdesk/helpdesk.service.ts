@@ -242,6 +242,137 @@ export class HelpdeskService {
     return { total, overdue, escalated, dueSoon }
   }
 
+  async getDashboard(user: AuthUser, days: number) {
+    const scopeWhere = await this.scope.scopeByPropertyId(user)
+    const now = new Date()
+    const since = new Date(now)
+    since.setDate(since.getDate() - days)
+
+    const tenantWhere = { tenantId: user.tenantId, ...scopeWhere }
+    const activeWhere = { ...tenantWhere, status: { in: ['open', 'in_progress'] } as any }
+
+    // ── KPI counts ──────────────────────────────────────────────
+    const [total, open, overdue, escalated, dueSoon, resolvedInPeriod, createdInPeriod] =
+      await Promise.all([
+        this.prisma.helpdeskTicket.count({ where: tenantWhere }),
+        this.prisma.helpdeskTicket.count({ where: activeWhere }),
+        this.prisma.helpdeskTicket.count({
+          where: { ...activeWhere, resolutionDueAt: { lt: now } },
+        }),
+        this.prisma.helpdeskTicket.count({
+          where: { ...activeWhere, escalationLevel: { gt: 0 } },
+        }),
+        this.prisma.helpdeskTicket.count({
+          where: {
+            ...activeWhere,
+            resolutionDueAt: { gt: now, lt: new Date(now.getTime() + 24 * 3_600_000) },
+          },
+        }),
+        this.prisma.helpdeskTicket.count({
+          where: { ...tenantWhere, resolvedAt: { gte: since } },
+        }),
+        this.prisma.helpdeskTicket.count({
+          where: { ...tenantWhere, createdAt: { gte: since } },
+        }),
+      ])
+
+    // SLA compliance = resolved in period within SLA / total resolved in period
+    const resolvedInPeriodTickets = await this.prisma.helpdeskTicket.findMany({
+      where: { ...tenantWhere, resolvedAt: { gte: since } },
+      select: { resolvedAt: true, resolutionDueAt: true },
+    })
+    const withinSla = resolvedInPeriodTickets.filter(
+      (t) => t.resolvedAt && t.resolutionDueAt && t.resolvedAt <= t.resolutionDueAt,
+    ).length
+    const slaCompliancePct = resolvedInPeriod > 0
+      ? Math.round((withinSla / resolvedInPeriod) * 100)
+      : 0
+
+    // ── Breakdown by priority ───────────────────────────────────
+    const priorities = ['low', 'medium', 'high', 'urgent'] as const
+    const byPriority = await Promise.all(
+      priorities.map(async (p) => ({
+        priority: p,
+        open: await this.prisma.helpdeskTicket.count({
+          where: { ...activeWhere, priority: p as any },
+        }),
+        total: await this.prisma.helpdeskTicket.count({
+          where: { ...tenantWhere, priority: p as any, createdAt: { gte: since } },
+        }),
+      })),
+    )
+
+    // ── Breakdown by property (top 10) ──────────────────────────
+    const allProperties = await this.prisma.helpdeskTicket.groupBy({
+      by: ['propertyId'],
+      where: { ...tenantWhere, propertyId: { not: null }, createdAt: { gte: since } },
+      _count: { id: true },
+      orderBy: { _count: { id: 'desc' } },
+      take: 10,
+    })
+    const propertyIds = allProperties
+      .map((p) => p.propertyId)
+      .filter((id): id is string => id !== null)
+    const propertyNames = propertyIds.length > 0
+      ? await this.prisma.property.findMany({
+          where: { id: { in: propertyIds } },
+          select: { id: true, name: true },
+        })
+      : []
+    const nameMap = new Map(propertyNames.map((p) => [p.id, p.name]))
+    const byProperty = allProperties.map((p) => ({
+      propertyId: p.propertyId,
+      name: nameMap.get(p.propertyId!) ?? '—',
+      count: p._count.id,
+    }))
+
+    // ── Daily trend ─────────────────────────────────────────────
+    const trendTickets = await this.prisma.helpdeskTicket.findMany({
+      where: { ...tenantWhere, createdAt: { gte: since } },
+      select: { createdAt: true, resolvedAt: true },
+      orderBy: { createdAt: 'asc' },
+    })
+    const trendMap = new Map<string, { created: number; resolved: number }>()
+    for (let d = new Date(since); d <= now; d.setDate(d.getDate() + 1)) {
+      trendMap.set(d.toISOString().slice(0, 10), { created: 0, resolved: 0 })
+    }
+    for (const t of trendTickets) {
+      const day = t.createdAt.toISOString().slice(0, 10)
+      const entry = trendMap.get(day)
+      if (entry) entry.created++
+      if (t.resolvedAt) {
+        const rDay = t.resolvedAt.toISOString().slice(0, 10)
+        const rEntry = trendMap.get(rDay)
+        if (rEntry) rEntry.resolved++
+      }
+    }
+    const trend = Array.from(trendMap.entries()).map(([date, v]) => ({
+      date, ...v,
+    }))
+
+    // ── Top risk tickets ────────────────────────────────────────
+    const topRisk = await this.prisma.helpdeskTicket.findMany({
+      where: { ...activeWhere, resolutionDueAt: { lt: now } },
+      orderBy: [{ escalationLevel: 'desc' }, { priority: 'desc' }, { resolutionDueAt: 'asc' }],
+      take: 10,
+      include: {
+        property: { select: { id: true, name: true } },
+        assignee: { select: { id: true, name: true } },
+      },
+    })
+
+    return {
+      kpi: {
+        total, open, overdue, escalated, dueSoon,
+        resolvedInPeriod, createdInPeriod, slaCompliancePct,
+      },
+      byPriority,
+      byProperty,
+      trend,
+      topRisk: topRisk.map((t) => this.serializeTicket(t)),
+    }
+  }
+
   async getProtocol(user: AuthUser, ticketId: string) {
     await this.findOne(user, ticketId)
     const protocol = await this.prisma.helpdeskProtocol.findUnique({
