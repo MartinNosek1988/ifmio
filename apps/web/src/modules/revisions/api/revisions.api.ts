@@ -69,6 +69,13 @@ export interface ApiRevisionPlan {
   responsibleUser?: { id: string; name: string } | null
   _count?: { events: number }
   events?: ApiRevisionEvent[]
+  nextAction?: {
+    action: string
+    label: string
+    description: string
+    targetEntityType?: string
+    targetEntityId?: string
+  } | null
 }
 
 export interface ApiRevisionEvent {

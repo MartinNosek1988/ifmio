@@ -130,15 +130,39 @@ export default function RevisionPlanDetailModal({ planId, onClose }: Props) {
             {requiresProtocol && <Badge variant="blue">Vyžaduje protokol</Badge>}
           </div>
 
-          {/* Compliance hint */}
-          {COMPLIANCE_HINT[cs] && (
+          {/* Action panel — guided next step */}
+          {plan.nextAction && (
             <div style={{
-              padding: '8px 12px', marginBottom: 16, borderRadius: 6,
-              background: cs.startsWith('overdue') ? 'var(--danger-bg, rgba(239,68,68,0.1))' : 'var(--warning-bg, rgba(234,179,8,0.1))',
+              padding: '12px 14px', marginBottom: 16, borderRadius: 8,
+              background: cs.startsWith('overdue') ? 'var(--danger-bg, rgba(239,68,68,0.08))' : 'var(--warning-bg, rgba(234,179,8,0.08))',
               border: `1px solid ${cs.startsWith('overdue') ? 'var(--danger, #ef4444)' : 'var(--accent-yellow, #e6a817)'}`,
-              fontSize: '0.85rem',
             }}>
-              {COMPLIANCE_HINT[cs]}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: 4 }}>
+                    {plan.nextAction.label}
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    {plan.nextAction.description}
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant={cs.startsWith('overdue') ? 'danger' : 'primary'}
+                  onClick={() => {
+                    if (plan.nextAction?.action === 'create_protocol' || plan.nextAction?.action === 'complete_protocol' || plan.nextAction?.action === 'sign_protocol' || plan.nextAction?.action === 'confirm_protocol') {
+                      // Navigate to protocol tab with latest event selected
+                      const latestEvent = history?.[0]
+                      if (latestEvent) setSelectedEventId(latestEvent.id)
+                      setTab('protocol')
+                    } else if (plan.nextAction?.action === 'schedule_revision' || plan.nextAction?.action === 'escalate') {
+                      setShowRecord(true)
+                    }
+                  }}
+                >
+                  {plan.nextAction.label}
+                </Button>
+              </div>
             </div>
           )}
 

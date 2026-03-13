@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service'
 import { PropertyScopeService } from '../common/services/property-scope.service'
 import { ProtocolsService } from '../protocols/protocols.service'
 import { NotificationsService } from '../notifications/notifications.service'
+import { computeNextAction } from './revision-escalation.service'
 import type {
   CreateRevisionSubjectDto, UpdateRevisionSubjectDto,
   CreateRevisionTypeDto, UpdateRevisionTypeDto,
@@ -254,7 +255,24 @@ export class RevisionsService {
     const protocolState = plan.revisionType.requiresProtocol
       ? await this.getProtocolComplianceState(user.tenantId, plan.id, plan.revisionType)
       : null
-    return { ...plan, complianceStatus: this.getComplianceStatus(plan, now, protocolState) }
+    const complianceStatus = this.getComplianceStatus(plan, now, protocolState)
+
+    // Compute next action with protocol info for guidance
+    let protocolInfo: { id: string; status: string } | null = null
+    if (protocolState && plan.events.length > 0) {
+      const latestEvent = plan.events[0]
+      const proto = await this.prisma.protocol.findFirst({
+        where: { tenantId: user.tenantId, sourceType: 'revision', sourceId: latestEvent.id },
+        select: { id: true, status: true },
+      })
+      if (proto) protocolInfo = proto
+    }
+
+    return {
+      ...plan,
+      complianceStatus,
+      nextAction: computeNextAction(complianceStatus, protocolInfo),
+    }
   }
 
   async createPlan(user: AuthUser, dto: CreateRevisionPlanDto) {
