@@ -286,7 +286,7 @@ export class HelpdeskService {
     ).length
     const slaCompliancePct = resolvedInPeriod > 0
       ? Math.round((withinSla / resolvedInPeriod) * 100)
-      : 100
+      : 0
 
     // ── Breakdown by priority ───────────────────────────────────
     const priorities = ['low', 'medium', 'high', 'urgent'] as const
@@ -353,7 +353,7 @@ export class HelpdeskService {
     // ── Top risk tickets ────────────────────────────────────────
     const topRisk = await this.prisma.helpdeskTicket.findMany({
       where: { ...activeWhere, resolutionDueAt: { lt: now } },
-      orderBy: [{ escalationLevel: 'desc' }, { resolutionDueAt: 'asc' }],
+      orderBy: [{ escalationLevel: 'desc' }, { priority: 'desc' }, { resolutionDueAt: 'asc' }],
       take: 10,
       include: {
         property: { select: { id: true, name: true } },

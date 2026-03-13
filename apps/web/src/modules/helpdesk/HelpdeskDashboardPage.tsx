@@ -66,8 +66,8 @@ export default function HelpdeskDashboardPage() {
         <KpiCard label="Eskalovaných" value={String(kpi.escalated)} color="var(--accent-orange)" />
         <KpiCard
           label="SLA compliance"
-          value={`${kpi.slaCompliancePct}%`}
-          color={kpi.slaCompliancePct >= 90 ? 'var(--accent-green)' : kpi.slaCompliancePct >= 70 ? 'var(--accent-yellow, #e6a817)' : 'var(--accent-red, var(--danger))'}
+          value={kpi.resolvedInPeriod > 0 ? `${kpi.slaCompliancePct}%` : '—'}
+          color={kpi.resolvedInPeriod === 0 ? 'var(--text-muted)' : kpi.slaCompliancePct >= 90 ? 'var(--accent-green)' : kpi.slaCompliancePct >= 70 ? 'var(--accent-yellow, #e6a817)' : 'var(--accent-red, var(--danger))'}
         />
       </div>
 
