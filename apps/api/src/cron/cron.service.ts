@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-import { HelpdeskService } from '../helpdesk/helpdesk.service';
+import { HelpdeskEscalationService } from '../helpdesk/helpdesk-escalation.service';
 
 const ONE_HOUR = 60 * 60 * 1000;
 const SIX_HOURS = 6 * ONE_HOUR;
@@ -18,7 +18,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
-    private readonly helpdesk: HelpdeskService,
+    private readonly escalation: HelpdeskEscalationService,
   ) {}
 
   onModuleInit() {
@@ -83,7 +83,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
 
   private async runSlaEscalation() {
     try {
-      const result = await this.helpdesk.escalateOverdueTickets();
+      const result = await this.escalation.escalateOverdueTickets();
       this.logger.log(
         `SLA escalation: checked ${result.checked} tickets, escalated ${result.escalated}`,
       );
