@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common'
+import { Prisma } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
 import { PropertyScopeService } from '../common/services/property-scope.service'
 import type {
@@ -84,17 +85,24 @@ export class RevisionsService {
   }
 
   async createType(user: AuthUser, dto: CreateRevisionTypeDto) {
-    return this.prisma.revisionType.create({
-      data: {
-        tenantId: user.tenantId,
-        code: dto.code,
-        name: dto.name,
-        description: dto.description,
-        defaultIntervalDays: dto.defaultIntervalDays ?? 365,
-        defaultReminderDaysBefore: dto.defaultReminderDaysBefore ?? 30,
-        color: dto.color,
-      },
-    })
+    try {
+      return await this.prisma.revisionType.create({
+        data: {
+          tenantId: user.tenantId,
+          code: dto.code,
+          name: dto.name,
+          description: dto.description,
+          defaultIntervalDays: dto.defaultIntervalDays ?? 365,
+          defaultReminderDaysBefore: dto.defaultReminderDaysBefore ?? 30,
+          color: dto.color,
+        },
+      })
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Kód typu revize již existuje')
+      }
+      throw error
+    }
   }
 
   async updateType(user: AuthUser, id: string, dto: UpdateRevisionTypeDto) {

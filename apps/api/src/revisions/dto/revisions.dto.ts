@@ -106,6 +106,19 @@ export class CreateRevisionEventDto {
   @IsOptional() @IsString() protocolDocumentId?: string
 }
 
+export class RecordRevisionEventDto {
+  @IsOptional() @IsDateString() scheduledAt?: string
+  @IsOptional() @IsDateString() performedAt?: string
+  @IsOptional() @IsDateString() validUntil?: string
+  @IsOptional() @IsEnum(['passed', 'passed_with_notes', 'failed', 'cancelled', 'planned'])
+  resultStatus?: string
+  @IsOptional() @IsString() summary?: string
+  @IsOptional() @IsString() notes?: string
+  @IsOptional() @IsString() vendorName?: string
+  @IsOptional() @IsString() performedBy?: string
+  @IsOptional() @IsString() protocolDocumentId?: string
+}
+
 export class UpdateRevisionEventDto {
   @IsOptional() @IsDateString() scheduledAt?: string
   @IsOptional() @IsDateString() performedAt?: string

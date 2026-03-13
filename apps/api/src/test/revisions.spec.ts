@@ -1,6 +1,6 @@
+import request from 'supertest'
 import { createTestApp, closeTestApp, authRequest, TestApp } from './test.helpers'
 import { PrismaService } from '../prisma/prisma.service'
-import { RevisionsService } from '../revisions/revisions.service'
 
 describe('Revisions & Compliance (e2e)', () => {
   let testApp: TestApp
@@ -49,7 +49,6 @@ describe('Revisions & Compliance (e2e)', () => {
   })
 
   it('returns 401 without auth', async () => {
-    const { default: request } = await import('supertest')
     await request(testApp.server)
       .get('/api/v1/revisions/subjects')
       .expect(401)
@@ -82,7 +81,7 @@ describe('Revisions & Compliance (e2e)', () => {
         code: 'ELEKTRO',
         name: 'Duplicitní',
       })
-      .expect(500) // Prisma unique constraint
+      .expect(409)
   })
 
   it('lists types scoped to tenant', async () => {
@@ -141,7 +140,7 @@ describe('Revisions & Compliance (e2e)', () => {
     expect(nextDue).toBeLessThan(expectedMax)
 
     // Cleanup
-    await api.delete(`/api/v1/revisions/plans/${res.body.id}`).expect(200)
+    await api.delete(`/api/v1/revisions/plans/${res.body.id}`).expect(204)
   })
 
   it('creates a plan from lastPerformedAt + interval', async () => {
@@ -161,7 +160,7 @@ describe('Revisions & Compliance (e2e)', () => {
     expect(new Date(res.body.nextDueAt).toISOString().slice(0, 10))
       .toBe(expectedNext.toISOString().slice(0, 10))
 
-    await api.delete(`/api/v1/revisions/plans/${res.body.id}`).expect(200)
+    await api.delete(`/api/v1/revisions/plans/${res.body.id}`).expect(204)
   })
 
   it('rejects plan with missing required fields', async () => {
@@ -405,7 +404,7 @@ describe('Revisions & Compliance (e2e)', () => {
   it('deletes an event', async () => {
     await api
       .delete(`/api/v1/revisions/events/${eventId}`)
-      .expect(200)
+      .expect(204)
 
     await api
       .get(`/api/v1/revisions/events/${eventId}`)
@@ -452,7 +451,6 @@ describe('Revisions & Compliance (e2e)', () => {
 
   it('isolates data between tenants', async () => {
     // Create a second tenant
-    const { default: request } = await import('supertest')
     const regRes = await request(testApp.server)
       .post('/api/v1/auth/register')
       .send({
@@ -486,12 +484,12 @@ describe('Revisions & Compliance (e2e)', () => {
   // ─── CLEANUP ────────────────────────────────────────────────
 
   it('deletes plan', async () => {
-    await api.delete(`/api/v1/revisions/plans/${planId}`).expect(200)
+    await api.delete(`/api/v1/revisions/plans/${planId}`).expect(204)
     await api.get(`/api/v1/revisions/plans/${planId}`).expect(404)
   })
 
   it('deletes type and subject', async () => {
-    await api.delete(`/api/v1/revisions/types/${typeId}`).expect(200)
-    await api.delete(`/api/v1/revisions/subjects/${subjectId}`).expect(200)
+    await api.delete(`/api/v1/revisions/types/${typeId}`).expect(204)
+    await api.delete(`/api/v1/revisions/subjects/${subjectId}`).expect(204)
   })
 })

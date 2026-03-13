@@ -13,7 +13,7 @@ import {
   CreateRevisionSubjectDto, UpdateRevisionSubjectDto,
   CreateRevisionTypeDto, UpdateRevisionTypeDto,
   CreateRevisionPlanDto, UpdateRevisionPlanDto, RevisionPlanListQueryDto,
-  CreateRevisionEventDto, UpdateRevisionEventDto,
+  CreateRevisionEventDto, RecordRevisionEventDto, UpdateRevisionEventDto,
 } from './dto/revisions.dto'
 import type { AuthUser } from '@ifmio/shared-types'
 
@@ -161,9 +161,9 @@ export class RevisionsController {
   recordEvent(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
-    @Body() dto: CreateRevisionEventDto,
+    @Body() dto: RecordRevisionEventDto,
   ) {
-    return this.service.recordEvent(user, id, dto)
+    return this.service.recordEvent(user, id, dto as CreateRevisionEventDto)
   }
 
   @Get('plans/:id/history')
