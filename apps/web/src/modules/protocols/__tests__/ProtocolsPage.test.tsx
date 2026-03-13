@@ -11,6 +11,8 @@ vi.mock('../api/protocols.queries', () => ({
     error: null,
   }),
   useDeleteProtocol: () => ({ mutate: vi.fn(), isPending: false }),
+  useGeneratePdf: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
+  useUploadSignedProtocol: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
 }))
 
 function renderPage() {

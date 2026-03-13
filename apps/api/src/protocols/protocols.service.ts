@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
+import { PdfService } from '../pdf/pdf.service'
+import { DocumentsService } from '../documents/documents.service'
 import type {
   CreateProtocolDto, UpdateProtocolDto, CompleteProtocolDto,
   CreateProtocolLineDto, UpdateProtocolLineDto,
@@ -14,7 +16,11 @@ const PROTOCOL_INCLUDE = {
 
 @Injectable()
 export class ProtocolsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private pdfService: PdfService,
+    private documentsService: DocumentsService,
+  ) {}
 
   // ═══════════════════════════════════════════════════════════════════
   // PROTOCOL CRUD
@@ -364,6 +370,122 @@ export class ProtocolsService {
       ),
     )
     return this.get(user, protocolId)
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // PDF & DOCUMENTS
+  // ═══════════════════════════════════════════════════════════════════
+
+  async generatePdf(user: AuthUser, id: string) {
+    const protocol = await this.get(user, id)
+
+    const pdfDoc = this.pdfService.generateProtocolDocument({
+      number: protocol.number,
+      protocolType: protocol.protocolType,
+      title: protocol.title,
+      description: protocol.description,
+      status: protocol.status,
+      propertyName: protocol.property?.name,
+      supplierSnapshot: protocol.supplierSnapshot as Record<string, unknown> | null,
+      customerSnapshot: protocol.customerSnapshot as Record<string, unknown> | null,
+      requesterName: protocol.requesterName,
+      dispatcherName: protocol.dispatcherName,
+      resolverName: protocol.resolverName,
+      categoryLabel: protocol.categoryLabel,
+      activityLabel: protocol.activityLabel,
+      spaceLabel: protocol.spaceLabel,
+      tenantUnitLabel: protocol.tenantUnitLabel,
+      submittedAt: protocol.submittedAt?.toISOString(),
+      dueAt: protocol.dueAt?.toISOString(),
+      completedAt: protocol.completedAt?.toISOString(),
+      handoverAt: protocol.handoverAt?.toISOString(),
+      transportKm: protocol.transportKm,
+      transportMode: protocol.transportMode,
+      transportDescription: protocol.transportDescription,
+      publicNote: protocol.publicNote,
+      satisfaction: protocol.satisfaction,
+      satisfactionComment: protocol.satisfactionComment,
+      supplierSignatureName: protocol.supplierSignatureName,
+      customerSignatureName: protocol.customerSignatureName,
+      lines: protocol.lines.map((l) => ({
+        lineType: l.lineType,
+        name: l.name,
+        unit: l.unit,
+        quantity: Number(l.quantity),
+        description: l.description,
+      })),
+    })
+
+    // Collect PDF buffer from stream
+    const chunks: Buffer[] = []
+    for await (const chunk of pdfDoc) {
+      chunks.push(chunk as Buffer)
+    }
+    const buffer = Buffer.concat(chunks)
+
+    const filename = `protokol-${protocol.number}.pdf`
+
+    // Store as Document with link to protocol
+    const document = await this.documentsService.upload(user, {
+      buffer,
+      originalname: filename,
+      mimetype: 'application/pdf',
+      size: buffer.length,
+    }, {
+      name: filename,
+      category: 'protocol',
+      description: `Vygenerovaný protokol ${protocol.number}`,
+      tags: ['protocol-pdf', 'generated'],
+      entityType: 'protocol',
+      entityId: protocol.id,
+    })
+
+    // Update protocol with generated document reference
+    await this.prisma.protocol.update({
+      where: { id },
+      data: { generatedPdfDocumentId: document.id },
+    })
+
+    return { documentId: document.id, url: document.url }
+  }
+
+  async getPdf(user: AuthUser, id: string) {
+    const protocol = await this.get(user, id)
+    if (!protocol.generatedPdfDocumentId) {
+      throw new BadRequestException('Protokol nemá vygenerované PDF')
+    }
+    return this.documentsService.getDownloadInfo(user, protocol.generatedPdfDocumentId)
+  }
+
+  async uploadSigned(
+    user: AuthUser,
+    id: string,
+    file: { buffer: Buffer; originalname: string; mimetype: string; size: number },
+  ) {
+    const protocol = await this.get(user, id)
+
+    const filename = `protokol-${protocol.number}-signed${file.originalname.substring(file.originalname.lastIndexOf('.'))}`
+
+    const document = await this.documentsService.upload(user, {
+      buffer: file.buffer,
+      originalname: filename,
+      mimetype: file.mimetype,
+      size: file.size,
+    }, {
+      name: filename,
+      category: 'protocol',
+      description: `Podepsaný protokol ${protocol.number}`,
+      tags: ['protocol-pdf', 'signed'],
+      entityType: 'protocol',
+      entityId: protocol.id,
+    })
+
+    await this.prisma.protocol.update({
+      where: { id },
+      data: { signedDocumentId: document.id },
+    })
+
+    return { documentId: document.id, url: document.url }
   }
 
   // ═══════════════════════════════════════════════════════════════════

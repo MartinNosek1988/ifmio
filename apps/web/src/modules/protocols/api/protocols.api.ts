@@ -189,4 +189,18 @@ export const protocolsApi = {
 
   reorderLines: (protocolId: string, items: { lineId: string; sortOrder: number }[]) =>
     apiClient.post<ApiProtocol>(`/protocols/${protocolId}/lines/reorder`, { items }).then((r) => r.data),
+
+  // PDF & Documents
+  generatePdf: (id: string) =>
+    apiClient.post<{ documentId: string; url: string }>(`/protocols/${id}/generate-pdf`).then((r) => r.data),
+
+  getPdfUrl: (id: string) => `/protocols/${id}/pdf`,
+
+  uploadSigned: (id: string, file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return apiClient.post<{ documentId: string; url: string }>(`/protocols/${id}/upload-signed`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data)
+  },
 }

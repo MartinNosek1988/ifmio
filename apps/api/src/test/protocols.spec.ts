@@ -431,4 +431,64 @@ describe('Protocols API', () => {
     const confirmRes = await api.post(`/api/v1/protocols/${createRes.body.id}/confirm`).expect(201)
     expect(confirmRes.body.status).toBe('confirmed')
   })
+
+  // ─── PDF generation ──────────────────────────────────────────
+
+  it('POST /protocols/:id/generate-pdf — generates PDF and creates document', async () => {
+    const createRes = await api.post('/api/v1/protocols', {
+      sourceType: 'helpdesk',
+      sourceId: 'pdf-test-1',
+      title: 'PDF test protokol',
+      description: 'Testovací popis pro PDF generování',
+      requesterName: 'Jan Novák',
+      resolverName: 'Petr Řešitel',
+    }).expect(201)
+
+    await api.post(`/api/v1/protocols/${createRes.body.id}/lines`, {
+      name: 'Instalace ventilu', lineType: 'labor', unit: 'hod', quantity: 3,
+    }).expect(201)
+
+    const pdfRes = await api.post(`/api/v1/protocols/${createRes.body.id}/generate-pdf`).expect(201)
+
+    expect(pdfRes.body.documentId).toBeDefined()
+    expect(pdfRes.body.url).toBeDefined()
+
+    // Verify protocol now has generatedPdfDocumentId
+    const detailRes = await api.get(`/api/v1/protocols/${createRes.body.id}`).expect(200)
+    expect(detailRes.body.generatedPdfDocumentId).toBe(pdfRes.body.documentId)
+  })
+
+  it('GET /protocols/:id/pdf — downloads generated PDF', async () => {
+    // Use protocol from previous test — find one with generatedPdfDocumentId
+    const listRes = await api.get('/api/v1/protocols?search=PDF test protokol').expect(200)
+    const proto = listRes.body.data.find((p: any) => p.generatedPdfDocumentId)
+    if (!proto) return // skip if not found (remote DB may not have the previous test data)
+
+    const pdfRes = await api.get(`/api/v1/protocols/${proto.id}/pdf`).expect(200)
+    expect(pdfRes.headers['content-type']).toContain('application/pdf')
+  })
+
+  it('GET /protocols/:id/pdf — 400 if no PDF generated', async () => {
+    const createRes = await api.post('/api/v1/protocols', {
+      sourceType: 'helpdesk',
+      sourceId: 'pdf-test-no-pdf',
+    }).expect(201)
+
+    await api.get(`/api/v1/protocols/${createRes.body.id}/pdf`).expect(400)
+  })
+
+  it('POST /protocols/:id/generate-pdf — regenerates PDF (replaces documentId)', async () => {
+    const createRes = await api.post('/api/v1/protocols', {
+      sourceType: 'helpdesk',
+      sourceId: 'pdf-regen-test',
+      title: 'Regen PDF test',
+    }).expect(201)
+
+    const pdf1 = await api.post(`/api/v1/protocols/${createRes.body.id}/generate-pdf`).expect(201)
+    const pdf2 = await api.post(`/api/v1/protocols/${createRes.body.id}/generate-pdf`).expect(201)
+
+    expect(pdf2.body.documentId).toBeDefined()
+    // New document should be created each time
+    expect(pdf2.body.documentId).not.toBe(pdf1.body.documentId)
+  })
 })
