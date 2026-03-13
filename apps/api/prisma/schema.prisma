@@ -47,6 +47,7 @@ model Tenant {
   assets              Asset[]
   assetServiceRecords AssetServiceRecord[]
   invoices            Invoice[]
+  slaPolicies         SlaPolicy[]
 
   @@map("tenants")
 }
@@ -186,6 +187,7 @@ model Property {
   invoices        Invoice[]
 
   userAssignments UserPropertyAssignment[]
+  slaPolicies     SlaPolicy[]
 
   @@index([tenantId])
   @@map("properties")
@@ -759,6 +761,32 @@ model HelpdeskProtocol {
   ticket HelpdeskTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@map("helpdesk_protocols")
+}
+
+model SlaPolicy {
+  id         String    @id @default(uuid())
+  tenantId   String
+  propertyId String?
+
+  // Hours per priority
+  lowResponseH      Int @default(72)
+  lowResolutionH    Int @default(336)
+  mediumResponseH   Int @default(24)
+  mediumResolutionH Int @default(120)
+  highResponseH     Int @default(8)
+  highResolutionH   Int @default(48)
+  urgentResponseH   Int @default(1)
+  urgentResolutionH Int @default(8)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property Property? @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, propertyId])
+  @@index([tenantId])
+  @@map("sla_policies")
 }
 
 // ─── DOCUMENTS ────────────────────────────────────────────────────

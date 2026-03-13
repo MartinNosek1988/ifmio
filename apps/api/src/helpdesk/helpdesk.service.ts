@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service'
 import { PropertyScopeService } from '../common/services/property-scope.service'
 import { NotificationsService } from '../notifications/notifications.service'
-import { calculateSlaDates } from './sla.constants'
+import { SlaPolicyService } from './sla-policy.service'
 import type { HelpdeskListQueryDto, CreateTicketDto, UpdateTicketDto, CreateItemDto, CreateProtocolDto } from './dto/helpdesk.dto'
 import type { AuthUser } from '@ifmio/shared-types'
 
@@ -12,6 +12,7 @@ export class HelpdeskService {
     private prisma: PrismaService,
     private scope: PropertyScopeService,
     private notifications: NotificationsService,
+    private slaPolicy: SlaPolicyService,
   ) {}
 
   private async nextTicketNumber(tenantId: string): Promise<number> {
@@ -108,7 +109,8 @@ export class HelpdeskService {
     const number = await this.nextTicketNumber(user.tenantId)
     const priority = dto.priority ?? 'medium'
     const now = new Date()
-    const sla = calculateSlaDates(priority, now)
+    const effectiveSla = await this.slaPolicy.getEffectiveSla(user.tenantId, priority, dto.propertyId)
+    const sla = this.slaPolicy.calculateSlaDates(effectiveSla, now)
 
     const ticket = await this.prisma.helpdeskTicket.create({
       data: {
@@ -144,7 +146,8 @@ export class HelpdeskService {
 
     // Recalculate SLA if priority changed
     if (dto.priority && dto.priority !== existing.priority) {
-      const sla = calculateSlaDates(dto.priority, new Date(existing.createdAt))
+      const effectiveSla = await this.slaPolicy.getEffectiveSla(user.tenantId, dto.priority, existing.propertyId)
+      const sla = this.slaPolicy.calculateSlaDates(effectiveSla, new Date(existing.createdAt))
       data.responseDueAt = sla.responseDueAt
       data.resolutionDueAt = sla.resolutionDueAt
     }
