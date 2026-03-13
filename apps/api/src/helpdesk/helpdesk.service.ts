@@ -213,14 +213,18 @@ export class HelpdeskService {
 
   // ─── SLA ESCALATION (called from cron) ─────────────────────────
 
+  /** Max escalation level — stops auto-escalating beyond this */
+  private static readonly MAX_ESCALATION_LEVEL = 5
+
   async escalateOverdueTickets() {
     const now = new Date()
 
-    // Find active tickets past resolution SLA
+    // Find active tickets past resolution SLA that haven't hit max escalation
     const overdue = await this.prisma.helpdeskTicket.findMany({
       where: {
         status: { in: ['open', 'in_progress'] },
         resolutionDueAt: { lt: now },
+        escalationLevel: { lt: HelpdeskService.MAX_ESCALATION_LEVEL },
       },
       include: {
         property: { select: { id: true, name: true } },
@@ -229,7 +233,9 @@ export class HelpdeskService {
 
     let escalated = 0
     for (const ticket of overdue) {
-      const newLevel = ticket.escalationLevel + 1
+      const oldLevel = ticket.escalationLevel
+      const newLevel = oldLevel + 1
+
       await this.prisma.helpdeskTicket.update({
         where: { id: ticket.id },
         data: {
@@ -238,14 +244,23 @@ export class HelpdeskService {
         },
       })
 
-      // Audit log
+      // Audit log with old/new data
       await this.prisma.auditLog.create({
         data: {
           tenantId: ticket.tenantId,
           action: 'TICKET_ESCALATED',
           entity: 'HelpdeskTicket',
           entityId: ticket.id,
-          newData: { escalationLevel: newLevel, priority: ticket.priority },
+          oldData: {
+            escalationLevel: oldLevel,
+            propertyId: ticket.propertyId,
+            priority: ticket.priority,
+          },
+          newData: {
+            escalationLevel: newLevel,
+            propertyId: ticket.propertyId,
+            priority: ticket.priority,
+          },
         },
       })
 
