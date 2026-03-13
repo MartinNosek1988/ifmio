@@ -676,10 +676,17 @@ model HelpdeskTicket {
   category    TicketCategory @default(general)
   priority    TicketPriority @default(medium)
   status      TicketStatus   @default(open)
-  assigneeId  String?
-  resolvedAt  DateTime?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  assigneeId      String?
+  resolvedAt      DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // SLA fields
+  responseDueAt   DateTime?
+  resolutionDueAt DateTime?
+  firstResponseAt DateTime?
+  escalationLevel Int            @default(0)
+  escalatedAt     DateTime?
 
   tenant    Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   property  Property?         @relation(fields: [propertyId], references: [id], onDelete: SetNull)
@@ -693,6 +700,7 @@ model HelpdeskTicket {
   @@index([tenantId, status])
   @@index([tenantId, status, createdAt])
   @@index([propertyId, status])
+  @@index([tenantId, resolutionDueAt])
   @@map("helpdesk_tickets")
 }
 

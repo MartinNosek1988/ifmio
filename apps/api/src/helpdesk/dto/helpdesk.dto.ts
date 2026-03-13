@@ -1,6 +1,6 @@
 import {
   IsString, IsOptional, IsNumber, IsEnum, IsArray,
-  IsDateString, Min,
+  IsDateString, IsBooleanString, Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -16,6 +16,12 @@ export class HelpdeskListQueryDto {
 
   @IsOptional() @IsString()
   search?: string;
+
+  @IsOptional() @IsBooleanString()
+  overdue?: string;
+
+  @IsOptional() @IsBooleanString()
+  escalated?: string;
 
   @IsOptional() @Type(() => Number) @IsNumber()
   page?: number;
