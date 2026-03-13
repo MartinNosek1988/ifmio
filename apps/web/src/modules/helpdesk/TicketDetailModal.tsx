@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Trash2, UserCheck, CheckCircle } from 'lucide-react';
 import { Modal, Badge, Button, LoadingState } from '../../shared/components';
 import type { BadgeVariant } from '../../shared/components';
-import { useTicket, useUpdateTicket, useAddTicketItem, useRemoveTicketItem, useSaveProtocol, useClaimTicket, useResolveTicket, useAssignTicket } from './api/helpdesk.queries';
+import { useTicket, useUpdateTicket, useAddTicketItem, useRemoveTicketItem, useSaveProtocol, useClaimTicket, useResolveTicket } from './api/helpdesk.queries';
 import type { ApiTicketItem } from './api/helpdesk.api';
 import { useAuthStore } from '../../core/auth/auth.store';
 
@@ -44,7 +44,6 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
   const updateMutation = useUpdateTicket();
   const claimMutation = useClaimTicket();
   const resolveMutation = useResolveTicket();
-  const assignMutation = useAssignTicket();
   const addItemMutation = useAddTicketItem();
   const removeItemMutation = useRemoveTicketItem();
   const saveProtocolMutation = useSaveProtocol();
@@ -189,17 +188,15 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
                   {claimMutation.isPending ? 'Přebírám...' : 'Převzít'}
                 </Button>
               )}
-              {ticket.status !== 'resolved' && (
-                <Button
-                  size="sm"
-                  variant="primary"
-                  onClick={() => resolveMutation.mutate(ticket.id)}
-                  disabled={resolveMutation.isPending}
-                >
-                  <CheckCircle size={14} style={{ marginRight: 4 }} />
-                  {resolveMutation.isPending ? 'Vyřizuji...' : 'Rychle vyřešit'}
-                </Button>
-              )}
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => resolveMutation.mutate(ticket.id)}
+                disabled={resolveMutation.isPending}
+              >
+                <CheckCircle size={14} style={{ marginRight: 4 }} />
+                {resolveMutation.isPending ? 'Vyřizuji...' : 'Rychle vyřešit'}
+              </Button>
             </div>
           )}
 
