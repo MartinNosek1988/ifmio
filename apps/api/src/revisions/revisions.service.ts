@@ -167,7 +167,7 @@ export class RevisionsService {
     // Compliance filter
     if (query.complianceStatus) {
       const statusFilter = { status: 'active' }
-      if (query.complianceStatus === 'overdue') {
+      if (query.complianceStatus === 'overdue' || query.complianceStatus === 'overdue_critical') {
         Object.assign(where, { ...statusFilter, nextDueAt: { lt: now } })
       } else if (query.complianceStatus === 'due_soon') {
         Object.assign(where, {
@@ -217,12 +217,10 @@ export class RevisionsService {
       }
     }))
 
-    // If filtering "due_soon", do fine-grained filtering by reminder window
-    const filteredData = query.complianceStatus === 'due_soon'
-      ? data.filter((p) => p.complianceStatus === 'due_soon')
-      : query.complianceStatus === 'compliant'
-        ? data.filter((p) => p.complianceStatus === 'compliant')
-        : data
+    // Post-filter by computed compliance status (exact match)
+    const filteredData = query.complianceStatus
+      ? data.filter((p) => p.complianceStatus === query.complianceStatus)
+      : data
 
     return {
       data: filteredData,
