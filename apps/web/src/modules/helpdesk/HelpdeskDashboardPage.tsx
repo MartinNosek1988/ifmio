@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
-import { KpiCard, Badge, Button, LoadingState, ErrorState } from '../../shared/components'
+import { KpiCard, Badge, LoadingState, ErrorState } from '../../shared/components'
 import type { BadgeVariant } from '../../shared/components'
 import { useDashboard } from './api/helpdesk.queries'
 import type { DashboardData } from './api/helpdesk.api'
@@ -12,10 +12,6 @@ const PRIORITY_LABELS: Record<string, string> = {
 const PRIO_COLOR: Record<string, BadgeVariant> = {
   low: 'muted', medium: 'blue', high: 'yellow', urgent: 'red',
 }
-const STATUS_LABELS: Record<string, string> = {
-  open: 'Otevřený', in_progress: 'V řešení', resolved: 'Vyřešený', closed: 'Uzavřený',
-}
-
 const PERIOD_OPTIONS = [
   { value: 7, label: '7 dní' },
   { value: 30, label: '30 dní' },
