@@ -245,10 +245,11 @@ describe('Protocols API', () => {
       address: 'Ulice 1',
       city: 'Praha',
       postalCode: '10000',
-      type: 'residential',
+      type: 'bytdum',
+      ownership: 'vlastnictvi',
     }).expect(201)
 
-    const ticketRes = await api.post('/api/v1/helpdesk/tickets', {
+    const ticketRes = await api.post('/api/v1/helpdesk', {
       title: 'Prasklý ventil',
       description: 'Teče voda v koupelně',
       propertyId: propRes.body.id,
