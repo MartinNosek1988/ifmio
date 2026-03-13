@@ -7,10 +7,12 @@ import { useRevisionDashboard } from './api/revisions.queries'
 import type { ApiRevisionPlan } from './api/revisions.api'
 
 const COMPLIANCE_LABEL: Record<string, string> = {
-  compliant: 'V pořádku', due_soon: 'Blíží se', overdue: 'Po termínu',
+  compliant: 'V pořádku', due_soon: 'Blíží se', overdue: 'Po termínu', overdue_critical: 'Kritické',
+  performed_pending_protocol: 'Bez protokolu', performed_pending_signature: 'Čeká podpis', performed_unconfirmed: 'Nepotvrzeno',
 }
 const COMPLIANCE_COLOR: Record<string, BadgeVariant> = {
-  compliant: 'green', due_soon: 'yellow', overdue: 'red',
+  compliant: 'green', due_soon: 'yellow', overdue: 'red', overdue_critical: 'red',
+  performed_pending_protocol: 'yellow', performed_pending_signature: 'yellow', performed_unconfirmed: 'muted',
 }
 
 export default function RevisionDashboardPage() {
@@ -48,13 +50,20 @@ export default function RevisionDashboardPage() {
       </div>
 
       {/* KPI */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 16, marginBottom: 16 }}>
         <KpiCard label="Celkem plánů" value={String(kpi.totalPlans)} color="var(--accent-blue)" />
         <KpiCard label="V pořádku" value={String(kpi.compliant)} color="var(--accent-green, #22c55e)" />
         <KpiCard label="Blíží se" value={String(kpi.dueSoon)} color="var(--accent-yellow, #e6a817)" />
-        <KpiCard label="Po termínu" value={String(kpi.overdue)} color="var(--accent-red, var(--danger))" />
+        <KpiCard label="Po termínu" value={String(kpi.overdue + (kpi.overdueCritical ?? 0))} color="var(--accent-red, var(--danger))" />
         <KpiCard label="Provedeno za období" value={String(kpi.performedInPeriod)} color="var(--accent-blue)" />
       </div>
+      {((kpi.pendingProtocol ?? 0) > 0 || (kpi.pendingSignature ?? 0) > 0 || (kpi.unconfirmed ?? 0) > 0) && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 24 }}>
+          <KpiCard label="Bez protokolu" value={String(kpi.pendingProtocol ?? 0)} color="var(--accent-yellow, #e6a817)" />
+          <KpiCard label="Čeká podpis" value={String(kpi.pendingSignature ?? 0)} color="var(--accent-yellow, #e6a817)" />
+          <KpiCard label="Nepotvrzeno" value={String(kpi.unconfirmed ?? 0)} color="var(--accent-blue)" />
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
         {/* By Type */}

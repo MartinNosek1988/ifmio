@@ -10,10 +10,12 @@ interface Props {
 }
 
 const COMPLIANCE_LABEL: Record<string, string> = {
-  compliant: 'V pořádku', due_soon: 'Blíží se', overdue: 'Po termínu',
+  compliant: 'V pořádku', due_soon: 'Blíží se', overdue: 'Po termínu', overdue_critical: 'Kritické',
+  performed_pending_protocol: 'Bez protokolu', performed_pending_signature: 'Čeká podpis', performed_unconfirmed: 'Nepotvrzeno',
 }
 const COMPLIANCE_COLOR: Record<string, BadgeVariant> = {
-  compliant: 'green', due_soon: 'yellow', overdue: 'red',
+  compliant: 'green', due_soon: 'yellow', overdue: 'red', overdue_critical: 'red',
+  performed_pending_protocol: 'yellow', performed_pending_signature: 'yellow', performed_unconfirmed: 'muted',
 }
 const RESULT_LABEL: Record<string, string> = {
   passed: 'Prošlo', passed_with_notes: 'Prošlo s pozn.', failed: 'Neprošlo',

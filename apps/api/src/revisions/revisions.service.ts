@@ -12,6 +12,17 @@ import type { AuthUser } from '@ifmio/shared-types'
 
 const DAY_MS = 86_400_000
 
+export type ComplianceStatus =
+  | 'compliant'
+  | 'due_soon'
+  | 'overdue'
+  | 'overdue_critical'
+  | 'performed_pending_protocol'
+  | 'performed_pending_signature'
+  | 'performed_unconfirmed'
+
+type ProtocolComplianceState = 'missing' | 'pending_signature' | 'unconfirmed'
+
 @Injectable()
 export class RevisionsService {
   constructor(
@@ -95,6 +106,11 @@ export class RevisionsService {
           defaultIntervalDays: dto.defaultIntervalDays ?? 365,
           defaultReminderDaysBefore: dto.defaultReminderDaysBefore ?? 30,
           color: dto.color,
+          requiresProtocol: dto.requiresProtocol ?? false,
+          defaultProtocolType: dto.defaultProtocolType,
+          requiresSupplierSignature: dto.requiresSupplierSignature ?? false,
+          requiresCustomerSignature: dto.requiresCustomerSignature ?? false,
+          graceDaysAfterEvent: dto.graceDaysAfterEvent ?? 14,
         },
       })
     } catch (error) {
@@ -182,7 +198,7 @@ export class RevisionsService {
         include: {
           property: { select: { id: true, name: true } },
           revisionSubject: { select: { id: true, name: true } },
-          revisionType: { select: { id: true, name: true, color: true } },
+          revisionType: { select: { id: true, name: true, color: true, requiresProtocol: true, requiresSupplierSignature: true, requiresCustomerSignature: true } },
           responsibleUser: { select: { id: true, name: true } },
           _count: { select: { events: true } },
         },
@@ -190,10 +206,15 @@ export class RevisionsService {
       this.prisma.revisionPlan.count({ where }),
     ])
 
-    // Enrich with compliance status
-    const data = items.map((plan) => ({
-      ...plan,
-      complianceStatus: this.getComplianceStatus(plan, now),
+    // Enrich with compliance status (protocol-aware)
+    const data = await Promise.all(items.map(async (plan) => {
+      const protocolState = plan.revisionType.requiresProtocol
+        ? await this.getProtocolComplianceState(user.tenantId, plan.id, plan.revisionType)
+        : null
+      return {
+        ...plan,
+        complianceStatus: this.getComplianceStatus(plan, now, protocolState),
+      }
     }))
 
     // If filtering "due_soon", do fine-grained filtering by reminder window
@@ -217,7 +238,7 @@ export class RevisionsService {
       include: {
         property: { select: { id: true, name: true } },
         revisionSubject: { select: { id: true, name: true, location: true, manufacturer: true, model: true } },
-        revisionType: { select: { id: true, name: true, code: true, color: true } },
+        revisionType: { select: { id: true, name: true, code: true, color: true, requiresProtocol: true, defaultProtocolType: true, requiresSupplierSignature: true, requiresCustomerSignature: true, graceDaysAfterEvent: true } },
         responsibleUser: { select: { id: true, name: true } },
         events: {
           orderBy: { performedAt: { sort: 'desc', nulls: 'last' } },
@@ -228,7 +249,10 @@ export class RevisionsService {
     if (!plan) throw new NotFoundException('Plán revize nenalezen')
     await this.scope.verifyEntityAccess(user, plan.propertyId)
     const now = new Date()
-    return { ...plan, complianceStatus: this.getComplianceStatus(plan, now) }
+    const protocolState = plan.revisionType.requiresProtocol
+      ? await this.getProtocolComplianceState(user.tenantId, plan.id, plan.revisionType)
+      : null
+    return { ...plan, complianceStatus: this.getComplianceStatus(plan, now, protocolState) }
   }
 
   async createPlan(user: AuthUser, dto: CreateRevisionPlanDto) {
@@ -429,17 +453,32 @@ export class RevisionsService {
 
     const allPlans = await this.prisma.revisionPlan.findMany({
       where: activeWhere,
-      select: { id: true, nextDueAt: true, reminderDaysBefore: true, revisionTypeId: true, propertyId: true },
+      select: {
+        id: true, nextDueAt: true, reminderDaysBefore: true, revisionTypeId: true, propertyId: true,
+        revisionType: { select: { requiresProtocol: true, requiresSupplierSignature: true, requiresCustomerSignature: true } },
+      },
     })
 
     let compliant = 0
     let dueSoon = 0
     let overdue = 0
+    let overdueCritical = 0
+    let pendingProtocol = 0
+    let pendingSignature = 0
+    let unconfirmed = 0
+
     for (const plan of allPlans) {
-      const cs = this.getComplianceStatus(plan, now)
+      const protocolState = plan.revisionType.requiresProtocol
+        ? await this.getProtocolComplianceState(user.tenantId, plan.id, plan.revisionType)
+        : null
+      const cs = this.getComplianceStatus(plan, now, protocolState)
       if (cs === 'compliant') compliant++
       else if (cs === 'due_soon') dueSoon++
       else if (cs === 'overdue') overdue++
+      else if (cs === 'overdue_critical') overdueCritical++
+      else if (cs === 'performed_pending_protocol') pendingProtocol++
+      else if (cs === 'performed_pending_signature') pendingSignature++
+      else if (cs === 'performed_unconfirmed') unconfirmed++
     }
 
     const performedInPeriod = await this.prisma.revisionEvent.count({
@@ -515,6 +554,10 @@ export class RevisionsService {
         compliant,
         dueSoon,
         overdue,
+        overdueCritical,
+        pendingProtocol,
+        pendingSignature,
+        unconfirmed,
         performedInPeriod,
       },
       byType,
@@ -531,13 +574,66 @@ export class RevisionsService {
   private getComplianceStatus(
     plan: { nextDueAt: Date; reminderDaysBefore?: number },
     now: Date,
-  ): 'compliant' | 'due_soon' | 'overdue' {
+    protocolState?: ProtocolComplianceState | null,
+  ): ComplianceStatus {
     const due = new Date(plan.nextDueAt).getTime()
     const nowMs = now.getTime()
-    if (due < nowMs) return 'overdue'
+
+    // Time-based check first
+    if (due < nowMs) {
+      // Check if critically overdue (> 30 days past due)
+      if (due < nowMs - 30 * DAY_MS) return 'overdue_critical'
+      return 'overdue'
+    }
+
+    // If on time but protocol requirements not met
+    if (protocolState) {
+      if (protocolState === 'missing') return 'performed_pending_protocol'
+      if (protocolState === 'pending_signature') return 'performed_pending_signature'
+      if (protocolState === 'unconfirmed') return 'performed_unconfirmed'
+    }
+
     const reminderMs = (plan.reminderDaysBefore ?? 30) * DAY_MS
     if (due <= nowMs + reminderMs) return 'due_soon'
     return 'compliant'
+  }
+
+  /**
+   * Determine protocol compliance state for a plan's latest event.
+   * Returns null if the type doesn't require a protocol.
+   */
+  private async getProtocolComplianceState(
+    tenantId: string,
+    planId: string,
+    revisionType: { requiresProtocol: boolean; requiresSupplierSignature: boolean; requiresCustomerSignature: boolean },
+  ): Promise<ProtocolComplianceState | null> {
+    if (!revisionType.requiresProtocol) return null
+
+    // Find latest performed event for this plan
+    const latestEvent = await this.prisma.revisionEvent.findFirst({
+      where: { revisionPlanId: planId, performedAt: { not: null } },
+      orderBy: { performedAt: 'desc' },
+      select: { id: true },
+    })
+    if (!latestEvent) return null
+
+    // Check if protocol exists for this event
+    const protocol = await this.prisma.protocol.findFirst({
+      where: { tenantId, sourceType: 'revision', sourceId: latestEvent.id },
+      select: { status: true, supplierSignatureName: true, customerSignatureName: true },
+    })
+
+    if (!protocol) return 'missing'
+
+    if (protocol.status === 'draft') return 'unconfirmed'
+
+    // Check signature requirements
+    if (revisionType.requiresSupplierSignature && !protocol.supplierSignatureName) return 'pending_signature'
+    if (revisionType.requiresCustomerSignature && !protocol.customerSignatureName) return 'pending_signature'
+
+    if (protocol.status === 'completed') return 'unconfirmed'
+
+    return null // confirmed = fully compliant
   }
 
   private async recalculatePlan(planId: string, performedAt: Date, intervalDays: number) {

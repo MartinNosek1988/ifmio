@@ -30,6 +30,11 @@ export interface ApiRevisionType {
   defaultReminderDaysBefore: number
   color: string | null
   isActive: boolean
+  requiresProtocol: boolean
+  defaultProtocolType: string | null
+  requiresSupplierSignature: boolean
+  requiresCustomerSignature: boolean
+  graceDaysAfterEvent: number
   createdAt: string
   updatedAt: string
 }
@@ -52,7 +57,7 @@ export interface ApiRevisionPlan {
   isMandatory: boolean
   createdAt: string
   updatedAt: string
-  complianceStatus?: 'compliant' | 'due_soon' | 'overdue'
+  complianceStatus?: 'compliant' | 'due_soon' | 'overdue' | 'overdue_critical' | 'performed_pending_protocol' | 'performed_pending_signature' | 'performed_unconfirmed'
   property?: { id: string; name: string } | null
   revisionSubject?: { id: string; name: string; location?: string; manufacturer?: string; model?: string } | null
   revisionType?: { id: string; name: string; code?: string; color?: string | null } | null
@@ -94,6 +99,10 @@ export interface RevisionDashboardKpi {
   compliant: number
   dueSoon: number
   overdue: number
+  overdueCritical: number
+  pendingProtocol: number
+  pendingSignature: number
+  unconfirmed: number
   performedInPeriod: number
 }
 
@@ -126,6 +135,11 @@ export interface CreateTypePayload {
   defaultIntervalDays?: number
   defaultReminderDaysBefore?: number
   color?: string
+  requiresProtocol?: boolean
+  defaultProtocolType?: string
+  requiresSupplierSignature?: boolean
+  requiresCustomerSignature?: boolean
+  graceDaysAfterEvent?: number
 }
 
 export interface CreatePlanPayload {
