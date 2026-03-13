@@ -7,6 +7,9 @@ export type NotificationType =
   | 'new_debtor'
   | 'unit_vacant'
   | 'ticket_new'
+  | 'ticket_due_soon'
+  | 'ticket_overdue'
+  | 'ticket_escalated'
   | 'payment_unmatched'
   | 'contract_expiring'
   | 'meter_calibration'
@@ -289,6 +292,104 @@ export class NotificationsService {
       title: 'Novy helpdesk ticket',
       body: `${params.protocol}: ${params.ticketTitle}`,
       entityId: params.ticketId,
+      entityType: 'HelpdeskTicket',
+      url: '/helpdesk',
+    })
+  }
+
+  async notifyTicketDueSoon(params: {
+    tenantId: string
+    ticketId: string
+    ticketNumber: number
+    ticketTitle: string
+    hoursLeft: number
+    assigneeId?: string | null
+  }) {
+    const dedup = `ticket_due_soon:${params.ticketId}`
+    const exists = await this.prisma.notification.findFirst({
+      where: { tenantId: params.tenantId, entityId: dedup, type: 'ticket_due_soon' },
+    })
+    if (exists) return
+
+    const num = `HD-${String(params.ticketNumber).padStart(4, '0')}`
+    await this.create({
+      tenantId: params.tenantId,
+      userId: params.assigneeId ?? undefined,
+      type: 'ticket_due_soon',
+      title: `SLA blizi se termin: ${num}`,
+      body: `${params.ticketTitle} — zbyvá ${params.hoursLeft}h`,
+      entityId: dedup,
+      entityType: 'HelpdeskTicket',
+      url: '/helpdesk',
+    })
+    // Also broadcast to tenant if no specific assignee
+    if (!params.assigneeId) {
+      await this.createForTenant(params.tenantId, {
+        type: 'ticket_due_soon',
+        title: `SLA blizi se termin: ${num}`,
+        body: `${params.ticketTitle} — zbyvá ${params.hoursLeft}h`,
+        entityId: dedup,
+        entityType: 'HelpdeskTicket',
+        url: '/helpdesk',
+      })
+    }
+  }
+
+  async notifyTicketOverdue(params: {
+    tenantId: string
+    ticketId: string
+    ticketNumber: number
+    ticketTitle: string
+    assigneeId?: string | null
+  }) {
+    const dedup = `ticket_overdue:${params.ticketId}`
+    const exists = await this.prisma.notification.findFirst({
+      where: { tenantId: params.tenantId, entityId: dedup, type: 'ticket_overdue' },
+    })
+    if (exists) return
+
+    const num = `HD-${String(params.ticketNumber).padStart(4, '0')}`
+    await this.create({
+      tenantId: params.tenantId,
+      userId: params.assigneeId ?? undefined,
+      type: 'ticket_overdue',
+      title: `SLA prekroceno: ${num}`,
+      body: params.ticketTitle,
+      entityId: dedup,
+      entityType: 'HelpdeskTicket',
+      url: '/helpdesk',
+    })
+    if (!params.assigneeId) {
+      await this.createForTenant(params.tenantId, {
+        type: 'ticket_overdue',
+        title: `SLA prekroceno: ${num}`,
+        body: params.ticketTitle,
+        entityId: dedup,
+        entityType: 'HelpdeskTicket',
+        url: '/helpdesk',
+      })
+    }
+  }
+
+  async notifyTicketEscalated(params: {
+    tenantId: string
+    ticketId: string
+    ticketNumber: number
+    ticketTitle: string
+    escalationLevel: number
+  }) {
+    const dedup = `ticket_escalated:${params.ticketId}:L${params.escalationLevel}`
+    const exists = await this.prisma.notification.findFirst({
+      where: { tenantId: params.tenantId, entityId: dedup, type: 'ticket_escalated' },
+    })
+    if (exists) return
+
+    const num = `HD-${String(params.ticketNumber).padStart(4, '0')}`
+    await this.createForTenant(params.tenantId, {
+      type: 'ticket_escalated',
+      title: `Eskalace L${params.escalationLevel}: ${num}`,
+      body: params.ticketTitle,
+      entityId: dedup,
       entityType: 'HelpdeskTicket',
       url: '/helpdesk',
     })
