@@ -60,7 +60,12 @@ export interface ApiRevisionPlan {
   complianceStatus?: 'compliant' | 'due_soon' | 'overdue' | 'overdue_critical' | 'performed_pending_protocol' | 'performed_pending_signature' | 'performed_unconfirmed'
   property?: { id: string; name: string } | null
   revisionSubject?: { id: string; name: string; location?: string; manufacturer?: string; model?: string } | null
-  revisionType?: { id: string; name: string; code?: string; color?: string | null } | null
+  revisionType?: {
+    id: string; name: string; code?: string; color?: string | null
+    requiresProtocol?: boolean; defaultProtocolType?: string | null
+    requiresSupplierSignature?: boolean; requiresCustomerSignature?: boolean
+    graceDaysAfterEvent?: number
+  } | null
   responsibleUser?: { id: string; name: string } | null
   _count?: { events: number }
   events?: ApiRevisionEvent[]
@@ -84,6 +89,8 @@ export interface ApiRevisionEvent {
   updatedAt: string
   revisionPlan?: { id: string; title: string } | null
   property?: { id: string; name: string } | null
+  protocol?: { id: string; number: string; status: string } | null
+  autoProtocol?: { id: string; number: string; status: string } | null
 }
 
 export interface PaginatedPlans {

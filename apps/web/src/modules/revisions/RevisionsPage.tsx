@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, BarChart3, Settings } from 'lucide-react'
 import { KpiCard, Table, Badge, SearchBar, Button, EmptyState, LoadingState, ErrorState } from '../../shared/components'
 import type { Column, BadgeVariant } from '../../shared/components'
@@ -35,10 +35,12 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default function RevisionsPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const initialCompliance = searchParams.get('complianceStatus') ?? ''
   const [search, setSearch] = useState('')
   const [filterProperty, setFilterProperty] = useState('')
   const [filterType, setFilterType] = useState('')
-  const [filterCompliance, setFilterCompliance] = useState('')
+  const [filterCompliance, setFilterCompliance] = useState(initialCompliance)
   const [filterStatus, setFilterStatus] = useState('active')
   const [selectedPlan, setSelectedPlan] = useState<ApiRevisionPlan | null>(null)
   const [showForm, setShowForm] = useState(false)

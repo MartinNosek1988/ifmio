@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { Modal, Badge, Button, LoadingState } from '../../shared/components'
 import type { BadgeVariant } from '../../shared/components'
 import { useRevisionPlan, usePlanHistory, useRecordRevisionEvent } from './api/revisions.queries'
+import { useConfirmProtocol } from '../protocols/api/protocols.queries'
 import ProtocolPanel from '../protocols/ProtocolPanel'
+import type { ApiRevisionEvent } from './api/revisions.api'
 
 interface Props {
   planId: string
@@ -17,6 +19,13 @@ const COMPLIANCE_COLOR: Record<string, BadgeVariant> = {
   compliant: 'green', due_soon: 'yellow', overdue: 'red', overdue_critical: 'red',
   performed_pending_protocol: 'yellow', performed_pending_signature: 'yellow', performed_unconfirmed: 'muted',
 }
+const COMPLIANCE_HINT: Record<string, string> = {
+  performed_pending_protocol: 'Revize provedena, ale chybí revizní protokol',
+  performed_pending_signature: 'Protokol vytvořen, ale chybí podpis',
+  performed_unconfirmed: 'Protokol dokončen, ale zatím nebyl potvrzen',
+  overdue: 'Revize je po termínu',
+  overdue_critical: 'Revize je kriticky po termínu (>30 dní)',
+}
 const RESULT_LABEL: Record<string, string> = {
   passed: 'Prošlo', passed_with_notes: 'Prošlo s pozn.', failed: 'Neprošlo',
   cancelled: 'Zrušeno', planned: 'Plánováno',
@@ -25,6 +34,12 @@ const RESULT_COLOR: Record<string, BadgeVariant> = {
   passed: 'green', passed_with_notes: 'yellow', failed: 'red',
   cancelled: 'muted', planned: 'blue',
 }
+const PROTOCOL_STATUS_LABEL: Record<string, string> = {
+  draft: 'Koncept', completed: 'Dokončený', confirmed: 'Potvrzený',
+}
+const PROTOCOL_STATUS_COLOR: Record<string, BadgeVariant> = {
+  draft: 'muted', completed: 'yellow', confirmed: 'green',
+}
 
 type TabKey = 'detail' | 'history' | 'protocol'
 
@@ -32,6 +47,7 @@ export default function RevisionPlanDetailModal({ planId, onClose }: Props) {
   const { data: plan, isLoading } = useRevisionPlan(planId)
   const { data: history } = usePlanHistory(planId)
   const recordMutation = useRecordRevisionEvent()
+  const confirmMutation = useConfirmProtocol()
 
   const [tab, setTab] = useState<TabKey>('detail')
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
@@ -47,6 +63,7 @@ export default function RevisionPlanDetailModal({ planId, onClose }: Props) {
 
   const cs = plan.complianceStatus ?? 'compliant'
   const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString('cs-CZ') : '—'
+  const requiresProtocol = plan.revisionType?.requiresProtocol ?? false
 
   const handleRecord = () => {
     recordMutation.mutate({
@@ -66,6 +83,10 @@ export default function RevisionPlanDetailModal({ planId, onClose }: Props) {
         setEventPerformer('')
       },
     })
+  }
+
+  const handleConfirmProtocol = (protocolId: string) => {
+    confirmMutation.mutate(protocolId)
   }
 
   const inputStyle: React.CSSProperties = {
@@ -106,7 +127,20 @@ export default function RevisionPlanDetailModal({ planId, onClose }: Props) {
             <Badge variant={COMPLIANCE_COLOR[cs]}>{COMPLIANCE_LABEL[cs] || cs}</Badge>
             {plan.isMandatory && <Badge variant="red">Povinná</Badge>}
             <Badge variant="muted">{plan.status === 'active' ? 'Aktivní' : plan.status === 'paused' ? 'Pozastavený' : 'Archivovaný'}</Badge>
+            {requiresProtocol && <Badge variant="blue">Vyžaduje protokol</Badge>}
           </div>
+
+          {/* Compliance hint */}
+          {COMPLIANCE_HINT[cs] && (
+            <div style={{
+              padding: '8px 12px', marginBottom: 16, borderRadius: 6,
+              background: cs.startsWith('overdue') ? 'var(--danger-bg, rgba(239,68,68,0.1))' : 'var(--warning-bg, rgba(234,179,8,0.1))',
+              border: `1px solid ${cs.startsWith('overdue') ? 'var(--danger, #ef4444)' : 'var(--accent-yellow, #e6a817)'}`,
+              fontSize: '0.85rem',
+            }}>
+              {COMPLIANCE_HINT[cs]}
+            </div>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
             <InfoField label="Předmět" value={plan.revisionSubject?.name ?? '—'} />
@@ -153,12 +187,12 @@ export default function RevisionPlanDetailModal({ planId, onClose }: Props) {
                   <th style={{ textAlign: 'left', padding: '6px 0' }} className="text-muted">Datum</th>
                   <th style={{ textAlign: 'left', padding: '6px 0' }} className="text-muted">Výsledek</th>
                   <th style={{ textAlign: 'left', padding: '6px 0' }} className="text-muted">Provedl</th>
-                  <th style={{ textAlign: 'left', padding: '6px 0' }} className="text-muted">Shrnutí</th>
-                  <th style={{ width: 80 }} />
+                  <th style={{ textAlign: 'left', padding: '6px 0' }} className="text-muted">Protokol</th>
+                  <th style={{ width: 120 }} />
                 </tr>
               </thead>
               <tbody>
-                {history.map((ev) => (
+                {history.map((ev: ApiRevisionEvent) => (
                   <tr key={ev.id} style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '8px 0' }}>{fmtDate(ev.performedAt)}</td>
                     <td style={{ padding: '8px 0' }}>
@@ -167,11 +201,34 @@ export default function RevisionPlanDetailModal({ planId, onClose }: Props) {
                       </Badge>
                     </td>
                     <td style={{ padding: '8px 0' }}>{ev.performedBy ?? ev.vendorName ?? '—'}</td>
-                    <td style={{ padding: '8px 0' }} className="text-muted">{ev.summary ?? '—'}</td>
                     <td style={{ padding: '8px 0' }}>
+                      {ev.protocol ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Badge variant={PROTOCOL_STATUS_COLOR[ev.protocol.status] || 'muted'}>
+                            {PROTOCOL_STATUS_LABEL[ev.protocol.status] || ev.protocol.status}
+                          </Badge>
+                          <span className="text-muted" style={{ fontSize: '0.75rem' }}>{ev.protocol.number}</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted" style={{ fontSize: '0.8rem' }}>
+                          {requiresProtocol ? 'Chybí' : '—'}
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ padding: '8px 0', display: 'flex', gap: 4 }}>
                       <Button size="sm" onClick={() => { setSelectedEventId(ev.id); setTab('protocol') }}>
-                        Protokol
+                        {ev.protocol ? 'Otevřít' : 'Vytvořit'}
                       </Button>
+                      {ev.protocol?.status === 'completed' && (
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          onClick={() => handleConfirmProtocol(ev.protocol!.id)}
+                          disabled={confirmMutation.isPending}
+                        >
+                          Potvrdit
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -197,6 +254,11 @@ export default function RevisionPlanDetailModal({ planId, onClose }: Props) {
       {showRecord && (
         <div style={{ marginTop: 16, padding: 14, border: '2px solid var(--accent-blue, #6366f1)', borderRadius: 8 }}>
           <div style={{ fontWeight: 600, marginBottom: 12 }}>Zapsat provedení revize</div>
+          {requiresProtocol && (
+            <div style={{ fontSize: '0.8rem', color: 'var(--accent-blue)', marginBottom: 8 }}>
+              Protokol bude automaticky vytvořen po zápisu.
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
             <div>
               <label className="form-label">Výsledek</label>
