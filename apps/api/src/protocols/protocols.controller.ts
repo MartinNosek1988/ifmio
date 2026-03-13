@@ -1,8 +1,11 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Body, Param, Query, UseGuards, HttpCode, HttpStatus,
+  Body, Param, Query, Req, Res, UseGuards, HttpCode, HttpStatus,
 } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
+import * as fs from 'fs'
+import * as path from 'path'
+import type { FastifyRequest, FastifyReply } from 'fastify'
 import { ProtocolsService } from './protocols.service'
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard'
 import { Roles } from '../common/decorators/roles.decorator'
@@ -96,6 +99,62 @@ export class ProtocolsController {
   @ApiOperation({ summary: 'Potvrdit protokol (completed → confirmed)' })
   confirm(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.service.confirm(user, id)
+  }
+
+  // ─── PDF & Documents ─────────────────────────────────────────
+  @Post(':id/generate-pdf')
+  @Roles(...ROLES_OPS)
+  @AuditAction('Protocol', 'UPDATE')
+  @ApiOperation({ summary: 'Vygenerovat PDF protokolu a uložit jako dokument' })
+  generatePdf(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.service.generatePdf(user, id)
+  }
+
+  @Get(':id/pdf')
+  @ApiOperation({ summary: 'Stáhnout PDF protokolu' })
+  async downloadPdf(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Res() reply: FastifyReply,
+  ) {
+    const { storageKey, name, mimeType } = await this.service.getPdf(user, id)
+    const uploadDir = process.env.UPLOAD_DIR ?? './uploads'
+    const filePath = path.join(uploadDir, storageKey)
+
+    if (!fs.existsSync(filePath)) {
+      return reply.status(404).send('File not found')
+    }
+
+    return reply
+      .header('Content-Disposition', `attachment; filename="${name}"`)
+      .header('Content-Type', mimeType)
+      .send(fs.readFileSync(filePath))
+  }
+
+  @Post(':id/upload-signed')
+  @Roles(...ROLES_OPS)
+  @AuditAction('Protocol', 'UPDATE')
+  @ApiOperation({ summary: 'Nahrát podepsaný protokol' })
+  async uploadSigned(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Req() req: FastifyRequest,
+  ) {
+    const data = await req.file()
+    if (!data) throw new Error('No file uploaded')
+
+    const chunks: Buffer[] = []
+    for await (const chunk of data.file) {
+      chunks.push(chunk)
+    }
+    const buffer = Buffer.concat(chunks)
+
+    return this.service.uploadSigned(user, id, {
+      buffer,
+      originalname: data.filename,
+      mimetype: data.mimetype,
+      size: buffer.length,
+    })
   }
 
   @Delete(':id')

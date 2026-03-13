@@ -1,12 +1,14 @@
-import { useState } from 'react'
-import { Plus, Trash2, FileText, CheckCircle, ShieldCheck } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { Plus, Trash2, FileText, CheckCircle, ShieldCheck, Download, Upload } from 'lucide-react'
 import { Badge, Button } from '../../shared/components'
 import type { BadgeVariant } from '../../shared/components'
 import {
   useProtocolsBySource, useGenerateProtocol,
   useCompleteProtocol, useConfirmProtocol,
   useAddProtocolLine, useDeleteProtocolLine,
+  useGeneratePdf, useUploadSignedProtocol,
 } from './api/protocols.queries'
+import { apiClient } from '../../core/api/client'
 
 interface Props {
   sourceType: 'helpdesk' | 'revision' | 'work_order'
@@ -49,6 +51,9 @@ export default function ProtocolPanel({ sourceType, sourceId, protocolType }: Pr
   const confirmMutation = useConfirmProtocol()
   const addLineMutation = useAddProtocolLine()
   const deleteLineMutation = useDeleteProtocolLine()
+  const generatePdfMutation = useGeneratePdf()
+  const uploadSignedMutation = useUploadSignedProtocol()
+  const signedFileRef = useRef<HTMLInputElement>(null)
 
   const [showLineForm, setShowLineForm] = useState(false)
   const [lineForm, setLineForm] = useState({ name: '', lineType: 'labor', unit: 'hod', quantity: '1', description: '' })
@@ -312,6 +317,71 @@ export default function ProtocolPanel({ sourceType, sourceId, protocolType }: Pr
           )}
         </div>
       )}
+
+      {/* PDF & Documents */}
+      <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 14, marginBottom: 16 }}>
+        <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 10 }}>Dokumenty</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Button
+            size="sm"
+            icon={<FileText size={14} />}
+            onClick={() => generatePdfMutation.mutate(protocol.id)}
+            disabled={generatePdfMutation.isPending}
+          >
+            {generatePdfMutation.isPending ? 'Generuji PDF...' : protocol.generatedPdfDocumentId ? 'Přegenerovat PDF' : 'Vygenerovat PDF'}
+          </Button>
+          {protocol.generatedPdfDocumentId && (
+            <Button
+              size="sm"
+              variant="primary"
+              icon={<Download size={14} />}
+              onClick={() => {
+                const url = `${apiClient.defaults.baseURL}/protocols/${protocol.id}/pdf`
+                window.open(url, '_blank')
+              }}
+            >
+              Stáhnout PDF
+            </Button>
+          )}
+          <Button
+            size="sm"
+            icon={<Upload size={14} />}
+            onClick={() => signedFileRef.current?.click()}
+            disabled={uploadSignedMutation.isPending}
+          >
+            {uploadSignedMutation.isPending ? 'Nahrávám...' : protocol.signedDocumentId ? 'Nahradit podepsaný' : 'Nahrát podepsaný'}
+          </Button>
+          <input
+            ref={signedFileRef}
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) {
+                uploadSignedMutation.mutate({ id: protocol.id, file })
+                e.target.value = ''
+              }
+            }}
+          />
+        </div>
+        {(protocol.generatedPdfDocumentId || protocol.signedDocumentId) && (
+          <div style={{ display: 'flex', gap: 12, marginTop: 10, flexWrap: 'wrap' }}>
+            {protocol.generatedPdfDocumentId && (
+              <Badge variant="muted">PDF vygenerováno</Badge>
+            )}
+            {protocol.signedDocumentId && (
+              <Badge variant="green">Podepsaný dokument nahrán</Badge>
+            )}
+          </div>
+        )}
+        {generatePdfMutation.isError && (
+          <div style={{ color: 'var(--danger)', fontSize: '0.85rem', marginTop: 8 }}>Nepodařilo se vygenerovat PDF.</div>
+        )}
+        {uploadSignedMutation.isError && (
+          <div style={{ color: 'var(--danger)', fontSize: '0.85rem', marginTop: 8 }}>Nepodařilo se nahrát dokument.</div>
+        )}
+      </div>
 
       {/* Complete form */}
       {showComplete && protocol.status === 'draft' && (

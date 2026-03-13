@@ -135,3 +135,19 @@ export function useReorderProtocolLines() {
     },
   })
 }
+
+export function useGeneratePdf() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => protocolsApi.generatePdf(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: protocolKeys.all }),
+  })
+}
+
+export function useUploadSignedProtocol() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, file }: { id: string; file: File }) => protocolsApi.uploadSigned(id, file),
+    onSuccess: () => qc.invalidateQueries({ queryKey: protocolKeys.all }),
+  })
+}
