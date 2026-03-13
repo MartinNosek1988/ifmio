@@ -7,6 +7,11 @@ import type {
 } from './dto/protocols.dto'
 import type { AuthUser } from '@ifmio/shared-types'
 
+const PROTOCOL_INCLUDE = {
+  lines: { orderBy: { sortOrder: 'asc' as const } },
+  property: { select: { id: true, name: true } },
+}
+
 @Injectable()
 export class ProtocolsService {
   constructor(private prisma: PrismaService) {}
@@ -25,10 +30,14 @@ export class ProtocolsService {
       ...(query.sourceType ? { sourceType: query.sourceType } : {}),
       ...(query.sourceId ? { sourceId: query.sourceId } : {}),
       ...(query.status ? { status: query.status } : {}),
+      ...(query.propertyId ? { propertyId: query.propertyId } : {}),
+      ...(query.protocolType ? { protocolType: query.protocolType } : {}),
+      ...(query.satisfaction ? { satisfaction: query.satisfaction } : {}),
       ...(query.search ? {
         OR: [
           { number: { contains: query.search, mode: 'insensitive' } },
           { description: { contains: query.search, mode: 'insensitive' } },
+          { title: { contains: query.search, mode: 'insensitive' } },
         ],
       } : {}),
     }
@@ -40,7 +49,7 @@ export class ProtocolsService {
         take: limit,
         skip,
         include: {
-          lines: { orderBy: { sortOrder: 'asc' } },
+          ...PROTOCOL_INCLUDE,
           _count: { select: { lines: true } },
         },
       }),
@@ -59,9 +68,7 @@ export class ProtocolsService {
   async get(user: AuthUser, id: string) {
     const protocol = await this.prisma.protocol.findFirst({
       where: { id, tenantId: user.tenantId },
-      include: {
-        lines: { orderBy: { sortOrder: 'asc' } },
-      },
+      include: PROTOCOL_INCLUDE,
     })
     if (!protocol) throw new NotFoundException('Protokol nenalezen')
     return protocol
@@ -70,9 +77,7 @@ export class ProtocolsService {
   async getBySource(user: AuthUser, sourceType: string, sourceId: string) {
     return this.prisma.protocol.findMany({
       where: { tenantId: user.tenantId, sourceType: sourceType as any, sourceId },
-      include: {
-        lines: { orderBy: { sortOrder: 'asc' } },
-      },
+      include: PROTOCOL_INCLUDE,
       orderBy: { createdAt: 'desc' },
     })
   }
@@ -87,38 +92,48 @@ export class ProtocolsService {
         sourceId: dto.sourceId,
         protocolType: (dto.protocolType ?? 'work_report') as any,
         number,
+        propertyId: dto.propertyId,
+        title: dto.title,
         description: dto.description,
         requesterName: dto.requesterName,
         dispatcherName: dto.dispatcherName,
         resolverName: dto.resolverName,
+        categoryLabel: dto.categoryLabel,
+        activityLabel: dto.activityLabel,
+        spaceLabel: dto.spaceLabel,
+        tenantUnitLabel: dto.tenantUnitLabel,
+        submittedAt: dto.submittedAt ? new Date(dto.submittedAt) : undefined,
+        dueAt: dto.dueAt ? new Date(dto.dueAt) : undefined,
         transportKm: dto.transportKm,
         transportMode: dto.transportMode,
+        transportDescription: dto.transportDescription,
+        publicNote: dto.publicNote,
+        internalNote: dto.internalNote,
         supplierSnapshot: (dto.supplierSnapshot as any) ?? undefined,
         customerSnapshot: (dto.customerSnapshot as any) ?? undefined,
       },
-      include: { lines: true },
+      include: PROTOCOL_INCLUDE,
     })
   }
 
   async update(user: AuthUser, id: string, dto: UpdateProtocolDto) {
     const existing = await this.get(user, id)
 
-    // Validation: dissatisfied requires comment
     if (dto.satisfaction === 'dissatisfied' && !dto.satisfactionComment && !existing.satisfactionComment) {
       throw new BadRequestException('Komentář je povinný při nespokojenosti')
     }
 
     const data: Record<string, unknown> = { ...dto }
-    if (dto.handoverAt) data.handoverAt = new Date(dto.handoverAt)
-    if (dto.supplierSignedAt) data.supplierSignedAt = new Date(dto.supplierSignedAt)
-    if (dto.customerSignedAt) data.customerSignedAt = new Date(dto.customerSignedAt)
+    for (const key of ['handoverAt', 'supplierSignedAt', 'customerSignedAt', 'submittedAt', 'dueAt', 'completedAt']) {
+      if ((dto as any)[key]) data[key] = new Date((dto as any)[key])
+    }
     if (dto.satisfaction) data.satisfaction = dto.satisfaction as any
     if (dto.status) data.status = dto.status as any
 
     return this.prisma.protocol.update({
       where: { id },
       data,
-      include: { lines: { orderBy: { sortOrder: 'asc' } } },
+      include: PROTOCOL_INCLUDE,
     })
   }
 
@@ -131,6 +146,7 @@ export class ProtocolsService {
 
     const data: Record<string, unknown> = {
       status: 'completed' as const,
+      completedAt: new Date(),
       handoverAt: dto.handoverAt ? new Date(dto.handoverAt) : new Date(),
       ...(dto.satisfaction ? { satisfaction: dto.satisfaction as any } : {}),
       ...(dto.satisfactionComment ? { satisfactionComment: dto.satisfactionComment } : {}),
@@ -141,7 +157,19 @@ export class ProtocolsService {
     return this.prisma.protocol.update({
       where: { id },
       data,
-      include: { lines: { orderBy: { sortOrder: 'asc' } } },
+      include: PROTOCOL_INCLUDE,
+    })
+  }
+
+  async confirm(user: AuthUser, id: string) {
+    const protocol = await this.get(user, id)
+    if (protocol.status !== 'completed') {
+      throw new BadRequestException('Protokol musí být ve stavu "dokončený" pro potvrzení')
+    }
+    return this.prisma.protocol.update({
+      where: { id },
+      data: { status: 'confirmed' },
+      include: PROTOCOL_INCLUDE,
     })
   }
 
@@ -168,7 +196,7 @@ export class ProtocolsService {
     const ticket = await this.prisma.helpdeskTicket.findFirst({
       where: { id: ticketId, tenantId: user.tenantId },
       include: {
-        property: { select: { name: true } },
+        property: { select: { id: true, name: true } },
         unit: { select: { name: true } },
         resident: { select: { firstName: true, lastName: true } },
         assignee: { select: { name: true } },
@@ -179,7 +207,6 @@ export class ProtocolsService {
 
     const number = await this.generateNumber(user.tenantId, 'helpdesk')
 
-    // Get tenant settings for supplier snapshot
     const settings = await this.prisma.tenantSettings.findUnique({
       where: { tenantId: user.tenantId },
     })
@@ -191,7 +218,14 @@ export class ProtocolsService {
         sourceId: ticketId,
         protocolType: (protocolType ?? 'work_report') as any,
         number,
+        propertyId: ticket.propertyId ?? undefined,
+        title: ticket.title,
         description: ticket.description ?? ticket.title,
+        categoryLabel: ticket.category ?? undefined,
+        spaceLabel: ticket.property?.name ?? undefined,
+        tenantUnitLabel: ticket.unit?.name ?? undefined,
+        submittedAt: ticket.createdAt,
+        dueAt: ticket.resolutionDueAt ?? undefined,
         requesterName: ticket.resident
           ? `${ticket.resident.firstName} ${ticket.resident.lastName}`
           : undefined,
@@ -207,7 +241,6 @@ export class ProtocolsService {
       },
     })
 
-    // Copy ticket items as protocol lines
     if (ticket.items.length > 0) {
       await this.prisma.protocolLine.createMany({
         data: ticket.items.map((item, i) => ({
@@ -232,7 +265,7 @@ export class ProtocolsService {
           include: {
             revisionSubject: { select: { name: true, location: true, manufacturer: true, model: true } },
             revisionType: { select: { name: true, code: true } },
-            property: { select: { name: true } },
+            property: { select: { id: true, name: true } },
           },
         },
       },
@@ -253,6 +286,10 @@ export class ProtocolsService {
         sourceId: eventId,
         protocolType: (protocolType ?? 'revision_report') as any,
         number,
+        propertyId: plan.propertyId ?? undefined,
+        title: plan.revisionType?.name ?? 'Revizní protokol',
+        spaceLabel: plan.property?.name ?? undefined,
+        submittedAt: event.performedAt ?? undefined,
         description: [
           `Revize: ${plan.revisionType?.name ?? ''}`,
           `Předmět: ${plan.revisionSubject?.name ?? ''}`,
@@ -265,7 +302,7 @@ export class ProtocolsService {
           ico: settings.companyNumber,
         } : undefined),
       },
-      include: { lines: true },
+      include: PROTOCOL_INCLUDE,
     })
   }
 
@@ -276,7 +313,6 @@ export class ProtocolsService {
   async addLine(user: AuthUser, protocolId: string, dto: CreateProtocolLineDto) {
     await this.get(user, protocolId)
 
-    // Auto-calculate sortOrder if not provided
     const maxSort = await this.prisma.protocolLine.aggregate({
       where: { protocolId },
       _max: { sortOrder: true },
@@ -315,6 +351,19 @@ export class ProtocolsService {
     })
     if (!line) throw new NotFoundException('Řádek protokolu nenalezen')
     await this.prisma.protocolLine.delete({ where: { id: lineId } })
+  }
+
+  async reorderLines(user: AuthUser, protocolId: string, items: { lineId: string; sortOrder: number }[]) {
+    await this.get(user, protocolId)
+    await this.prisma.$transaction(
+      items.map((item) =>
+        this.prisma.protocolLine.update({
+          where: { id: item.lineId },
+          data: { sortOrder: item.sortOrder },
+        }),
+      ),
+    )
+    return this.get(user, protocolId)
   }
 
   // ═══════════════════════════════════════════════════════════════════

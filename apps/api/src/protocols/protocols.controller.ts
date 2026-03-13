@@ -13,6 +13,7 @@ import {
   CreateProtocolDto, UpdateProtocolDto, CompleteProtocolDto,
   CreateProtocolLineDto, UpdateProtocolLineDto,
   GenerateProtocolDto, ProtocolListQueryDto,
+  ReorderProtocolLinesDto,
 } from './dto/protocols.dto'
 import type { AuthUser } from '@ifmio/shared-types'
 
@@ -89,6 +90,14 @@ export class ProtocolsController {
     return this.service.complete(user, id, dto)
   }
 
+  @Post(':id/confirm')
+  @Roles(...ROLES_OPS)
+  @AuditAction('Protocol', 'UPDATE')
+  @ApiOperation({ summary: 'Potvrdit protokol (completed → confirmed)' })
+  confirm(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.service.confirm(user, id)
+  }
+
   @Delete(':id')
   @Roles(...ROLES_OPS)
   @AuditAction('Protocol', 'DELETE')
@@ -109,6 +118,18 @@ export class ProtocolsController {
     @Body() dto: CreateProtocolLineDto,
   ) {
     return this.service.addLine(user, protocolId, dto)
+  }
+
+  @Post(':id/lines/reorder')
+  @Roles(...ROLES_OPS)
+  @AuditAction('ProtocolLine', 'UPDATE')
+  @ApiOperation({ summary: 'Přeřadit řádky protokolu' })
+  reorderLines(
+    @CurrentUser() user: AuthUser,
+    @Param('id') protocolId: string,
+    @Body() dto: ReorderProtocolLinesDto,
+  ) {
+    return this.service.reorderLines(user, protocolId, dto.items)
   }
 
   @Patch(':id/lines/:lineId')

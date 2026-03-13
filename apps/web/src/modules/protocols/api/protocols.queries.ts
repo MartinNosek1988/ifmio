@@ -75,6 +75,14 @@ export function useCompleteProtocol() {
   })
 }
 
+export function useConfirmProtocol() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => protocolsApi.confirm(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: protocolKeys.all }),
+  })
+}
+
 export function useDeleteProtocol() {
   const qc = useQueryClient()
   return useMutation({
@@ -111,6 +119,17 @@ export function useDeleteProtocolLine() {
   return useMutation({
     mutationFn: ({ protocolId, lineId }: { protocolId: string; lineId: string }) =>
       protocolsApi.removeLine(protocolId, lineId),
+    onSuccess: (_, { protocolId }) => {
+      qc.invalidateQueries({ queryKey: protocolKeys.detail(protocolId) })
+    },
+  })
+}
+
+export function useReorderProtocolLines() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ protocolId, items }: { protocolId: string; items: { lineId: string; sortOrder: number }[] }) =>
+      protocolsApi.reorderLines(protocolId, items),
     onSuccess: (_, { protocolId }) => {
       qc.invalidateQueries({ queryKey: protocolKeys.detail(protocolId) })
     },

@@ -33,6 +33,7 @@ const AdminPage = lazy(() => import('../modules/admin/AdminPage'));
 const SettingsPage = lazy(() => import('../modules/settings/SettingsPage'));
 const NotificationsPage = lazy(() => import('../modules/notifications/NotificationsPage'));
 const ProfilePage = lazy(() => import('../modules/profile/ProfilePage'));
+const ProtocolsPage = lazy(() => import('../modules/protocols/ProtocolsPage'));
 const RevisionsPage = lazy(() => import('../modules/revisions/RevisionsPage'));
 const RevisionDashboardPage = lazy(() => import('../modules/revisions/RevisionDashboardPage'));
 const RevisionSettingsPage = lazy(() => import('../modules/revisions/RevisionSettingsPage'));
@@ -75,6 +76,7 @@ export const router = createBrowserRouter([
       { path: 'reporting', element: withBoundary('Reporting', ReportingPage) },
       { path: 'reports', element: withBoundary('Výkazy', ReportsPage) },
       { path: 'team', element: withBoundary('Tým', TeamPage) },
+      { path: 'protocols', element: withBoundary('Protokoly', ProtocolsPage) },
       { path: 'revisions', element: withBoundary('Revize', RevisionsPage) },
       { path: 'revisions/dashboard', element: withBoundary('Revize Dashboard', RevisionDashboardPage) },
       { path: 'revisions/settings', element: withBoundary('Revize Katalog', RevisionSettingsPage) },

@@ -6,7 +6,7 @@ import {
   Wrench, Headphones, Box, Gauge, FileText, UserCheck,
   ShieldCheck, Wallet, AlertTriangle, TrendingUp,
   MessageSquare, Mail, Settings, BarChart3,
-  ClipboardList, ClipboardCheck, ScrollText, UsersRound,
+  ClipboardList, ClipboardCheck, ScrollText, UsersRound, FileCheck2,
   User as UserIcon, LogOut, Shield,
 } from 'lucide-react';
 import { LoadingSpinner } from '../shared/components';
@@ -51,6 +51,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { to: '/workorders', label: 'Work Orders', icon: <Wrench size={17} /> },
       { to: '/helpdesk', label: 'HelpDesk', icon: <Headphones size={17} /> },
+      { to: '/protocols', label: 'Protokoly', icon: <FileCheck2 size={17} /> },
       { to: '/assets', label: 'Asset Management', icon: <Box size={17} /> },
       { to: '/meters', label: 'Měřidla & Energie', icon: <Gauge size={17} /> },
       { to: '/residents', label: 'Bydlící', icon: <UserCheck size={17} /> },
@@ -103,6 +104,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/assets': 'Asset Management',
   '/meters': 'Měřidla & Energie',
   '/residents': 'Bydlící',
+  '/protocols': 'Protokoly',
   '/revisions': 'Revize & kontroly',
   '/compliance': 'Compliance — ISO 41001',
   '/finance': 'Finance',

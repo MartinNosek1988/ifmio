@@ -191,6 +191,7 @@ model Property {
   meters          Meter[]
   assets          Asset[]
   invoices        Invoice[]
+  protocols       Protocol[]
 
   userAssignments  UserPropertyAssignment[]
   slaPolicies      SlaPolicy[]
@@ -823,30 +824,45 @@ enum Satisfaction {
   satisfied
   partially_satisfied
   dissatisfied
+  neutral
 }
 
 model Protocol {
   id           String             @id @default(uuid())
   tenantId     String
+  propertyId   String?
   sourceType   ProtocolSourceType
   sourceId     String
   protocolType ProtocolType       @default(work_report)
   number       String
   status       ProtocolStatus     @default(draft)
+  title        String?
 
   // Parties (JSON snapshots for PDF immutability)
   supplierSnapshot Json?
   customerSnapshot Json?
 
   // Request metadata
-  requesterName  String?
-  dispatcherName String?
-  resolverName   String?
-  description    String? @db.Text
+  requesterName   String?
+  dispatcherName  String?
+  resolverName    String?
+  categoryLabel   String?
+  activityLabel   String?
+  spaceLabel      String?
+  tenantUnitLabel String?
+  description     String? @db.Text
+  publicNote      String? @db.Text
+  internalNote    String? @db.Text
+
+  // Dates
+  submittedAt DateTime?
+  dueAt       DateTime?
+  completedAt DateTime?
 
   // Transport
-  transportKm   Float?
-  transportMode String?
+  transportKm          Float?
+  transportMode        String?
+  transportDescription String? @db.Text
 
   // Handover & quality
   handoverAt          DateTime?
@@ -866,12 +882,14 @@ model Protocol {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  lines  ProtocolLine[]
+  tenant   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property Property?      @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  lines    ProtocolLine[]
 
   @@index([tenantId])
   @@index([tenantId, sourceType, sourceId])
   @@index([tenantId, status])
+  @@index([tenantId, propertyId])
   @@map("protocols")
 }
 

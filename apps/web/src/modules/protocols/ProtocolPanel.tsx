@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Plus, Trash2, FileText, CheckCircle } from 'lucide-react'
+import { Plus, Trash2, FileText, CheckCircle, ShieldCheck } from 'lucide-react'
 import { Badge, Button } from '../../shared/components'
 import type { BadgeVariant } from '../../shared/components'
 import {
   useProtocolsBySource, useGenerateProtocol,
-  useCompleteProtocol,
+  useCompleteProtocol, useConfirmProtocol,
   useAddProtocolLine, useDeleteProtocolLine,
 } from './api/protocols.queries'
 
@@ -14,6 +14,10 @@ interface Props {
   protocolType?: string
 }
 
+const PROTOCOL_TYPE_LABEL: Record<string, string> = {
+  work_report: 'Pracovní výkaz', handover: 'Předávací protokol',
+  revision_report: 'Revizní zpráva', service_protocol: 'Servisní protokol',
+}
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Rozpracovaný', completed: 'Dokončený', confirmed: 'Potvrzený',
 }
@@ -21,10 +25,10 @@ const STATUS_COLOR: Record<string, BadgeVariant> = {
   draft: 'yellow', completed: 'green', confirmed: 'blue',
 }
 const SATISFACTION_LABEL: Record<string, string> = {
-  satisfied: 'Spokojený', partially_satisfied: 'Částečně', dissatisfied: 'Nespokojený',
+  satisfied: 'Spokojený', partially_satisfied: 'Částečně', dissatisfied: 'Nespokojený', neutral: 'Neutrální',
 }
 const SATISFACTION_COLOR: Record<string, BadgeVariant> = {
-  satisfied: 'green', partially_satisfied: 'yellow', dissatisfied: 'red',
+  satisfied: 'green', partially_satisfied: 'yellow', dissatisfied: 'red', neutral: 'muted',
 }
 const LINE_TYPE_LABEL: Record<string, string> = {
   labor: 'Práce', material: 'Materiál', transport: 'Doprava', other: 'Ostatní',
@@ -36,10 +40,13 @@ const inputStyle: React.CSSProperties = {
   color: 'var(--text)', boxSizing: 'border-box',
 }
 
+const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString('cs-CZ') : '—'
+
 export default function ProtocolPanel({ sourceType, sourceId, protocolType }: Props) {
   const { data: protocols, isLoading } = useProtocolsBySource(sourceType, sourceId)
   const generateMutation = useGenerateProtocol()
   const completeMutation = useCompleteProtocol()
+  const confirmMutation = useConfirmProtocol()
   const addLineMutation = useAddProtocolLine()
   const deleteLineMutation = useDeleteProtocolLine()
 
@@ -53,7 +60,7 @@ export default function ProtocolPanel({ sourceType, sourceId, protocolType }: Pr
 
   if (isLoading) return <div className="text-muted" style={{ padding: 16, textAlign: 'center' }}>Načítání...</div>
 
-  const protocol = protocols?.[0] // Most recent
+  const protocol = protocols?.[0]
 
   if (!protocol) {
     return (
@@ -114,22 +121,47 @@ export default function ProtocolPanel({ sourceType, sourceId, protocolType }: Pr
     <div>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>{protocol.number}</span>
           <Badge variant={STATUS_COLOR[protocol.status]}>{STATUS_LABEL[protocol.status]}</Badge>
+          <Badge variant="muted">{PROTOCOL_TYPE_LABEL[protocol.protocolType] ?? protocol.protocolType}</Badge>
         </div>
-        {protocol.status === 'draft' && (
-          <Button size="sm" variant="primary" icon={<CheckCircle size={14} />} onClick={() => setShowComplete(true)}>
-            Dokončit předání
-          </Button>
-        )}
+        <div style={{ display: 'flex', gap: 6 }}>
+          {protocol.status === 'draft' && (
+            <Button size="sm" variant="primary" icon={<CheckCircle size={14} />} onClick={() => setShowComplete(true)}>
+              Dokončit předání
+            </Button>
+          )}
+          {protocol.status === 'completed' && (
+            <Button
+              size="sm" variant="primary" icon={<ShieldCheck size={14} />}
+              onClick={() => confirmMutation.mutate(protocol.id)}
+              disabled={confirmMutation.isPending}
+            >
+              {confirmMutation.isPending ? 'Potvrzuji...' : 'Potvrdit'}
+            </Button>
+          )}
+        </div>
       </div>
 
-      {/* Metadata */}
+      {/* Title */}
+      {protocol.title && (
+        <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 12 }}>{protocol.title}</div>
+      )}
+
+      {/* Metadata grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
         {protocol.requesterName && <InfoField label="Zadavatel" value={protocol.requesterName} />}
         {protocol.dispatcherName && <InfoField label="Dispečer" value={protocol.dispatcherName} />}
         {protocol.resolverName && <InfoField label="Řešitel" value={protocol.resolverName} />}
+        {protocol.categoryLabel && <InfoField label="Kategorie" value={protocol.categoryLabel} />}
+        {protocol.activityLabel && <InfoField label="Činnost" value={protocol.activityLabel} />}
+        {protocol.property?.name && <InfoField label="Nemovitost" value={protocol.property.name} />}
+        {protocol.spaceLabel && <InfoField label="Prostor" value={protocol.spaceLabel} />}
+        {protocol.tenantUnitLabel && <InfoField label="Jednotka/Nájemce" value={protocol.tenantUnitLabel} />}
+        {protocol.submittedAt && <InfoField label="Datum zadání" value={fmtDate(protocol.submittedAt)} />}
+        {protocol.dueAt && <InfoField label="Vyřešit do" value={fmtDate(protocol.dueAt)} />}
+        {protocol.completedAt && <InfoField label="Dokončeno" value={fmtDate(protocol.completedAt)} />}
       </div>
 
       {/* Description */}
@@ -137,6 +169,20 @@ export default function ProtocolPanel({ sourceType, sourceId, protocolType }: Pr
         <div style={{ padding: 12, borderRadius: 8, background: 'var(--surface-2, var(--surface))', border: '1px solid var(--border)', marginBottom: 16 }}>
           <div className="text-muted" style={{ fontSize: '0.78rem', marginBottom: 4 }}>Popis požadavku</div>
           <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.9rem' }}>{protocol.description}</div>
+        </div>
+      )}
+
+      {/* Public / Internal notes */}
+      {protocol.publicNote && (
+        <div style={{ padding: 12, borderRadius: 8, background: 'var(--surface-2, var(--surface))', border: '1px solid var(--border)', marginBottom: 16 }}>
+          <div className="text-muted" style={{ fontSize: '0.78rem', marginBottom: 4 }}>Veřejná poznámka</div>
+          <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.9rem' }}>{protocol.publicNote}</div>
+        </div>
+      )}
+      {protocol.internalNote && (
+        <div style={{ padding: 12, borderRadius: 8, background: 'var(--surface-2, var(--surface))', border: '1px dashed var(--border)', marginBottom: 16 }}>
+          <div className="text-muted" style={{ fontSize: '0.78rem', marginBottom: 4 }}>Interní poznámka</div>
+          <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.9rem' }}>{protocol.internalNote}</div>
         </div>
       )}
 
@@ -229,10 +275,15 @@ export default function ProtocolPanel({ sourceType, sourceId, protocolType }: Pr
       )}
 
       {/* Transport */}
-      {(protocol.transportKm || protocol.transportMode) && (
+      {(protocol.transportKm || protocol.transportMode || protocol.transportDescription) && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
           {protocol.transportKm && <InfoField label="Doprava (km)" value={String(protocol.transportKm)} />}
           {protocol.transportMode && <InfoField label="Způsob dopravy" value={protocol.transportMode} />}
+          {protocol.transportDescription && (
+            <div style={{ gridColumn: '1 / -1' }}>
+              <InfoField label="Popis dopravy" value={protocol.transportDescription} />
+            </div>
+          )}
         </div>
       )}
 
@@ -241,7 +292,7 @@ export default function ProtocolPanel({ sourceType, sourceId, protocolType }: Pr
         <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 14, marginBottom: 16 }}>
           <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 10 }}>Předání</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <InfoField label="Datum předání" value={protocol.handoverAt ? new Date(protocol.handoverAt).toLocaleDateString('cs-CZ') : '—'} />
+            <InfoField label="Datum předání" value={fmtDate(protocol.handoverAt)} />
             {protocol.satisfaction && (
               <div>
                 <div className="text-muted" style={{ fontSize: '0.78rem', marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Spokojenost</div>
