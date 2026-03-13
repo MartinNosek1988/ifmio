@@ -113,6 +113,35 @@ export interface DashboardData {
   topRisk: ApiTicket[]
 }
 
+export interface ApiSlaPolicy {
+  id: string
+  tenantId: string
+  propertyId: string | null
+  lowResponseH: number
+  lowResolutionH: number
+  mediumResponseH: number
+  mediumResolutionH: number
+  highResponseH: number
+  highResolutionH: number
+  urgentResponseH: number
+  urgentResolutionH: number
+  createdAt: string
+  updatedAt: string
+  property?: { id: string; name: string } | null
+}
+
+export interface UpsertSlaPolicyPayload {
+  propertyId?: string | null
+  lowResponseH?: number
+  lowResolutionH?: number
+  mediumResponseH?: number
+  mediumResolutionH?: number
+  highResponseH?: number
+  highResolutionH?: number
+  urgentResponseH?: number
+  urgentResolutionH?: number
+}
+
 export const helpdeskApi = {
   list: (params?: Record<string, unknown>) =>
     apiClient.get<PaginatedTickets>('/helpdesk', { params }).then((r) => r.data),
@@ -156,5 +185,14 @@ export const helpdeskApi = {
       apiClient.get<ApiTicketProtocol>(`/helpdesk/${ticketId}/protocol`).then((r) => r.data),
     save: (ticketId: string, dto: Record<string, unknown>) =>
       apiClient.post<ApiTicketProtocol>(`/helpdesk/${ticketId}/protocol`, dto).then((r) => r.data),
+  },
+
+  slaPolicies: {
+    list: () =>
+      apiClient.get<ApiSlaPolicy[]>('/helpdesk/sla-policies').then((r) => r.data),
+    upsert: (dto: UpsertSlaPolicyPayload) =>
+      apiClient.post<ApiSlaPolicy>('/helpdesk/sla-policies', dto).then((r) => r.data),
+    remove: (id: string) =>
+      apiClient.delete(`/helpdesk/sla-policies/${id}`),
   },
 }
