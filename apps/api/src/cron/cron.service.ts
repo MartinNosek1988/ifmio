@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/commo
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { HelpdeskEscalationService } from '../helpdesk/helpdesk-escalation.service';
+import { RevisionEscalationService } from '../revisions/revision-escalation.service';
 
 const ONE_HOUR = 60 * 60 * 1000;
 const SIX_HOURS = 6 * ONE_HOUR;
@@ -14,17 +15,20 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
   private keepaliveInterval: ReturnType<typeof setInterval> | null = null;
   private retentionInterval: ReturnType<typeof setInterval> | null = null;
   private slaInterval: ReturnType<typeof setInterval> | null = null;
+  private revisionEscalationInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
     private readonly escalation: HelpdeskEscalationService,
+    private readonly revisionEscalation: RevisionEscalationService,
   ) {}
 
   onModuleInit() {
     this.initKeepalive();
     this.initAuditRetention();
     this.initSlaEscalation();
+    this.initRevisionEscalation();
   }
 
   onModuleDestroy() {
@@ -39,6 +43,10 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     if (this.slaInterval) {
       clearInterval(this.slaInterval);
       this.slaInterval = null;
+    }
+    if (this.revisionEscalationInterval) {
+      clearInterval(this.revisionEscalationInterval);
+      this.revisionEscalationInterval = null;
     }
     this.logger.log('Cron intervals cleared');
   }
@@ -95,6 +103,32 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     } catch (err) {
       this.logger.error(
         'SLA escalation job FAILED',
+        (err as Error).stack,
+      );
+    }
+  }
+
+  // ─── Revision Compliance Escalation ─────────────────────────
+
+  private initRevisionEscalation() {
+    this.logger.log('Revision escalation enabled — checking compliance every 6h');
+
+    // Run once on startup (delayed by 90s)
+    setTimeout(() => this.runRevisionEscalation(), 90_000);
+
+    // Then every 6 hours
+    this.revisionEscalationInterval = setInterval(() => this.runRevisionEscalation(), SIX_HOURS);
+  }
+
+  private async runRevisionEscalation() {
+    try {
+      const result = await this.revisionEscalation.escalateComplianceIssues();
+      this.logger.log(
+        `Revision escalation: checked ${result.checked} plans, escalated ${result.escalated}`,
+      );
+    } catch (err) {
+      this.logger.error(
+        'Revision escalation job FAILED',
         (err as Error).stack,
       );
     }

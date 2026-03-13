@@ -222,6 +222,40 @@ describe('Revisions & Compliance (e2e)', () => {
     expect(res.body.complianceStatus).toBe('overdue')
   })
 
+  it('overdue plan has nextAction=schedule_revision', async () => {
+    const prisma = testApp.app.get(PrismaService)
+    const pastDate = new Date()
+    pastDate.setDate(pastDate.getDate() - 10)
+    await prisma.revisionPlan.update({
+      where: { id: planId },
+      data: { nextDueAt: pastDate },
+    })
+
+    const res = await api
+      .get(`/api/v1/revisions/plans/${planId}`)
+      .expect(200)
+
+    expect(res.body.complianceStatus).toBe('overdue')
+    expect(res.body.nextAction).toBeDefined()
+    expect(res.body.nextAction.action).toBe('schedule_revision')
+  })
+
+  it('overdue_critical plan has nextAction=escalate', async () => {
+    const prisma = testApp.app.get(PrismaService)
+    await prisma.revisionPlan.update({
+      where: { id: planId },
+      data: { nextDueAt: new Date('2020-01-01') },
+    })
+
+    const res = await api
+      .get(`/api/v1/revisions/plans/${planId}`)
+      .expect(200)
+
+    expect(res.body.complianceStatus).toBe('overdue_critical')
+    expect(res.body.nextAction).toBeDefined()
+    expect(res.body.nextAction.action).toBe('escalate')
+  })
+
   it('marks plan as overdue_critical when nextDueAt is >30 days in the past', async () => {
     const prisma = testApp.app.get(PrismaService)
 
@@ -554,13 +588,19 @@ describe('Revisions & Compliance (e2e)', () => {
     expect(ev.protocol.status).toBe('draft')
   })
 
-  it('compliance shows performed_unconfirmed after auto-protocol (draft)', async () => {
+  it('compliance shows performed_unconfirmed + nextAction after auto-protocol (draft)', async () => {
     const res = await api
       .get(`/api/v1/revisions/plans/${protocolPlanId}`)
       .expect(200)
 
     // Plan has a draft protocol → unconfirmed
     expect(res.body.complianceStatus).toBe('performed_unconfirmed')
+
+    // nextAction should guide to complete protocol
+    expect(res.body.nextAction).toBeDefined()
+    expect(res.body.nextAction.action).toBe('complete_protocol')
+    expect(res.body.nextAction.targetEntityType).toBe('Protocol')
+    expect(res.body.nextAction.targetEntityId).toBeDefined()
   })
 
   it('completing protocol transitions to performed_pending_signature', async () => {
@@ -581,6 +621,10 @@ describe('Revisions & Compliance (e2e)', () => {
       .expect(200)
 
     expect(planRes.body.complianceStatus).toBe('performed_pending_signature')
+
+    // nextAction should guide to sign
+    expect(planRes.body.nextAction).toBeDefined()
+    expect(planRes.body.nextAction.action).toBe('sign_protocol')
   }, 15000)
 
   it('confirming protocol transitions plan to compliant', async () => {
@@ -609,6 +653,9 @@ describe('Revisions & Compliance (e2e)', () => {
       .expect(200)
 
     expect(planRes.body.complianceStatus).toBe('compliant')
+
+    // Compliant → no nextAction
+    expect(planRes.body.nextAction).toBeNull()
   }, 15000)
 
   it('does not create duplicate protocol on repeated record-event', async () => {
