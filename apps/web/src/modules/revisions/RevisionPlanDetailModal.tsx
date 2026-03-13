@@ -19,13 +19,6 @@ const COMPLIANCE_COLOR: Record<string, BadgeVariant> = {
   compliant: 'green', due_soon: 'yellow', overdue: 'red', overdue_critical: 'red',
   performed_pending_protocol: 'yellow', performed_pending_signature: 'yellow', performed_unconfirmed: 'muted',
 }
-const COMPLIANCE_HINT: Record<string, string> = {
-  performed_pending_protocol: 'Revize provedena, ale chybí revizní protokol',
-  performed_pending_signature: 'Protokol vytvořen, ale chybí podpis',
-  performed_unconfirmed: 'Protokol dokončen, ale zatím nebyl potvrzen',
-  overdue: 'Revize je po termínu',
-  overdue_critical: 'Revize je kriticky po termínu (>30 dní)',
-}
 const RESULT_LABEL: Record<string, string> = {
   passed: 'Prošlo', passed_with_notes: 'Prošlo s pozn.', failed: 'Neprošlo',
   cancelled: 'Zrušeno', planned: 'Plánováno',
