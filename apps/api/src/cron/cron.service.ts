@@ -83,9 +83,14 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
 
   private async runSlaEscalation() {
     try {
-      const result = await this.escalation.escalateOverdueTickets();
+      const escalation = await this.escalation.escalateOverdueTickets();
       this.logger.log(
-        `SLA escalation: checked ${result.checked} tickets, escalated ${result.escalated}`,
+        `SLA escalation: checked ${escalation.checked} tickets, escalated ${escalation.escalated}`,
+      );
+
+      const dueSoon = await this.escalation.notifyDueSoonTickets();
+      this.logger.log(
+        `SLA due-soon: checked ${dueSoon.checked} tickets, notified ${dueSoon.notified}`,
       );
     } catch (err) {
       this.logger.error(
