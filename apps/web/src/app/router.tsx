@@ -33,6 +33,9 @@ const AdminPage = lazy(() => import('../modules/admin/AdminPage'));
 const SettingsPage = lazy(() => import('../modules/settings/SettingsPage'));
 const NotificationsPage = lazy(() => import('../modules/notifications/NotificationsPage'));
 const ProfilePage = lazy(() => import('../modules/profile/ProfilePage'));
+const RevisionsPage = lazy(() => import('../modules/revisions/RevisionsPage'));
+const RevisionDashboardPage = lazy(() => import('../modules/revisions/RevisionDashboardPage'));
+const RevisionSettingsPage = lazy(() => import('../modules/revisions/RevisionSettingsPage'));
 const SuperAdminPage = lazy(() => import('../modules/super-admin/SuperAdminPage'));
 
 function withBoundary(name: string, Component: React.ComponentType) {
@@ -72,6 +75,9 @@ export const router = createBrowserRouter([
       { path: 'reporting', element: withBoundary('Reporting', ReportingPage) },
       { path: 'reports', element: withBoundary('Výkazy', ReportsPage) },
       { path: 'team', element: withBoundary('Tým', TeamPage) },
+      { path: 'revisions', element: withBoundary('Revize', RevisionsPage) },
+      { path: 'revisions/dashboard', element: withBoundary('Revize Dashboard', RevisionDashboardPage) },
+      { path: 'revisions/settings', element: withBoundary('Revize Katalog', RevisionSettingsPage) },
       { path: 'audit', element: withBoundary('Audit log', AuditPage) },
       { path: 'admin', element: withBoundary('Admin', AdminPage) },
       { path: 'settings', element: withBoundary('Nastaveni', SettingsPage) },
