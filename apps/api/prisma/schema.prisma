@@ -52,6 +52,7 @@ model Tenant {
   revisionTypes       RevisionType[]
   revisionPlans       RevisionPlan[]
   revisionEvents      RevisionEvent[]
+  protocols           Protocol[]
 
   @@map("tenants")
 }
@@ -797,6 +798,100 @@ model SlaPolicy {
   @@map("sla_policies")
 }
 
+// ─── PROTOCOLS & HANDOVER ─────────────────────────────────────────
+
+enum ProtocolSourceType {
+  helpdesk
+  revision
+  work_order
+}
+
+enum ProtocolType {
+  work_report
+  handover
+  revision_report
+  service_protocol
+}
+
+enum ProtocolStatus {
+  draft
+  completed
+  confirmed
+}
+
+enum Satisfaction {
+  satisfied
+  partially_satisfied
+  dissatisfied
+}
+
+model Protocol {
+  id           String             @id @default(uuid())
+  tenantId     String
+  sourceType   ProtocolSourceType
+  sourceId     String
+  protocolType ProtocolType       @default(work_report)
+  number       String
+  status       ProtocolStatus     @default(draft)
+
+  // Parties (JSON snapshots for PDF immutability)
+  supplierSnapshot Json?
+  customerSnapshot Json?
+
+  // Request metadata
+  requesterName  String?
+  dispatcherName String?
+  resolverName   String?
+  description    String? @db.Text
+
+  // Transport
+  transportKm   Float?
+  transportMode String?
+
+  // Handover & quality
+  handoverAt          DateTime?
+  satisfaction        Satisfaction?
+  satisfactionComment String?       @db.Text
+
+  // Signatures
+  supplierSignatureName String?
+  customerSignatureName String?
+  supplierSignedAt      DateTime?
+  customerSignedAt      DateTime?
+
+  // Generated / uploaded documents
+  generatedPdfDocumentId String?
+  signedDocumentId       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lines  ProtocolLine[]
+
+  @@index([tenantId])
+  @@index([tenantId, sourceType, sourceId])
+  @@index([tenantId, status])
+  @@map("protocols")
+}
+
+model ProtocolLine {
+  id          String   @id @default(uuid())
+  protocolId  String
+  lineType    String   @default("labor") // labor, material, transport, other
+  name        String
+  unit        String?
+  quantity    Float    @default(1)
+  description String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  protocol Protocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+
+  @@index([protocolId])
+  @@map("protocol_lines")
+}
+
 // ─── REVISIONS & COMPLIANCE ───────────────────────────────────────
 
 model RevisionSubject {
@@ -998,6 +1093,8 @@ enum EntityType {
   ticket
   prescription
   reminder
+  protocol
+  revision
 }
 
 // ─── SETTINGS ─────────────────────────────────────────────────────
