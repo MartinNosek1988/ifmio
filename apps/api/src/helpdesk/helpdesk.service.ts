@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { PropertyScopeService } from '../common/services/property-scope.service'
+import { NotificationsService } from '../notifications/notifications.service'
 import { calculateSlaDates } from './sla.constants'
 import type { HelpdeskListQueryDto, CreateTicketDto, UpdateTicketDto, CreateItemDto, CreateProtocolDto } from './dto/helpdesk.dto'
 import type { AuthUser } from '@ifmio/shared-types'
@@ -10,6 +11,7 @@ export class HelpdeskService {
   constructor(
     private prisma: PrismaService,
     private scope: PropertyScopeService,
+    private notifications: NotificationsService,
   ) {}
 
   private async nextTicketNumber(tenantId: string): Promise<number> {
@@ -156,6 +158,119 @@ export class HelpdeskService {
   async deleteTicket(user: AuthUser, id: string) {
     await this.findOne(user, id)
     await this.prisma.helpdeskTicket.delete({ where: { id } })
+  }
+
+  // ─── Ownership actions ──────────────────────────────────────
+
+  async assignTicket(user: AuthUser, id: string, assigneeId: string) {
+    const existing = await this.findOne(user, id)
+    const assignee = await this.prisma.user.findFirst({
+      where: { id: assigneeId, tenantId: user.tenantId, isActive: true },
+      select: { id: true, name: true },
+    })
+    if (!assignee) throw new BadRequestException('Řešitel nenalezen')
+
+    const ticket = await this.prisma.helpdeskTicket.update({
+      where: { id },
+      data: { assigneeId },
+    })
+
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId: user.tenantId,
+        userId: user.id,
+        action: 'TICKET_ASSIGNED',
+        entity: 'HelpdeskTicket',
+        entityId: id,
+        oldData: { assigneeId: existing.assigneeId },
+        newData: { assigneeId, assigneeName: assignee.name },
+      },
+    })
+
+    // Notify the assignee
+    const num = `HD-${String(existing.number).padStart(4, '0')}`
+    await this.notifications.create({
+      tenantId: user.tenantId,
+      userId: assigneeId,
+      type: 'ticket_new',
+      title: `Přiřazen ticket ${num}`,
+      body: existing.title,
+      entityId: id,
+      entityType: 'HelpdeskTicket',
+      url: '/helpdesk',
+    })
+
+    return this.serializeTicket(ticket)
+  }
+
+  async claimTicket(user: AuthUser, id: string) {
+    const existing = await this.findOne(user, id)
+    if (existing.assigneeId === user.id) {
+      throw new BadRequestException('Ticket je již přiřazen vám')
+    }
+
+    const data: Record<string, unknown> = { assigneeId: user.id }
+
+    // Auto-transition open → in_progress on claim
+    if (existing.status === 'open') {
+      data.status = 'in_progress'
+      if (!existing.firstResponseAt) {
+        data.firstResponseAt = new Date()
+      }
+    }
+
+    const ticket = await this.prisma.helpdeskTicket.update({
+      where: { id }, data,
+    })
+
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId: user.tenantId,
+        userId: user.id,
+        action: 'TICKET_CLAIMED',
+        entity: 'HelpdeskTicket',
+        entityId: id,
+        oldData: { assigneeId: existing.assigneeId, status: existing.status },
+        newData: { assigneeId: user.id, status: ticket.status },
+      },
+    })
+
+    return this.serializeTicket(ticket)
+  }
+
+  async quickResolve(user: AuthUser, id: string) {
+    const existing = await this.findOne(user, id)
+    if (existing.status === 'resolved' || existing.status === 'closed') {
+      throw new BadRequestException('Ticket je již vyřešen/uzavřen')
+    }
+
+    const now = new Date()
+    const data: Record<string, unknown> = {
+      status: 'resolved',
+      resolvedAt: now,
+      assigneeId: existing.assigneeId ?? user.id,
+    }
+    if (!existing.firstResponseAt) {
+      data.firstResponseAt = now
+    }
+
+    const ticket = await this.prisma.helpdeskTicket.update({
+      where: { id }, data,
+    })
+
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId: user.tenantId,
+        userId: user.id,
+        action: 'TICKET_RESOLVED',
+        entity: 'HelpdeskTicket',
+        entityId: id,
+        oldData: { status: existing.status },
+        newData: { status: 'resolved', resolvedAt: now.toISOString() },
+      },
+    })
+
+    return this.serializeTicket(ticket)
   }
 
   // Items

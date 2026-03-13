@@ -135,6 +135,15 @@ export const helpdeskApi = {
   remove: (id: string) =>
     apiClient.delete(`/helpdesk/${id}`),
 
+  assign: (id: string, assigneeId: string) =>
+    apiClient.post<ApiTicket>(`/helpdesk/${id}/assign`, { assigneeId }).then((r) => r.data),
+
+  claim: (id: string) =>
+    apiClient.post<ApiTicket>(`/helpdesk/${id}/claim`).then((r) => r.data),
+
+  resolve: (id: string) =>
+    apiClient.post<ApiTicket>(`/helpdesk/${id}/resolve`).then((r) => r.data),
+
   items: {
     add: (ticketId: string, dto: CreateItemPayload) =>
       apiClient.post<ApiTicketItem>(`/helpdesk/${ticketId}/items`, dto).then((r) => r.data),

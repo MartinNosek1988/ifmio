@@ -71,6 +71,40 @@ export function useUpdateTicket() {
   })
 }
 
+export function useAssignTicket() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, assigneeId }: { id: string; assigneeId: string }) =>
+      helpdeskApi.assign(id, assigneeId),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: helpdeskKeys.lists() })
+      qc.invalidateQueries({ queryKey: helpdeskKeys.detail(id) })
+    },
+  })
+}
+
+export function useClaimTicket() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => helpdeskApi.claim(id),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: helpdeskKeys.lists() })
+      qc.invalidateQueries({ queryKey: helpdeskKeys.detail(id) })
+    },
+  })
+}
+
+export function useResolveTicket() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => helpdeskApi.resolve(id),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: helpdeskKeys.lists() })
+      qc.invalidateQueries({ queryKey: helpdeskKeys.detail(id) })
+    },
+  })
+}
+
 export function useDeleteTicket() {
   const qc = useQueryClient()
   return useMutation({

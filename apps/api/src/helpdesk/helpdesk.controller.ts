@@ -9,7 +9,7 @@ import { Roles }           from '../common/decorators/roles.decorator'
 import { CurrentUser }     from '../common/decorators/current-user.decorator'
 import { AuditAction }     from '../common/decorators/audit.decorator'
 import { ROLES_OPS }       from '../common/constants/roles.constants'
-import { HelpdeskListQueryDto, CreateTicketDto, UpdateTicketDto, CreateItemDto, CreateProtocolDto } from './dto/helpdesk.dto'
+import { HelpdeskListQueryDto, CreateTicketDto, UpdateTicketDto, AssignTicketDto, CreateItemDto, CreateProtocolDto } from './dto/helpdesk.dto'
 import type { AuthUser }   from '@ifmio/shared-types'
 
 @ApiTags('Helpdesk')
@@ -76,6 +76,38 @@ export class HelpdeskController {
     @Param('id') id: string,
   ) {
     return this.service.deleteTicket(user, id)
+  }
+
+  // Ownership actions
+  @Post(':id/assign')
+  @Roles(...ROLES_OPS)
+  @ApiOperation({ summary: 'Přiřadit ticket řešiteli' })
+  assignTicket(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: AssignTicketDto,
+  ) {
+    return this.service.assignTicket(user, id, dto.assigneeId)
+  }
+
+  @Post(':id/claim')
+  @Roles(...ROLES_OPS)
+  @ApiOperation({ summary: 'Převzít ticket na sebe' })
+  claimTicket(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ) {
+    return this.service.claimTicket(user, id)
+  }
+
+  @Post(':id/resolve')
+  @Roles(...ROLES_OPS)
+  @ApiOperation({ summary: 'Rychle vyřešit ticket' })
+  quickResolve(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ) {
+    return this.service.quickResolve(user, id)
   }
 
   // Items
