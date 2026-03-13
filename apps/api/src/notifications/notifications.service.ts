@@ -14,6 +14,10 @@ export type NotificationType =
   | 'contract_expiring'
   | 'meter_calibration'
   | 'payment_due'
+  | 'protocol_missing'
+  | 'protocol_pending_signature'
+  | 'protocol_dissatisfaction'
+  | 'revision_protocol_missing'
   | 'info'
   | 'warning'
   | 'error'
@@ -233,7 +237,92 @@ export class NotificationsService {
       generated++
     }
 
-    // 4. Clean old read notifications
+    // 4. Resolved helpdesk tickets without protocol
+    const resolvedTickets = await this.prisma.helpdeskTicket.findMany({
+      where: {
+        tenantId,
+        status: { in: ['resolved', 'closed'] },
+        resolvedAt: { gte: new Date(now.getTime() - 30 * 86_400_000) },
+      },
+      select: { id: true, number: true, title: true },
+      take: 50,
+    })
+
+    for (const ticket of resolvedTickets) {
+      const hasProtocol = await this.prisma.protocol.findFirst({
+        where: { tenantId, sourceType: 'helpdesk', sourceId: ticket.id },
+        select: { id: true },
+      })
+      if (hasProtocol) continue
+
+      await this.notifyProtocolMissing({
+        tenantId,
+        ticketId: ticket.id,
+        ticketNumber: ticket.number,
+        ticketTitle: ticket.title,
+      })
+      generated++
+    }
+
+    // 5. Completed protocols without signatures
+    const unsignedProtocols = await this.prisma.protocol.findMany({
+      where: {
+        tenantId,
+        status: 'completed',
+        OR: [
+          { supplierSignatureName: null },
+          { customerSignatureName: null },
+        ],
+      },
+      select: { id: true, number: true },
+      take: 50,
+    })
+
+    for (const proto of unsignedProtocols) {
+      await this.notifyProtocolPendingSignature({
+        tenantId,
+        protocolId: proto.id,
+        protocolNumber: proto.number,
+      })
+      generated++
+    }
+
+    // 6. Completed revision events without protocol
+    const revisionEvents = await this.prisma.revisionEvent.findMany({
+      where: {
+        tenantId,
+        resultStatus: { in: ['passed', 'passed_with_notes', 'failed'] },
+        performedAt: { gte: new Date(now.getTime() - 30 * 86_400_000) },
+      },
+      select: {
+        id: true,
+        revisionPlan: {
+          select: {
+            revisionType: { select: { name: true } },
+            property: { select: { name: true } },
+          },
+        },
+      },
+      take: 50,
+    })
+
+    for (const event of revisionEvents) {
+      const hasProtocol = await this.prisma.protocol.findFirst({
+        where: { tenantId, sourceType: 'revision', sourceId: event.id },
+        select: { id: true },
+      })
+      if (hasProtocol) continue
+
+      await this.notifyRevisionProtocolMissing({
+        tenantId,
+        eventId: event.id,
+        revisionTypeName: event.revisionPlan?.revisionType?.name ?? 'Revize',
+        propertyName: event.revisionPlan?.property?.name ?? undefined,
+      })
+      generated++
+    }
+
+    // 7. Clean old read notifications
     await this.deleteOld(tenantId)
 
     return { generated, cleaned: true }
@@ -392,6 +481,96 @@ export class NotificationsService {
       entityId: dedup,
       entityType: 'HelpdeskTicket',
       url: '/helpdesk',
+    })
+  }
+
+  // ─── Protocol notification helpers ──────────────────────────────
+
+  async notifyProtocolMissing(params: {
+    tenantId: string
+    ticketId: string
+    ticketNumber: number
+    ticketTitle: string
+  }) {
+    const dedup = `protocol_missing:${params.ticketId}`
+    const exists = await this.prisma.notification.findFirst({
+      where: { tenantId: params.tenantId, entityId: dedup, type: 'protocol_missing' },
+    })
+    if (exists) return
+
+    const num = `HD-${String(params.ticketNumber).padStart(4, '0')}`
+    await this.createForTenant(params.tenantId, {
+      type: 'protocol_missing',
+      title: `Chybí protokol: ${num}`,
+      body: params.ticketTitle,
+      entityId: dedup,
+      entityType: 'HelpdeskTicket',
+      url: '/helpdesk',
+    })
+  }
+
+  async notifyProtocolPendingSignature(params: {
+    tenantId: string
+    protocolId: string
+    protocolNumber: string
+  }) {
+    const dedup = `protocol_pending_signature:${params.protocolId}`
+    const exists = await this.prisma.notification.findFirst({
+      where: { tenantId: params.tenantId, entityId: dedup, type: 'protocol_pending_signature' },
+    })
+    if (exists) return
+
+    await this.createForTenant(params.tenantId, {
+      type: 'protocol_pending_signature',
+      title: `Protokol čeká na podpis: ${params.protocolNumber}`,
+      body: 'Dokončený protokol bez podpisu dodavatele nebo odběratele',
+      entityId: dedup,
+      entityType: 'Protocol',
+      url: '/protocols',
+    })
+  }
+
+  async notifyProtocolDissatisfaction(params: {
+    tenantId: string
+    protocolId: string
+    protocolNumber: string
+    satisfactionComment?: string
+  }) {
+    const dedup = `protocol_dissatisfaction:${params.protocolId}`
+    const exists = await this.prisma.notification.findFirst({
+      where: { tenantId: params.tenantId, entityId: dedup, type: 'protocol_dissatisfaction' },
+    })
+    if (exists) return
+
+    await this.createForTenant(params.tenantId, {
+      type: 'protocol_dissatisfaction',
+      title: `Nespokojenost: ${params.protocolNumber}`,
+      body: params.satisfactionComment || 'Odběratel vyjádřil nespokojenost s provedenými pracemi',
+      entityId: dedup,
+      entityType: 'Protocol',
+      url: '/protocols',
+    })
+  }
+
+  async notifyRevisionProtocolMissing(params: {
+    tenantId: string
+    eventId: string
+    revisionTypeName: string
+    propertyName?: string
+  }) {
+    const dedup = `revision_protocol_missing:${params.eventId}`
+    const exists = await this.prisma.notification.findFirst({
+      where: { tenantId: params.tenantId, entityId: dedup, type: 'revision_protocol_missing' },
+    })
+    if (exists) return
+
+    await this.createForTenant(params.tenantId, {
+      type: 'revision_protocol_missing',
+      title: `Chybí revizní protokol: ${params.revisionTypeName}`,
+      body: params.propertyName ? `Nemovitost: ${params.propertyName}` : 'Revizní událost bez přiřazeného protokolu',
+      entityId: dedup,
+      entityType: 'RevisionEvent',
+      url: '/revisions',
     })
   }
 }

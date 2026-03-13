@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service'
 import { PdfService } from '../pdf/pdf.service'
 import { DocumentsService } from '../documents/documents.service'
+import { NotificationsService } from '../notifications/notifications.service'
 import type {
   CreateProtocolDto, UpdateProtocolDto, CompleteProtocolDto,
   CreateProtocolLineDto, UpdateProtocolLineDto,
@@ -20,6 +21,7 @@ export class ProtocolsService {
     private prisma: PrismaService,
     private pdfService: PdfService,
     private documentsService: DocumentsService,
+    private notifications: NotificationsService,
   ) {}
 
   // ═══════════════════════════════════════════════════════════════════
@@ -160,11 +162,23 @@ export class ProtocolsService {
       ...(dto.customerSignatureName ? { customerSignatureName: dto.customerSignatureName, customerSignedAt: new Date() } : {}),
     }
 
-    return this.prisma.protocol.update({
+    const result = await this.prisma.protocol.update({
       where: { id },
       data,
       include: PROTOCOL_INCLUDE,
     })
+
+    // Fire dissatisfaction notification
+    if (dto.satisfaction === 'dissatisfied') {
+      await this.notifications.notifyProtocolDissatisfaction({
+        tenantId: user.tenantId,
+        protocolId: id,
+        protocolNumber: result.number,
+        satisfactionComment: dto.satisfactionComment,
+      })
+    }
+
+    return result
   }
 
   async confirm(user: AuthUser, id: string) {

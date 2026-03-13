@@ -491,4 +491,45 @@ describe('Protocols API', () => {
     // New document should be created each time
     expect(pdf2.body.documentId).not.toBe(pdf1.body.documentId)
   })
+
+  // ─── Notifications ──────────────────────────────────────────
+
+  it('POST /protocols/:id/complete — dissatisfied creates notification', async () => {
+    const createRes = await api.post('/api/v1/protocols', {
+      sourceType: 'helpdesk',
+      sourceId: 'notif-dissatisfied-test',
+      title: 'Dissatisfied notification test',
+    }).expect(201)
+
+    await api.post(`/api/v1/protocols/${createRes.body.id}/complete`, {
+      satisfaction: 'dissatisfied',
+      satisfactionComment: 'Špatná kvalita',
+    }).expect(201)
+
+    // Verify notification was created
+    const notifRes = await api.get('/api/v1/notifications').expect(200)
+    const dissatisfactionNotif = notifRes.body.find(
+      (n: any) => n.type === 'protocol_dissatisfaction' && n.entityId?.includes(createRes.body.id),
+    )
+    expect(dissatisfactionNotif).toBeDefined()
+    expect(dissatisfactionNotif.title).toContain('Nespokojenost')
+  })
+
+  it('POST /protocols/:id/complete — satisfied does NOT create dissatisfaction notification', async () => {
+    const createRes = await api.post('/api/v1/protocols', {
+      sourceType: 'helpdesk',
+      sourceId: 'notif-satisfied-test',
+      title: 'Satisfied no-notification test',
+    }).expect(201)
+
+    await api.post(`/api/v1/protocols/${createRes.body.id}/complete`, {
+      satisfaction: 'satisfied',
+    }).expect(201)
+
+    const notifRes = await api.get('/api/v1/notifications').expect(200)
+    const wrongNotif = notifRes.body.find(
+      (n: any) => n.type === 'protocol_dissatisfaction' && n.entityId?.includes(createRes.body.id),
+    )
+    expect(wrongNotif).toBeUndefined()
+  })
 })
