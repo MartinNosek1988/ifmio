@@ -94,6 +94,25 @@ export interface SlaStats {
   dueSoon: number
 }
 
+export interface DashboardKpi {
+  total: number
+  open: number
+  overdue: number
+  escalated: number
+  dueSoon: number
+  resolvedInPeriod: number
+  createdInPeriod: number
+  slaCompliancePct: number
+}
+
+export interface DashboardData {
+  kpi: DashboardKpi
+  byPriority: { priority: string; open: number; total: number }[]
+  byProperty: { propertyId: string | null; name: string; count: number }[]
+  trend: { date: string; created: number; resolved: number }[]
+  topRisk: ApiTicket[]
+}
+
 export const helpdeskApi = {
   list: (params?: Record<string, unknown>) =>
     apiClient.get<PaginatedTickets>('/helpdesk', { params }).then((r) => r.data),
@@ -103,6 +122,9 @@ export const helpdeskApi = {
 
   slaStats: () =>
     apiClient.get<SlaStats>('/helpdesk/sla-stats').then((r) => r.data),
+
+  dashboard: (days = 30) =>
+    apiClient.get<DashboardData>('/helpdesk/dashboard', { params: { days } }).then((r) => r.data),
 
   create: (dto: CreateTicketPayload) =>
     apiClient.post<ApiTicket>('/helpdesk', dto).then((r) => r.data),

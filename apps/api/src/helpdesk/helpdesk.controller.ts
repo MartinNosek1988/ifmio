@@ -31,6 +31,15 @@ export class HelpdeskController {
     return this.service.getSlaStats(user)
   }
 
+  @Get('dashboard')
+  @ApiOperation({ summary: 'Dashboard — KPI, trendy, breakdown, top risk' })
+  getDashboard(
+    @CurrentUser() user: AuthUser,
+    @Query('days') days?: string,
+  ) {
+    return this.service.getDashboard(user, Math.min(90, Math.max(1, Number(days) || 30)))
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Detail ticketu s položkami' })
   findOne(@CurrentUser() user: AuthUser, @Param('id') id: string) {

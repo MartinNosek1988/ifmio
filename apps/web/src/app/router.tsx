@@ -14,6 +14,7 @@ const PropertyDetailPage = lazy(() => import('../modules/properties/PropertyDeta
 const FinancePage = lazy(() => import('../modules/finance/FinancePage'));
 const WorkOrdersPage = lazy(() => import('../modules/workorders/WorkOrdersPage'));
 const HelpdeskPage = lazy(() => import('../modules/helpdesk/HelpdeskPage'));
+const HelpdeskDashboardPage = lazy(() => import('../modules/helpdesk/HelpdeskDashboardPage'));
 const AssetListPage = lazy(() => import('../modules/assets/AssetListPage'));
 const MetersPage = lazy(() => import('../modules/meters/MetersPage'));
 const CompliancePage = lazy(() => import('../modules/compliance/CompliancePage'));
@@ -56,6 +57,7 @@ export const router = createBrowserRouter([
       { path: 'finance', element: withBoundary('Finance', FinancePage) },
       { path: 'workorders', element: withBoundary('Work Orders', WorkOrdersPage) },
       { path: 'helpdesk', element: withBoundary('HelpDesk', HelpdeskPage) },
+      { path: 'helpdesk/dashboard', element: withBoundary('HelpDesk Dashboard', HelpdeskDashboardPage) },
       { path: 'assets', element: withBoundary('Assets', AssetListPage) },
       { path: 'meters', element: withBoundary('Měřidla', MetersPage) },
       { path: 'compliance', element: withBoundary('Compliance', CompliancePage) },

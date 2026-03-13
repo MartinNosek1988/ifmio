@@ -9,6 +9,7 @@ export const helpdeskKeys = {
   detail:   (id: string) => ['helpdesk', 'detail', id] as const,
   protocol: (id: string) => ['helpdesk', 'protocol', id] as const,
   slaStats: () => ['helpdesk', 'sla-stats'] as const,
+  dashboard: (days: number) => ['helpdesk', 'dashboard', days] as const,
 }
 
 export function useTickets(params?: Record<string, unknown>) {
@@ -22,6 +23,14 @@ export function useSlaStats() {
   return useQuery({
     queryKey: helpdeskKeys.slaStats(),
     queryFn:  () => helpdeskApi.slaStats(),
+  })
+}
+
+export function useDashboard(days = 30) {
+  return useQuery({
+    queryKey: helpdeskKeys.dashboard(days),
+    queryFn:  () => helpdeskApi.dashboard(days),
+    staleTime: 60_000,
   })
 }
 
