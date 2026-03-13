@@ -83,6 +83,8 @@ export interface InvoiceLine {
   vatAmount: number;
 }
 
+export type InvoiceApprovalStatus = 'draft' | 'submitted' | 'approved';
+
 export interface ApiInvoice {
   id: string;
   tenantId: string;
@@ -115,6 +117,11 @@ export interface ApiInvoice {
   lines?: InvoiceLine[] | null;
   isdocXml?: string | null;
   note?: string;
+  approvalStatus: InvoiceApprovalStatus;
+  submittedAt?: string | null;
+  approvedAt?: string | null;
+  rejectedAt?: string | null;
+  rejectionReason?: string | null;
   createdAt: string;
   updatedAt: string;
   property?: { id: string; name: string } | null;
@@ -219,5 +226,11 @@ export const financeApi = {
       apiClient.post<ApiInvoice>('/finance/invoices/import-isdoc', { xmlContent }).then((r) => r.data),
     exportIsdoc: (id: string) =>
       apiClient.get<string>(`/finance/invoices/${id}/export-isdoc`).then((r) => r.data),
+    submit: (id: string) =>
+      apiClient.post<ApiInvoice>(`/finance/invoices/${id}/submit`).then((r) => r.data),
+    approve: (id: string) =>
+      apiClient.post<ApiInvoice>(`/finance/invoices/${id}/approve`).then((r) => r.data),
+    returnToDraft: (id: string, reason?: string) =>
+      apiClient.post<ApiInvoice>(`/finance/invoices/${id}/return-to-draft`, { reason }).then((r) => r.data),
   },
 };

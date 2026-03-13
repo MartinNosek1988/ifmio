@@ -251,3 +251,34 @@ export function useExportIsdoc() {
     mutationFn: (id: string) => financeApi.invoices.exportIsdoc(id),
   });
 }
+
+export function useSubmitInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => financeApi.invoices.submit(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['finance', 'invoices'] });
+    },
+  });
+}
+
+export function useApproveInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => financeApi.invoices.approve(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['finance', 'invoices'] });
+    },
+  });
+}
+
+export function useReturnInvoiceToDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
+      financeApi.invoices.returnToDraft(id, reason),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['finance', 'invoices'] });
+    },
+  });
+}

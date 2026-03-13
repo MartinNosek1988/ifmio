@@ -5,7 +5,8 @@ import type { Column } from '../../../shared/components';
 import { formatKc, formatCzDate } from '../../../shared/utils/format';
 import type { ApiInvoice } from '../api/finance.api';
 import type { FinTransaction } from '../types';
-import { useInvoices, useInvoiceStats, useDeleteInvoice, useMarkInvoicePaid, useImportIsdoc, useExportIsdoc, usePairInvoice } from '../api/finance.queries';
+import { useInvoices, useInvoiceStats, useDeleteInvoice, useMarkInvoicePaid, useImportIsdoc, useExportIsdoc, usePairInvoice, useSubmitInvoice, useApproveInvoice } from '../api/finance.queries';
+import { useAuthStore } from '../../../core/auth';
 import { InvoiceDetailModal } from './InvoiceDetailModal';
 import { InvoiceForm } from './InvoiceForm';
 
@@ -13,18 +14,32 @@ export const INVOICE_TYPE_LABELS: Record<string, string> = {
   received: 'Přijatá', issued: 'Vydaná', proforma: 'Záloha', credit_note: 'Dobropis',
 };
 
+export const APPROVAL_STATUS_LABELS: Record<string, string> = {
+  draft: 'Draft', submitted: 'Ke schválení', approved: 'Schváleno',
+};
+
+export const APPROVAL_STATUS_VARIANTS: Record<string, 'muted' | 'yellow' | 'green' | 'blue' | 'purple'> = {
+  draft: 'muted', submitted: 'yellow', approved: 'blue',
+};
+
+/** Roles that can approve/return invoices */
+const FINANCE_ROLES = ['tenant_owner', 'tenant_admin', 'finance_manager'];
+
 export function DokladyTab({ transactions }: { transactions: FinTransaction[] }) {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterPaid, setFilterPaid] = useState('');
+  const [filterApproval, setFilterApproval] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editInvoice, setEditInvoice] = useState<ApiInvoice | null>(null);
   const [detailInvoice, setDetailInvoice] = useState<ApiInvoice | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ApiInvoice | null>(null);
+  const userRole = useAuthStore((s) => s.user?.role) ?? 'viewer';
 
   const { data: invData } = useInvoices({
     ...(filterType ? { type: filterType } : {}),
     ...(filterPaid ? { isPaid: filterPaid } : {}),
+    ...(filterApproval ? { approvalStatus: filterApproval } : {}),
     ...(search ? { search } : {}),
     limit: 200,
   });
@@ -35,6 +50,8 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
   const pairMut = usePairInvoice();
   const importIsdocMut = useImportIsdoc();
   const exportIsdocMut = useExportIsdoc();
+  const submitMut = useSubmitInvoice();
+  const approveMut = useApproveInvoice();
   const isdocRef = useRef<HTMLInputElement>(null);
 
   const handleIsdocImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -103,29 +120,52 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
       const overdue = !i.isPaid && i.dueDate < new Date().toISOString().slice(0, 10);
       return <span style={{ color: overdue ? 'var(--danger)' : 'var(--text-muted)', fontSize: '0.85rem', fontWeight: overdue ? 600 : 400 }}>{formatCzDate(i.dueDate)}</span>;
     } },
-    { key: 'isPaid', label: 'Stav', render: (i) => {
+    { key: 'approvalStatus', label: 'Schválení', render: (i) => {
+      if (i.isPaid) return <Badge variant="green">Uhrazeno</Badge>;
+      return <Badge variant={APPROVAL_STATUS_VARIANTS[i.approvalStatus] || 'muted'}>
+        {APPROVAL_STATUS_LABELS[i.approvalStatus] || i.approvalStatus}
+      </Badge>;
+    } },
+    { key: 'isPaid', label: 'Platba', render: (i) => {
       if (i.isPaid) return <Badge variant="green">Uhrazeno</Badge>;
       const overdue = i.dueDate && i.dueDate < new Date().toISOString().slice(0, 10);
       return <Badge variant={overdue ? 'red' : 'yellow'}>{overdue ? 'Po splatnosti' : 'Čeká'}</Badge>;
     } },
-    { key: 'actions', label: '', render: (i) => (
-      <div style={{ display: 'flex', gap: 4 }}>
-        {!i.isPaid && (
-          <button onClick={(e) => { e.stopPropagation(); markPaidMut.mutate({ id: i.id }); }}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--success)', fontSize: '0.78rem' }} title="Uhradit">
-            ✓
+    { key: 'actions', label: '', render: (i) => {
+      const btnStyle = { background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.78rem' };
+      const canApprove = FINANCE_ROLES.includes(userRole);
+      return (
+        <div style={{ display: 'flex', gap: 4 }} onClick={(e) => e.stopPropagation()}>
+          {/* Submit: only draft */}
+          {i.approvalStatus === 'draft' && !i.isPaid && (
+            <button onClick={() => submitMut.mutate(i.id)} style={{ ...btnStyle, color: 'var(--accent)' }} title="Odeslat ke schválení" disabled={submitMut.isPending}>
+              ▶
+            </button>
+          )}
+          {/* Approve: only submitted + finance roles */}
+          {i.approvalStatus === 'submitted' && canApprove && (
+            <button onClick={() => approveMut.mutate(i.id)} style={{ ...btnStyle, color: 'var(--success)' }} title="Schválit" disabled={approveMut.isPending}>
+              ✓
+            </button>
+          )}
+          {/* Mark paid: only approved + finance roles */}
+          {i.approvalStatus === 'approved' && !i.isPaid && canApprove && (
+            <button onClick={() => markPaidMut.mutate({ id: i.id })} style={{ ...btnStyle, color: 'var(--success)' }} title="Uhradit">
+              $
+            </button>
+          )}
+          <button onClick={() => handleExport(i)} style={{ ...btnStyle, color: 'var(--text-muted)' }} title="Export ISDOC">
+            <Download size={13} />
           </button>
-        )}
-        <button onClick={(e) => { e.stopPropagation(); handleExport(i); }}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.78rem' }} title="Export ISDOC">
-          <Download size={13} />
-        </button>
-        <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(i); }}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: '0.78rem' }}>
-          Smazat
-        </button>
-      </div>
-    ) },
+          {/* Delete: only draft */}
+          {i.approvalStatus === 'draft' && (
+            <button onClick={() => setDeleteTarget(i)} style={{ ...btnStyle, color: 'var(--danger)' }}>
+              Smazat
+            </button>
+          )}
+        </div>
+      );
+    } },
   ];
 
   return (
@@ -148,9 +188,13 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
           {Object.entries(INVOICE_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
         <select value={filterPaid} onChange={(e) => setFilterPaid(e.target.value)} style={selectStyle}>
-          <option value="">Vše</option>
+          <option value="">Platba: Vše</option>
           <option value="false">Neuhrazené</option>
           <option value="true">Uhrazené</option>
+        </select>
+        <select value={filterApproval} onChange={(e) => setFilterApproval(e.target.value)} style={selectStyle}>
+          <option value="">Schválení: Vše</option>
+          {Object.entries(APPROVAL_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 6, border: '1px solid var(--border)', cursor: 'pointer', background: 'var(--surface)', color: 'var(--text)', fontSize: '0.85rem' }}>
           <FileText size={15} /> Import ISDOC
@@ -178,7 +222,7 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
           invoice={detailInvoice}
           transactions={transactions}
           onClose={() => setDetailInvoice(null)}
-          onEdit={() => { setEditInvoice(detailInvoice); setShowForm(true); setDetailInvoice(null); }}
+          onEdit={() => { if (detailInvoice.approvalStatus === 'draft') { setEditInvoice(detailInvoice); setShowForm(true); setDetailInvoice(null); } }}
           onMarkPaid={(dto) => { markPaidMut.mutate({ id: detailInvoice.id, dto }, { onSuccess: () => setDetailInvoice(null) }); }}
           onPair={(transactionId) => { pairMut.mutate({ invoiceId: detailInvoice.id, transactionId }, { onSuccess: () => setDetailInvoice(null) }); }}
           onExport={() => handleExport(detailInvoice)}
