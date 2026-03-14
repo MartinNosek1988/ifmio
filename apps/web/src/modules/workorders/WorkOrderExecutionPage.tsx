@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Camera, FileText, MessageSquare, CheckCircle, ChevronLeft, Paperclip, Clock, Upload } from 'lucide-react';
-import { Badge, Button, LoadingState, EmptyState } from '../../shared/components';
+import { Camera, FileText, MessageSquare, CheckCircle, ChevronLeft, Paperclip, Clock } from 'lucide-react';
+import { Badge, Button, LoadingState } from '../../shared/components';
 import type { BadgeVariant } from '../../shared/components';
 import { useChangeWOStatus, useUpdateWorkOrder, useAddWOComment, useWorkOrderDetail } from './api/workorders.queries';
-import type { WOStatus, ApiWorkOrder } from './api/workorders.api';
+import type { ApiWorkOrder } from './api/workorders.api';
 import { WO_STATUS_LABELS, WO_PRIORITY_LABELS, label } from '../../constants/labels';
 import { apiClient } from '../../core/api/client';
 import { documentsApi, formatFileSize } from '../documents/api/documents.api';
@@ -29,7 +29,6 @@ export default function WorkOrderExecutionPage() {
 }
 
 function ExecutionView({ wo, onRefresh, onBack }: { wo: ApiWorkOrder; onRefresh: () => void; onBack: () => void }) {
-  const navigate = useNavigate();
   const [section, setSection] = useState<Section>('overview');
   const changeStatus = useChangeWOStatus();
   const updateWo = useUpdateWorkOrder();
