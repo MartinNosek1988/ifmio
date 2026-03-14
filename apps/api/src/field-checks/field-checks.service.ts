@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AuthUser } from '@ifmio/shared-types';
 import type { CreateFieldCheckDtoType, LogScanEventDtoType } from './dto/create-field-check.dto';
@@ -99,8 +100,16 @@ export class FieldChecksService {
       if (!scanEvent) throw new NotFoundException('Událost skenování nenalezena');
     }
 
+    const signalsInput = (dto.signals ?? []).map(
+      (s): Prisma.AssetFieldCheckSignalCreateWithoutExecutionInput => ({
+        signalType: s.signalType as FieldCheckSignalType,
+        isValid: s.isValid ?? null,
+        payloadJson: s.payloadJson as Prisma.InputJsonValue,
+      }),
+    );
+
     const { score, level } = computeConfidence(
-      dto.signals.map((s) => ({ signalType: s.signalType as FieldCheckSignalType, isValid: s.isValid ?? null })),
+      signalsInput.map((s) => ({ signalType: s.signalType, isValid: s.isValid ?? null })),
     );
 
     const execution = await this.prisma.$transaction(async (tx) => {
@@ -119,11 +128,7 @@ export class FieldChecksService {
           confidenceLevel: level,
           confidenceScore: score,
           signals: {
-            create: dto.signals.map((s) => ({
-              signalType: s.signalType,
-              isValid: s.isValid ?? null,
-              payloadJson: s.payloadJson as object,
-            })),
+            create: signalsInput,
           },
         },
         include: {
