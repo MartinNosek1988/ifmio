@@ -918,6 +918,7 @@ model RevisionSubject {
   id           String   @id @default(uuid())
   tenantId     String
   propertyId   String?
+  assetId      String?
   name         String
   category     String   @default("obecne")
   description  String?  @db.Text
@@ -932,10 +933,12 @@ model RevisionSubject {
 
   tenant   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   property Property?      @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  asset    Asset?         @relation("AssetRevisionSubjects", fields: [assetId], references: [id], onDelete: SetNull)
   plans    RevisionPlan[]
 
   @@index([tenantId])
   @@index([tenantId, propertyId])
+  @@index([assetId])
   @@map("revision_subjects")
 }
 
@@ -974,36 +977,44 @@ enum RevisionPlanStatus {
 }
 
 model RevisionPlan {
-  id                 String             @id @default(uuid())
-  tenantId           String
-  propertyId         String?
-  revisionSubjectId  String
-  revisionTypeId     String
-  title              String
-  description        String?            @db.Text
-  intervalDays       Int
-  reminderDaysBefore Int                @default(30)
-  vendorName         String?
-  responsibleUserId  String?
-  lastPerformedAt    DateTime?
-  nextDueAt          DateTime
-  status             RevisionPlanStatus @default(active)
-  isMandatory        Boolean            @default(true)
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  id                     String             @id @default(uuid())
+  tenantId               String
+  propertyId             String?
+  revisionSubjectId      String
+  revisionTypeId         String
+  assetId                String?
+  assetTypeAssignmentId  String?
+  title                  String
+  description            String?            @db.Text
+  intervalDays           Int
+  reminderDaysBefore     Int                @default(30)
+  vendorName             String?
+  responsibleUserId      String?
+  lastPerformedAt        DateTime?
+  nextDueAt              DateTime
+  status                 RevisionPlanStatus @default(active)
+  isMandatory            Boolean            @default(true)
+  generatedFromAssetType Boolean            @default(false)
+  isCustomized           Boolean            @default(false)
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
 
-  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  property        Property?       @relation(fields: [propertyId], references: [id], onDelete: SetNull)
-  revisionSubject RevisionSubject @relation(fields: [revisionSubjectId], references: [id], onDelete: Cascade)
-  revisionType    RevisionType    @relation(fields: [revisionTypeId], references: [id], onDelete: Cascade)
-  responsibleUser User?           @relation(fields: [responsibleUserId], references: [id], onDelete: SetNull)
-  events          RevisionEvent[]
+  tenant              Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property            Property?               @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  revisionSubject     RevisionSubject         @relation(fields: [revisionSubjectId], references: [id], onDelete: Cascade)
+  revisionType        RevisionType            @relation(fields: [revisionTypeId], references: [id], onDelete: Cascade)
+  responsibleUser     User?                   @relation(fields: [responsibleUserId], references: [id], onDelete: SetNull)
+  asset               Asset?                  @relation("AssetRevisionPlans", fields: [assetId], references: [id], onDelete: SetNull)
+  assetTypeAssignment AssetTypeRevisionType?  @relation(fields: [assetTypeAssignmentId], references: [id], onDelete: SetNull)
+  events              RevisionEvent[]
 
   @@index([tenantId])
   @@index([tenantId, propertyId, nextDueAt])
   @@index([tenantId, status])
   @@index([revisionSubjectId])
   @@index([revisionTypeId])
+  @@index([assetId])
+  @@index([assetTypeAssignmentId])
   @@map("revision_plans")
 }
 
@@ -1513,9 +1524,10 @@ model AssetTypeRevisionType {
   createdAt                         DateTime @default(now())
   updatedAt                         DateTime @updatedAt
 
-  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  assetType    AssetType    @relation(fields: [assetTypeId], references: [id], onDelete: Cascade)
-  revisionType RevisionType @relation(fields: [revisionTypeId], references: [id], onDelete: Cascade)
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assetType     AssetType      @relation(fields: [assetTypeId], references: [id], onDelete: Cascade)
+  revisionType  RevisionType   @relation(fields: [revisionTypeId], references: [id], onDelete: Cascade)
+  revisionPlans RevisionPlan[]
 
   @@unique([assetTypeId, revisionTypeId])
   @@index([tenantId])
@@ -1548,11 +1560,13 @@ model Asset {
   updatedAt       DateTime      @updatedAt
   deletedAt       DateTime?
 
-  tenant         Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  property       Property?            @relation(fields: [propertyId], references: [id], onDelete: SetNull)
-  unit           Unit?                @relation(fields: [unitId], references: [id], onDelete: SetNull)
-  assetType      AssetType?           @relation(fields: [assetTypeId], references: [id], onDelete: SetNull)
-  serviceRecords AssetServiceRecord[]
+  tenant           Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property         Property?            @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  unit             Unit?                @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  assetType        AssetType?           @relation(fields: [assetTypeId], references: [id], onDelete: SetNull)
+  serviceRecords   AssetServiceRecord[]
+  revisionPlans    RevisionPlan[]       @relation("AssetRevisionPlans")
+  revisionSubjects RevisionSubject[]    @relation("AssetRevisionSubjects")
 
   @@index([tenantId])
   @@index([propertyId])

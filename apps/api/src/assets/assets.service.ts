@@ -1,15 +1,19 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import { Injectable, NotFoundException, Logger } from '@nestjs/common'
 
 import { PrismaService } from '../prisma/prisma.service';
 import { PropertyScopeService } from '../common/services/property-scope.service';
+import { AssetPlanInstantiationService } from '../asset-types/asset-plan-instantiation.service';
 import { Prisma } from '@prisma/client';
 import type { AuthUser } from '@ifmio/shared-types';
 
 @Injectable()
 export class AssetsService {
+  private readonly logger = new Logger(AssetsService.name)
+
   constructor(
     private prisma: PrismaService,
     private scope: PropertyScopeService,
+    private instantiation: AssetPlanInstantiationService,
   ) {}
 
   /* ─── List ──────────────────────────────────────────────────────── */
@@ -119,7 +123,7 @@ export class AssetsService {
       if (!at) throw new NotFoundException('Typ zařízení nenalezen');
     }
 
-    return this.prisma.asset.create({
+    const asset = await this.prisma.asset.create({
       data: {
         tenantId: user.tenantId,
         name: dto.name,
@@ -145,6 +149,15 @@ export class AssetsService {
         assetType: { select: { id: true, name: true, code: true } },
       },
     });
+
+    // Best-effort: auto-instantiate plans if asset type is set
+    if (asset.assetTypeId) {
+      this.instantiation
+        .instantiatePlansForAsset(asset.id, asset.assetTypeId, user.tenantId)
+        .catch((err) => this.logger.error(`Auto-plan instantiation failed for asset ${asset.id}: ${err?.message}`))
+    }
+
+    return asset;
   }
 
   async getById(user: AuthUser, id: string) {

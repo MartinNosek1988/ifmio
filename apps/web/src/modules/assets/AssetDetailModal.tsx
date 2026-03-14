@@ -5,7 +5,7 @@ import type { BadgeVariant } from '../../shared/components';
 import { apiClient } from '../../core/api/client';
 import type { Asset } from './AssetListPage';
 import {
-  Wrench, FileText, QrCode, Save, Plus, AlertTriangle, CheckCircle,
+  Wrench, FileText, QrCode, AlertTriangle, CheckCircle, RefreshCw,
 } from 'lucide-react';
 
 /* ─── types ──────────────────────────────────────────────────────── */
@@ -157,6 +157,109 @@ export default function AssetDetailModal({ asset, onClose, onUpdated }: Props) {
 
 /* ─── Detail View ────────────────────────────────────────────────── */
 
+interface SyncPreviewItem {
+  revisionTypeId: string
+  code: string
+  name: string
+  effectiveIntervalDays: number
+  isRequired: boolean
+  existingPlanId: string | null
+  existingPlanIsCustomized: boolean
+  action: 'create' | 'skip_exists' | 'skip_customized'
+}
+
+const ACTION_LABEL: Record<string, string> = {
+  create: 'Bude vytvořen',
+  skip_exists: 'Již existuje',
+  skip_customized: 'Přeskočeno (upraveno)',
+}
+const ACTION_COLOR: Record<string, string> = {
+  create: 'var(--accent-blue)',
+  skip_exists: 'var(--text-muted)',
+  skip_customized: 'var(--accent-yellow, #d97706)',
+}
+
+function SyncPanel({ assetId }: { assetId: string }) {
+  const [preview, setPreview] = useState<SyncPreviewItem[] | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState<{ created: number; skipped: number; skippedCustomized: number } | null>(null)
+  const qc = useQueryClient()
+
+  const handlePreview = async () => {
+    setLoading(true)
+    setResult(null)
+    try {
+      const res = await apiClient.get<SyncPreviewItem[]>(`/assets/${assetId}/sync-plans/preview`)
+      setPreview(res.data)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSync = async () => {
+    setLoading(true)
+    try {
+      const res = await apiClient.post<{ created: number; skipped: number; skippedCustomized: number }>(
+        `/assets/${assetId}/sync-plans`,
+        { skipCustomized: true },
+      )
+      setResult(res.data)
+      setPreview(null)
+      qc.invalidateQueries({ queryKey: ['revisions', 'plans'] })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const toCreate = preview?.filter((p) => p.action === 'create').length ?? 0
+  const toSkip = preview?.filter((p) => p.action === 'skip_exists').length ?? 0
+  const toSkipCustom = preview?.filter((p) => p.action === 'skip_customized').length ?? 0
+
+  return (
+    <div style={{ marginTop: 16, padding: '12px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-2, var(--surface))' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Plány činností</span>
+        {!preview && !result && (
+          <Button size="sm" icon={<RefreshCw size={13} />} onClick={handlePreview} disabled={loading}>
+            {loading ? 'Načítám...' : 'Zkontrolovat'}
+          </Button>
+        )}
+      </div>
+
+      {result && (
+        <div style={{ fontSize: '0.85rem', color: 'var(--accent-green)' }}>
+          Vytvořeno {result.created} plánů · přeskočeno {result.skipped + result.skippedCustomized}
+          <Button size="sm" onClick={() => setResult(null)} style={{ marginLeft: 8 }}>Zavřít</Button>
+        </div>
+      )}
+
+      {preview && (
+        <div>
+          <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 8 }}>
+            Bude vytvořeno: <strong>{toCreate}</strong> · Existuje: {toSkip} · Přeskočeno (upraveno): {toSkipCustom}
+          </div>
+          <div style={{ maxHeight: 160, overflowY: 'auto', marginBottom: 10 }}>
+            {preview.map((item) => (
+              <div key={item.revisionTypeId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', padding: '3px 0', borderBottom: '1px solid var(--border)' }}>
+                <span>{item.name}</span>
+                <span style={{ color: ACTION_COLOR[item.action] }}>{ACTION_LABEL[item.action]}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {toCreate > 0 && (
+              <Button size="sm" variant="primary" onClick={handleSync} disabled={loading}>
+                {loading ? 'Synchronizuji...' : `Vytvořit ${toCreate} plánů`}
+              </Button>
+            )}
+            <Button size="sm" onClick={() => setPreview(null)}>Zavřít</Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function DetailView({ asset, onEdit }: { asset: Asset; onEdit: () => void }) {
   const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString('cs-CZ') : '—';
   const fmtMoney = (v: number | null) => v != null ? `${Number(v).toLocaleString('cs-CZ')} Kč` : '—';
@@ -174,7 +277,8 @@ function DetailView({ asset, onEdit }: { asset: Asset; onEdit: () => void }) {
           ) : null}
         </div>
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: '0.9rem' }}>
+      {asset.assetTypeId && <SyncPanel assetId={asset.id} />}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: '0.9rem', marginTop: 14 }}>
         <InfoRow label="Výrobce" value={asset.manufacturer} />
         <InfoRow label="Model" value={asset.model} />
         <InfoRow label="Sériové číslo" value={asset.serialNumber} />

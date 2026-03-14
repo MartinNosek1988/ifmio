@@ -160,6 +160,7 @@ export class RevisionsService {
       ...(query.propertyId ? { propertyId: query.propertyId } : {}),
       ...(query.revisionTypeId ? { revisionTypeId: query.revisionTypeId } : {}),
       ...(query.subjectId ? { revisionSubjectId: query.subjectId } : {}),
+      ...(query.assetId ? { assetId: query.assetId } : {}),
       ...(query.status ? { status: query.status } : {}),
       ...(query.search ? {
         OR: [
@@ -336,6 +337,13 @@ export class RevisionsService {
           new Date(existing.lastPerformedAt).getTime() + dto.intervalDays * DAY_MS,
         )
       }
+    }
+
+    // Mark as customized if auto-generated plan has scheduling fields changed
+    if ((existing as any).generatedFromAssetType && !(existing as any).isCustomized) {
+      const schedulingFields = ['intervalDays', 'reminderDaysBefore', 'isMandatory'] as const
+      const changed = schedulingFields.some((f) => dto[f] !== undefined && dto[f] !== (existing as any)[f])
+      if (changed) data.isCustomized = true
     }
 
     return this.prisma.revisionPlan.update({ where: { id }, data })
