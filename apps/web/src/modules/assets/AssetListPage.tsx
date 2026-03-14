@@ -143,7 +143,7 @@ export default function AssetListPage() {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Asset Management</h1>
+          <h1 className="page-title">Pasportizace</h1>
           <p className="page-subtitle">{stats?.total ?? 0} zařízení</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>

@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, CheckCircle, AlertTriangle, XCircle, MinusCircle,
   ClipboardList, History, FileText, Activity, Wrench, RefreshCw,
-  CalendarClock, Clock,
+  CalendarClock, Clock, ScrollText,
 } from 'lucide-react'
 import {
   Badge, Button, LoadingState, ErrorState, KpiCard, Table,
@@ -138,21 +138,21 @@ const STATUS_COLOR: Record<string, BadgeVariant> = {
 
 const TABS = [
   { id: 'overview', label: 'Přehled', icon: <Activity size={14} /> },
-  { id: 'plans', label: 'Revizní plány', icon: <ClipboardList size={14} /> },
-  { id: 'history', label: 'Historie revizí', icon: <History size={14} /> },
+  { id: 'plans', label: 'Plán činností', icon: <ClipboardList size={14} /> },
+  { id: 'history', label: 'Historie', icon: <History size={14} /> },
   { id: 'documents', label: 'Dokumenty', icon: <FileText size={14} /> },
-  { id: 'audit', label: 'Audit', icon: <Wrench size={14} /> },
+  { id: 'audit', label: 'Změny', icon: <ScrollText size={14} /> },
 ]
 
 // ─── Compliance Header Badge ─────────────────────────────────────────
 
 function ComplianceHeaderBadge({ status }: { status: AssetComplianceStatus }) {
   const cfg: Record<AssetComplianceStatus, { icon: React.ReactNode; label: string; color: string }> = {
-    compliant: { icon: <CheckCircle size={16} />, label: 'Compliance OK', color: 'var(--success, #22c55e)' },
+    compliant: { icon: <CheckCircle size={16} />, label: 'V pořádku', color: 'var(--success, #22c55e)' },
     due_soon: { icon: <AlertTriangle size={16} />, label: 'Blíží se termín', color: 'var(--accent-orange, #f59e0b)' },
-    overdue: { icon: <XCircle size={16} />, label: 'Po termínu!', color: 'var(--danger, #ef4444)' },
-    missing_plan: { icon: <AlertTriangle size={16} />, label: 'Chybí plán', color: 'var(--accent-orange, #f59e0b)' },
-    not_configured: { icon: <MinusCircle size={16} />, label: 'Nekonfigurováno', color: 'var(--text-muted)' },
+    overdue: { icon: <XCircle size={16} />, label: 'Po termínu', color: 'var(--danger, #ef4444)' },
+    missing_plan: { icon: <AlertTriangle size={16} />, label: 'Chybí plán činností', color: 'var(--accent-orange, #f59e0b)' },
+    not_configured: { icon: <MinusCircle size={16} />, label: 'Není nastaveno', color: 'var(--text-muted)' },
   }
   const c = cfg[status]
   return (
@@ -173,8 +173,8 @@ function OverdueBanner({ count }: { count: number }) {
       display: 'flex', alignItems: 'center', gap: 10, color: 'var(--danger, #ef4444)',
     }}>
       <XCircle size={18} />
-      <strong>{count} {count === 1 ? 'revizní plán je' : 'revizní plány jsou'} po termínu.</strong>
-      <span style={{ fontSize: '0.85rem' }}>Zkontrolujte záložku Revizní plány.</span>
+      <strong>{count} {count === 1 ? 'plán činností je' : 'plány činností jsou'} po termínu.</strong>
+      <span style={{ fontSize: '0.85rem' }}>Zkontrolujte záložku Plán činností.</span>
     </div>
   )
 }
