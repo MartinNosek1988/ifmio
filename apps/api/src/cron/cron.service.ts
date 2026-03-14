@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { HelpdeskEscalationService } from '../helpdesk/helpdesk-escalation.service';
 import { RevisionEscalationService } from '../revisions/revision-escalation.service';
 import { ScheduledReportsService } from '../reports/scheduled-reports.service';
+import { RecurringPlansService } from '../recurring-plans/recurring-plans.service';
 
 const ONE_HOUR = 60 * 60 * 1000;
 const SIX_HOURS = 6 * ONE_HOUR;
@@ -19,6 +20,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
   private revisionEscalationInterval: ReturnType<typeof setInterval> | null = null;
   private dailyDigestInterval: ReturnType<typeof setInterval> | null = null;
   private scheduledReportsInterval: ReturnType<typeof setInterval> | null = null;
+  private recurringGenInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private readonly config: ConfigService,
@@ -26,6 +28,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     private readonly escalation: HelpdeskEscalationService,
     private readonly revisionEscalation: RevisionEscalationService,
     private readonly scheduledReports: ScheduledReportsService,
+    private readonly recurringPlans: RecurringPlansService,
   ) {}
 
   onModuleInit() {
@@ -35,6 +38,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     this.initRevisionEscalation();
     this.initDailyDigest();
     this.initScheduledReports();
+    this.initRecurringGeneration();
   }
 
   onModuleDestroy() {
@@ -61,6 +65,10 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     if (this.scheduledReportsInterval) {
       clearInterval(this.scheduledReportsInterval);
       this.scheduledReportsInterval = null;
+    }
+    if (this.recurringGenInterval) {
+      clearInterval(this.recurringGenInterval);
+      this.recurringGenInterval = null;
     }
     this.logger.log('Cron intervals cleared');
   }
@@ -286,6 +294,25 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
       }
     } catch (err) {
       this.logger.error('Scheduled reports job FAILED', (err as Error).stack);
+    }
+  }
+
+  // ─── Recurring Activity Generation ────────────────────────
+
+  private initRecurringGeneration() {
+    this.logger.log('Recurring activity generation enabled — checking every hour');
+    setTimeout(() => this.runRecurringGeneration(), 150_000);
+    this.recurringGenInterval = setInterval(() => this.runRecurringGeneration(), ONE_HOUR);
+  }
+
+  private async runRecurringGeneration() {
+    try {
+      const result = await this.recurringPlans.generatePendingTickets();
+      if (result.generated > 0 || result.skipped > 0) {
+        this.logger.log(`Recurring generation: checked ${result.checked}, generated ${result.generated}, skipped ${result.skipped}`);
+      }
+    } catch (err) {
+      this.logger.error('Recurring generation job FAILED', (err as Error).stack);
     }
   }
 }

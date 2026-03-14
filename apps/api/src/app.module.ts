@@ -36,6 +36,7 @@ import { FieldChecksModule } from './field-checks/field-checks.module';
 import { RevisionsModule } from './revisions/revisions.module';
 import { ProtocolsModule } from './protocols/protocols.module';
 import { MioModule } from './mio/mio.module';
+import { RecurringPlansModule } from './recurring-plans/recurring-plans.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
@@ -98,6 +99,7 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
     RevisionsModule,
     ProtocolsModule,
     MioModule,
+    RecurringPlansModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerBehindProxyGuard },
