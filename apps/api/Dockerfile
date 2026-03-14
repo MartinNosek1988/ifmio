@@ -7,7 +7,7 @@ COPY packages/validation/package.json ./packages/validation/
 RUN npm install --workspace=@ifmio/api --include-workspace-root --ignore-scripts
 COPY packages/ ./packages/
 COPY apps/api/ ./apps/api/
-RUN cd apps/api && npx prisma generate && npm run build
+RUN cd apps/api && npx prisma generate && npx tsc -p tsconfig.build.json --noEmit && npm run build
 
 FROM node:20-alpine
 WORKDIR /app
