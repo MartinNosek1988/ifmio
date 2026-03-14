@@ -1417,6 +1417,18 @@ model WorkOrder {
   materialCost     Decimal?   @db.Decimal(12, 2)
   totalCost        Decimal?   @db.Decimal(12, 2)
   note             String?    @db.Text
+
+  // Structured handover fields
+  workSummary      String?    @db.Text
+  findings         String?    @db.Text
+  recommendation   String?    @db.Text
+
+  // Completion requirements (overrides defaults)
+  requirePhoto     Boolean    @default(false)
+  requireHours     Boolean    @default(false)
+  requireSummary   Boolean    @default(false)
+  requireProtocol  Boolean    @default(false)
+
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 

@@ -42,6 +42,13 @@ export interface ApiWorkOrder {
   materialCost: number | null;
   totalCost: number | null;
   note: string | null;
+  workSummary: string | null;
+  findings: string | null;
+  recommendation: string | null;
+  requirePhoto: boolean;
+  requireHours: boolean;
+  requireSummary: boolean;
+  requireProtocol: boolean;
   createdAt: string;
   updatedAt: string;
   property?: { id: string; name: string; address?: string } | null;
@@ -82,7 +89,21 @@ export interface CreateWorkOrderDto {
   note?: string;
 }
 
+export interface CompletionStatus {
+  canComplete: boolean;
+  violations: string[];
+  requirements: {
+    requirePhoto: boolean;
+    requireHours: boolean;
+    requireSummary: boolean;
+    requireProtocol: boolean;
+  };
+}
+
 export interface UpdateWorkOrderDto extends Partial<CreateWorkOrderDto> {
+  workSummary?: string;
+  findings?: string;
+  recommendation?: string;
   actualHours?: number;
 }
 
@@ -109,6 +130,11 @@ export const workOrdersApi = {
 
   getById: async (id: string) => {
     const { data } = await apiClient.get<ApiWorkOrder>(`/work-orders/${id}`);
+    return data;
+  },
+
+  completionStatus: async (id: string) => {
+    const { data } = await apiClient.get<CompletionStatus>(`/work-orders/${id}/completion-status`);
     return data;
   },
 
