@@ -4,6 +4,12 @@ import { PropertyScopeService } from '../common/services/property-scope.service'
 import * as ExcelJS from 'exceljs';
 import type { AuthUser } from '@ifmio/shared-types';
 
+function toCsv(headers: string[], rows: string[][]): string {
+  const esc = (v: string) => v.includes(';') || v.includes('"') || v.includes('\n') ? `"${v.replace(/"/g, '""')}"` : v
+  const lines = [headers.map(esc).join(';'), ...rows.map(r => r.map(esc).join(';'))]
+  return '\ufeff' + lines.join('\r\n') // BOM for Excel UTF-8
+}
+
 @Injectable()
 export class ReportsService {
   constructor(
@@ -723,6 +729,45 @@ export class ReportsService {
     }
 
     return Buffer.from(await wb.xlsx.writeBuffer())
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // EXPORTS (CSV)
+  // ═══════════════════════════════════════════════════════════════
+
+  async exportOperationalCsv(user: AuthUser, query: Parameters<ReportsService['getOperationalReport']>[1]): Promise<string> {
+    const report = await this.getOperationalReport(user, query)
+    const headers = ['Typ', 'Název', 'Nemovitost', 'Zařízení', 'Zadavatel', 'Dispečer', 'Řešitel', 'Priorita', 'Stav', 'Vytvořeno', 'Termín', 'Dokončeno']
+    const allRows = [...report.tickets, ...report.workOrders]
+    const rows = allRows.map(r => [
+      r.type === 'request' ? 'Požadavek' : 'Úkol',
+      r.title, r.property ?? '', r.asset ?? '', r.requester ?? '', r.dispatcher ?? '', r.resolver ?? '',
+      r.priority, r.status, r.createdAt, r.dueAt ?? '', r.completedAt ?? '',
+    ])
+    return toCsv(headers, rows)
+  }
+
+  async exportAssetCsv(user: AuthUser, query: Parameters<ReportsService['getAssetReport']>[1]): Promise<string> {
+    const report = await this.getAssetReport(user, query)
+    const headers = ['Zařízení', 'Kategorie', 'Nemovitost', 'Typ', 'Požadavky', 'Úkoly', 'Protokoly', 'Otevřené úkoly', 'Po termínu', 'Celkem zásahů', 'Poslední aktivita']
+    const rows = report.rows.map(r => [
+      r.name, r.category, r.property ?? '', r.assetType ?? '',
+      String(r.requestCount), String(r.workOrderCount), String(r.protocolCount),
+      String(r.openWorkOrders), String(r.overdueWorkOrders), String(r.totalInterventions),
+      r.lastActivity ?? '',
+    ])
+    return toCsv(headers, rows)
+  }
+
+  async exportProtocolCsv(user: AuthUser, query: Parameters<ReportsService['getProtocolReport']>[1]): Promise<string> {
+    const report = await this.getProtocolReport(user, query)
+    const headers = ['Číslo', 'Název', 'Typ', 'Stav', 'Nemovitost', 'Řešitel', 'Vytvořeno', 'Dokončeno', 'Předáno', 'Spokojenost', 'PDF', 'Podpis']
+    const rows = report.rows.map(r => [
+      r.number, r.title ?? '', r.protocolType, r.status, r.property ?? '', r.resolverName ?? '',
+      r.createdAt, r.completedAt ?? '', r.handoverAt ?? '', r.satisfaction ?? '',
+      r.hasGeneratedPdf ? 'Ano' : 'Ne', r.hasSignedDocument ? 'Ano' : 'Ne',
+    ])
+    return toCsv(headers, rows)
   }
 
   async getPropertyReport(user: AuthUser) {

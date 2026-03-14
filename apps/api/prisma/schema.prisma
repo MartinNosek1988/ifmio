@@ -58,6 +58,7 @@ model Tenant {
   assetQrCodes        AssetQrCode[]
   assetQrScanEvents   AssetQrScanEvent[]
   fieldCheckExecutions AssetFieldCheckExecution[]
+  reportSubscriptions  ScheduledReportSubscription[]
 
   @@map("tenants")
 }
@@ -109,6 +110,7 @@ model User {
   assignedWorkOrders      WorkOrder[]               @relation("WOAssignee")
   requestedWorkOrders     WorkOrder[]               @relation("WORequester")
   dispatchedWorkOrders    WorkOrder[]               @relation("WODispatcher")
+  reportSubscriptions     ScheduledReportSubscription[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -209,7 +211,8 @@ model Property {
   slaPolicies      SlaPolicy[]
   revisionSubjects RevisionSubject[]
   revisionPlans    RevisionPlan[]
-  revisionEvents   RevisionEvent[]
+  revisionEvents        RevisionEvent[]
+  reportSubscriptions   ScheduledReportSubscription[]
 
   @@index([tenantId])
   @@map("properties")
@@ -1158,6 +1161,50 @@ enum EntityType {
   revision
   asset
   work_order
+}
+
+// ─── SCHEDULED REPORTS ────────────────────────────────────────────
+
+model ScheduledReportSubscription {
+  id         String              @id @default(uuid())
+  tenantId   String
+  userId     String
+  reportType ReportType
+  frequency  ReportFrequency     @default(daily)
+  format     ReportFormat        @default(xlsx)
+  propertyId String?
+  isEnabled  Boolean             @default(true)
+  lastSentAt DateTime?
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([isEnabled, frequency])
+  @@map("scheduled_report_subscriptions")
+}
+
+enum ReportType {
+  daily_digest
+  operations
+  assets
+  protocols
+}
+
+enum ReportFrequency {
+  daily
+  weekly
+  monthly
+}
+
+enum ReportFormat {
+  xlsx
+  csv
+  email_only
 }
 
 // ─── SETTINGS ─────────────────────────────────────────────────────
