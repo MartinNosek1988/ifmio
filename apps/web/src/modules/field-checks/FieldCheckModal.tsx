@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { CheckCircle, XCircle, AlertTriangle, Shield, MapPin, Camera, BookOpen, Activity } from 'lucide-react'
-import { Button, Badge } from '../../shared/components'
+import { Button } from '../../shared/components'
 import type { BadgeVariant } from '../../shared/components'
 import { useCreateFieldCheck } from './api/field-checks.queries'
 import type { FieldCheckSignalInput, FieldCheckResult, FieldCheckConfidenceLevel } from './api/field-checks.api'
