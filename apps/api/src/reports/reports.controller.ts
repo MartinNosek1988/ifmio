@@ -75,4 +75,105 @@ export class ReportsController {
   getProperties(@CurrentUser() user: AuthUser) {
     return this.service.getPropertyReport(user);
   }
+
+  // ─── Operational report ────────────────────────────────────
+
+  @Get('operations')
+  @ApiOperation({ summary: 'Provozní report (Helpdesk + WO)' })
+  getOperations(
+    @CurrentUser() user: AuthUser,
+    @Query('propertyId') propertyId?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+    @Query('priority') priority?: string,
+    @Query('status') status?: string,
+    @Query('assetId') assetId?: string,
+    @Query('onlyOverdue') onlyOverdue?: string,
+  ) {
+    return this.service.getOperationalReport(user, { propertyId, dateFrom, dateTo, priority, status, assetId, onlyOverdue });
+  }
+
+  @Get('operations/export')
+  @ApiOperation({ summary: 'Export provozního reportu (XLSX)' })
+  async exportOperations(
+    @CurrentUser() user: AuthUser,
+    @Query('propertyId') propertyId?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+    @Query('priority') priority?: string,
+    @Query('status') status?: string,
+    @Query('assetId') assetId?: string,
+    @Query('onlyOverdue') onlyOverdue?: string,
+    @Res() reply?: FastifyReply,
+  ) {
+    const buffer = await this.service.exportOperationalXlsx(user, { propertyId, dateFrom, dateTo, priority, status, assetId, onlyOverdue });
+    reply!
+      .header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      .header('Content-Disposition', 'attachment; filename="provozni-report.xlsx"')
+      .send(buffer);
+  }
+
+  // ─── Asset report ──────────────────────────────────────────
+
+  @Get('assets')
+  @ApiOperation({ summary: 'Technický report zařízení' })
+  getAssets(
+    @CurrentUser() user: AuthUser,
+    @Query('propertyId') propertyId?: string,
+    @Query('assetId') assetId?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+  ) {
+    return this.service.getAssetReport(user, { propertyId, assetId, dateFrom, dateTo });
+  }
+
+  @Get('assets/export')
+  @ApiOperation({ summary: 'Export technického reportu zařízení (XLSX)' })
+  async exportAssets(
+    @CurrentUser() user: AuthUser,
+    @Query('propertyId') propertyId?: string,
+    @Query('assetId') assetId?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+    @Res() reply?: FastifyReply,
+  ) {
+    const buffer = await this.service.exportAssetXlsx(user, { propertyId, assetId, dateFrom, dateTo });
+    reply!
+      .header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      .header('Content-Disposition', 'attachment; filename="zarizeni-report.xlsx"')
+      .send(buffer);
+  }
+
+  // ─── Protocol report ───────────────────────────────────────
+
+  @Get('protocols')
+  @ApiOperation({ summary: 'Registr protokolů' })
+  getProtocols(
+    @CurrentUser() user: AuthUser,
+    @Query('propertyId') propertyId?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+    @Query('protocolType') protocolType?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.service.getProtocolReport(user, { propertyId, dateFrom, dateTo, protocolType, status });
+  }
+
+  @Get('protocols/export')
+  @ApiOperation({ summary: 'Export registru protokolů (XLSX)' })
+  async exportProtocols(
+    @CurrentUser() user: AuthUser,
+    @Query('propertyId') propertyId?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+    @Query('protocolType') protocolType?: string,
+    @Query('status') status?: string,
+    @Res() reply?: FastifyReply,
+  ) {
+    const buffer = await this.service.exportProtocolXlsx(user, { propertyId, dateFrom, dateTo, protocolType, status });
+    reply!
+      .header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      .header('Content-Disposition', 'attachment; filename="protokoly-report.xlsx"')
+      .send(buffer);
+  }
 }
