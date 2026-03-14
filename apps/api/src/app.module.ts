@@ -60,7 +60,7 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
         {
           name: 'default',
           ttl: 60_000,
-          limit: 20,
+          limit: 100,
           skipIf: () => process.env.NODE_ENV === 'test',
         },
       ],
