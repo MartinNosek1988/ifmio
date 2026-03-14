@@ -1,4 +1,4 @@
-import { z } from 'zod/v3';
+import { z } from 'zod';
 
 export const CreateFieldCheckDto = z.object({
   checkType: z.enum(['daily_check', 'inspection', 'service_check', 'route_check', 'custom']).default('daily_check'),
@@ -9,7 +9,7 @@ export const CreateFieldCheckDto = z.object({
       z.object({
         signalType: z.enum(['qr_scan', 'gps', 'photo', 'reading', 'checklist', 'manual_code']),
         isValid: z.boolean().optional(),
-        payloadJson: z.record(z.unknown()),
+        payloadJson: z.record(z.string(), z.unknown()),
       }),
     )
     .default([]),
