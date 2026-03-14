@@ -146,7 +146,7 @@ export default function HelpdeskPage() {
   ];
 
   if (isLoading) return <LoadingState />;
-  if (error) return <ErrorState message="Nepodařilo se načíst tikety." />;
+  if (error) return <ErrorState message="Nepodařilo se načíst požadavky." />;
 
   const handleDeleteConfirm = () => {
     if (!deleteTicket) return;
@@ -167,13 +167,13 @@ export default function HelpdeskPage() {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">HelpDesk</h1>
-          <p className="page-subtitle">{stats.open} otevřených tiketů</p>
+          <h1 className="page-title">Helpdesk</h1>
+          <p className="page-subtitle">{stats.open} otevřených požadavků</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <Button icon={<BarChart3 size={15} />} onClick={() => navigate('/helpdesk/dashboard')}>Dashboard</Button>
           <Button icon={<Settings size={15} />} onClick={() => navigate('/helpdesk/sla-config')}>SLA</Button>
-          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)}>Nový tiket</Button>
+          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)}>Nový požadavek</Button>
         </div>
       </div>
 
@@ -186,7 +186,7 @@ export default function HelpdeskPage() {
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <div style={{ flex: 1 }}><SearchBar placeholder="Hledat tikety..." onSearch={setSearch} /></div>
+        <div style={{ flex: 1 }}><SearchBar placeholder="Hledat požadavky..." onSearch={setSearch} /></div>
         <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={selectStyle}>
           <option value="">Všechny stavy</option>
           {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -212,7 +212,7 @@ export default function HelpdeskPage() {
       </div>
 
       {tickets.length === 0 ? (
-        <EmptyState title="Žádné tikety" description="Vytvořte nový helpdesk tiket." />
+        <EmptyState title="Žádné požadavky" description="Zatím tu nejsou žádné požadavky." />
       ) : (
         <Table data={tickets} columns={columns} rowKey={(t) => t.id} onRowClick={(t) => setSelectedTicket(t)} />
       )}
@@ -236,7 +236,7 @@ export default function HelpdeskPage() {
         <Modal
           open
           onClose={() => setDeleteTicket(null)}
-          title="Smazat tiket"
+          title="Smazat požadavek"
           subtitle={`HD-${String(deleteTicket.number).padStart(4, '0')} ${deleteTicket.title}`}
           footer={
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -248,14 +248,14 @@ export default function HelpdeskPage() {
           }
         >
           <p style={{ fontSize: '0.9rem', marginBottom: 8 }}>
-            Opravdu chcete smazat tiket <strong>{deleteTicket.title}</strong>?
+            Opravdu chcete smazat požadavek <strong>{deleteTicket.title}</strong>?
           </p>
           <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 8 }}>
-            Tato akce je nevratná. Budou smazány i všechny položky a protokol tiketu.
+            Tato akce je nevratná. Budou smazány i všechny položky a protokol požadavku.
           </p>
           {deleteMutation.isError && (
             <div style={{ color: 'var(--danger)', fontSize: '0.85rem', marginTop: 8 }}>
-              Nepodařilo se smazat tiket.
+              Nepodařilo se smazat požadavek.
             </div>
           )}
         </Modal>

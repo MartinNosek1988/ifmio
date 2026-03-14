@@ -1,9 +1,11 @@
 ﻿import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { apiClient } from '../../core/api/client';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnUrl = searchParams.get('returnUrl') ?? '/dashboard';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -19,7 +21,7 @@ export default function LoginPage() {
       sessionStorage.setItem('ifmio:access_token', accessToken);
       sessionStorage.setItem('ifmio:refresh_token', refreshToken);
       sessionStorage.setItem('ifmio:user', JSON.stringify(user));
-      navigate('/dashboard', { replace: true });
+      navigate(returnUrl, { replace: true });
     } catch {
       setError('Nesprávný email nebo heslo.');
     } finally {

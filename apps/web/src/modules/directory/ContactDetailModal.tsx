@@ -175,7 +175,7 @@ export default function ContactDetailModal({ person, onClose, onUpdated }: Props
             )}
 
             {myWO.length > 0 && (
-              <VazbySection title="Work Orders" count={myWO.length}>
+              <VazbySection title="Pracovní úkoly" count={myWO.length}>
                 {myWO.map(w => (
                   <div key={String(w.id)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: '0.875rem' }}>
                     <span style={{ fontWeight: 500 }}>{String(w.nazev || '')}</span>
@@ -189,7 +189,7 @@ export default function ContactDetailModal({ person, onClose, onUpdated }: Props
             )}
 
             {myTickets.length > 0 && (
-              <VazbySection title="HelpDesk tikety" count={myTickets.length}>
+              <VazbySection title="Helpdesk požadavky" count={myTickets.length}>
                 {myTickets.map(t => (
                   <div key={String(t.id)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: '0.875rem' }}>
                     <span style={{ fontWeight: 500 }}>{String(t.nazev || t.cisloProtokolu || '')}</span>

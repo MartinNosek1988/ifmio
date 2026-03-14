@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -145,7 +145,7 @@ describe('AssetPassportPage', () => {
 
   it('renders compliance status as compliant', async () => {
     renderPassport()
-    expect(await screen.findByText('Compliance OK')).toBeTruthy()
+    expect(await screen.findByText('V pořádku')).toBeTruthy()
   })
 
   it('renders tab navigation', async () => {
@@ -153,10 +153,10 @@ describe('AssetPassportPage', () => {
     await screen.findByText('Plynový kotel A')
     // "Revizní plány" appears in both tab and overview section, so use getAllByText
     expect(screen.getAllByText('Přehled').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText('Revizní plány').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText('Historie revizí').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Plán činností').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Historie').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('Dokumenty').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText('Audit').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Změny').length).toBeGreaterThanOrEqual(1)
   })
 
   it('shows asset without type badge when no assetTypeId', async () => {
@@ -164,7 +164,7 @@ describe('AssetPassportPage', () => {
     renderPassport('asset-2')
     await screen.findByText('Neidentifikované zařízení')
     expect(screen.getByText('Bez typu zařízení')).toBeTruthy()
-    expect(screen.getByText('Nekonfigurováno')).toBeTruthy()
+    expect(screen.getByText('Není nastaveno')).toBeTruthy()
   })
 
   it('shows no-asset-type info message when not_configured', async () => {
@@ -181,11 +181,13 @@ describe('AssetPassportPage', () => {
     expect(screen.getByText(/po termínu/i, { selector: 'strong' })).toBeTruthy()
   })
 
-  it('shows Po termínu! badge in header when overdue', async () => {
+  it('shows Po termínu badge in header when overdue', async () => {
     mockPassport = MOCK_PASSPORT_OVERDUE
     renderPassport()
-    await screen.findByText('Po termínu!')
-    expect(screen.getByText('Po termínu!')).toBeTruthy()
+    await screen.findAllByText('Po termínu')
+    const header = document.querySelector('.page-header')
+    expect(header).toBeTruthy()
+    expect(within(header as HTMLElement).getByText('Po termínu')).toBeTruthy()
   })
 
   it('renders overview tab with technical details by default', async () => {

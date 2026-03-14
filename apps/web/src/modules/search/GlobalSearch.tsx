@@ -157,7 +157,7 @@ export function GlobalSearch() {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Hledat nemovitosti, obyvatele, tikety..."
+                placeholder="Hledat nemovitosti, obyvatele, požadavky..."
                 className="flex-1 bg-transparent text-sm outline-none placeholder:text-gray-400"
               />
               {query && (

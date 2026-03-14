@@ -200,8 +200,8 @@ function EmailTab({ settings, onSave, saving }: TabProps) {
         <p style={{ fontSize: '.78rem', color: 'var(--text-muted)', marginBottom: 12 }}>
           Zapnete/vypnete emailove notifikace pro jednotlive udalosti.
         </p>
-        <ToggleRow label="Novy HelpDesk tiket" checked={form.notifNewTicket} onToggle={toggle('notifNewTicket')} />
-        <ToggleRow label="Prirazeni Work Orderu" checked={form.notifWoAssigned} onToggle={toggle('notifWoAssigned')} />
+        <ToggleRow label="Nový Helpdesk požadavek" checked={form.notifNewTicket} onToggle={toggle('notifNewTicket')} />
+        <ToggleRow label="Přiřazení pracovního úkolu" checked={form.notifWoAssigned} onToggle={toggle('notifWoAssigned')} />
         <ToggleRow label="Expirace smlouvy" checked={form.notifContractExp} onToggle={toggle('notifContractExp')} />
         <ToggleRow label="Kalibrace meridla" checked={form.notifMeterDue} onToggle={toggle('notifMeterDue')} />
         <ToggleRow label="Splatnost platby" checked={form.notifPaymentDue} onToggle={toggle('notifPaymentDue')} />

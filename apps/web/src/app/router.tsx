@@ -40,6 +40,7 @@ const RevisionSettingsPage = lazy(() => import('../modules/revisions/RevisionSet
 const AssetTypesPage = lazy(() => import('../modules/asset-types/AssetTypesPage'));
 const AssetPassportPage = lazy(() => import('../modules/assets/AssetPassportPage'));
 const SuperAdminPage = lazy(() => import('../modules/super-admin/SuperAdminPage'));
+const QrResolvePage = lazy(() => import('../modules/asset-qr/QrResolvePage'));
 
 function withBoundary(name: string, Component: React.ComponentType) {
   return (
@@ -54,6 +55,7 @@ export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <RegisterPage /> },
   { path: '/verify-email', element: withBoundary('VerifyEmail', VerifyEmailPage) },
+  { path: '/q/:token', element: withBoundary('QR Scan', QrResolvePage) },
   {
     path: '/',
     element: <AppShell />,
@@ -62,12 +64,12 @@ export const router = createBrowserRouter([
       { path: 'properties', element: withBoundary('Nemovitosti', PropertiesPage) },
       { path: 'properties/:id', element: withBoundary('Detail nemovitosti', PropertyDetailPage) },
       { path: 'finance', element: withBoundary('Finance', FinancePage) },
-      { path: 'workorders', element: withBoundary('Work Orders', WorkOrdersPage) },
-      { path: 'helpdesk', element: withBoundary('HelpDesk', HelpdeskPage) },
+      { path: 'workorders', element: withBoundary('Pracovní úkoly', WorkOrdersPage) },
+      { path: 'helpdesk', element: withBoundary('Helpdesk', HelpdeskPage) },
       { path: 'helpdesk/dashboard', element: withBoundary('HelpDesk Dashboard', HelpdeskDashboardPage) },
       { path: 'helpdesk/sla-config', element: withBoundary('SLA konfigurace', SlaConfigPage) },
-      { path: 'assets', element: withBoundary('Assets', AssetListPage) },
-      { path: 'assets/:id', element: withBoundary('Asset Passport', AssetPassportPage) },
+      { path: 'assets', element: withBoundary('Pasportizace', AssetListPage) },
+      { path: 'assets/:id', element: withBoundary('Karta zařízení', AssetPassportPage) },
       { path: 'meters', element: withBoundary('Měřidla', MetersPage) },
       { path: 'compliance', element: withBoundary('Compliance', CompliancePage) },
       { path: 'contracts', element: withBoundary('Smlouvy', ContractsPage) },
@@ -80,7 +82,7 @@ export const router = createBrowserRouter([
       { path: 'reports', element: withBoundary('Výkazy', ReportsPage) },
       { path: 'team', element: withBoundary('Tým', TeamPage) },
       { path: 'protocols', element: withBoundary('Protokoly', ProtocolsPage) },
-      { path: 'revisions', element: withBoundary('Revize', RevisionsPage) },
+      { path: 'revisions', element: withBoundary('Plán činností', RevisionsPage) },
       { path: 'revisions/dashboard', element: withBoundary('Revize Dashboard', RevisionDashboardPage) },
       { path: 'revisions/settings', element: withBoundary('Revize Katalog', RevisionSettingsPage) },
       { path: 'asset-types', element: withBoundary('Typy zařízení', AssetTypesPage) },

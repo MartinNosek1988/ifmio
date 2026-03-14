@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard, Building2, Users, FolderOpen, Calendar,
   Wrench, Headphones, Box, Gauge, FileText, UserCheck,
-  ShieldCheck, Wallet, AlertTriangle, TrendingUp,
+  Wallet, AlertTriangle, TrendingUp,
   MessageSquare, Mail, Settings, BarChart3,
   ClipboardList, ClipboardCheck, ScrollText, UsersRound, FileCheck2,
   User as UserIcon, LogOut, Shield,
@@ -15,6 +15,7 @@ import { MioPanel } from '../modules/ai/MioPanel';
 import { NotificationCenter } from '../modules/notifications/NotificationCenter';
 import { OnboardingWizard } from '../modules/onboarding/OnboardingWizard';
 import { useKeyboardShortcuts } from '../shared/hooks/useKeyboardShortcuts';
+import { useRoleUX, type UXRole } from '../shared/hooks/useRoleUX';
 import { apiClient } from '../core/api/client';
 
 interface NavItem {
@@ -22,11 +23,15 @@ interface NavItem {
   label: string;
   icon: React.ReactNode;
   badge?: number;
+  /** If provided, item is only shown for users whose UXRole is in this list */
+  roles?: UXRole[];
 }
 
 interface NavSection {
   title: string;
   items: NavItem[];
+  /** If provided, section is only shown for users whose UXRole is in this list */
+  roles?: UXRole[];
 }
 
 const NAV_SECTIONS: NavSection[] = [
@@ -37,36 +42,31 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    title: 'Provoz',
+    items: [
+      { to: '/helpdesk', label: 'Helpdesk', icon: <Headphones size={17} /> },
+      { to: '/workorders', label: 'Pracovní úkoly', icon: <Wrench size={17} />, roles: ['fm', 'tech', 'owner'] },
+      { to: '/assets', label: 'Pasportizace', icon: <Box size={17} />, roles: ['fm', 'tech', 'owner'] },
+      { to: '/revisions', label: 'Plán činností', icon: <ClipboardCheck size={17} />, roles: ['fm', 'tech', 'owner'] },
+      { to: '/protocols', label: 'Protokoly', icon: <FileCheck2 size={17} />, roles: ['fm', 'tech'] },
+      { to: '/documents', label: 'Dokumenty', icon: <FolderOpen size={17} />, roles: ['fm', 'tech', 'owner'] },
+    ],
+  },
+  {
     title: 'Správa',
+    roles: ['fm', 'owner'],
     items: [
       { to: '/properties', label: 'Nemovitosti', icon: <Building2 size={17} /> },
       { to: '/contacts', label: 'Adresář', icon: <Users size={17} /> },
       { to: '/contracts', label: 'Nájemní smlouvy', icon: <FileText size={17} /> },
-      { to: '/documents', label: 'Dokumenty', icon: <FolderOpen size={17} /> },
+      { to: '/residents', label: 'Bydlící', icon: <UserCheck size={17} /> },
+      { to: '/meters', label: 'Měřidla & Energie', icon: <Gauge size={17} /> },
       { to: '/calendar', label: 'Kalendář', icon: <Calendar size={17} /> },
     ],
   },
   {
-    title: 'Provoz',
-    items: [
-      { to: '/workorders', label: 'Work Orders', icon: <Wrench size={17} /> },
-      { to: '/helpdesk', label: 'HelpDesk', icon: <Headphones size={17} /> },
-      { to: '/protocols', label: 'Protokoly', icon: <FileCheck2 size={17} /> },
-      { to: '/assets', label: 'Asset Management', icon: <Box size={17} /> },
-      { to: '/asset-types', label: 'Typy zařízení', icon: <ClipboardList size={17} /> },
-      { to: '/meters', label: 'Měřidla & Energie', icon: <Gauge size={17} /> },
-      { to: '/residents', label: 'Bydlící', icon: <UserCheck size={17} /> },
-    ],
-  },
-  {
-    title: 'Compliance',
-    items: [
-      { to: '/revisions', label: 'Revize & kontroly', icon: <ClipboardCheck size={17} /> },
-      { to: '/compliance', label: 'ISO 41001', icon: <ShieldCheck size={17} /> },
-    ],
-  },
-  {
     title: 'Finance',
+    roles: ['fm', 'owner'],
     items: [
       { to: '/finance', label: 'Finance', icon: <Wallet size={17} /> },
       { to: '/finance?tab=debtors', label: 'Dlužníci', icon: <AlertTriangle size={17} /> },
@@ -75,6 +75,7 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     title: 'Komunikace',
+    roles: ['fm', 'owner'],
     items: [
       { to: '/communication', label: 'Komunikace', icon: <MessageSquare size={17} /> },
       { to: '/communication?tab=mail', label: 'Pošta', icon: <Mail size={17} /> },
@@ -82,10 +83,12 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     title: 'Systém',
+    roles: ['fm'],
     items: [
       { to: '/reporting', label: 'Reporting', icon: <BarChart3 size={17} /> },
       { to: '/reports', label: 'Výkazy', icon: <ClipboardList size={17} /> },
       { to: '/team', label: 'Uživatelé & Tým', icon: <UsersRound size={17} /> },
+      { to: '/asset-types', label: 'Typy zařízení', icon: <ClipboardList size={17} /> },
       { to: '/audit', label: 'Audit log', icon: <ScrollText size={17} /> },
       { to: '/admin', label: 'Admin', icon: <Settings size={17} /> },
       { to: '/settings', label: 'Nastavení', icon: <Settings size={17} /> },
@@ -100,15 +103,15 @@ const PAGE_TITLES: Record<string, string> = {
   '/contracts': 'Nájemní smlouvy',
   '/documents': 'Dokumenty',
   '/calendar': 'Kalendář',
-  '/workorders': 'Work Orders',
-  '/helpdesk': 'HelpDesk',
-  '/assets': 'Asset Management',
+  '/workorders': 'Pracovní úkoly',
+  '/helpdesk': 'Helpdesk',
+  '/assets': 'Pasportizace',
   '/asset-types': 'Typy zařízení',
   '/meters': 'Měřidla & Energie',
   '/residents': 'Bydlící',
   '/protocols': 'Protokoly',
-  '/revisions': 'Revize & kontroly',
-  '/compliance': 'Compliance — ISO 41001',
+  '/revisions': 'Plán činností',
+  '/compliance': 'Stav plnění',
   '/finance': 'Finance',
   '/communication': 'Komunikace',
   '/reporting': 'Reporting',
@@ -124,6 +127,7 @@ const PAGE_TITLES: Record<string, string> = {
 
 function getPageTitle(pathname: string): string {
   if (pathname.startsWith('/properties/')) return 'Detail nemovitosti';
+  if (pathname.startsWith('/assets/')) return 'Karta zařízení';
   return PAGE_TITLES[pathname] || 'ifmio';
 }
 
@@ -210,11 +214,20 @@ export default function AppShell() {
     }
   }, [onboardingData]);
 
+  const uxRole = useRoleUX();
+  const visibleSections = NAV_SECTIONS
+    .filter((sec) => !sec.roles || sec.roles.includes(uxRole))
+    .map((sec) => ({
+      ...sec,
+      items: sec.items.filter((item) => !item.roles || item.roles.includes(uxRole)),
+    }))
+    .filter((sec) => sec.items.length > 0);
+
   return (
     <div>
       <nav className="sidebar">
         <div className="sidebar__logo">ifmio</div>
-        {NAV_SECTIONS.map((sec) => (
+        {visibleSections.map((sec) => (
           <div key={sec.title} className="sidebar__section">
             <div className="sidebar__section-title">{sec.title}</div>
             {sec.items.map((item) => {
