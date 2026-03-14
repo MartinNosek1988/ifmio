@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Trash2, UserCheck, CheckCircle, Paperclip, Upload } from 'lucide-react';
+import { Trash2, UserCheck, CheckCircle, Paperclip, Upload, Wrench } from 'lucide-react';
 import { Modal, Badge, Button, LoadingState } from '../../shared/components';
 import type { BadgeVariant } from '../../shared/components';
 import { useTicket, useUpdateTicket, useAddTicketItem, useRemoveTicketItem, useClaimTicket, useResolveTicket } from './api/helpdesk.queries';
@@ -8,6 +8,8 @@ import type { ApiTicketItem } from './api/helpdesk.api';
 import { useAuthStore } from '../../core/auth/auth.store';
 import { apiClient } from '../../core/api/client';
 import { documentsApi, formatFileSize } from '../documents/api/documents.api';
+import { useWorkOrdersForTicket, useCreateFromTicket } from '../workorders/api/workorders.queries';
+import type { ApiWorkOrder } from '../workorders/api/workorders.api';
 import ProtocolPanel from '../protocols/ProtocolPanel';
 
 interface Props {
@@ -73,6 +75,10 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
 
   // Upload state
   const [uploading, setUploading] = useState(false);
+
+  // Linked work orders
+  const { data: linkedWOs = [], refetch: refetchWOs } = useWorkOrdersForTicket(ticketId);
+  const createWOMutation = useCreateFromTicket();
 
   // Fetch users and assets for edit pickers
   const { data: users = [] } = useQuery<TenantUser[]>({
@@ -317,6 +323,43 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
               label="Nahlásil"
               value={ticket.resident ? `${ticket.resident.firstName} ${ticket.resident.lastName}` : '—'}
             />
+          </div>
+
+          {/* Linked work orders */}
+          <div style={{
+            marginBottom: 16, padding: 12, borderRadius: 8,
+            background: 'var(--surface-2, var(--surface))', border: '1px solid var(--border)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>Pracovní úkoly ({linkedWOs.length})</div>
+              <Button size="sm" variant="primary" onClick={() => {
+                createWOMutation.mutate({ ticketId: ticket.id, dto: {} }, {
+                  onSuccess: () => refetchWOs(),
+                });
+              }} disabled={createWOMutation.isPending}>
+                <Wrench size={14} style={{ marginRight: 4 }} />
+                {createWOMutation.isPending ? 'Vytvářím...' : 'Vytvořit úkol'}
+              </Button>
+            </div>
+            {linkedWOs.length === 0 ? (
+              <div className="text-muted" style={{ fontSize: '0.85rem' }}>K požadavku zatím nejsou navázané žádné úkoly.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {(linkedWOs as ApiWorkOrder[]).map((wo) => (
+                  <div key={wo.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)',
+                  }}>
+                    <Badge variant={wo.status === 'vyresena' || wo.status === 'uzavrena' ? 'green' : wo.status === 'v_reseni' ? 'yellow' : 'blue'}>
+                      {wo.status}
+                    </Badge>
+                    <div style={{ flex: 1, fontWeight: 500, fontSize: '0.9rem' }}>{wo.title}</div>
+                    <span className="text-muted text-sm">{wo.assigneeUser?.name || wo.assignee || '—'}</span>
+                    <span className="text-muted text-sm">{new Date(wo.createdAt).toLocaleDateString('cs-CZ')}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* SLA info */}

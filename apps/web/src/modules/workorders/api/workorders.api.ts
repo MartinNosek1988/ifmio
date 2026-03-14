@@ -3,6 +3,12 @@ import { apiClient } from '../../../core/api/client';
 export type WOStatus = 'nova' | 'v_reseni' | 'vyresena' | 'uzavrena' | 'zrusena';
 export type WOPriority = 'nizka' | 'normalni' | 'vysoka' | 'kriticka';
 
+export interface ApiUser {
+  id: string;
+  name: string;
+  email?: string;
+}
+
 export interface ApiWorkOrderComment {
   id: string;
   workOrderId: string;
@@ -16,6 +22,8 @@ export interface ApiWorkOrder {
   tenantId: string;
   propertyId: string | null;
   unitId: string | null;
+  assetId: string | null;
+  helpdeskTicketId: string | null;
   title: string;
   description: string | null;
   workType: string;
@@ -23,6 +31,9 @@ export interface ApiWorkOrder {
   status: WOStatus;
   assignee: string | null;
   requester: string | null;
+  assigneeUserId: string | null;
+  requesterUserId: string | null;
+  dispatcherUserId: string | null;
   deadline: string | null;
   completedAt: string | null;
   estimatedHours: number | null;
@@ -35,6 +46,11 @@ export interface ApiWorkOrder {
   updatedAt: string;
   property?: { id: string; name: string; address?: string } | null;
   unit?: { id: string; name: string; area?: number; floor?: number } | null;
+  asset?: { id: string; name: string } | null;
+  helpdeskTicket?: { id: string; number: number; title: string; status: string } | null;
+  assigneeUser?: ApiUser | null;
+  requesterUser?: ApiUser | null;
+  dispatcherUser?: ApiUser | null;
   comments: ApiWorkOrderComment[];
 }
 
@@ -52,8 +68,13 @@ export interface CreateWorkOrderDto {
   priority?: string;
   propertyId?: string;
   unitId?: string;
+  assetId?: string;
+  helpdeskTicketId?: string;
   assignee?: string;
   requester?: string;
+  assigneeUserId?: string;
+  requesterUserId?: string;
+  dispatcherUserId?: string;
   deadline?: string;
   estimatedHours?: number;
   laborCost?: number;
@@ -63,6 +84,16 @@ export interface CreateWorkOrderDto {
 
 export interface UpdateWorkOrderDto extends Partial<CreateWorkOrderDto> {
   actualHours?: number;
+}
+
+export interface CreateFromTicketDto {
+  title?: string;
+  description?: string;
+  priority?: string;
+  assigneeUserId?: string;
+  dispatcherUserId?: string;
+  deadline?: string;
+  note?: string;
 }
 
 export const workOrdersApi = {
@@ -103,6 +134,16 @@ export const workOrdersApi = {
 
   remove: async (id: string) => {
     const { data } = await apiClient.delete(`/work-orders/${id}`);
+    return data;
+  },
+
+  createFromTicket: async (ticketId: string, dto: CreateFromTicketDto) => {
+    const { data } = await apiClient.post<ApiWorkOrder>(`/helpdesk/${ticketId}/work-orders`, dto);
+    return data;
+  },
+
+  listForTicket: async (ticketId: string) => {
+    const { data } = await apiClient.get<ApiWorkOrder[]>(`/helpdesk/${ticketId}/work-orders`);
     return data;
   },
 };
