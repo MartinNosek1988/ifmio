@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Wrench, AlertTriangle, Clock, ChevronRight } from 'lucide-react';
-import { Badge, Button, LoadingState, EmptyState } from '../../shared/components';
+import { Badge, LoadingState, EmptyState } from '../../shared/components';
 import type { BadgeVariant } from '../../shared/components';
 import { apiClient } from '../../core/api/client';
 import { useNavigate } from 'react-router-dom';
