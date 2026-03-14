@@ -121,8 +121,8 @@ export default function RevisionsPage() {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Revize a kontroly</h1>
-          <p className="page-subtitle">{total} plánů revizí</p>
+          <h1 className="page-title">Plán činností</h1>
+          <p className="page-subtitle">{total} plánů činností</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <Button icon={<BarChart3 size={15} />} onClick={() => navigate('/revisions/dashboard')}>Dashboard</Button>
@@ -159,7 +159,7 @@ export default function RevisionsPage() {
       </div>
 
       {plans.length === 0 ? (
-        <EmptyState title="Žádné plány revizí" description="Vytvořte nový plán revize." />
+        <EmptyState title="Žádné plány činností" description="Vytvořte nový plán činností nebo přiřaďte plán k zařízení." />
       ) : (
         <Table data={plans} columns={columns} rowKey={(p) => p.id} onRowClick={(p) => setSelectedPlan(p)} />
       )}

@@ -41,12 +41,12 @@ export default function HelpdeskDashboardPage() {
           <button
             onClick={() => navigate('/helpdesk')}
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}
-            title="Zpět na tikety"
+            title="Zpět na požadavky"
           >
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="page-title">HelpDesk Dashboard</h1>
+            <h1 className="page-title">Helpdesk — Dashboard</h1>
             <p className="page-subtitle">SLA přehled a výkonnost</p>
           </div>
         </div>
@@ -61,7 +61,7 @@ export default function HelpdeskDashboardPage() {
         <KpiCard label="Po termínu" value={String(kpi.overdue)} color="var(--accent-red, var(--danger))" />
         <KpiCard label="Eskalovaných" value={String(kpi.escalated)} color="var(--accent-orange)" />
         <KpiCard
-          label="SLA compliance"
+          label="SLA plnění"
           value={kpi.resolvedInPeriod > 0 ? `${kpi.slaCompliancePct}%` : '—'}
           color={kpi.resolvedInPeriod === 0 ? 'var(--text-muted)' : kpi.slaCompliancePct >= 90 ? 'var(--accent-green)' : kpi.slaCompliancePct >= 70 ? 'var(--accent-yellow, #e6a817)' : 'var(--accent-red, var(--danger))'}
         />
@@ -71,7 +71,7 @@ export default function HelpdeskDashboardPage() {
         <KpiCard label="Vytvořeno" value={String(kpi.createdInPeriod)} color="var(--accent-blue)" />
         <KpiCard label="Vyřešeno" value={String(kpi.resolvedInPeriod)} color="var(--accent-green)" />
         <KpiCard label="Blíží se termín" value={String(kpi.dueSoon)} color="var(--accent-yellow, #e6a817)" />
-        <KpiCard label="Celkem tiketů" value={String(kpi.total)} color="var(--text-muted)" />
+        <KpiCard label="Celkem požadavků" value={String(kpi.total)} color="var(--text-muted)" />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
@@ -117,7 +117,7 @@ export default function HelpdeskDashboardPage() {
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--border)' }}>
                   <th style={{ textAlign: 'left', padding: '6px 0' }} className="text-muted">Nemovitost</th>
-                  <th style={{ textAlign: 'right', padding: '6px 0' }} className="text-muted">Tiketů</th>
+                  <th style={{ textAlign: 'right', padding: '6px 0' }} className="text-muted">Požadavků</th>
                 </tr>
               </thead>
               <tbody>
@@ -133,7 +133,7 @@ export default function HelpdeskDashboardPage() {
         </DashboardCard>
 
         {/* Top risk */}
-        <DashboardCard title="Nejrizikovější tikety">
+        <DashboardCard title="Nejrizikovější požadavky">
           {topRisk.length === 0 ? (
             <div className="text-muted" style={{ textAlign: 'center', padding: 16 }}>Žádné po termínu</div>
           ) : (

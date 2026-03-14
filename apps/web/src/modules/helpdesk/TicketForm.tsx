@@ -80,7 +80,7 @@ export default function TicketForm({ onClose }: Props) {
     <Modal
       open
       onClose={onClose}
-      title="Nový tiket"
+      title="Nový požadavek"
       footer={
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <Button onClick={onClose}>Zrušit</Button>
@@ -156,7 +156,7 @@ export default function TicketForm({ onClose }: Props) {
 
       {createMutation.isError && (
         <div style={{ color: 'var(--danger)', fontSize: '0.85rem', marginTop: 12 }}>
-          Nepodařilo se vytvořit tiket.
+          Nepodařilo se vytvořit požadavek.
         </div>
       )}
     </Modal>
