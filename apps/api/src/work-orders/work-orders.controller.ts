@@ -8,7 +8,7 @@ import { Roles } from '../common/decorators/roles.decorator'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
 import { AuditAction } from '../common/decorators/audit.decorator'
 import { ROLES_OPS } from '../common/constants/roles.constants'
-import type { AuthUser } from '@ifmio/shared-types';
+import type { AuthUser } from '@ifmio/shared-types'
 
 @ApiTags('WorkOrders')
 @ApiBearerAuth()
@@ -51,8 +51,13 @@ export class WorkOrdersController {
     priority?: string
     propertyId?: string
     unitId?: string
+    assetId?: string
+    helpdeskTicketId?: string
     assignee?: string
     requester?: string
+    assigneeUserId?: string
+    requesterUserId?: string
+    dispatcherUserId?: string
     deadline?: string
     estimatedHours?: number
     laborCost?: number
@@ -76,8 +81,12 @@ export class WorkOrdersController {
       priority?: string
       propertyId?: string
       unitId?: string
+      assetId?: string
       assignee?: string
       requester?: string
+      assigneeUserId?: string
+      requesterUserId?: string
+      dispatcherUserId?: string
       deadline?: string
       estimatedHours?: number
       actualHours?: number
@@ -118,5 +127,43 @@ export class WorkOrdersController {
   @ApiOperation({ summary: 'Smazat WO' })
   remove(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.service.remove(user, id)
+  }
+}
+
+// ─── Helpdesk → Work Order controller ──────────────────────────
+
+@ApiTags('Helpdesk')
+@ApiBearerAuth()
+@Controller('helpdesk')
+export class HelpdeskWorkOrderController {
+  constructor(private service: WorkOrdersService) {}
+
+  @Post(':ticketId/work-orders')
+  @Roles(...ROLES_OPS)
+  @AuditAction('workOrder', 'create')
+  @ApiOperation({ summary: 'Vytvořit úkol z požadavku' })
+  createFromTicket(
+    @CurrentUser() user: AuthUser,
+    @Param('ticketId') ticketId: string,
+    @Body() dto: {
+      title?: string
+      description?: string
+      priority?: string
+      assigneeUserId?: string
+      dispatcherUserId?: string
+      deadline?: string
+      note?: string
+    },
+  ) {
+    return this.service.createFromTicket(user, ticketId, dto)
+  }
+
+  @Get(':ticketId/work-orders')
+  @ApiOperation({ summary: 'Úkoly navázané na požadavek' })
+  listForTicket(
+    @CurrentUser() user: AuthUser,
+    @Param('ticketId') ticketId: string,
+  ) {
+    return this.service.listForTicket(user, ticketId)
   }
 }

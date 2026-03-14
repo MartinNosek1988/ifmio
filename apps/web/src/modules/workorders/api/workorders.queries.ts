@@ -1,11 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { workOrdersApi, type CreateWorkOrderDto, type UpdateWorkOrderDto } from './workorders.api';
+import { workOrdersApi, type CreateWorkOrderDto, type UpdateWorkOrderDto, type CreateFromTicketDto } from './workorders.api';
 
 export const woKeys = {
   all: ['workorders'] as const,
   list: (params?: Record<string, unknown>) => ['workorders', 'list', params] as const,
   stats: () => ['workorders', 'stats'] as const,
   detail: (id: string) => ['workorders', 'detail', id] as const,
+  forTicket: (ticketId: string) => ['workorders', 'forTicket', ticketId] as const,
 };
 
 export function useWorkOrders(params?: { status?: string; priority?: string; search?: string }) {
@@ -31,12 +32,32 @@ export function useWorkOrderDetail(id: string) {
   });
 }
 
+export function useWorkOrdersForTicket(ticketId: string) {
+  return useQuery({
+    queryKey: woKeys.forTicket(ticketId),
+    queryFn: () => workOrdersApi.listForTicket(ticketId),
+    enabled: !!ticketId,
+  });
+}
+
 export function useCreateWorkOrder() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (dto: CreateWorkOrderDto) => workOrdersApi.create(dto),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: woKeys.all });
+    },
+  });
+}
+
+export function useCreateFromTicket() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ticketId, dto }: { ticketId: string; dto: CreateFromTicketDto }) =>
+      workOrdersApi.createFromTicket(ticketId, dto),
+    onSuccess: (_, { ticketId }) => {
+      qc.invalidateQueries({ queryKey: woKeys.all });
+      qc.invalidateQueries({ queryKey: woKeys.forTicket(ticketId) });
     },
   });
 }

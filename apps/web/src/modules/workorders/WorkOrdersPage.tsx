@@ -49,7 +49,8 @@ export default function WorkOrdersPage() {
     { key: 'title', label: 'Nazev', render: w => <span style={{ fontWeight: 600 }}>{w.title}</span> },
     { key: 'priority', label: 'Priorita', render: w => <Badge variant={PRIO_COLOR[w.priority] || 'muted'}>{label(WO_PRIORITY_LABELS, w.priority)}</Badge> },
     { key: 'status', label: 'Stav', render: w => <Badge variant={STATUS_COLOR[w.status] || 'muted'}>{label(WO_STATUS_LABELS, w.status)}</Badge> },
-    { key: 'assignee', label: 'Resitel', render: w => <span className="text-muted">{w.assignee || 'Neprirazeno'}</span> },
+    { key: 'assignee', label: 'Řešitel', render: w => <span className="text-muted">{w.assigneeUser?.name || w.assignee || '—'}</span> },
+    { key: 'asset', label: 'Zařízení', render: w => <span className="text-muted">{w.asset?.name || '—'}</span> },
     { key: 'sla', label: 'SLA', render: w => <SlaProgressBar created={w.createdAt} deadline={w.deadline || ''} status={w.status} /> },
     { key: 'createdAt', label: 'Vytvoreno', render: w => <span className="text-muted text-sm">{formatCzDate(w.createdAt)}</span> },
     {
@@ -67,10 +68,10 @@ export default function WorkOrdersPage() {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Work Orders</h1>
-          <p className="page-subtitle">{stats?.open ?? 0} otevrenych z {stats?.total ?? 0}</p>
+          <h1 className="page-title">Pracovní úkoly</h1>
+          <p className="page-subtitle">{stats?.open ?? 0} otevřených z {stats?.total ?? 0}</p>
         </div>
-        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)}>Novy Work Order</Button>
+        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)}>Nový úkol</Button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>

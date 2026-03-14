@@ -43,6 +43,12 @@ const AUDIT_FIELDS: Record<string, string[]> = {
     'assigneeId', 'requesterUserId', 'dispatcherUserId',
     'resolutionDueAt', 'deadlineManuallySet', 'resolvedAt',
   ],
+  workOrder: [
+    'id', 'propertyId', 'unitId', 'assetId', 'helpdeskTicketId',
+    'title', 'description', 'workType', 'priority', 'status',
+    'assignee', 'requester', 'assigneeUserId', 'requesterUserId', 'dispatcherUserId',
+    'deadline', 'completedAt',
+  ],
   User: [
     'id', 'name', 'email', 'role', 'isActive',
   ],
