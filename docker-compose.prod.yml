@@ -28,6 +28,8 @@ services:
       SMTP_FROM_NAME: ${SMTP_FROM_NAME:-ifmio}
       # Super admin
       SUPER_ADMIN_EMAILS: ${SUPER_ADMIN_EMAILS:-}
+      # Mio AI
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     expose:
       - '3000'
     healthcheck:
