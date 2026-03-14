@@ -99,6 +99,13 @@ export class WorkOrdersController {
       laborCost?: number
       materialCost?: number
       note?: string
+      workSummary?: string
+      findings?: string
+      recommendation?: string
+      requirePhoto?: boolean
+      requireHours?: boolean
+      requireSummary?: boolean
+      requireProtocol?: boolean
     },
   ) {
     return this.service.update(user, id, dto)
@@ -114,6 +121,15 @@ export class WorkOrdersController {
     @Body() dto: { status: string },
   ) {
     return this.service.changeStatus(user, id, dto.status)
+  }
+
+  @Get(':id/completion-status')
+  @ApiOperation({ summary: 'Stav splnění požadavků pro dokončení' })
+  completionStatus(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ) {
+    return this.service.getCompletionStatus(user, id)
   }
 
   @Post(':id/comments')

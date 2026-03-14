@@ -5,7 +5,8 @@ import { Camera, FileText, MessageSquare, CheckCircle, ChevronLeft, Paperclip, C
 import { Badge, Button, LoadingState } from '../../shared/components';
 import type { BadgeVariant } from '../../shared/components';
 import { useChangeWOStatus, useUpdateWorkOrder, useAddWOComment, useWorkOrderDetail } from './api/workorders.queries';
-import type { ApiWorkOrder } from './api/workorders.api';
+import type { ApiWorkOrder, CompletionStatus } from './api/workorders.api';
+import { workOrdersApi } from './api/workorders.api';
 import { WO_STATUS_LABELS, WO_PRIORITY_LABELS, label } from '../../constants/labels';
 import { apiClient } from '../../core/api/client';
 import { documentsApi, formatFileSize } from '../documents/api/documents.api';
@@ -36,10 +37,21 @@ function ExecutionView({ wo, onRefresh, onBack }: { wo: ApiWorkOrder; onRefresh:
 
   // Completion form state
   const [actualHours, setActualHours] = useState(wo.actualHours?.toString() ?? '');
-  const [summary, setSummary] = useState('');
+  const [workSummary, setWorkSummary] = useState(wo.workSummary ?? '');
+  const [findings, setFindings] = useState(wo.findings ?? '');
+  const [recommendation, setRecommendation] = useState(wo.recommendation ?? '');
   const [noteText, setNoteText] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState('');
+  const [completionError, setCompletionError] = useState<string[]>([]);
+
+  // Completion requirements
+  const { data: completionStatus, refetch: refetchCompletion } = useQuery<CompletionStatus>({
+    queryKey: ['workorders', 'completion-status', wo.id],
+    queryFn: () => workOrdersApi.completionStatus(wo.id),
+    enabled: wo.status !== 'vyresena' && wo.status !== 'uzavrena',
+  });
+  const hasRequirements = wo.requirePhoto || wo.requireHours || wo.requireSummary || wo.requireProtocol;
 
   // Docs
   const { data: docsData, refetch: refetchDocs } = useQuery<{ data: DocItem[] }>({
@@ -59,31 +71,32 @@ function ExecutionView({ wo, onRefresh, onBack }: { wo: ApiWorkOrder; onRefresh:
   };
 
   const handleComplete = () => {
-    // Save actualHours + summary note first, then complete
+    setCompletionError([]);
+    // Save structured handover fields first, then complete
     const updates: Record<string, unknown> = {};
     if (actualHours) updates.actualHours = parseFloat(actualHours);
-    if (Object.keys(updates).length > 0) {
-      updateWo.mutate({ id: wo.id, dto: updates }, {
-        onSuccess: () => {
-          if (summary.trim()) {
-            addComment.mutate({ id: wo.id, text: `Shrnutí práce: ${summary.trim()}` }, {
-              onSuccess: () => {
-                changeStatus.mutate({ id: wo.id, status: 'vyresena' }, { onSuccess: () => onRefresh() });
-              },
-            });
+    if (workSummary.trim()) updates.workSummary = workSummary.trim();
+    if (findings.trim()) updates.findings = findings.trim();
+    if (recommendation.trim()) updates.recommendation = recommendation.trim();
+
+    const doComplete = () => {
+      changeStatus.mutate({ id: wo.id, status: 'vyresena' }, {
+        onSuccess: () => { onRefresh(); refetchCompletion(); },
+        onError: (err: any) => {
+          const violations = err?.response?.data?.violations;
+          if (Array.isArray(violations)) {
+            setCompletionError(violations);
           } else {
-            changeStatus.mutate({ id: wo.id, status: 'vyresena' }, { onSuccess: () => onRefresh() });
+            setCompletionError([err?.response?.data?.message ?? 'Dokončení selhalo.']);
           }
         },
       });
-    } else if (summary.trim()) {
-      addComment.mutate({ id: wo.id, text: `Shrnutí práce: ${summary.trim()}` }, {
-        onSuccess: () => {
-          changeStatus.mutate({ id: wo.id, status: 'vyresena' }, { onSuccess: () => onRefresh() });
-        },
-      });
+    };
+
+    if (Object.keys(updates).length > 0) {
+      updateWo.mutate({ id: wo.id, dto: updates }, { onSuccess: doComplete });
     } else {
-      changeStatus.mutate({ id: wo.id, status: 'vyresena' }, { onSuccess: () => onRefresh() });
+      doComplete();
     }
   };
 
@@ -319,33 +332,84 @@ function ExecutionView({ wo, onRefresh, onBack }: { wo: ApiWorkOrder; onRefresh:
       {section === 'complete' && (
         <div>
           {wo.status === 'vyresena' || wo.status === 'uzavrena' ? (
-            <div style={{ ...cardStyle, textAlign: 'center' }}>
-              <CheckCircle size={32} style={{ color: 'var(--accent-green, #10b981)', marginBottom: 8 }} />
-              <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 4 }}>Úkol byl dokončen</div>
-              {wo.completedAt && <div className="text-muted" style={{ fontSize: '0.85rem' }}>Dokončeno: {new Date(wo.completedAt).toLocaleDateString('cs-CZ')}</div>}
+            <div>
+              <div style={{ ...cardStyle, textAlign: 'center' }}>
+                <CheckCircle size={32} style={{ color: 'var(--accent-green, #10b981)', marginBottom: 8 }} />
+                <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 4 }}>Úkol byl dokončen</div>
+                {wo.completedAt && <div className="text-muted" style={{ fontSize: '0.85rem' }}>Dokončeno: {new Date(wo.completedAt).toLocaleDateString('cs-CZ')}</div>}
+                {wo.actualHours != null && <div className="text-muted" style={{ fontSize: '0.85rem' }}>Skutečně: {wo.actualHours} hod</div>}
+              </div>
+              {/* Handover summary */}
+              {(wo.workSummary || wo.findings || wo.recommendation) && (
+                <div style={cardStyle}>
+                  <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: 8 }}>Předání výstupu</div>
+                  {wo.workSummary && <div style={{ marginBottom: 8 }}><div className="text-muted" style={{ fontSize: '0.75rem' }}>Shrnutí práce</div><div style={{ fontSize: '0.9rem', whiteSpace: 'pre-wrap' }}>{wo.workSummary}</div></div>}
+                  {wo.findings && <div style={{ marginBottom: 8 }}><div className="text-muted" style={{ fontSize: '0.75rem' }}>Zjištění</div><div style={{ fontSize: '0.9rem', whiteSpace: 'pre-wrap' }}>{wo.findings}</div></div>}
+                  {wo.recommendation && <div><div className="text-muted" style={{ fontSize: '0.75rem' }}>Doporučený další krok</div><div style={{ fontSize: '0.9rem', whiteSpace: 'pre-wrap' }}>{wo.recommendation}</div></div>}
+                </div>
+              )}
+              <div className="text-muted" style={{ fontSize: '0.82rem', marginBottom: 12 }}>
+                {photos.length} fotek · {wo.comments.length} poznámek
+              </div>
             </div>
           ) : (
             <>
+              {/* Requirements checklist */}
+              {hasRequirements && (
+                <div style={{ ...cardStyle, borderColor: completionStatus?.canComplete === false ? 'var(--danger)' : 'var(--accent-green, #10b981)' }}>
+                  <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: 8 }}>Požadavky pro dokončení</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {wo.requirePhoto && <ReqItem label="Fotodokumentace" satisfied={photos.length > 0} />}
+                    {wo.requireHours && <ReqItem label="Skutečně odpracované hodiny" satisfied={!!actualHours && parseFloat(actualHours) > 0} />}
+                    {wo.requireSummary && <ReqItem label="Shrnutí práce" satisfied={!!workSummary.trim()} />}
+                    {wo.requireProtocol && <ReqItem label="Dokončený protokol" satisfied={completionStatus?.violations?.every(v => !v.includes('protokol')) ?? false} />}
+                  </div>
+                </div>
+              )}
+
+              {/* Completion error messages */}
+              {completionError.length > 0 && (
+                <div style={{ padding: '10px 14px', borderRadius: 8, background: '#ef444420', border: '1px solid #ef4444', marginBottom: 12 }}>
+                  {completionError.map((e, i) => (
+                    <div key={i} style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: 2 }}>{e}</div>
+                  ))}
+                </div>
+              )}
+
               <div style={cardStyle}>
-                <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: 6 }}>Skutečně odpracováno (hodiny)</label>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: 6 }}>
+                  Skutečně odpracováno (hodiny) {wo.requireHours && <span style={{ color: 'var(--danger)' }}>*</span>}
+                </label>
                 <input type="number" min="0" step="0.5" value={actualHours} onChange={e => setActualHours(e.target.value)}
                   placeholder="např. 2.5" style={{ ...inputStyle, fontSize: '1.2rem', textAlign: 'center' }} />
               </div>
 
               <div style={cardStyle}>
-                <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: 6 }}>Shrnutí práce</label>
-                <textarea value={summary} onChange={e => setSummary(e.target.value)}
-                  placeholder="Co bylo provedeno, zjištění, doporučení..." rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+                <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: 6 }}>
+                  Shrnutí práce {wo.requireSummary && <span style={{ color: 'var(--danger)' }}>*</span>}
+                </label>
+                <textarea value={workSummary} onChange={e => setWorkSummary(e.target.value)}
+                  placeholder="Co bylo provedeno..." rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
               </div>
 
-              <div style={{ ...cardStyle, background: 'transparent', border: 'none', padding: 0 }}>
-                <div className="text-muted" style={{ fontSize: '0.82rem', marginBottom: 8 }}>
-                  {photos.length > 0 ? `${photos.length} fotek nahráno` : 'Žádné fotky'} · {wo.comments.length} poznámek
-                </div>
+              <div style={cardStyle}>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: 6 }}>Zjištění</label>
+                <textarea value={findings} onChange={e => setFindings(e.target.value)}
+                  placeholder="Co bylo zjištěno, stav zařízení..." rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
+              </div>
+
+              <div style={cardStyle}>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: 6 }}>Doporučený další krok</label>
+                <textarea value={recommendation} onChange={e => setRecommendation(e.target.value)}
+                  placeholder="Doporučení pro další postup..." rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
+              </div>
+
+              <div className="text-muted" style={{ fontSize: '0.82rem', marginBottom: 8 }}>
+                {photos.length > 0 ? `${photos.length} fotek nahráno` : 'Žádné fotky'} · {wo.comments.length} poznámek
               </div>
 
               <Button variant="primary" onClick={handleComplete}
-                disabled={changeStatus.isPending || updateWo.isPending || addComment.isPending}
+                disabled={changeStatus.isPending || updateWo.isPending}
                 style={{ width: '100%', padding: '16px', fontSize: '1.05rem', fontWeight: 700, marginBottom: 12 }}>
                 <CheckCircle size={18} style={{ marginRight: 8 }} />
                 {changeStatus.isPending ? 'Dokončuji...' : 'Dokončit úkol'}
@@ -396,5 +460,19 @@ function NextTaskCard({ currentWoId }: { currentWoId: string }) {
       </div>
       <Badge variant={PRIO_COLOR[next.priority] ?? 'muted'}>{next.priority}</Badge>
     </button>
+  );
+}
+
+function ReqItem({ label, satisfied }: { label: string; satisfied: boolean }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem' }}>
+      <div style={{
+        width: 18, height: 18, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: satisfied ? 'var(--accent-green, #10b981)' : 'var(--border)', color: '#fff', fontSize: '0.7rem', fontWeight: 700,
+      }}>
+        {satisfied ? '\u2713' : ''}
+      </div>
+      <span style={{ color: satisfied ? 'var(--text)' : 'var(--text-muted)' }}>{label}</span>
+    </div>
   );
 }

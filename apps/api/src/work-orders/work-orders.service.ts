@@ -322,12 +322,19 @@ export class WorkOrdersService {
     laborCost?: number
     materialCost?: number
     note?: string
+    workSummary?: string
+    findings?: string
+    recommendation?: string
+    requirePhoto?: boolean
+    requireHours?: boolean
+    requireSummary?: boolean
+    requireProtocol?: boolean
   }) {
     const existing = await this.getById(user, id)
     const data: any = {}
     const changes: { field: string; oldValue: string; newValue: string }[] = []
 
-    for (const key of ['title', 'description', 'workType', 'propertyId', 'unitId', 'assignee', 'requester', 'note'] as const) {
+    for (const key of ['title', 'description', 'workType', 'propertyId', 'unitId', 'assignee', 'requester', 'note', 'workSummary', 'findings', 'recommendation'] as const) {
       if (dto[key] !== undefined) data[key] = dto[key] || null
     }
 
@@ -383,6 +390,11 @@ export class WorkOrdersService {
       data.totalCost = labor + material
     }
 
+    // Completion requirement flags
+    for (const key of ['requirePhoto', 'requireHours', 'requireSummary', 'requireProtocol'] as const) {
+      if (dto[key] !== undefined) data[key] = dto[key]
+    }
+
     if (Object.keys(data).length === 0) return existing
 
     const item = await this.prisma.workOrder.update({
@@ -403,6 +415,14 @@ export class WorkOrdersService {
   async changeStatus(user: AuthUser, id: string, status: string) {
     const existing = await this.getById(user, id)
 
+    // Validate completion requirements when completing
+    if (status === 'vyresena') {
+      const violations = await this.checkCompletionRequirements(existing)
+      if (violations.length > 0) {
+        throw new BadRequestException({ message: 'Nesplněné požadavky pro dokončení', violations })
+      }
+    }
+
     const data: any = { status }
     if (status === 'vyresena' || status === 'uzavrena') data.completedAt = new Date()
     if (status === 'nova' || status === 'v_reseni') data.completedAt = null
@@ -419,6 +439,51 @@ export class WorkOrdersService {
       newValue: STATUS_LABELS[status] ?? status,
     }]).catch((err) => this.logger.error(`WO email notification failed: ${err}`))
     return serialized
+  }
+
+  async getCompletionStatus(user: AuthUser, id: string) {
+    const wo = await this.getById(user, id)
+    const violations = await this.checkCompletionRequirements(wo)
+    return {
+      canComplete: violations.length === 0,
+      violations,
+      requirements: {
+        requirePhoto: wo.requirePhoto,
+        requireHours: wo.requireHours,
+        requireSummary: wo.requireSummary,
+        requireProtocol: wo.requireProtocol,
+      },
+    }
+  }
+
+  private async checkCompletionRequirements(wo: any): Promise<string[]> {
+    const violations: string[] = []
+
+    if (wo.requireHours && !wo.actualHours) {
+      violations.push('Vyplňte skutečně odpracované hodiny.')
+    }
+    if (wo.requireSummary && !wo.workSummary) {
+      violations.push('Doplňte shrnutí práce.')
+    }
+    if (wo.requirePhoto) {
+      const photoCount = await this.prisma.documentLink.count({
+        where: { entityType: 'work_order', entityId: wo.id },
+      })
+      // Check if at least one is an image
+      if (photoCount === 0) {
+        violations.push('Chybí fotodokumentace.')
+      }
+    }
+    if (wo.requireProtocol) {
+      const protocol = await this.prisma.protocol.findFirst({
+        where: { sourceType: 'work_order', sourceId: wo.id, status: { in: ['completed', 'confirmed'] } },
+      })
+      if (!protocol) {
+        violations.push('Nejprve dokončete protokol.')
+      }
+    }
+
+    return violations
   }
 
   async addComment(user: AuthUser, id: string, text: string) {
