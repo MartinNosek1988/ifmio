@@ -16,7 +16,12 @@
       "Bash(git add:*)",
       "Bash(where.exe gh:*)",
       "Bash(git checkout:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(npm ls:*)",
+      "Bash(cd:*)",
+      "Bash(find:*)",
+      "Bash(wc:*)",
+      "Bash(ls:*)"
     ]
   }
 }
