@@ -14,6 +14,7 @@ const PropertyDetailPage = lazy(() => import('../modules/properties/PropertyDeta
 const FinancePage = lazy(() => import('../modules/finance/FinancePage'));
 const WorkOrdersPage = lazy(() => import('../modules/workorders/WorkOrdersPage'));
 const TechnicianAgendaPage = lazy(() => import('../modules/workorders/TechnicianAgendaPage'));
+const WorkOrderExecutionPage = lazy(() => import('../modules/workorders/WorkOrderExecutionPage'));
 const HelpdeskPage = lazy(() => import('../modules/helpdesk/HelpdeskPage'));
 const HelpdeskDashboardPage = lazy(() => import('../modules/helpdesk/HelpdeskDashboardPage'));
 const SlaConfigPage = lazy(() => import('../modules/helpdesk/SlaConfigPage'));
@@ -68,6 +69,7 @@ export const router = createBrowserRouter([
       { path: 'finance', element: withBoundary('Finance', FinancePage) },
       { path: 'workorders', element: withBoundary('Pracovní úkoly', WorkOrdersPage) },
       { path: 'my-agenda', element: withBoundary('Moje agenda', TechnicianAgendaPage) },
+      { path: 'workorders/:id/execute', element: withBoundary('Provádění úkolu', WorkOrderExecutionPage) },
       { path: 'helpdesk', element: withBoundary('Helpdesk', HelpdeskPage) },
       { path: 'helpdesk/dashboard', element: withBoundary('HelpDesk Dashboard', HelpdeskDashboardPage) },
       { path: 'helpdesk/sla-config', element: withBoundary('SLA konfigurace', SlaConfigPage) },
