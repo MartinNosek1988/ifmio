@@ -30,7 +30,7 @@ const TYP_COLOR: Record<string, BadgeVariant> = {
 const TYP_HEX: Record<string, string> = {
   schuze: '#8b5cf6', revize: '#f97316', udrzba: '#3b82f6',
   predani: '#22c55e', prohlidka: '#eab308', ostatni: '#6b7280',
-  workorder: '#3b82f6', contract: '#f97316', meter: '#eab308',
+  helpdesk: '#ef4444', workorder: '#3b82f6', contract: '#f97316', meter: '#eab308',
 };
 
 const FILTER_TYPES = [
@@ -41,7 +41,8 @@ const FILTER_TYPES = [
   { value: 'predani', label: 'Předání' },
   { value: 'prohlidka', label: 'Prohlídka' },
   { value: 'ostatni', label: 'Ostatní' },
-  { value: 'workorder', label: 'Work Orders' },
+  { value: 'helpdesk', label: 'Požadavky' },
+  { value: 'workorder', label: 'Pracovní úkoly' },
   { value: 'contract', label: 'Smlouvy' },
   { value: 'meter', label: 'Kalibrace' },
 ];
@@ -174,7 +175,7 @@ export default function CalendarPage() {
         <KpiCard label="Celkem vlastnich" value={String(stats?.total ?? 0)} color="var(--accent-blue)" />
         <KpiCard label="Nadchazejici" value={String(stats?.upcoming ?? 0)} color="var(--accent-green)" />
         <KpiCard label="Tento mesic" value={String(stats?.thisMonth ?? 0)} color="var(--accent-orange)" />
-        <KpiCard label="WO / Smlouvy / Kal." value={`${stats?.workorders ?? 0} / ${stats?.contracts ?? 0} / ${stats?.meters ?? 0}`} color="var(--accent-blue)" />
+        <KpiCard label="HD / WO / Sml. / Kal." value={`${stats?.helpdesk ?? 0} / ${stats?.workorders ?? 0} / ${stats?.contracts ?? 0} / ${stats?.meters ?? 0}`} color="var(--accent-blue)" />
       </div>
 
       {/* Toolbar */}

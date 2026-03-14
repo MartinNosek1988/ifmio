@@ -46,7 +46,10 @@ export class CalendarService {
       date: { gte: from, lte: to },
       ...scopeWhere,
     }
-    if (query.eventType && query.eventType !== 'all') customWhere.eventType = query.eventType
+    const CUSTOM_EVENT_TYPES = ['schuze', 'revize', 'udrzba', 'predani', 'prohlidka', 'ostatni']
+    if (query.eventType && query.eventType !== 'all' && CUSTOM_EVENT_TYPES.includes(query.eventType)) {
+      customWhere.eventType = query.eventType
+    }
     if (query.search) {
       customWhere.OR = [
         { title: { contains: query.search, mode: 'insensitive' } },
@@ -54,14 +57,19 @@ export class CalendarService {
       ]
     }
 
-    const customEvents = await this.prisma.calendarEvent.findMany({
-      where: customWhere,
-      orderBy: { date: 'asc' },
-    })
-    results.push(...customEvents.map(serializeEvent))
+    const SYNTHETIC_SOURCES = ['workorder', 'contract', 'meter', 'helpdesk']
+    const isSyntheticFilter = query.eventType && SYNTHETIC_SOURCES.includes(query.eventType)
+
+    if (!isSyntheticFilter) {
+      const customEvents = await this.prisma.calendarEvent.findMany({
+        where: customWhere,
+        orderBy: { date: 'asc' },
+      })
+      results.push(...customEvents.map(serializeEvent))
+    }
 
     // Skip aggregated events if filtering by specific custom type
-    const skipAggregated = query.eventType && !['all', 'workorder', 'contract', 'meter'].includes(query.eventType)
+    const skipAggregated = query.eventType && !['all', 'workorder', 'contract', 'meter', 'helpdesk'].includes(query.eventType)
 
     if (!skipAggregated) {
       // 2. Work Orders with deadlines
@@ -93,7 +101,41 @@ export class CalendarService {
         }
       }
 
-      // 3. Lease agreements nearing expiration (endDate within range)
+      // 3. Helpdesk ticket deadlines
+      if (!query.eventType || query.eventType === 'all' || query.eventType === 'helpdesk') {
+        const tickets = await this.prisma.helpdeskTicket.findMany({
+          where: {
+            tenantId,
+            resolutionDueAt: { gte: from, lte: to },
+            status: { notIn: ['resolved', 'closed'] },
+            ...scopeWhere,
+          } as any,
+          include: {
+            property: { select: { id: true, name: true } },
+            asset: { select: { name: true } },
+            assignee: { select: { name: true } },
+          },
+          orderBy: { resolutionDueAt: 'asc' },
+        })
+        for (const t of tickets) {
+          const num = `HD-${String(t.number).padStart(4, '0')}`
+          results.push({
+            id: `hd-${t.id}`,
+            source: 'helpdesk',
+            sourceId: t.id,
+            title: `Požadavek: ${num} – ${t.title}`,
+            eventType: 'helpdesk',
+            date: t.resolutionDueAt!.toISOString().slice(0, 10),
+            propertyId: t.propertyId ?? null,
+            propertyName: t.property?.name ?? null,
+            description: [t.asset?.name ? `Zařízení: ${t.asset.name}` : '', t.assignee?.name ? `Řešitel: ${t.assignee.name}` : ''].filter(Boolean).join(', ') || null,
+            location: null,
+            attendees: t.assignee?.name ? [t.assignee.name] : [],
+          })
+        }
+      }
+
+      // 4. Lease agreements nearing expiration (endDate within range)
       if (!query.eventType || query.eventType === 'all' || query.eventType === 'contract') {
         const leases = await this.prisma.leaseAgreement.findMany({
           where: {
@@ -188,7 +230,7 @@ export class CalendarService {
     ])
 
     // Count aggregated upcoming events
-    const [woCount, contractCount, meterCount] = await Promise.all([
+    const [woCount, contractCount, meterCount, helpdeskCount] = await Promise.all([
       this.prisma.workOrder.count({
         where: { tenantId, deadline: { gte: now, lte: futureLimit }, status: { notIn: ['uzavrena', 'zrusena'] }, ...scopeWhere } as any,
       }),
@@ -198,15 +240,19 @@ export class CalendarService {
       this.prisma.meter.count({
         where: { tenantId, isActive: true, calibrationDue: { gte: now, lte: futureLimit }, ...scopeWhere } as any,
       }),
+      this.prisma.helpdeskTicket.count({
+        where: { tenantId, resolutionDueAt: { gte: now, lte: futureLimit }, status: { notIn: ['resolved', 'closed'] }, ...scopeWhere } as any,
+      }),
     ])
 
     return {
       total: customTotal,
       thisMonth: customMonth,
-      upcoming: customUpcoming + woCount + contractCount + meterCount,
+      upcoming: customUpcoming + woCount + contractCount + meterCount + helpdeskCount,
       workorders: woCount,
       contracts: contractCount,
       meters: meterCount,
+      helpdesk: helpdeskCount,
     }
   }
 
