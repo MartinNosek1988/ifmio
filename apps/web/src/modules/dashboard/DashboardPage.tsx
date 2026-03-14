@@ -1,30 +1,38 @@
 import { useNavigate } from 'react-router-dom';
 import {
   Building2, Users, Percent, UserCheck, Headphones, AlertTriangle,
-  FileText, Wallet, Plus, Wrench,
+  FileText, Wallet, Plus, Wrench, Clock, CheckCircle, Calendar, ClipboardCheck,
 } from 'lucide-react';
 import { KpiCard, Badge, Button } from '../../shared/components';
 import { LoadingState } from '../../shared/components/LoadingState';
 import { ErrorState } from '../../shared/components/ErrorState';
-import { useDashboardOverview } from './api/dashboard.queries';
+import { useDashboardOverview, useOperationalDashboard } from './api/dashboard.queries';
 import { formatKc, formatCzDate } from '../../shared/utils/format';
+import { useRoleUX } from '../../shared/hooks/useRoleUX';
+import type { OperationalDashboard } from './api/dashboard.api';
 
 const PRIORITY_LABELS: Record<string, string> = {
   low: 'Nízká', medium: 'Normální', high: 'Vysoká', urgent: 'Urgentní',
+  nizka: 'Nízká', normalni: 'Normální', vysoka: 'Vysoká', kriticka: 'Kritická',
 };
-
 const PRIO_COLOR: Record<string, 'muted' | 'blue' | 'yellow' | 'red'> = {
   low: 'muted', medium: 'blue', high: 'yellow', urgent: 'red',
+  nizka: 'muted', normalni: 'blue', vysoka: 'yellow', kriticka: 'red',
 };
 
 export default function DashboardPage() {
+  const uxRole = useRoleUX();
   const { data, isLoading, isError, refetch } = useDashboardOverview();
+  const { data: ops } = useOperationalDashboard();
   const navigate = useNavigate();
 
   if (isLoading) return <LoadingState text="Načítání dashboardu..." />;
   if (isError) return <ErrorState onRetry={refetch} />;
 
-  const { kpi, alerts, recentTransactions, recentTickets } = data;
+  const { kpi, alerts, recentTransactions } = data;
+
+  // Technician: lightweight view
+  if (uxRole === 'tech') return <TechDashboard ops={ops} />;
 
   return (
     <div>
@@ -35,27 +43,18 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* ── ATTENTION SECTION (operational) ─────────────────────── */}
+      {ops && <AttentionSection ops={ops} uxRole={uxRole} />}
+
       {/* Alerts */}
       {alerts.length > 0 && (
         <div style={{ marginBottom: 20 }}>
           {alerts.map((alert: any, i: number) => (
             <div key={i} onClick={() => alert.link && navigate(alert.link)} style={{
-              padding: '10px 16px',
-              borderRadius: 8,
-              marginBottom: 8,
-              background: alert.type === 'error'
-                ? 'rgba(239,68,68,0.1)'
-                : alert.type === 'warning'
-                  ? 'rgba(245,158,11,0.1)'
-                  : 'rgba(59,130,246,0.1)',
-              borderLeft: `4px solid ${
-                alert.type === 'error' ? 'var(--danger, #ef4444)'
-                : alert.type === 'warning' ? 'var(--accent-orange, #f59e0b)'
-                : 'var(--accent-blue, #3b82f6)'
-              }`,
-              color: 'var(--text)',
-              fontSize: '0.875rem',
-              cursor: alert.link ? 'pointer' : 'default',
+              padding: '10px 16px', borderRadius: 8, marginBottom: 8,
+              background: alert.type === 'error' ? 'rgba(239,68,68,0.1)' : alert.type === 'warning' ? 'rgba(245,158,11,0.1)' : 'rgba(59,130,246,0.1)',
+              borderLeft: `4px solid ${alert.type === 'error' ? 'var(--danger, #ef4444)' : alert.type === 'warning' ? 'var(--accent-orange, #f59e0b)' : 'var(--accent-blue, #3b82f6)'}`,
+              color: 'var(--text)', fontSize: '0.875rem', cursor: alert.link ? 'pointer' : 'default',
             }}>
               {alert.message}
             </div>
@@ -63,174 +62,232 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* KPI Row 1: Properties */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 16 }}>
-        <KpiCard
-          label="Nemovitosti"
-          value={String(kpi.propertiesCount)}
-          color="var(--accent-blue)"
-          icon={<Building2 size={18} />}
-        />
-        <KpiCard
-          label="Jednotky"
-          value={String(kpi.unitsCount)}
-          color="var(--accent-blue)"
-          icon={<Users size={18} />}
-        />
-        <KpiCard
-          label="Obsazenost"
-          value={`${kpi.occupancyRate}%`}
-          color={kpi.occupancyRate >= 80 ? 'var(--accent-green)' : 'var(--accent-orange)'}
-          icon={<Percent size={18} />}
-        />
-        <KpiCard
-          label="Aktivní obyvatelé"
-          value={String(kpi.residentsCount)}
-          color="var(--accent-green)"
-          icon={<UserCheck size={18} />}
-        />
-      </div>
+      {/* KPI Row 1: Properties (fm/owner only) */}
+      {(uxRole === 'fm' || uxRole === 'owner') && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 16 }} className="kpi-grid-4">
+          <KpiCard label="Nemovitosti" value={String(kpi.propertiesCount)} color="var(--accent-blue)" icon={<Building2 size={18} />} />
+          <KpiCard label="Jednotky" value={String(kpi.unitsCount)} color="var(--accent-blue)" icon={<Users size={18} />} />
+          <KpiCard label="Obsazenost" value={`${kpi.occupancyRate}%`} color={kpi.occupancyRate >= 80 ? 'var(--accent-green)' : 'var(--accent-orange)'} icon={<Percent size={18} />} />
+          <KpiCard label="Aktivní obyvatelé" value={String(kpi.residentsCount)} color="var(--accent-green)" icon={<UserCheck size={18} />} />
+        </div>
+      )}
 
       {/* KPI Row 2: Operations & Finance */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
-        <KpiCard
-          label="Otevřené tickety"
-          value={String(kpi.openTickets)}
-          color={kpi.openTickets > 0 ? 'var(--accent-orange)' : 'var(--accent-green)'}
-          icon={<Headphones size={18} />}
-        />
-        <KpiCard
-          label="Urgentní tickety"
-          value={String(kpi.urgentTickets)}
-          color={kpi.urgentTickets > 0 ? 'var(--accent-red, var(--danger))' : 'var(--accent-green)'}
-          icon={<AlertTriangle size={18} />}
-        />
-        <KpiCard
-          label="Aktivní předpisy"
-          value={String(kpi.activePrescriptions)}
-          color="var(--accent-blue)"
-          icon={<FileText size={18} />}
-        />
-        <KpiCard
-          label="Měsíční objem"
-          value={formatKc(kpi.monthlyPrescriptionVolume ?? 0)}
-          color="var(--accent-green)"
-          icon={<Wallet size={18} />}
-        />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }} className="kpi-grid-4">
+        <KpiCard label="Otevřené požadavky" value={String(kpi.openTickets)} color={kpi.openTickets > 0 ? 'var(--accent-orange)' : 'var(--accent-green)'} icon={<Headphones size={18} />} />
+        <KpiCard label="Urgentní požadavky" value={String(kpi.urgentTickets)} color={kpi.urgentTickets > 0 ? 'var(--accent-red, var(--danger))' : 'var(--accent-green)'} icon={<AlertTriangle size={18} />} />
+        <KpiCard label="Aktivní předpisy" value={String(kpi.activePrescriptions)} color="var(--accent-blue)" icon={<FileText size={18} />} />
+        <KpiCard label="Měsíční objem" value={formatKc(kpi.monthlyPrescriptionVolume ?? 0)} color="var(--accent-green)" icon={<Wallet size={18} />} />
       </div>
 
       {/* Quick Actions */}
       <div style={{
-        display: 'flex', gap: 8, marginBottom: 24,
-        padding: '12px 16px', background: 'var(--surface-2, var(--surface))',
-        borderRadius: 8, border: '1px solid var(--border)',
+        display: 'flex', gap: 8, marginBottom: 24, padding: '12px 16px',
+        background: 'var(--surface-2, var(--surface))', borderRadius: 8, border: '1px solid var(--border)', flexWrap: 'wrap',
       }}>
-        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', alignSelf: 'center', marginRight: 8 }}>
-          Rychlé akce:
-        </span>
-        <Button icon={<Plus size={14} />} onClick={() => navigate('/properties?action=new')}>
-          Nová nemovitost
-        </Button>
-        <Button icon={<Headphones size={14} />} onClick={() => navigate('/helpdesk?action=new')}>
-          Nový tiket
-        </Button>
-        <Button icon={<FileText size={14} />} onClick={() => navigate('/finance?tab=prescriptions')}>
-          Nový předpis
-        </Button>
-        <Button icon={<Wrench size={14} />} onClick={() => navigate('/workorders?action=new')}>
-          Nový work order
-        </Button>
+        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', alignSelf: 'center', marginRight: 8 }}>Rychlé akce:</span>
+        <Button icon={<Headphones size={14} />} onClick={() => navigate('/helpdesk')}>Požadavky</Button>
+        <Button icon={<Wrench size={14} />} onClick={() => navigate('/workorders')}>Úkoly</Button>
+        <Button icon={<Calendar size={14} />} onClick={() => navigate('/calendar')}>Kalendář</Button>
+        {uxRole === 'fm' && <Button icon={<Plus size={14} />} onClick={() => navigate('/properties?action=new')}>Nová nemovitost</Button>}
       </div>
 
-      {/* Recent Activity: Tickets + Transactions */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-        {/* Recent Tickets */}
-        <div style={{
-          background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          borderRadius: 12,
-          padding: 20,
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h2 style={{ fontSize: '1rem', fontWeight: 600 }}>Poslední tickety</h2>
-            <Button size="sm" onClick={() => navigate('/helpdesk')}>Zobrazit vše</Button>
-          </div>
-          {recentTickets.length === 0 ? (
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', padding: '20px 0', textAlign: 'center' }}>
-              Žádné otevřené tickety
-            </div>
-          ) : (
-            recentTickets.map((t: any) => (
-              <div key={t.id} onClick={() => navigate('/helpdesk')} style={{
-                padding: '10px 0',
-                borderBottom: '1px solid var(--border)',
-                fontSize: '0.875rem',
-                cursor: 'pointer',
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <span className="text-muted" style={{ fontFamily: 'monospace', fontSize: '0.8rem', marginRight: 8 }}>
-                      HD-{String(t.number).padStart(4, '0')}
-                    </span>
-                    <span style={{ fontWeight: 500 }}>{t.title}</span>
-                  </div>
-                  <Badge variant={PRIO_COLOR[t.priority] || 'muted'}>
-                    {PRIORITY_LABELS[t.priority] || t.priority}
-                  </Badge>
-                </div>
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: 3 }}>
-                  {t.property?.name ?? '—'} &middot; {formatCzDate(t.createdAt)}
-                </div>
-              </div>
-            ))
-          )}
+      {/* ── OPERATIONAL LISTS ──────────────────────────────────── */}
+      {ops && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
+          <RecentList
+            title="Otevřené požadavky"
+            items={ops.recentTickets.map(t => ({
+              id: t.id, label: `HD-${String(t.number).padStart(4, '0')} ${t.title}`,
+              meta: t.propertyName ?? '—', priority: t.priority,
+            }))}
+            emptyText="Žádné otevřené požadavky"
+            ctaLabel="Zobrazit vše" ctaPath="/helpdesk"
+          />
+          <RecentList
+            title="Otevřené pracovní úkoly"
+            items={ops.recentWorkOrders.map(w => ({
+              id: w.id, label: w.title,
+              meta: [w.propertyName, w.assetName].filter(Boolean).join(' · ') || '—',
+              priority: w.priority,
+            }))}
+            emptyText="Žádné otevřené úkoly"
+            ctaLabel="Zobrazit vše" ctaPath="/workorders"
+          />
         </div>
+      )}
 
-        {/* Recent Transactions */}
-        <div style={{
-          background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          borderRadius: 12,
-          padding: 20,
-        }}>
+      {/* Finance — recent transactions (fm/owner only) */}
+      {(uxRole === 'fm' || uxRole === 'owner') && (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <h2 style={{ fontSize: '1rem', fontWeight: 600 }}>Poslední transakce</h2>
             <Button size="sm" onClick={() => navigate('/finance?tab=bank')}>Zobrazit vše</Button>
           </div>
           {recentTransactions.length === 0 ? (
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', padding: '20px 0', textAlign: 'center' }}>
-              Žádné transakce
-            </div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', padding: '20px 0', textAlign: 'center' }}>Žádné transakce</div>
           ) : (
             recentTransactions.map((t: any) => (
               <div key={t.id} onClick={() => navigate('/finance?tab=bank')} style={{
-                padding: '10px 0',
-                borderBottom: '1px solid var(--border)',
-                fontSize: '0.875rem',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                cursor: 'pointer',
+                padding: '10px 0', borderBottom: '1px solid var(--border)', fontSize: '0.875rem',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer',
               }}>
                 <div>
                   <div style={{ fontWeight: 500 }}>{t.description ?? t.counterparty ?? '—'}</div>
                   <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: 2 }}>
-                    {formatCzDate(t.date)}
-                    {t.variableSymbol && <span> &middot; VS: {t.variableSymbol}</span>}
+                    {formatCzDate(t.date)}{t.variableSymbol && <span> · VS: {t.variableSymbol}</span>}
                   </div>
                 </div>
-                <div style={{
-                  fontWeight: 600,
-                  color: t.type === 'credit' ? 'var(--success, #10b981)' : 'var(--danger, #ef4444)',
-                  whiteSpace: 'nowrap',
-                }}>
+                <div style={{ fontWeight: 600, color: t.type === 'credit' ? 'var(--success, #10b981)' : 'var(--danger, #ef4444)', whiteSpace: 'nowrap' }}>
                   {t.type === 'credit' ? '+' : '-'}{formatKc(Number(t.amount))}
                 </div>
               </div>
             ))
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Technician Dashboard ────────────────────────────────────────
+
+function TechDashboard({ ops }: { ops: OperationalDashboard | undefined }) {
+  const navigate = useNavigate();
+  if (!ops) return <LoadingState text="Načítání..." />;
+
+  const { attention } = ops;
+  const totalAttention = attention.overdueTickets + attention.overdueWo + attention.highPrioTickets;
+
+  return (
+    <div style={{ maxWidth: 600, margin: '0 auto' }}>
+      <h1 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: 16 }}>Můj přehled</h1>
+
+      {/* Attention */}
+      {totalAttention > 0 && (
+        <div style={{
+          padding: 14, borderRadius: 12, marginBottom: 16,
+          background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+        }}>
+          <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--danger)', marginBottom: 6 }}>
+            <AlertTriangle size={16} style={{ marginRight: 6, verticalAlign: 'text-bottom' }} />
+            Vyžaduje pozornost
+          </div>
+          <div style={{ display: 'flex', gap: 12, fontSize: '0.85rem' }}>
+            {attention.overdueWo > 0 && <span>{attention.overdueWo} úkol(ů) po termínu</span>}
+            {attention.overdueTickets > 0 && <span>{attention.overdueTickets} požadavek(ů) po termínu</span>}
+            {attention.highPrioTickets > 0 && <span>{attention.highPrioTickets} prioritních</span>}
+          </div>
+        </div>
+      )}
+
+      {/* KPI */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+        <KpiCard label="Moje otevřené úkoly" value={String(ops.workload.openWo)} color="var(--accent-blue)" icon={<Wrench size={16} />} />
+        <KpiCard label="Dnes k řešení" value={String(attention.todayWoDeadlines)} color="var(--accent-orange)" icon={<Clock size={16} />} />
       </div>
+
+      {/* Quick CTA */}
+      <Button variant="primary" onClick={() => navigate('/my-agenda')}
+        style={{ width: '100%', padding: '14px', fontSize: '1rem', marginBottom: 16 }}>
+        <ClipboardCheck size={18} style={{ marginRight: 8 }} />
+        Přejít do agendy
+      </Button>
+
+      {/* Period stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+        <KpiCard label="Dokončeno za 30 dní" value={String(ops.period.completedWoLast30)} color="var(--accent-green)" icon={<CheckCircle size={16} />} />
+        <KpiCard label="Vyřešeno požadavků" value={String(ops.period.resolvedTicketsLast30)} color="var(--accent-green)" icon={<CheckCircle size={16} />} />
+      </div>
+    </div>
+  );
+}
+
+// ─── Attention Section (dispatcher/FM/owner) ─────────────────────
+
+function AttentionSection({ ops, uxRole }: { ops: OperationalDashboard; uxRole: string }) {
+  const navigate = useNavigate();
+  const { attention } = ops;
+  const hasAttention = attention.overdueTickets + attention.overdueWo + attention.highPrioTickets + attention.todayWoDeadlines > 0;
+  const hasCompliance = attention.overdueRevisions + attention.incompleteProtocols > 0;
+
+  if (!hasAttention && !hasCompliance) return null;
+
+  return (
+    <div style={{
+      marginBottom: 20, padding: 14, borderRadius: 12,
+      background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)',
+    }}>
+      <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <AlertTriangle size={18} style={{ color: 'var(--danger)' }} />
+        Vyžaduje pozornost
+      </div>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        {attention.overdueTickets > 0 && (
+          <AttentionPill label={`${attention.overdueTickets} požadavek(ů) po termínu`} onClick={() => navigate('/helpdesk?overdue=true')} />
+        )}
+        {attention.overdueWo > 0 && (
+          <AttentionPill label={`${attention.overdueWo} úkol(ů) po termínu`} onClick={() => navigate('/workorders')} />
+        )}
+        {attention.highPrioTickets > 0 && (
+          <AttentionPill label={`${attention.highPrioTickets} prioritních požadavků`} onClick={() => navigate('/helpdesk?priority=urgent')} />
+        )}
+        {attention.todayWoDeadlines > 0 && (
+          <AttentionPill label={`${attention.todayWoDeadlines} úkol(ů) s termínem dnes`} onClick={() => navigate('/workorders')} />
+        )}
+        {(uxRole === 'fm') && attention.overdueRevisions > 0 && (
+          <AttentionPill label={`${attention.overdueRevisions} revize po termínu`} onClick={() => navigate('/revisions')} />
+        )}
+        {(uxRole === 'fm') && attention.incompleteProtocols > 0 && (
+          <AttentionPill label={`${attention.incompleteProtocols} nedokončených protokolů`} onClick={() => navigate('/protocols')} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AttentionPill({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button onClick={onClick} style={{
+      padding: '6px 12px', borderRadius: 20, border: '1px solid rgba(239,68,68,0.3)',
+      background: 'rgba(239,68,68,0.1)', color: 'var(--danger, #ef4444)',
+      fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+    }}>
+      {label}
+    </button>
+  );
+}
+
+// ─── Recent List ─────────────────────────────────────────────────
+
+function RecentList({ title, items, emptyText, ctaLabel, ctaPath }: {
+  title: string;
+  items: { id: string; label: string; meta: string; priority: string }[];
+  emptyText: string; ctaLabel: string; ctaPath: string;
+}) {
+  const navigate = useNavigate();
+  return (
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h2 style={{ fontSize: '1rem', fontWeight: 600 }}>{title}</h2>
+        <Button size="sm" onClick={() => navigate(ctaPath)}>{ctaLabel}</Button>
+      </div>
+      {items.length === 0 ? (
+        <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', padding: '20px 0', textAlign: 'center' }}>{emptyText}</div>
+      ) : (
+        items.map(item => (
+          <div key={item.id} onClick={() => navigate(ctaPath)} style={{
+            padding: '10px 0', borderBottom: '1px solid var(--border)', fontSize: '0.875rem', cursor: 'pointer',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          }}>
+            <div>
+              <div style={{ fontWeight: 500 }}>{item.label}</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: 2 }}>{item.meta}</div>
+            </div>
+            <Badge variant={PRIO_COLOR[item.priority] ?? 'muted'}>{PRIORITY_LABELS[item.priority] ?? item.priority}</Badge>
+          </div>
+        ))
+      )}
     </div>
   );
 }
