@@ -8,6 +8,7 @@ import {
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { Logger as PinoLogger } from 'nestjs-pino';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import helmet from '@fastify/helmet';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import multipart from '@fastify/multipart';
@@ -39,6 +40,12 @@ async function bootstrap() {
   );
 
   app.useLogger(app.get(PinoLogger));
+
+  // Security headers — CSP handled at reverse proxy (Caddy/nginx)
+  await app.register(helmet as any, {
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  });
 
   await app.register(multipart as any, { limits: { fileSize: 20 * 1024 * 1024 } });
 
