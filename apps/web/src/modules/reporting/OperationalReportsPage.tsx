@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Download } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Download, Settings, Mail } from 'lucide-react';
 import { KpiCard, Table, Badge, Button, LoadingState, ErrorState, EmptyState } from '../../shared/components';
 import type { Column, BadgeVariant } from '../../shared/components';
 import { operationsReportsApi } from './api/operations-reports.api';
-import type { OperationalReportRow, AssetReportRow, ProtocolReportRow } from './api/operations-reports.api';
+import type { OperationalReportRow, AssetReportRow, ProtocolReportRow, ReportSubscription } from './api/operations-reports.api';
 import { useProperties } from '../properties/use-properties';
 import type { ApiProperty } from '../properties/properties-api';
 
@@ -28,6 +28,7 @@ const defaultTo = now.toISOString().slice(0, 10);
 export default function OperationalReportsPage() {
   const [tab, setTab] = useState<TabKey>('operations');
   const [filters, setFilters] = useState({ propertyId: '', dateFrom: defaultFrom, dateTo: defaultTo });
+  const [showSubs, setShowSubs] = useState(false);
   const { data: properties = [] } = useProperties();
 
   const set = (key: string, value: string) => setFilters(f => ({ ...f, [key]: value }));
@@ -54,7 +55,12 @@ export default function OperationalReportsPage() {
           <h1 className="page-title">Reporting</h1>
           <p className="page-subtitle">Provozní přehledy a exporty</p>
         </div>
+        <Button icon={<Mail size={15} />} onClick={() => setShowSubs(!showSubs)}>
+          {showSubs ? 'Skrýt nastavení' : 'Plánované reporty'}
+        </Button>
       </div>
+
+      {showSubs && <SubscriptionSettings />}
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'end' }}>
@@ -242,6 +248,100 @@ function ProtocolsTab({ filters }: { filters: Record<string, string> }) {
       ) : (
         <Table data={data.rows} columns={columns} rowKey={r => r.id} />
       )}
+    </div>
+  );
+}
+
+// ─── Subscription Settings ───────────────────────────────────
+
+const REPORT_TYPES = [
+  { value: 'daily_digest', label: 'Denní přehled' },
+  { value: 'operations', label: 'Provozní report' },
+  { value: 'assets', label: 'Technický report zařízení' },
+  { value: 'protocols', label: 'Registr protokolů' },
+] as const;
+
+const FREQUENCIES = [
+  { value: 'daily', label: 'Denně' },
+  { value: 'weekly', label: 'Týdně' },
+  { value: 'monthly', label: 'Měsíčně' },
+] as const;
+
+const FORMATS = [
+  { value: 'xlsx', label: 'XLSX' },
+  { value: 'csv', label: 'CSV' },
+] as const;
+
+function SubscriptionSettings() {
+  const qc = useQueryClient();
+  const { data: subs = [], isLoading } = useQuery<ReportSubscription[]>({
+    queryKey: ['reports', 'subscriptions'],
+    queryFn: () => operationsReportsApi.subscriptions.list(),
+  });
+
+  const upsertMutation = useMutation({
+    mutationFn: (dto: { reportType: string; frequency?: string; format?: string; isEnabled?: boolean }) =>
+      operationsReportsApi.subscriptions.upsert(dto),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['reports', 'subscriptions'] }),
+  });
+
+  const getSubForType = (type: string) => subs.find(s => s.reportType === type);
+
+  const handleToggle = (type: string) => {
+    const existing = getSubForType(type);
+    upsertMutation.mutate({ reportType: type, isEnabled: existing ? !existing.isEnabled : true });
+  };
+
+  const handleChange = (type: string, field: string, value: string) => {
+    upsertMutation.mutate({ reportType: type, [field]: value });
+  };
+
+  const inputStyle: React.CSSProperties = {
+    padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)',
+    background: 'var(--surface)', color: 'var(--text)', fontSize: '0.85rem',
+  };
+
+  if (isLoading) return <LoadingState text="Načítání nastavení..." />;
+
+  return (
+    <div style={{
+      marginBottom: 20, padding: 16, borderRadius: 8,
+      background: 'var(--surface-2, var(--surface))', border: '1px solid var(--border)',
+    }}>
+      <div style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Settings size={16} /> Automatické zasílání reportů
+      </div>
+      <div className="text-muted" style={{ fontSize: '0.8rem', marginBottom: 14 }}>
+        Řešitel dostává pouze své přiřazené položky. Dispečer a admin dostávají přehled v rámci přidělených objektů.
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {REPORT_TYPES.map(rt => {
+          const sub = getSubForType(rt.value);
+          const isEnabled = sub?.isEnabled ?? false;
+          const isDigest = rt.value === 'daily_digest';
+          return (
+            <div key={rt.value} style={{
+              display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
+              borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)',
+            }}>
+              <div style={{ flex: 1, fontWeight: 500 }}>{rt.label}</div>
+              {!isDigest && (
+                <>
+                  <select value={sub?.frequency ?? 'daily'} onChange={e => handleChange(rt.value, 'frequency', e.target.value)} style={inputStyle} disabled={!isEnabled}>
+                    {FREQUENCIES.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                  </select>
+                  <select value={sub?.format ?? 'xlsx'} onChange={e => handleChange(rt.value, 'format', e.target.value)} style={inputStyle} disabled={!isEnabled}>
+                    {FORMATS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                  </select>
+                </>
+              )}
+              <Button size="sm" variant={isEnabled ? 'primary' : undefined} onClick={() => handleToggle(rt.value)} disabled={upsertMutation.isPending}>
+                {isEnabled ? 'Zapnuto' : 'Vypnuto'}
+              </Button>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

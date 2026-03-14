@@ -110,6 +110,20 @@ export interface ProtocolReport {
   rows: ProtocolReportRow[]
 }
 
+export interface ReportSubscription {
+  id: string
+  tenantId: string
+  userId: string
+  reportType: string
+  frequency: string
+  format: string
+  propertyId: string | null
+  isEnabled: boolean
+  lastSentAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export const operationsReportsApi = {
   operations: async (params?: OperationalReportFilters) => {
     const { data } = await apiClient.get<OperationalReport>('/reports/operations', { params })
@@ -130,5 +144,16 @@ export const operationsReportsApi = {
     const baseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1'
     const qs = new URLSearchParams(params).toString()
     return `${baseUrl}/reports/${type}/export${qs ? `?${qs}` : ''}`
+  },
+
+  subscriptions: {
+    list: async () => {
+      const { data } = await apiClient.get<ReportSubscription[]>('/reports/subscriptions')
+      return data
+    },
+    upsert: async (dto: { reportType: string; frequency?: string; format?: string; propertyId?: string | null; isEnabled?: boolean }) => {
+      const { data } = await apiClient.post<ReportSubscription>('/reports/subscriptions', dto)
+      return data
+    },
   },
 }

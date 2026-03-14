@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { HelpdeskEscalationService } from '../helpdesk/helpdesk-escalation.service';
 import { RevisionEscalationService } from '../revisions/revision-escalation.service';
+import { ScheduledReportsService } from '../reports/scheduled-reports.service';
 
 const ONE_HOUR = 60 * 60 * 1000;
 const SIX_HOURS = 6 * ONE_HOUR;
@@ -16,12 +17,15 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
   private retentionInterval: ReturnType<typeof setInterval> | null = null;
   private slaInterval: ReturnType<typeof setInterval> | null = null;
   private revisionEscalationInterval: ReturnType<typeof setInterval> | null = null;
+  private dailyDigestInterval: ReturnType<typeof setInterval> | null = null;
+  private scheduledReportsInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
     private readonly escalation: HelpdeskEscalationService,
     private readonly revisionEscalation: RevisionEscalationService,
+    private readonly scheduledReports: ScheduledReportsService,
   ) {}
 
   onModuleInit() {
@@ -29,6 +33,8 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     this.initAuditRetention();
     this.initSlaEscalation();
     this.initRevisionEscalation();
+    this.initDailyDigest();
+    this.initScheduledReports();
   }
 
   onModuleDestroy() {
@@ -47,6 +53,14 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     if (this.revisionEscalationInterval) {
       clearInterval(this.revisionEscalationInterval);
       this.revisionEscalationInterval = null;
+    }
+    if (this.dailyDigestInterval) {
+      clearInterval(this.dailyDigestInterval);
+      this.dailyDigestInterval = null;
+    }
+    if (this.scheduledReportsInterval) {
+      clearInterval(this.scheduledReportsInterval);
+      this.scheduledReportsInterval = null;
     }
     this.logger.log('Cron intervals cleared');
   }
@@ -197,6 +211,81 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
         'Audit retention job FAILED',
         (err as Error).stack,
       );
+    }
+  }
+
+  // ─── Daily Digest ──────────────────────────────────────────
+
+  private initDailyDigest() {
+    this.logger.log('Daily digest enabled — sending every morning at ~6:00');
+
+    // Check every hour; only send once per day around 6:00 local time
+    this.dailyDigestInterval = setInterval(() => this.maybeRunDigest(), ONE_HOUR);
+
+    // Also check shortly after startup
+    setTimeout(() => this.maybeRunDigest(), 120_000);
+  }
+
+  private lastDigestDate = '';
+
+  private async maybeRunDigest() {
+    const now = new Date();
+    const hour = now.getHours();
+    const dateStr = now.toISOString().slice(0, 10);
+
+    // Only send between 5:00–8:00 and once per day
+    if (hour < 5 || hour > 8 || dateStr === this.lastDigestDate) return;
+
+    this.lastDigestDate = dateStr;
+    try {
+      const result = await this.scheduledReports.sendDailyDigests();
+      this.logger.log(`Daily digest: ${result.sent} sent, ${result.failed} failed across ${result.tenants} tenants`);
+    } catch (err) {
+      this.logger.error('Daily digest job FAILED', (err as Error).stack);
+    }
+  }
+
+  // ─── Scheduled Reports ────────────────────────────────────
+
+  private initScheduledReports() {
+    this.logger.log('Scheduled reports enabled — processing daily/weekly/monthly');
+
+    // Check every hour
+    this.scheduledReportsInterval = setInterval(() => this.maybeRunScheduledReports(), ONE_HOUR);
+
+    // Check on startup (delayed)
+    setTimeout(() => this.maybeRunScheduledReports(), 180_000);
+  }
+
+  private lastScheduledDate = '';
+
+  private async maybeRunScheduledReports() {
+    const now = new Date();
+    const hour = now.getHours();
+    const dateStr = now.toISOString().slice(0, 10);
+
+    // Process between 6:00–9:00, once per day
+    if (hour < 6 || hour > 9 || dateStr === this.lastScheduledDate) return;
+
+    this.lastScheduledDate = dateStr;
+    try {
+      // Always process daily
+      const daily = await this.scheduledReports.processScheduledReports('daily');
+      this.logger.log(`Scheduled daily: ${daily.sent} sent, ${daily.failed} failed`);
+
+      // Weekly on Mondays
+      if (now.getDay() === 1) {
+        const weekly = await this.scheduledReports.processScheduledReports('weekly');
+        this.logger.log(`Scheduled weekly: ${weekly.sent} sent, ${weekly.failed} failed`);
+      }
+
+      // Monthly on 1st of month
+      if (now.getDate() === 1) {
+        const monthly = await this.scheduledReports.processScheduledReports('monthly');
+        this.logger.log(`Scheduled monthly: ${monthly.sent} sent, ${monthly.failed} failed`);
+      }
+    } catch (err) {
+      this.logger.error('Scheduled reports job FAILED', (err as Error).stack);
     }
   }
 }

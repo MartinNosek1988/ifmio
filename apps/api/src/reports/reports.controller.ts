@@ -1,9 +1,10 @@
-import { Controller, Get, Query, Res } from '@nestjs/common';
+import { Controller, Get, Post, Query, Body, Res } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import type { FastifyReply } from 'fastify';
 import { ReportsService } from './reports.service';
+import { ScheduledReportsService } from './scheduled-reports.service';
 import { Roles } from '../common/decorators/roles.decorator';
-import { ROLES_FINANCE_DRAFT } from '../common/constants/roles.constants';
+import { ROLES_FINANCE_DRAFT, ROLES_MANAGE } from '../common/constants/roles.constants';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '@ifmio/shared-types';
 
@@ -11,7 +12,10 @@ import type { AuthUser } from '@ifmio/shared-types';
 @ApiBearerAuth()
 @Controller('reports')
 export class ReportsController {
-  constructor(private service: ReportsService) {}
+  constructor(
+    private service: ReportsService,
+    private scheduled: ScheduledReportsService,
+  ) {}
 
   @Get('monthly')
   @Roles(...ROLES_FINANCE_DRAFT)
@@ -94,7 +98,7 @@ export class ReportsController {
   }
 
   @Get('operations/export')
-  @ApiOperation({ summary: 'Export provozního reportu (XLSX)' })
+  @ApiOperation({ summary: 'Export provozního reportu (XLSX/CSV)' })
   async exportOperations(
     @CurrentUser() user: AuthUser,
     @Query('propertyId') propertyId?: string,
@@ -104,13 +108,16 @@ export class ReportsController {
     @Query('status') status?: string,
     @Query('assetId') assetId?: string,
     @Query('onlyOverdue') onlyOverdue?: string,
+    @Query('format') format?: string,
     @Res() reply?: FastifyReply,
   ) {
-    const buffer = await this.service.exportOperationalXlsx(user, { propertyId, dateFrom, dateTo, priority, status, assetId, onlyOverdue });
-    reply!
-      .header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-      .header('Content-Disposition', 'attachment; filename="provozni-report.xlsx"')
-      .send(buffer);
+    const q = { propertyId, dateFrom, dateTo, priority, status, assetId, onlyOverdue };
+    if (format === 'csv') {
+      const csv = await this.service.exportOperationalCsv(user, q);
+      return reply!.header('Content-Type', 'text/csv; charset=utf-8').header('Content-Disposition', 'attachment; filename="provozni-report.csv"').send(csv);
+    }
+    const buffer = await this.service.exportOperationalXlsx(user, q);
+    reply!.header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').header('Content-Disposition', 'attachment; filename="provozni-report.xlsx"').send(buffer);
   }
 
   // ─── Asset report ──────────────────────────────────────────
@@ -128,20 +135,23 @@ export class ReportsController {
   }
 
   @Get('assets/export')
-  @ApiOperation({ summary: 'Export technického reportu zařízení (XLSX)' })
+  @ApiOperation({ summary: 'Export technického reportu zařízení (XLSX/CSV)' })
   async exportAssets(
     @CurrentUser() user: AuthUser,
     @Query('propertyId') propertyId?: string,
     @Query('assetId') assetId?: string,
     @Query('dateFrom') dateFrom?: string,
     @Query('dateTo') dateTo?: string,
+    @Query('format') format?: string,
     @Res() reply?: FastifyReply,
   ) {
-    const buffer = await this.service.exportAssetXlsx(user, { propertyId, assetId, dateFrom, dateTo });
-    reply!
-      .header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-      .header('Content-Disposition', 'attachment; filename="zarizeni-report.xlsx"')
-      .send(buffer);
+    const q = { propertyId, assetId, dateFrom, dateTo };
+    if (format === 'csv') {
+      const csv = await this.service.exportAssetCsv(user, q);
+      return reply!.header('Content-Type', 'text/csv; charset=utf-8').header('Content-Disposition', 'attachment; filename="zarizeni-report.csv"').send(csv);
+    }
+    const buffer = await this.service.exportAssetXlsx(user, q);
+    reply!.header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').header('Content-Disposition', 'attachment; filename="zarizeni-report.xlsx"').send(buffer);
   }
 
   // ─── Protocol report ───────────────────────────────────────
@@ -160,7 +170,7 @@ export class ReportsController {
   }
 
   @Get('protocols/export')
-  @ApiOperation({ summary: 'Export registru protokolů (XLSX)' })
+  @ApiOperation({ summary: 'Export registru protokolů (XLSX/CSV)' })
   async exportProtocols(
     @CurrentUser() user: AuthUser,
     @Query('propertyId') propertyId?: string,
@@ -168,12 +178,50 @@ export class ReportsController {
     @Query('dateTo') dateTo?: string,
     @Query('protocolType') protocolType?: string,
     @Query('status') status?: string,
+    @Query('format') format?: string,
     @Res() reply?: FastifyReply,
   ) {
-    const buffer = await this.service.exportProtocolXlsx(user, { propertyId, dateFrom, dateTo, protocolType, status });
+    const q = { propertyId, dateFrom, dateTo, protocolType, status };
+    if (format === 'csv') {
+      const csv = await this.service.exportProtocolCsv(user, q);
+      return reply!.header('Content-Type', 'text/csv; charset=utf-8').header('Content-Disposition', 'attachment; filename="protokoly-report.csv"').send(csv);
+    }
+    const buffer = await this.service.exportProtocolXlsx(user, q);
     reply!
       .header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
       .header('Content-Disposition', 'attachment; filename="protokoly-report.xlsx"')
       .send(buffer);
+  }
+
+  // ─── Scheduled report subscriptions ────────────────────────
+
+  @Get('subscriptions')
+  @ApiOperation({ summary: 'Moje odběry reportů' })
+  getSubscriptions(@CurrentUser() user: AuthUser) {
+    return this.scheduled.listSubscriptions(user);
+  }
+
+  @Post('subscriptions')
+  @ApiOperation({ summary: 'Vytvořit/upravit odběr reportu' })
+  upsertSubscription(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: {
+      reportType: string
+      frequency?: string
+      format?: string
+      propertyId?: string | null
+      isEnabled?: boolean
+    },
+  ) {
+    return this.scheduled.upsertSubscription(user, dto);
+  }
+
+  // ─── Manual trigger (admin only) ───────────────────────────
+
+  @Post('send-digests')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Odeslat denní přehledy (ruční spuštění)' })
+  sendDigests() {
+    return this.scheduled.sendDailyDigests();
   }
 }
