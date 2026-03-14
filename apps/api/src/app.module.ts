@@ -32,6 +32,7 @@ import { SuperAdminModule } from './super-admin/super-admin.module';
 import { AssetsModule } from './assets/assets.module';
 import { AssetTypesModule } from './asset-types/asset-types.module';
 import { AssetQrModule } from './asset-qr/asset-qr.module';
+import { FieldChecksModule } from './field-checks/field-checks.module';
 import { RevisionsModule } from './revisions/revisions.module';
 import { ProtocolsModule } from './protocols/protocols.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -92,6 +93,7 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
     AssetsModule,
     AssetTypesModule,
     AssetQrModule,
+    FieldChecksModule,
     RevisionsModule,
     ProtocolsModule,
   ],

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { assetQrApi } from './api/asset-qr.api';
+import { fieldChecksApi } from '../field-checks/api/field-checks.api';
 
 type State = 'loading' | 'redirecting' | 'error' | 'replaced' | 'invalid';
 
@@ -17,15 +18,21 @@ export default function QrResolvePage() {
       return;
     }
 
-    assetQrApi.resolveToken(token).then((result) => {
+    assetQrApi.resolveToken(token).then(async (result) => {
       if (result.status === 'active' && result.assetId) {
         const isLoggedIn = !!sessionStorage.getItem('ifmio:access_token');
         if (!isLoggedIn) {
           // Redirect to login with returnUrl
-          navigate(`/login?returnUrl=${encodeURIComponent(`/assets/${result.assetId}`)}`, { replace: true });
+          navigate(`/login?returnUrl=${encodeURIComponent(`/assets/${result.assetId}?scanToken=${token}`)}`, { replace: true });
         } else {
+          // Log scan event (best-effort, don't block navigation)
+          fieldChecksApi.logScanEvent(result.assetId, {
+            outcome: 'resolved',
+            source: 'qr_scan',
+            appVersion: '1.0',
+          }).catch(() => {/* ignore */});
           setState('redirecting');
-          navigate(`/assets/${result.assetId}`, { replace: true });
+          navigate(`/assets/${result.assetId}?scanToken=${token}`, { replace: true });
         }
       } else if (result.status === 'replaced') {
         setState('replaced');
