@@ -1,7 +1,10 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Modal, Button } from '../../shared/components';
 import { useCreateTicket } from './api/helpdesk.queries';
 import { useProperties } from '../properties/use-properties';
+import { apiClient } from '../../core/api/client';
+import { useAuthStore } from '../../core/auth/auth.store';
 import type { ApiProperty } from '../properties/properties-api';
 
 const CATEGORIES = [
@@ -25,9 +28,26 @@ interface Props {
   onClose: () => void;
 }
 
+interface TenantUser { id: string; name: string; email: string; role: string; isActive: boolean }
+interface AssetOption { id: string; name: string; location: string | null; property?: { name: string } | null }
+
 export default function TicketForm({ onClose }: Props) {
   const createMutation = useCreateTicket();
   const { data: properties = [] } = useProperties();
+  const currentUser = useAuthStore((s) => s.user);
+
+  const { data: users = [] } = useQuery<TenantUser[]>({
+    queryKey: ['admin', 'users'],
+    queryFn: () => apiClient.get('/admin/users').then((r) => r.data),
+  });
+
+  const { data: assetsData } = useQuery<{ data: AssetOption[] }>({
+    queryKey: ['assets', 'list-picker'],
+    queryFn: () => apiClient.get('/assets', { params: { limit: 500 } }).then((r) => r.data),
+  });
+  const assets = assetsData?.data ?? [];
+
+  const activeUsers = users.filter((u: TenantUser) => u.isActive);
 
   const [form, setForm] = useState({
     title: '',
@@ -36,6 +56,9 @@ export default function TicketForm({ onClose }: Props) {
     unitId: '',
     priority: 'medium',
     category: 'general',
+    assetId: '',
+    requesterUserId: currentUser?.id ?? '',
+    dispatcherUserId: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -61,6 +84,9 @@ export default function TicketForm({ onClose }: Props) {
         priority: form.priority,
         propertyId: form.propertyId || undefined,
         unitId: form.unitId || undefined,
+        assetId: form.assetId || undefined,
+        requesterUserId: form.requesterUserId || undefined,
+        dispatcherUserId: form.dispatcherUserId || undefined,
       },
       { onSuccess: () => onClose() },
     );
@@ -81,6 +107,7 @@ export default function TicketForm({ onClose }: Props) {
       open
       onClose={onClose}
       title="Nový požadavek"
+      wide
       footer={
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <Button onClick={onClose}>Zrušit</Button>
@@ -143,7 +170,42 @@ export default function TicketForm({ onClose }: Props) {
         </div>
       </div>
 
-      <div>
+      {/* Asset picker */}
+      <div style={{ marginBottom: 14 }}>
+        <label className="form-label">Zařízení</label>
+        <select value={form.assetId} onChange={(e) => set('assetId', e.target.value)} style={inputStyle()}>
+          <option value="">— bez zařízení —</option>
+          {assets.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}{a.location ? ` (${a.location})` : ''}{a.property ? ` · ${a.property.name}` : ''}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Responsibility fields */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+        <div>
+          <label className="form-label">Zadavatel požadavku</label>
+          <select value={form.requesterUserId} onChange={(e) => set('requesterUserId', e.target.value)} style={inputStyle()}>
+            <option value="">— vyberte —</option>
+            {activeUsers.map((u: TenantUser) => (
+              <option key={u.id} value={u.id}>{u.name}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="form-label">Dispečer požadavku</label>
+          <select value={form.dispatcherUserId} onChange={(e) => set('dispatcherUserId', e.target.value)} style={inputStyle()}>
+            <option value="">— bez dispečera —</option>
+            {activeUsers.map((u: TenantUser) => (
+              <option key={u.id} value={u.id}>{u.name}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
         <label className="form-label">Popis</label>
         <textarea
           value={form.description}
@@ -152,6 +214,11 @@ export default function TicketForm({ onClose }: Props) {
           placeholder="Detailní popis problému, umístění, okolnosti..."
           style={{ ...inputStyle(), resize: 'vertical' as const }}
         />
+      </div>
+
+      <div className="text-muted" style={{ fontSize: '0.78rem', marginTop: 8 }}>
+        Datum a čas zadání se nastavují automaticky při založení požadavku.
+        Termín „Vyřešit do" se určuje podle priority požadavku.
       </div>
 
       {createMutation.isError && (

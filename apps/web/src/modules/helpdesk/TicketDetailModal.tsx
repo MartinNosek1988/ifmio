@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { Trash2, UserCheck, CheckCircle } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Trash2, UserCheck, CheckCircle, Paperclip, Upload } from 'lucide-react';
 import { Modal, Badge, Button, LoadingState } from '../../shared/components';
 import type { BadgeVariant } from '../../shared/components';
 import { useTicket, useUpdateTicket, useAddTicketItem, useRemoveTicketItem, useClaimTicket, useResolveTicket } from './api/helpdesk.queries';
 import type { ApiTicketItem } from './api/helpdesk.api';
 import { useAuthStore } from '../../core/auth/auth.store';
+import { apiClient } from '../../core/api/client';
+import { documentsApi, formatFileSize } from '../documents/api/documents.api';
 import ProtocolPanel from '../protocols/ProtocolPanel';
 
 interface Props {
@@ -12,6 +15,10 @@ interface Props {
   onClose: () => void;
   onDelete?: () => void;
 }
+
+interface TenantUser { id: string; name: string; email: string; role: string; isActive: boolean }
+interface AssetOption { id: string; name: string; location: string | null; property?: { name: string } | null }
+interface DocItem { id: string; name: string; originalName: string; mimeType: string; size: number; url: string; createdAt: string }
 
 const STATUS_LABELS: Record<string, string> = {
   open: 'Otevřený', in_progress: 'V řešení', resolved: 'Vyřešený', closed: 'Uzavřený',
@@ -38,10 +45,10 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   closed: [],
 };
 
-type TabKey = 'detail' | 'items' | 'protocol';
+type TabKey = 'detail' | 'items' | 'attachments' | 'protocol';
 
 export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props) {
-  const { data: ticket, isLoading } = useTicket(ticketId);
+  const { data: ticket, isLoading, refetch } = useTicket(ticketId);
   const updateMutation = useUpdateTicket();
   const claimMutation = useClaimTicket();
   const resolveMutation = useResolveTicket();
@@ -51,13 +58,43 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
 
   const [tab, setTab] = useState<TabKey>('detail');
   const [editing, setEditing] = useState(false);
-  const [editPriority, setEditPriority] = useState('');
+  const [editForm, setEditForm] = useState({
+    priority: '',
+    assigneeId: '',
+    dispatcherUserId: '',
+    assetId: '',
+  });
 
   // Item form
   const [itemDesc, setItemDesc] = useState('');
   const [itemUnit, setItemUnit] = useState('');
   const [itemQty, setItemQty] = useState('1');
   const [itemPrice, setItemPrice] = useState('0');
+
+  // Upload state
+  const [uploading, setUploading] = useState(false);
+
+  // Fetch users and assets for edit pickers
+  const { data: users = [] } = useQuery<TenantUser[]>({
+    queryKey: ['admin', 'users'],
+    queryFn: () => apiClient.get('/admin/users').then((r) => r.data),
+    enabled: editing,
+  });
+  const { data: assetsData } = useQuery<{ data: AssetOption[] }>({
+    queryKey: ['assets', 'list-picker'],
+    queryFn: () => apiClient.get('/assets', { params: { limit: 500 } }).then((r) => r.data),
+    enabled: editing,
+  });
+  const assets = assetsData?.data ?? [];
+  const activeUsers = users.filter((u: TenantUser) => u.isActive);
+
+  // Fetch linked documents
+  const { data: docsData, refetch: refetchDocs } = useQuery<{ data: DocItem[] }>({
+    queryKey: ['documents', 'ticket', ticketId],
+    queryFn: () => apiClient.get('/documents', { params: { entityType: 'ticket', entityId: ticketId, limit: 50 } }).then((r) => r.data),
+    enabled: !!ticketId,
+  });
+  const docs = docsData?.data ?? [];
 
   if (isLoading || !ticket) {
     return (
@@ -77,13 +114,24 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
   };
 
   const startEdit = () => {
-    setEditPriority(ticket.priority);
+    setEditForm({
+      priority: ticket.priority,
+      assigneeId: ticket.assigneeId ?? '',
+      dispatcherUserId: ticket.dispatcherUserId ?? '',
+      assetId: ticket.assetId ?? '',
+    });
     setEditing(true);
   };
 
   const handleSaveEdit = () => {
+    const dto: Record<string, string | undefined> = {};
+    if (editForm.priority !== ticket.priority) dto.priority = editForm.priority;
+    if (editForm.assigneeId !== (ticket.assigneeId ?? '')) dto.assigneeId = editForm.assigneeId || undefined;
+    if (editForm.dispatcherUserId !== (ticket.dispatcherUserId ?? '')) dto.dispatcherUserId = editForm.dispatcherUserId || undefined;
+    if (editForm.assetId !== (ticket.assetId ?? '')) dto.assetId = editForm.assetId || undefined;
+    if (Object.keys(dto).length === 0) { setEditing(false); return; }
     updateMutation.mutate(
-      { id: ticket.id, dto: { priority: editPriority } },
+      { id: ticket.id, dto },
       { onSuccess: () => setEditing(false) },
     );
   };
@@ -108,6 +156,29 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
     );
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        await documentsApi.upload(file, {
+          name: file.name,
+          category: file.type.startsWith('image/') ? 'photo' : 'other',
+          entityType: 'ticket',
+          entityId: ticket.id,
+        });
+      }
+      refetchDocs();
+      refetch();
+    } catch {
+      // best-effort
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '8px 12px', borderRadius: 6,
     border: '1px solid var(--border)', background: 'var(--surface-2, var(--surface))',
@@ -117,6 +188,7 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
   const tabItems: { key: TabKey; label: string }[] = [
     { key: 'detail', label: 'Detail' },
     { key: 'items', label: `Položky (${items.length})` },
+    { key: 'attachments', label: `Přílohy (${docs.length})` },
     { key: 'protocol', label: 'Protokol' },
   ];
 
@@ -203,31 +275,48 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
             </div>
           )}
 
+          {/* Operational info grid */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <InfoField label="Číslo požadavku" value={ticketNum} />
             <InfoField label="Nemovitost" value={ticket.property?.name ?? '—'} />
             <InfoField label="Jednotka" value={ticket.unit?.name ?? '—'} />
+            <InfoField label="Zařízení" value={ticket.asset?.name ?? 'Požadavek není navázán na žádné zařízení.'} />
+            <InfoField label="Datum zadání" value={new Date(ticket.createdAt).toLocaleDateString('cs-CZ')} />
+            <InfoField label="Čas zadání" value={new Date(ticket.createdAt).toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })} />
+            <div>
+              <div className="text-muted" style={{ fontSize: '0.78rem', marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Vyřešit do
+              </div>
+              <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>
+                {ticket.resolutionDueAt ? fmtDateTime(ticket.resolutionDueAt) : '—'}
+                {ticket.deadlineManuallySet && (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 6 }}>(ručně nastaveno)</span>
+                )}
+              </div>
+            </div>
+            {ticket.resolvedAt && (
+              <InfoField label="Vyřešeno" value={fmtDateTime(ticket.resolvedAt)} />
+            )}
+          </div>
+
+          {/* Responsibility fields */}
+          <div style={{
+            marginBottom: 16, padding: 12, borderRadius: 8,
+            background: 'var(--surface-2, var(--surface))', border: '1px solid var(--border)',
+          }}>
+            <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 10 }}>Odpovědnost</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+              <InfoField label="Zadavatel požadavku" value={ticket.requester?.name ?? '—'} />
+              <InfoField label="Dispečer požadavku" value={ticket.dispatcher?.name ?? '—'} />
+              <div>
+                <div className="text-muted" style={{ fontSize: '0.78rem', marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Řešitel požadavku</div>
+                <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>{ticket.assignee?.name ?? 'Řešitel zatím není přiřazen.'}</div>
+              </div>
+            </div>
             <InfoField
               label="Nahlásil"
               value={ticket.resident ? `${ticket.resident.firstName} ${ticket.resident.lastName}` : '—'}
             />
-            <div>
-              <div className="text-muted" style={{ fontSize: '0.78rem', marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Řešitel</div>
-              <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>{ticket.assignee?.name ?? '—'}</div>
-            </div>
-            <InfoField label="Vytvořeno" value={new Date(ticket.createdAt).toLocaleDateString('cs-CZ')} />
-            {ticket.resolvedAt && (
-              <InfoField label="Vyřešeno" value={new Date(ticket.resolvedAt).toLocaleDateString('cs-CZ')} />
-            )}
-            <div>
-              <div className="text-muted" style={{ fontSize: '0.78rem', marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Priorita</div>
-              {editing ? (
-                <select value={editPriority} onChange={(e) => setEditPriority(e.target.value)} style={inputStyle}>
-                  {Object.entries(PRIORITY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
-              ) : (
-                <Badge variant={PRIO_COLOR[ticket.priority] || 'muted'}>{PRIORITY_LABELS[ticket.priority] || ticket.priority}</Badge>
-              )}
-            </div>
           </div>
 
           {/* SLA info */}
@@ -253,11 +342,44 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
 
           <div style={{ marginBottom: 16 }}>
             {editing ? (
-              <div style={{ display: 'flex', gap: 8 }}>
-                <Button variant="primary" size="sm" onClick={handleSaveEdit} disabled={updateMutation.isPending}>
-                  {updateMutation.isPending ? 'Ukládám...' : 'Uložit'}
-                </Button>
-                <Button size="sm" onClick={() => setEditing(false)}>Zrušit</Button>
+              <div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                  <div>
+                    <label className="form-label">Priorita</label>
+                    <select value={editForm.priority} onChange={(e) => setEditForm((f) => ({ ...f, priority: e.target.value }))} style={inputStyle}>
+                      {Object.entries(PRIORITY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="form-label">Řešitel požadavku</label>
+                    <select value={editForm.assigneeId} onChange={(e) => setEditForm((f) => ({ ...f, assigneeId: e.target.value }))} style={inputStyle}>
+                      <option value="">— bez řešitele —</option>
+                      {activeUsers.map((u: TenantUser) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="form-label">Dispečer požadavku</label>
+                    <select value={editForm.dispatcherUserId} onChange={(e) => setEditForm((f) => ({ ...f, dispatcherUserId: e.target.value }))} style={inputStyle}>
+                      <option value="">— bez dispečera —</option>
+                      {activeUsers.map((u: TenantUser) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="form-label">Zařízení</label>
+                    <select value={editForm.assetId} onChange={(e) => setEditForm((f) => ({ ...f, assetId: e.target.value }))} style={inputStyle}>
+                      <option value="">— bez zařízení —</option>
+                      {assets.map((a) => (
+                        <option key={a.id} value={a.id}>{a.name}{a.location ? ` (${a.location})` : ''}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Button variant="primary" size="sm" onClick={handleSaveEdit} disabled={updateMutation.isPending}>
+                    {updateMutation.isPending ? 'Ukládám...' : 'Uložit'}
+                  </Button>
+                  <Button size="sm" onClick={() => setEditing(false)}>Zrušit</Button>
+                </div>
               </div>
             ) : (
               <Button size="sm" onClick={startEdit}>Upravit</Button>
@@ -342,6 +464,86 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
               {addItemMutation.isPending ? 'Přidávám...' : 'Přidat'}
             </Button>
           </div>
+        </div>
+      )}
+
+      {/* ── ATTACHMENTS TAB ──────────────────────────────────────── */}
+      {tab === 'attachments' && (
+        <div>
+          {/* Upload zone */}
+          <div style={{
+            border: '2px dashed var(--border)', borderRadius: 10,
+            padding: 20, textAlign: 'center', marginBottom: 16,
+          }}>
+            <Upload size={28} style={{ color: 'var(--text-muted)', marginBottom: 6 }} />
+            <div className="text-muted" style={{ fontSize: '0.875rem', marginBottom: 8 }}>
+              {uploading ? 'Nahrávám...' : 'Přetáhněte soubory nebo klikněte'}
+            </div>
+            <label style={{ cursor: 'pointer' }}>
+              <input
+                type="file"
+                multiple
+                style={{ display: 'none' }}
+                onChange={handleFileUpload}
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.gif,.txt,.csv"
+                disabled={uploading}
+              />
+              <Button size="sm" onClick={() => {}} disabled={uploading}>
+                <Paperclip size={14} style={{ marginRight: 4 }} />
+                Přidat přílohu
+              </Button>
+            </label>
+            <div className="text-muted" style={{ fontSize: '0.75rem', marginTop: 6 }}>
+              PDF, DOCX, XLSX, JPG, PNG (max 20 MB)
+            </div>
+          </div>
+
+          {/* List of attached documents */}
+          {docs.length === 0 ? (
+            <div className="text-muted" style={{ textAlign: 'center', padding: 24, fontSize: '0.9rem' }}>
+              K požadavku zatím nejsou přiložené žádné soubory.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {docs.map((doc) => {
+                const isImage = doc.mimeType.startsWith('image/');
+                return (
+                  <div key={doc.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '10px 12px', borderRadius: 8,
+                    border: '1px solid var(--border)', background: 'var(--surface)',
+                  }}>
+                    {isImage && (
+                      <img
+                        src={doc.url}
+                        alt={doc.name}
+                        style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 6 }}
+                      />
+                    )}
+                    {!isImage && (
+                      <Paperclip size={20} style={{ color: 'var(--text-muted)' }} />
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 500, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {doc.name}
+                      </div>
+                      <div className="text-muted" style={{ fontSize: '0.78rem' }}>
+                        {formatFileSize(doc.size)} · {new Date(doc.createdAt).toLocaleDateString('cs-CZ')}
+                      </div>
+                    </div>
+                    <a
+                      href={documentsApi.downloadUrl(doc.id)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ textDecoration: 'none' }}
+                    >
+                      <Button size="sm">Stáhnout</Button>
+                    </a>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

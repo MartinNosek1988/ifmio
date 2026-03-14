@@ -51,6 +51,15 @@ export class CreateTicketDto {
 
   @IsOptional() @IsString()
   residentId?: string;
+
+  @IsOptional() @IsString()
+  assetId?: string;
+
+  @IsOptional() @IsString()
+  requesterUserId?: string;
+
+  @IsOptional() @IsString()
+  dispatcherUserId?: string;
 }
 
 export class UpdateTicketDto {
@@ -80,6 +89,18 @@ export class UpdateTicketDto {
 
   @IsOptional() @IsString()
   assigneeId?: string;
+
+  @IsOptional() @IsString()
+  assetId?: string;
+
+  @IsOptional() @IsString()
+  requesterUserId?: string;
+
+  @IsOptional() @IsString()
+  dispatcherUserId?: string;
+
+  @IsOptional() @IsDateString()
+  resolutionDueAt?: string;
 
   @IsOptional() @IsDateString()
   resolvedAt?: string;

@@ -1,17 +1,30 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common'
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { PropertyScopeService } from '../common/services/property-scope.service'
 import { NotificationsService } from '../notifications/notifications.service'
+import { EmailService } from '../email/email.service'
 import { SlaPolicyService } from './sla-policy.service'
 import type { HelpdeskListQueryDto, CreateTicketDto, UpdateTicketDto, CreateItemDto, CreateProtocolDto } from './dto/helpdesk.dto'
 import type { AuthUser } from '@ifmio/shared-types'
 
+const USER_SELECT = { id: true, name: true, email: true } as const
+
+const STATUS_LABELS: Record<string, string> = {
+  open: 'Nový', in_progress: 'V řešení', resolved: 'Vyřešený', closed: 'Uzavřený',
+}
+const PRIORITY_LABELS: Record<string, string> = {
+  low: 'Nízká', medium: 'Normální', high: 'Vysoká', urgent: 'Urgentní',
+}
+
 @Injectable()
 export class HelpdeskService {
+  private readonly logger = new Logger(HelpdeskService.name)
+
   constructor(
     private prisma: PrismaService,
     private scope: PropertyScopeService,
     private notifications: NotificationsService,
+    private email: EmailService,
     private slaPolicy: SlaPolicyService,
   ) {}
 
@@ -23,6 +36,33 @@ export class HelpdeskService {
     })
     return (last?.number ?? 0) + 1
   }
+
+  private fmtTicketNum(num: number): string {
+    return `HD-${String(num).padStart(4, '0')}`
+  }
+
+  private readonly ticketInclude = {
+    property:   { select: { id: true, name: true } },
+    unit:       { select: { id: true, name: true } },
+    resident:   { select: { id: true, firstName: true, lastName: true } },
+    asset:      { select: { id: true, name: true } },
+    assignee:   { select: USER_SELECT },
+    requester:  { select: USER_SELECT },
+    dispatcher: { select: USER_SELECT },
+    _count:     { select: { items: true } },
+  } as const
+
+  private readonly ticketDetailInclude = {
+    property:   { select: { id: true, name: true } },
+    unit:       { select: { id: true, name: true } },
+    resident:   { select: { id: true, firstName: true, lastName: true } },
+    asset:      { select: { id: true, name: true } },
+    assignee:   { select: USER_SELECT },
+    requester:  { select: USER_SELECT },
+    dispatcher: { select: USER_SELECT },
+    items:      { orderBy: { createdAt: 'asc' as const } },
+    protocol:   true,
+  } as const
 
   async listTickets(user: AuthUser, query: HelpdeskListQueryDto) {
     const { status, priority, propertyId, search } = query
@@ -59,13 +99,7 @@ export class HelpdeskService {
         orderBy: { createdAt: 'desc' },
         take:    limit,
         skip,
-        include: {
-          property: { select: { id: true, name: true } },
-          unit:     { select: { id: true, name: true } },
-          resident: { select: { id: true, firstName: true, lastName: true } },
-          assignee: { select: { id: true, name: true } },
-          _count:   { select: { items: true } },
-        },
+        include: this.ticketInclude,
       }),
       this.prisma.helpdeskTicket.count({ where }),
     ])
@@ -80,14 +114,7 @@ export class HelpdeskService {
   async findOne(user: AuthUser, id: string) {
     const ticket = await this.prisma.helpdeskTicket.findFirst({
       where:   { id, tenantId: user.tenantId },
-      include: {
-        property: { select: { id: true, name: true } },
-        unit:     { select: { id: true, name: true } },
-        resident: { select: { id: true, firstName: true, lastName: true } },
-        assignee: { select: { id: true, name: true } },
-        items:    { orderBy: { createdAt: 'asc' } },
-        protocol: true,
-      },
+      include: this.ticketDetailInclude,
     })
     if (!ticket) throw new NotFoundException(`Ticket ${id} nenalezen`)
     await this.scope.verifyEntityAccess(user, ticket.propertyId)
@@ -106,6 +133,9 @@ export class HelpdeskService {
     if (dto.propertyId) {
       await this.scope.verifyPropertyAccess(user, dto.propertyId)
     }
+    if (dto.assetId) {
+      await this.verifyAssetAccess(user, dto.assetId)
+    }
     const number = await this.nextTicketNumber(user.tenantId)
     const priority = dto.priority ?? 'medium'
     const now = new Date()
@@ -114,25 +144,80 @@ export class HelpdeskService {
 
     const ticket = await this.prisma.helpdeskTicket.create({
       data: {
-        tenantId:        user.tenantId,
+        tenantId:         user.tenantId,
         number,
-        title:           dto.title,
-        description:     dto.description,
-        category:        (dto.category ?? 'general') as any,
-        priority:        priority as any,
-        propertyId:      dto.propertyId ?? null,
-        unitId:          dto.unitId    ?? null,
-        residentId:      dto.residentId ?? null,
-        responseDueAt:   sla.responseDueAt,
-        resolutionDueAt: sla.resolutionDueAt,
+        title:            dto.title,
+        description:      dto.description,
+        category:         (dto.category ?? 'general') as any,
+        priority:         priority as any,
+        propertyId:       dto.propertyId ?? null,
+        unitId:           dto.unitId    ?? null,
+        residentId:       dto.residentId ?? null,
+        assetId:          dto.assetId ?? null,
+        requesterUserId:  dto.requesterUserId ?? user.id,
+        dispatcherUserId: dto.dispatcherUserId ?? null,
+        responseDueAt:    sla.responseDueAt,
+        resolutionDueAt:  sla.resolutionDueAt,
       },
+      include: this.ticketDetailInclude,
     })
-    return this.serializeTicket(ticket)
+
+    const serialized = this.serializeTicket(ticket)
+
+    // Send email notifications (best-effort)
+    this.sendTicketEmail(serialized, 'create').catch((err) =>
+      this.logger.error(`Email notification failed for ticket create: ${err}`),
+    )
+
+    return serialized
   }
 
   async updateTicket(user: AuthUser, id: string, dto: UpdateTicketDto) {
     const existing = await this.findOne(user, id)
-    const data: Record<string, unknown> = { ...dto }
+    const data: Record<string, unknown> = {}
+    const changes: { field: string; oldValue: string; newValue: string }[] = []
+
+    // Copy simple fields
+    for (const key of [
+      'title', 'description', 'category', 'propertyId', 'unitId', 'residentId',
+    ] as const) {
+      if (dto[key] !== undefined) data[key] = dto[key]
+    }
+
+    // Asset link
+    if (dto.assetId !== undefined) {
+      if (dto.assetId && dto.assetId !== existing.assetId) {
+        await this.verifyAssetAccess(user, dto.assetId)
+      }
+      if (dto.assetId !== existing.assetId) {
+        changes.push({ field: 'Zařízení', oldValue: existing.asset?.name ?? '—', newValue: dto.assetId ? '(nové)' : '—' })
+        data.assetId = dto.assetId || null
+      }
+    }
+
+    // Responsibility fields
+    if (dto.requesterUserId !== undefined && dto.requesterUserId !== existing.requesterUserId) {
+      data.requesterUserId = dto.requesterUserId || null
+      changes.push({ field: 'Zadavatel požadavku', oldValue: existing.requester?.name ?? '—', newValue: '(změněn)' })
+    }
+    if (dto.dispatcherUserId !== undefined && dto.dispatcherUserId !== existing.dispatcherUserId) {
+      data.dispatcherUserId = dto.dispatcherUserId || null
+      changes.push({ field: 'Dispečer požadavku', oldValue: existing.dispatcher?.name ?? '—', newValue: '(změněn)' })
+    }
+    if (dto.assigneeId !== undefined && dto.assigneeId !== existing.assigneeId) {
+      data.assigneeId = dto.assigneeId || null
+      changes.push({ field: 'Řešitel požadavku', oldValue: existing.assignee?.name ?? '—', newValue: '(změněn)' })
+    }
+
+    // Status
+    if (dto.status && dto.status !== existing.status) {
+      data.status = dto.status
+      changes.push({
+        field: 'Stav',
+        oldValue: STATUS_LABELS[existing.status] ?? existing.status,
+        newValue: STATUS_LABELS[dto.status] ?? dto.status,
+      })
+    }
 
     // Auto-set resolvedAt when resolving
     if (dto.status === 'resolved' && !dto.resolvedAt) {
@@ -144,18 +229,60 @@ export class HelpdeskService {
       data.firstResponseAt = new Date()
     }
 
-    // Recalculate SLA if priority changed
+    // Priority change
     if (dto.priority && dto.priority !== existing.priority) {
-      const effectiveSla = await this.slaPolicy.getEffectiveSla(user.tenantId, dto.priority, existing.propertyId)
-      const sla = this.slaPolicy.calculateSlaDates(effectiveSla, new Date(existing.createdAt))
-      data.responseDueAt = sla.responseDueAt
-      data.resolutionDueAt = sla.resolutionDueAt
+      data.priority = dto.priority
+      changes.push({
+        field: 'Priorita',
+        oldValue: PRIORITY_LABELS[existing.priority] ?? existing.priority,
+        newValue: PRIORITY_LABELS[dto.priority] ?? dto.priority,
+      })
+
+      // Recalculate SLA only if deadline was NOT manually set
+      if (!existing.deadlineManuallySet) {
+        const effectiveSla = await this.slaPolicy.getEffectiveSla(user.tenantId, dto.priority, existing.propertyId)
+        const sla = this.slaPolicy.calculateSlaDates(effectiveSla, new Date(existing.createdAt))
+        data.responseDueAt = sla.responseDueAt
+        data.resolutionDueAt = sla.resolutionDueAt
+        changes.push({
+          field: 'Vyřešit do',
+          oldValue: existing.resolutionDueAt ? new Date(existing.resolutionDueAt).toLocaleDateString('cs-CZ') : '—',
+          newValue: sla.resolutionDueAt.toLocaleDateString('cs-CZ'),
+        })
+      }
+    }
+
+    // Manual deadline override
+    if (dto.resolutionDueAt !== undefined) {
+      const newDeadline = dto.resolutionDueAt ? new Date(dto.resolutionDueAt) : null
+      data.resolutionDueAt = newDeadline
+      data.deadlineManuallySet = !!newDeadline
+      changes.push({
+        field: 'Vyřešit do',
+        oldValue: existing.resolutionDueAt ? new Date(existing.resolutionDueAt).toLocaleDateString('cs-CZ') : '—',
+        newValue: newDeadline ? newDeadline.toLocaleDateString('cs-CZ') : '—',
+      })
+    }
+
+    if (Object.keys(data).length === 0) {
+      return existing
     }
 
     const ticket = await this.prisma.helpdeskTicket.update({
-      where: { id }, data,
+      where: { id },
+      data,
+      include: this.ticketDetailInclude,
     })
-    return this.serializeTicket(ticket)
+    const serialized = this.serializeTicket(ticket)
+
+    // Send email on meaningful changes
+    if (changes.length > 0) {
+      this.sendTicketEmail(serialized, 'update', changes).catch((err) =>
+        this.logger.error(`Email notification failed for ticket update: ${err}`),
+      )
+    }
+
+    return serialized
   }
 
   async deleteTicket(user: AuthUser, id: string) {
@@ -169,13 +296,14 @@ export class HelpdeskService {
     const existing = await this.findOne(user, id)
     const assignee = await this.prisma.user.findFirst({
       where: { id: assigneeId, tenantId: user.tenantId, isActive: true },
-      select: { id: true, name: true },
+      select: USER_SELECT,
     })
     if (!assignee) throw new BadRequestException('Řešitel nenalezen')
 
     const ticket = await this.prisma.helpdeskTicket.update({
       where: { id },
       data: { assigneeId },
+      include: this.ticketDetailInclude,
     })
 
     await this.prisma.auditLog.create({
@@ -190,8 +318,8 @@ export class HelpdeskService {
       },
     })
 
-    // Notify the assignee
-    const num = `HD-${String(existing.number).padStart(4, '0')}`
+    // Notify the assignee (in-app)
+    const num = this.fmtTicketNum(existing.number)
     await this.notifications.create({
       tenantId: user.tenantId,
       userId: assigneeId,
@@ -203,7 +331,12 @@ export class HelpdeskService {
       url: '/helpdesk',
     })
 
-    return this.serializeTicket(ticket)
+    const serialized = this.serializeTicket(ticket)
+    this.sendTicketEmail(serialized, 'update', [
+      { field: 'Řešitel požadavku', oldValue: existing.assignee?.name ?? '—', newValue: assignee.name },
+    ]).catch((err) => this.logger.error(`Email notification failed: ${err}`))
+
+    return serialized
   }
 
   async claimTicket(user: AuthUser, id: string) {
@@ -213,6 +346,9 @@ export class HelpdeskService {
     }
 
     const data: Record<string, unknown> = { assigneeId: user.id }
+    const changes: { field: string; oldValue: string; newValue: string }[] = [
+      { field: 'Řešitel požadavku', oldValue: existing.assignee?.name ?? '—', newValue: '(převzato)' },
+    ]
 
     // Auto-transition open → in_progress on claim
     if (existing.status === 'open') {
@@ -220,10 +356,17 @@ export class HelpdeskService {
       if (!existing.firstResponseAt) {
         data.firstResponseAt = new Date()
       }
+      changes.push({
+        field: 'Stav',
+        oldValue: STATUS_LABELS[existing.status] ?? existing.status,
+        newValue: STATUS_LABELS['in_progress'],
+      })
     }
 
     const ticket = await this.prisma.helpdeskTicket.update({
-      where: { id }, data,
+      where: { id },
+      data,
+      include: this.ticketDetailInclude,
     })
 
     await this.prisma.auditLog.create({
@@ -238,7 +381,12 @@ export class HelpdeskService {
       },
     })
 
-    return this.serializeTicket(ticket)
+    const serialized = this.serializeTicket(ticket)
+    this.sendTicketEmail(serialized, 'update', changes).catch((err) =>
+      this.logger.error(`Email notification failed: ${err}`),
+    )
+
+    return serialized
   }
 
   async quickResolve(user: AuthUser, id: string) {
@@ -258,7 +406,9 @@ export class HelpdeskService {
     }
 
     const ticket = await this.prisma.helpdeskTicket.update({
-      where: { id }, data,
+      where: { id },
+      data,
+      include: this.ticketDetailInclude,
     })
 
     await this.prisma.auditLog.create({
@@ -273,7 +423,16 @@ export class HelpdeskService {
       },
     })
 
-    return this.serializeTicket(ticket)
+    const serialized = this.serializeTicket(ticket)
+    this.sendTicketEmail(serialized, 'update', [
+      {
+        field: 'Stav',
+        oldValue: STATUS_LABELS[existing.status] ?? existing.status,
+        newValue: STATUS_LABELS['resolved'],
+      },
+    ]).catch((err) => this.logger.error(`Email notification failed: ${err}`))
+
+    return serialized
   }
 
   // Items
@@ -475,7 +634,7 @@ export class HelpdeskService {
       take: 10,
       include: {
         property: { select: { id: true, name: true } },
-        assignee: { select: { id: true, name: true } },
+        assignee: { select: USER_SELECT },
       },
     })
 
@@ -508,5 +667,140 @@ export class HelpdeskService {
     })
     if (!protocol) throw new NotFoundException('Protokol nenalezen')
     return protocol
+  }
+
+  // ─── Helpers ──────────────────────────────────────────────────
+
+  private async verifyAssetAccess(user: AuthUser, assetId: string) {
+    const asset = await this.prisma.asset.findFirst({
+      where: { id: assetId, tenantId: user.tenantId, deletedAt: null },
+      select: { id: true },
+    })
+    if (!asset) throw new NotFoundException('Zařízení nenalezeno')
+  }
+
+  // ─── Email Notifications ─────────────────────────────────────
+
+  private async sendTicketEmail(
+    ticket: any,
+    event: 'create' | 'update',
+    changes?: { field: string; oldValue: string; newValue: string }[],
+  ) {
+    const recipients = this.collectRecipients(ticket)
+    if (recipients.length === 0) return
+
+    const num = this.fmtTicketNum(ticket.number)
+    const frontendUrl = process.env.FRONTEND_URL || `https://${process.env.DOMAIN || 'ifmio.com'}`
+    const ticketUrl = `${frontendUrl}/helpdesk`
+
+    let subject: string
+    if (event === 'create') {
+      subject = `Nový požadavek: ${num} – ${ticket.title}`
+    } else {
+      const statusChange = changes?.find((c) => c.field === 'Stav')
+      if (statusChange && (statusChange.newValue === 'Vyřešený' || statusChange.newValue === 'Uzavřený')) {
+        subject = `Požadavek uzavřen: ${num} – ${ticket.title}`
+      } else if (statusChange) {
+        subject = `Změna stavu: ${num} – ${ticket.title} (${statusChange.oldValue} → ${statusChange.newValue})`
+      } else {
+        subject = `Změna požadavku: ${num} – ${ticket.title}`
+      }
+    }
+
+    const html = this.buildTicketEmailHtml(ticket, num, event, ticketUrl, changes)
+
+    for (const email of recipients) {
+      try {
+        await this.email.send({ to: email, subject, html })
+      } catch (err) {
+        this.logger.error(`Failed to send helpdesk email to ${email}: ${err}`)
+      }
+    }
+  }
+
+  private collectRecipients(ticket: any): string[] {
+    const emails = new Set<string>()
+    if (ticket.requester?.email) emails.add(ticket.requester.email)
+    if (ticket.dispatcher?.email) emails.add(ticket.dispatcher.email)
+    if (ticket.assignee?.email) emails.add(ticket.assignee.email)
+    return Array.from(emails)
+  }
+
+  private buildTicketEmailHtml(
+    ticket: any,
+    num: string,
+    event: 'create' | 'update',
+    ticketUrl: string,
+    changes?: { field: string; oldValue: string; newValue: string }[],
+  ): string {
+    const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+    const statusLabel = STATUS_LABELS[ticket.status] ?? ticket.status
+    const priorityLabel = PRIORITY_LABELS[ticket.priority] ?? ticket.priority
+    const createdDate = new Date(ticket.createdAt).toLocaleDateString('cs-CZ')
+    const createdTime = new Date(ticket.createdAt).toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })
+    const deadline = ticket.resolutionDueAt
+      ? new Date(ticket.resolutionDueAt).toLocaleDateString('cs-CZ') + ' ' +
+        new Date(ticket.resolutionDueAt).toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })
+      : '—'
+
+    const heading = event === 'create' ? 'Nový požadavek' : 'Změna požadavku'
+
+    let changesHtml = ''
+    if (changes && changes.length > 0) {
+      const rows = changes.map((c) =>
+        `<tr><td style="padding:4px 12px 4px 0;font-weight:600;">${esc(c.field)}</td>` +
+        `<td style="padding:4px 12px;color:#6b7280;">${esc(c.oldValue)}</td>` +
+        `<td style="padding:4px 0;">→ <strong>${esc(c.newValue)}</strong></td></tr>`,
+      ).join('')
+      changesHtml = `
+        <div style="margin:16px 0;">
+          <div style="font-weight:600;margin-bottom:6px;">Změněné údaje:</div>
+          <table style="font-size:0.9rem;">${rows}</table>
+        </div>`
+    }
+
+    const assetLine = ticket.asset?.name
+      ? `<tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Zařízení</td><td style="padding:4px 0;">${esc(ticket.asset.name)}</td></tr>`
+      : ''
+
+    return `
+<!DOCTYPE html>
+<html lang="cs">
+<head><meta charset="UTF-8"><title>${esc(heading)}: ${esc(num)}</title></head>
+<body style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#374151;">
+  <div style="background:#1e1b4b;padding:20px 24px;border-radius:8px 8px 0 0;">
+    <h1 style="color:#fff;margin:0;font-size:20px;">ifmio</h1>
+  </div>
+  <div style="border:1px solid #e5e7eb;border-top:none;padding:32px;border-radius:0 0 8px 8px;">
+    <h2 style="color:#111827;margin-top:0;">${esc(heading)}: ${esc(num)}</h2>
+    <p style="font-size:1.1rem;font-weight:600;">${esc(ticket.title)}</p>
+
+    <table style="font-size:0.9rem;margin:16px 0;">
+      <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Stav</td><td style="padding:4px 0;">${esc(statusLabel)}</td></tr>
+      <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Priorita</td><td style="padding:4px 0;">${esc(priorityLabel)}</td></tr>
+      <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Datum zadání</td><td style="padding:4px 0;">${esc(createdDate)} ${esc(createdTime)}</td></tr>
+      <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Vyřešit do</td><td style="padding:4px 0;">${esc(deadline)}</td></tr>
+      ${assetLine}
+      <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Zadavatel</td><td style="padding:4px 0;">${esc(ticket.requester?.name ?? '—')}</td></tr>
+      <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Dispečer</td><td style="padding:4px 0;">${esc(ticket.dispatcher?.name ?? '—')}</td></tr>
+      <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Řešitel</td><td style="padding:4px 0;">${esc(ticket.assignee?.name ?? '—')}</td></tr>
+    </table>
+
+    ${changesHtml}
+
+    <a href="${encodeURI(ticketUrl)}"
+       style="display:inline-block;background:#6366f1;color:#fff;
+              padding:12px 24px;border-radius:6px;text-decoration:none;
+              font-weight:600;margin:16px 0;">
+      Otevřít požadavek
+    </a>
+
+    <p style="color:#6b7280;font-size:12px;margin-top:32px;border-top:1px solid #f3f4f6;padding-top:16px;">
+      Tento email byl odeslán systémem ifmio. Neodpovídejte na něj.
+    </p>
+  </div>
+</body>
+</html>`
   }
 }

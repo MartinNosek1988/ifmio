@@ -1,5 +1,11 @@
 import { apiClient } from '../../../core/api/client'
 
+export interface ApiUser {
+  id: string
+  name: string
+  email?: string
+}
+
 export interface ApiTicket {
   id: string
   tenantId: string
@@ -12,7 +18,11 @@ export interface ApiTicket {
   propertyId: string | null
   unitId: string | null
   residentId: string | null
+  assetId: string | null
   assigneeId: string | null
+  requesterUserId: string | null
+  dispatcherUserId: string | null
+  deadlineManuallySet: boolean
   createdAt: string
   updatedAt: string
   resolvedAt: string | null
@@ -24,7 +34,10 @@ export interface ApiTicket {
   property?: { id: string; name: string } | null
   unit?: { id: string; name: string } | null
   resident?: { id: string; firstName: string; lastName: string } | null
-  assignee?: { id: string; name: string } | null
+  asset?: { id: string; name: string } | null
+  assignee?: ApiUser | null
+  requester?: ApiUser | null
+  dispatcher?: ApiUser | null
   _count?: { items: number }
   items?: ApiTicketItem[]
   protocol?: ApiTicketProtocol | null
@@ -69,6 +82,9 @@ export interface CreateTicketPayload {
   priority?: string
   propertyId?: string
   unitId?: string
+  assetId?: string
+  requesterUserId?: string
+  dispatcherUserId?: string
 }
 
 export interface UpdateTicketPayload {
@@ -78,6 +94,10 @@ export interface UpdateTicketPayload {
   priority?: string
   status?: string
   assigneeId?: string
+  assetId?: string
+  requesterUserId?: string
+  dispatcherUserId?: string
+  resolutionDueAt?: string
 }
 
 export interface CreateItemPayload {
