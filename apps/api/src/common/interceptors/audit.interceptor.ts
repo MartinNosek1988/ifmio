@@ -81,6 +81,7 @@ const AUDIT_FIELDS: Record<string, string[]> = {
     'id', 'sourceType', 'sourceId', 'protocolType', 'number', 'status',
     'description', 'requesterName', 'dispatcherName', 'resolverName',
     'handoverAt', 'satisfaction', 'satisfactionComment',
+    'generatedPdfDocumentId', 'signedDocumentId',
   ],
   ProtocolLine: [
     'id', 'protocolId', 'lineType', 'name', 'unit', 'quantity', 'description',
