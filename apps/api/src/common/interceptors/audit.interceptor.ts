@@ -38,9 +38,10 @@ const AUDIT_FIELDS: Record<string, string[]> = {
     'bankCode', 'currency', 'isActive',
   ],
   HelpdeskTicket: [
-    'id', 'propertyId', 'unitId', 'residentId', 'number',
+    'id', 'propertyId', 'unitId', 'residentId', 'assetId', 'number',
     'title', 'description', 'category', 'priority', 'status',
-    'assigneeId', 'resolvedAt',
+    'assigneeId', 'requesterUserId', 'dispatcherUserId',
+    'resolutionDueAt', 'deadlineManuallySet', 'resolvedAt',
   ],
   User: [
     'id', 'name', 'email', 'role', 'isActive',

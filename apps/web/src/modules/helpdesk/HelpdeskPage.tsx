@@ -120,8 +120,16 @@ export default function HelpdeskPage() {
       render: (t) => <span className="text-muted">{t.assignee?.name ?? '—'}</span>,
     },
     {
-      key: 'property', label: 'Nemovitost',
-      render: (t) => <span className="text-muted">{t.property?.name ?? '—'}</span>,
+      key: 'asset', label: 'Zařízení',
+      render: (t) => <span className="text-muted">{t.asset?.name ?? '—'}</span>,
+    },
+    {
+      key: 'resolutionDueAt', label: 'Vyřešit do',
+      render: (t) => {
+        if (!t.resolutionDueAt) return <span className="text-muted">—</span>
+        const d = new Date(t.resolutionDueAt)
+        return <span className="text-muted text-sm">{d.toLocaleDateString('cs-CZ')}</span>
+      },
     },
     {
       key: 'createdAt', label: 'Vytvořeno',

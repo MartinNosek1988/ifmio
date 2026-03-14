@@ -94,7 +94,9 @@ model User {
   refreshTokens           RefreshToken[]
   emailVerificationTokens EmailVerificationToken[]
   auditLogs               AuditLog[]
-  assignedTickets         HelpdeskTicket[]
+  assignedTickets         HelpdeskTicket[]  @relation("TicketAssignee")
+  requestedTickets        HelpdeskTicket[]  @relation("TicketRequester")
+  dispatchedTickets       HelpdeskTicket[]  @relation("TicketDispatcher")
   createdDocuments        Document[]
   notifications           Notification[]
   propertyAssignments     UserPropertyAssignment[]
@@ -689,6 +691,7 @@ model HelpdeskTicket {
   propertyId  String?
   unitId      String?
   residentId  String?
+  assetId     String?
   number      Int
   title       String
   description String?        @db.Text
@@ -696,30 +699,37 @@ model HelpdeskTicket {
   priority    TicketPriority @default(medium)
   status      TicketStatus   @default(open)
   assigneeId  String?
+  requesterUserId  String?
+  dispatcherUserId String?
   resolvedAt  DateTime?
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
   // SLA fields
-  responseDueAt   DateTime?
-  resolutionDueAt DateTime?
-  firstResponseAt DateTime?
-  escalationLevel Int       @default(0)
-  escalatedAt     DateTime?
+  responseDueAt      DateTime?
+  resolutionDueAt    DateTime?
+  deadlineManuallySet Boolean  @default(false)
+  firstResponseAt    DateTime?
+  escalationLevel    Int       @default(0)
+  escalatedAt        DateTime?
 
-  tenant   Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  property Property?         @relation(fields: [propertyId], references: [id], onDelete: SetNull)
-  unit     Unit?             @relation(fields: [unitId], references: [id], onDelete: SetNull)
-  resident Resident?         @relation(fields: [residentId], references: [id], onDelete: SetNull)
-  assignee User?             @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
-  items    HelpdeskItem[]
-  protocol HelpdeskProtocol?
+  tenant    Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property  Property?         @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  unit      Unit?             @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  resident  Resident?         @relation(fields: [residentId], references: [id], onDelete: SetNull)
+  asset     Asset?            @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  assignee  User?             @relation("TicketAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  requester User?             @relation("TicketRequester", fields: [requesterUserId], references: [id], onDelete: SetNull)
+  dispatcher User?            @relation("TicketDispatcher", fields: [dispatcherUserId], references: [id], onDelete: SetNull)
+  items     HelpdeskItem[]
+  protocol  HelpdeskProtocol?
 
   @@index([tenantId])
   @@index([tenantId, status])
   @@index([tenantId, status, createdAt])
   @@index([propertyId, status])
   @@index([tenantId, resolutionDueAt])
+  @@index([assetId])
   @@map("helpdesk_tickets")
 }
 
@@ -1577,6 +1587,7 @@ model Asset {
   qrCodes              AssetQrCode[]
   qrScanEvents         AssetQrScanEvent[]
   fieldCheckExecutions AssetFieldCheckExecution[]
+  helpdeskTickets      HelpdeskTicket[]
 
   @@index([tenantId])
   @@index([propertyId])
