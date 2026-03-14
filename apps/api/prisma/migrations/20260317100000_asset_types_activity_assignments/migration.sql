@@ -1,6 +1,6 @@
 -- CreateTable
 CREATE TABLE "asset_types" (
-    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+    "id" TEXT NOT NULL,
     "tenantId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "code" TEXT NOT NULL,
@@ -18,9 +18,9 @@ CREATE TABLE "asset_types" (
 
 -- CreateTable
 CREATE TABLE "asset_type_revision_types" (
-    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+    "id" TEXT NOT NULL,
     "tenantId" TEXT NOT NULL,
-    "assetTypeId" UUID NOT NULL,
+    "assetTypeId" TEXT NOT NULL,
     "revisionTypeId" TEXT NOT NULL,
     "isRequired" BOOLEAN NOT NULL DEFAULT true,
     "intervalDaysOverride" INTEGER,
@@ -38,7 +38,7 @@ CREATE TABLE "asset_type_revision_types" (
 );
 
 -- AlterTable: add assetTypeId to assets
-ALTER TABLE "assets" ADD COLUMN "assetTypeId" UUID;
+ALTER TABLE "assets" ADD COLUMN "assetTypeId" TEXT;
 
 -- CreateIndex
 CREATE UNIQUE INDEX "asset_types_tenantId_code_key" ON "asset_types"("tenantId", "code");

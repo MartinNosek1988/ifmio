@@ -8,7 +8,7 @@ ALTER TABLE "revision_subjects" ADD CONSTRAINT "revision_subjects_assetId_fkey"
 
 -- Add tracking fields to revision_plans
 ALTER TABLE "revision_plans" ADD COLUMN "assetId"               TEXT;
-ALTER TABLE "revision_plans" ADD COLUMN "assetTypeAssignmentId" UUID; -- references asset_type_revision_types.id (UUID)
+ALTER TABLE "revision_plans" ADD COLUMN "assetTypeAssignmentId" TEXT; -- references asset_type_revision_types.id (TEXT)
 ALTER TABLE "revision_plans" ADD COLUMN "generatedFromAssetType" BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE "revision_plans" ADD COLUMN "isCustomized"           BOOLEAN NOT NULL DEFAULT false;
 
