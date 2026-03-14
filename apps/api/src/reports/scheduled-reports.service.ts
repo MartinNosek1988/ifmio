@@ -31,10 +31,14 @@ export class ScheduledReportsService {
     format?: string
     propertyId?: string | null
     isEnabled?: boolean
+    sendHour?: number
+    workdaysOnly?: boolean
   }) {
     const existing = await this.prisma.scheduledReportSubscription.findFirst({
       where: { tenantId: user.tenantId, userId: user.id, reportType: dto.reportType as any },
     })
+
+    const sendHour = dto.sendHour !== undefined ? Math.max(0, Math.min(23, dto.sendHour)) : undefined
 
     if (existing) {
       return this.prisma.scheduledReportSubscription.update({
@@ -44,6 +48,8 @@ export class ScheduledReportsService {
           format: (dto.format as any) ?? existing.format,
           propertyId: dto.propertyId !== undefined ? (dto.propertyId || null) : existing.propertyId,
           isEnabled: dto.isEnabled ?? existing.isEnabled,
+          sendHour: sendHour ?? existing.sendHour,
+          workdaysOnly: dto.workdaysOnly ?? existing.workdaysOnly,
         },
       })
     }
@@ -57,6 +63,8 @@ export class ScheduledReportsService {
         format: (dto.format as any) ?? 'xlsx',
         propertyId: dto.propertyId || null,
         isEnabled: dto.isEnabled ?? true,
+        sendHour: sendHour ?? 6,
+        workdaysOnly: dto.workdaysOnly ?? false,
       },
     })
   }
@@ -94,19 +102,24 @@ export class ScheduledReportsService {
     // Check which users have daily_digest enabled (or default for all active users)
     const subs = await this.prisma.scheduledReportSubscription.findMany({
       where: { tenantId, reportType: 'daily_digest', isEnabled: true },
-      select: { userId: true },
+      select: { userId: true, workdaysOnly: true },
     })
-    const subscribedUserIds = new Set(subs.map(s => s.userId))
+    const subMap = new Map(subs.map(s => [s.userId, s]))
 
-    // If no one explicitly subscribed yet, send to all users with notifEmail=true
-    // Once someone creates any subscription, only subscribed users get it
+    const now = new Date()
     const hasAnySubscriptions = subs.length > 0
+    const isWeekend = now.getDay() === 0 || now.getDay() === 6
+
     const recipients = hasAnySubscriptions
-      ? users.filter(u => subscribedUserIds.has(u.id))
-      : users
+      ? users.filter(u => {
+          const sub = subMap.get(u.id)
+          if (!sub) return false
+          if (sub.workdaysOnly && isWeekend) return false
+          return true
+        })
+      : (isWeekend ? [] : users)
 
     let count = 0
-    const now = new Date()
     const today = now.toLocaleDateString('cs-CZ', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
     for (const user of recipients) {

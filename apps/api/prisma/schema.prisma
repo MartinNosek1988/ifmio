@@ -1172,9 +1172,11 @@ model ScheduledReportSubscription {
   reportType ReportType
   frequency  ReportFrequency     @default(daily)
   format     ReportFormat        @default(xlsx)
-  propertyId String?
-  isEnabled  Boolean             @default(true)
-  lastSentAt DateTime?
+  propertyId   String?
+  isEnabled    Boolean             @default(true)
+  sendHour     Int                 @default(6)
+  workdaysOnly Boolean             @default(false)
+  lastSentAt   DateTime?
   createdAt  DateTime            @default(now())
   updatedAt  DateTime            @updatedAt
 

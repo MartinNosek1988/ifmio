@@ -211,6 +211,8 @@ export class ReportsController {
       format?: string
       propertyId?: string | null
       isEnabled?: boolean
+      sendHour?: number
+      workdaysOnly?: boolean
     },
   ) {
     return this.scheduled.upsertSubscription(user, dto);

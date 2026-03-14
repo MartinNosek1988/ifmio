@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../core/api/client';
 import {
-  User, Shield, SlidersHorizontal, Camera, Save, Eye, EyeOff, Check,
+  User, Shield, SlidersHorizontal, Camera, Save, Eye, EyeOff, Check, Mail,
 } from 'lucide-react';
 
 /* ─── types ──────────────────────────────────────────────────────── */
@@ -305,6 +305,109 @@ function PreferencesTab({ profile, onSave, saving }: {
           </button>
         </div>
       )}
+
+      <ScheduledReportsPreferences />
+    </div>
+  );
+}
+
+/* ─── Scheduled Reports Preferences ──────────────────────────────── */
+
+interface ReportSub {
+  id: string; reportType: string; frequency: string; format: string;
+  isEnabled: boolean; sendHour: number; workdaysOnly: boolean;
+}
+
+const REPORT_TYPES = [
+  { value: 'daily_digest', label: 'Denní přehled', noFormat: true },
+  { value: 'operations', label: 'Provozní report' },
+  { value: 'assets', label: 'Technický report zařízení' },
+  { value: 'protocols', label: 'Registr protokolů' },
+] as const;
+
+function ScheduledReportsPreferences() {
+  const qc = useQueryClient();
+  const { data: subs = [] } = useQuery<ReportSub[]>({
+    queryKey: ['reports', 'subscriptions'],
+    queryFn: () => apiClient.get('/reports/subscriptions').then(r => r.data),
+  });
+
+  const upsertMut = useMutation({
+    mutationFn: (dto: Record<string, unknown>) =>
+      apiClient.post('/reports/subscriptions', dto).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['reports', 'subscriptions'] }),
+  });
+
+  const getSub = (type: string) => subs.find(s => s.reportType === type);
+
+  const toggle = (type: string) => {
+    const sub = getSub(type);
+    upsertMut.mutate({ reportType: type, isEnabled: sub ? !sub.isEnabled : true });
+  };
+
+  const change = (type: string, field: string, value: unknown) => {
+    upsertMut.mutate({ reportType: type, [field]: value });
+  };
+
+  const selStyle: React.CSSProperties = {
+    padding: '5px 8px', borderRadius: 4, border: '1px solid #374151',
+    background: '#1f2937', color: '#d1d5db', fontSize: '.8rem',
+  };
+
+  return (
+    <div className="profile-card" style={{ marginTop: 16 }}>
+      <h3 className="profile-card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Mail size={16} /> Plánované reporty
+      </h3>
+      <p style={{ color: '#9ca3af', fontSize: '.8rem', lineHeight: 1.5, marginBottom: 16 }}>
+        Řešitel dostává pouze své přiřazené položky v rámci přidělených objektů.
+        Dispečer dostává provozní přehled v rámci svých objektů.
+        Admin/FM dostává úplný přehled v rámci přidělených objektů.
+      </p>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {REPORT_TYPES.map(rt => {
+          const sub = getSub(rt.value);
+          const isOn = sub?.isEnabled ?? false;
+          return (
+            <div key={rt.value} style={{
+              display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+              borderRadius: 8, border: '1px solid #374151', background: '#111827',
+            }}>
+              <label className="profile-toggle-row" style={{ flex: 'none', margin: 0 }}>
+                <input type="checkbox" checked={isOn} onChange={() => toggle(rt.value)} />
+                <span className="profile-toggle-track"><span className="profile-toggle-thumb" /></span>
+              </label>
+              <div style={{ flex: 1, color: '#d1d5db', fontWeight: 500, fontSize: '.85rem' }}>{rt.label}</div>
+
+              {!('noFormat' in rt && rt.noFormat) && (
+                <>
+                  <select value={sub?.frequency ?? 'daily'} onChange={e => change(rt.value, 'frequency', e.target.value)} style={selStyle} disabled={!isOn}>
+                    <option value="daily">Denně</option>
+                    <option value="weekly">Týdně</option>
+                    <option value="monthly">Měsíčně</option>
+                  </select>
+                  <select value={sub?.format ?? 'xlsx'} onChange={e => change(rt.value, 'format', e.target.value)} style={selStyle} disabled={!isOn}>
+                    <option value="xlsx">XLSX</option>
+                    <option value="csv">CSV</option>
+                  </select>
+                </>
+              )}
+
+              <select value={String(sub?.sendHour ?? 6)} onChange={e => change(rt.value, 'sendHour', Number(e.target.value))} style={selStyle} disabled={!isOn}>
+                {Array.from({ length: 24 }, (_, i) => (
+                  <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>
+                ))}
+              </select>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#9ca3af', fontSize: '.78rem', whiteSpace: 'nowrap' }}>
+                <input type="checkbox" checked={sub?.workdaysOnly ?? false} onChange={e => change(rt.value, 'workdaysOnly', e.target.checked)} disabled={!isOn} />
+                Jen prac. dny
+              </label>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

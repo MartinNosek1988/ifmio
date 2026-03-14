@@ -117,5 +117,31 @@ describe('Scheduled Reports (e2e)', () => {
       const opsSub = res.body.find((s: any) => s.reportType === 'operations')
       expect(opsSub.frequency).toBe('monthly')
     })
+
+    it('sets sendHour and workdaysOnly', async () => {
+      const api = authRequest(testApp.server, testApp.token)
+      const res = await api
+        .post('/api/v1/reports/subscriptions', {
+          reportType: 'daily_digest',
+          sendHour: 7,
+          workdaysOnly: true,
+        })
+        .expect(201)
+
+      expect(res.body.sendHour).toBe(7)
+      expect(res.body.workdaysOnly).toBe(true)
+    })
+
+    it('clamps sendHour to valid range', async () => {
+      const api = authRequest(testApp.server, testApp.token)
+      const res = await api
+        .post('/api/v1/reports/subscriptions', {
+          reportType: 'daily_digest',
+          sendHour: 99,
+        })
+        .expect(201)
+
+      expect(res.body.sendHour).toBe(23) // clamped to max
+    })
   })
 })
