@@ -148,4 +148,105 @@ export class DashboardService {
       })),
     }
   }
+
+  async getOperationalDashboard(user: AuthUser) {
+    const tenantId = user.tenantId
+    const scopeWhere = await this.scope.scopeByPropertyId(user)
+    const now = new Date()
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const todayEnd = new Date(todayStart.getTime() + 86400000)
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000)
+
+    const isTech = user.role === 'operations'
+    const myFilter = isTech ? { assigneeId: user.id } : {}
+    const myWoFilter = isTech ? { assigneeUserId: user.id } : {}
+
+    const [
+      openTickets, overdueTickets, highPrioTickets,
+      openWo, overdueWo, todayWoDeadlines,
+      resolvedLast30, completedWoLast30,
+      overdueRevisions, incompleteProtocols,
+      recentTicketList, recentWoList,
+    ] = await Promise.all([
+      // Helpdesk
+      this.prisma.helpdeskTicket.count({
+        where: { tenantId, status: { in: ['open', 'in_progress'] }, ...scopeWhere, ...myFilter } as any,
+      }),
+      this.prisma.helpdeskTicket.count({
+        where: { tenantId, status: { in: ['open', 'in_progress'] }, resolutionDueAt: { lt: now }, ...scopeWhere, ...myFilter } as any,
+      }),
+      this.prisma.helpdeskTicket.count({
+        where: { tenantId, status: { in: ['open', 'in_progress'] }, priority: { in: ['high', 'urgent'] }, ...scopeWhere, ...myFilter } as any,
+      }),
+      // Work Orders
+      this.prisma.workOrder.count({
+        where: { tenantId, status: { in: ['nova', 'v_reseni'] }, ...scopeWhere, ...myWoFilter } as any,
+      }),
+      this.prisma.workOrder.count({
+        where: { tenantId, status: { in: ['nova', 'v_reseni'] }, deadline: { lt: now }, ...scopeWhere, ...myWoFilter } as any,
+      }),
+      this.prisma.workOrder.count({
+        where: { tenantId, status: { in: ['nova', 'v_reseni'] }, deadline: { gte: todayStart, lt: todayEnd }, ...scopeWhere, ...myWoFilter } as any,
+      }),
+      // Period metrics
+      this.prisma.helpdeskTicket.count({
+        where: { tenantId, resolvedAt: { gte: thirtyDaysAgo }, ...scopeWhere } as any,
+      }),
+      this.prisma.workOrder.count({
+        where: { tenantId, completedAt: { gte: thirtyDaysAgo }, ...scopeWhere } as any,
+      }),
+      // Compliance
+      isTech ? Promise.resolve(0) : this.prisma.revisionPlan.count({
+        where: { tenantId, status: 'active', nextDueAt: { lt: now }, ...scopeWhere } as any,
+      }),
+      isTech ? Promise.resolve(0) : this.prisma.protocol.count({
+        where: { tenantId, status: 'draft', ...scopeWhere } as any,
+      }),
+      // Recent lists (last 5)
+      this.prisma.helpdeskTicket.findMany({
+        where: { tenantId, status: { in: ['open', 'in_progress'] }, ...scopeWhere, ...myFilter } as any,
+        orderBy: { createdAt: 'desc' }, take: 5,
+        select: { id: true, number: true, title: true, priority: true, status: true, createdAt: true,
+          property: { select: { name: true } }, assignee: { select: { name: true } } },
+      }),
+      this.prisma.workOrder.findMany({
+        where: { tenantId, status: { in: ['nova', 'v_reseni'] }, ...scopeWhere, ...myWoFilter } as any,
+        orderBy: { createdAt: 'desc' }, take: 5,
+        select: { id: true, title: true, priority: true, status: true, deadline: true, createdAt: true,
+          property: { select: { name: true } }, assigneeUser: { select: { name: true } }, asset: { select: { name: true } } },
+      }),
+    ])
+
+    return {
+      role: user.role,
+      attention: {
+        overdueTickets,
+        overdueWo,
+        highPrioTickets,
+        todayWoDeadlines,
+        overdueRevisions,
+        incompleteProtocols,
+      },
+      workload: {
+        openTickets,
+        openWo,
+      },
+      period: {
+        resolvedTicketsLast30: resolvedLast30,
+        completedWoLast30: completedWoLast30,
+      },
+      recentTickets: recentTicketList.map(t => ({
+        ...t, createdAt: t.createdAt.toISOString(),
+        propertyName: (t as any).property?.name ?? null,
+        assigneeName: (t as any).assignee?.name ?? null,
+      })),
+      recentWorkOrders: recentWoList.map(w => ({
+        ...w, createdAt: w.createdAt.toISOString(),
+        deadline: (w as any).deadline?.toISOString() ?? null,
+        propertyName: (w as any).property?.name ?? null,
+        assigneeName: (w as any).assigneeUser?.name ?? null,
+        assetName: (w as any).asset?.name ?? null,
+      })),
+    }
+  }
 }

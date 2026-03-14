@@ -17,4 +17,10 @@ export class DashboardController {
   getOverview(@CurrentUser() user: AuthUser) {
     return this.service.getOverview(user)
   }
+
+  @Get('operational')
+  @ApiOperation({ summary: 'Provozní dashboard — role-aware operational overview' })
+  getOperational(@CurrentUser() user: AuthUser) {
+    return this.service.getOperationalDashboard(user)
+  }
 }
