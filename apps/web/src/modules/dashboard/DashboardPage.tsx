@@ -29,7 +29,7 @@ export default function DashboardPage() {
   if (isLoading) return <LoadingState text="Načítání dashboardu..." />;
   if (isError) return <ErrorState onRetry={refetch} />;
 
-  const { kpi, alerts, recentTransactions, recentTickets } = data;
+  const { kpi, alerts, recentTransactions } = data;
 
   // Technician: lightweight view
   if (uxRole === 'tech') return <TechDashboard ops={ops} />;
