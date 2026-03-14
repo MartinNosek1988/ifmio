@@ -40,19 +40,19 @@ export default function WorkOrdersPage() {
     });
   };
 
-  if (isLoading) return <LoadingState text="Nacitani work orders..." />;
+  if (isLoading) return <LoadingState text="Načítání pracovních úkolů..." />;
   if (isError) return <ErrorState onRetry={refetch} />;
 
   const items = workOrders ?? [];
 
   const columns: Column<ApiWorkOrder>[] = [
-    { key: 'title', label: 'Nazev', render: w => <span style={{ fontWeight: 600 }}>{w.title}</span> },
+    { key: 'title', label: 'Název', render: w => <span style={{ fontWeight: 600 }}>{w.title}</span> },
     { key: 'priority', label: 'Priorita', render: w => <Badge variant={PRIO_COLOR[w.priority] || 'muted'}>{label(WO_PRIORITY_LABELS, w.priority)}</Badge> },
     { key: 'status', label: 'Stav', render: w => <Badge variant={STATUS_COLOR[w.status] || 'muted'}>{label(WO_STATUS_LABELS, w.status)}</Badge> },
     { key: 'assignee', label: 'Řešitel', render: w => <span className="text-muted">{w.assigneeUser?.name || w.assignee || '—'}</span> },
     { key: 'asset', label: 'Zařízení', render: w => <span className="text-muted">{w.asset?.name || '—'}</span> },
     { key: 'sla', label: 'SLA', render: w => <SlaProgressBar created={w.createdAt} deadline={w.deadline || ''} status={w.status} /> },
-    { key: 'createdAt', label: 'Vytvoreno', render: w => <span className="text-muted text-sm">{formatCzDate(w.createdAt)}</span> },
+    { key: 'createdAt', label: 'Vytvořeno', render: w => <span className="text-muted text-sm">{formatCzDate(w.createdAt)}</span> },
     {
       key: 'actions', label: '', align: 'right',
       render: (w) => (
@@ -76,9 +76,9 @@ export default function WorkOrdersPage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
         <KpiCard label="Celkem" value={String(stats?.total ?? 0)} color="var(--accent-blue)" />
-        <KpiCard label="Otevrenych" value={String(stats?.open ?? 0)} color="var(--accent-orange)" />
-        <KpiCard label="Dokoncenych dnes" value={String(stats?.completedToday ?? 0)} color="var(--accent-green)" />
-        <KpiCard label="Po terminu" value={String(stats?.overdue ?? 0)} color="var(--danger)" />
+        <KpiCard label="Otevřených" value={String(stats?.open ?? 0)} color="var(--accent-orange)" />
+        <KpiCard label="Dokončených dnes" value={String(stats?.completedToday ?? 0)} color="var(--accent-green)" />
+        <KpiCard label="Po termínu" value={String(stats?.overdue ?? 0)} color="var(--danger)" />
       </div>
 
       <div className="flex-bar" style={{ marginBottom: 16 }}>
@@ -90,7 +90,7 @@ export default function WorkOrdersPage() {
       </div>
 
       {items.length === 0 ? (
-        <EmptyState title="Zadne work orders" description="Vytvorte novy work order." />
+        <EmptyState title="Žádné pracovní úkoly" description="Vytvořte nový pracovní úkol." />
       ) : (
         <Table data={items} columns={columns} rowKey={w => w.id} onRowClick={w => setSelectedWO(w)} />
       )}

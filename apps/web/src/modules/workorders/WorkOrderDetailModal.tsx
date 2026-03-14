@@ -51,9 +51,11 @@ export default function WorkOrderDetailModal({ workOrder, onClose, onUpdated }: 
     priority: workOrder.priority,
     deadline: workOrder.deadline ? workOrder.deadline.slice(0, 10) : '',
     estimatedHours: workOrder.estimatedHours?.toString() || '',
+    actualHours: workOrder.actualHours?.toString() || '',
     laborCost: workOrder.laborCost?.toString() || '',
     materialCost: workOrder.materialCost?.toString() || '',
   });
+  const [uploadError, setUploadError] = useState('');
 
   const { data: users = [] } = useQuery<TenantUser[]>({
     queryKey: ['admin', 'users'],
@@ -97,6 +99,7 @@ export default function WorkOrderDetailModal({ workOrder, onClose, onUpdated }: 
       priority: workOrder.priority,
       deadline: workOrder.deadline ? workOrder.deadline.slice(0, 10) : '',
       estimatedHours: workOrder.estimatedHours?.toString() || '',
+      actualHours: workOrder.actualHours?.toString() || '',
       laborCost: workOrder.laborCost?.toString() || '',
       materialCost: workOrder.materialCost?.toString() || '',
     });
@@ -113,6 +116,7 @@ export default function WorkOrderDetailModal({ workOrder, onClose, onUpdated }: 
         priority: editData.priority,
         deadline: editData.deadline || undefined,
         estimatedHours: editData.estimatedHours ? Number(editData.estimatedHours) : undefined,
+        actualHours: editData.actualHours ? Number(editData.actualHours) : undefined,
         laborCost: editData.laborCost ? Number(editData.laborCost) : undefined,
         materialCost: editData.materialCost ? Number(editData.materialCost) : undefined,
       },
@@ -133,7 +137,9 @@ export default function WorkOrderDetailModal({ workOrder, onClose, onUpdated }: 
         });
       }
       refetchDocs();
-    } catch { /* best-effort */ } finally {
+    } catch {
+      setUploadError('Nepodařilo se nahrát soubor.')
+    } finally {
       setUploading(false);
       e.target.value = '';
     }
@@ -202,7 +208,7 @@ export default function WorkOrderDetailModal({ workOrder, onClose, onUpdated }: 
               <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>
                 {ticketNum} — {workOrder.helpdeskTicket.title}
                 <Badge variant={workOrder.helpdeskTicket.status === 'resolved' || workOrder.helpdeskTicket.status === 'closed' ? 'green' : 'blue'} >
-                  {workOrder.helpdeskTicket.status}
+                  {{ open: 'Otevřený', in_progress: 'V řešení', resolved: 'Vyřešený', closed: 'Uzavřený' }[workOrder.helpdeskTicket.status] ?? workOrder.helpdeskTicket.status}
                 </Badge>
               </div>
             </div>
@@ -269,6 +275,10 @@ export default function WorkOrderDetailModal({ workOrder, onClose, onUpdated }: 
                   <input type="number" min="0" value={editData.estimatedHours} onChange={e => setEditData(d => ({ ...d, estimatedHours: e.target.value }))} style={inputStyle} />
                 </div>
                 <div>
+                  <label className="form-label">Skutečné (hod)</label>
+                  <input type="number" min="0" value={editData.actualHours} onChange={e => setEditData(d => ({ ...d, actualHours: e.target.value }))} style={inputStyle} />
+                </div>
+                <div>
                   <label className="form-label">Náklady práce (Kč)</label>
                   <input type="number" min="0" value={editData.laborCost} onChange={e => setEditData(d => ({ ...d, laborCost: e.target.value }))} style={inputStyle} />
                 </div>
@@ -305,6 +315,7 @@ export default function WorkOrderDetailModal({ workOrder, onClose, onUpdated }: 
               <Button size="sm" onClick={() => {}} disabled={uploading}><Paperclip size={14} style={{ marginRight: 4 }} />Přidat přílohu</Button>
             </label>
             <div className="text-muted" style={{ fontSize: '0.75rem', marginTop: 6 }}>PDF, DOCX, XLSX, JPG, PNG (max 20 MB)</div>
+            {uploadError && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 6 }}>{uploadError}</div>}
           </div>
           {docs.length === 0 ? (
             <div className="text-muted" style={{ textAlign: 'center', padding: 24, fontSize: '0.9rem' }}>K úkolu zatím nejsou přiložené žádné soubory.</div>

@@ -75,6 +75,7 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
 
   // Upload state
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
 
   // Linked work orders
   const { data: linkedWOs = [], refetch: refetchWOs } = useWorkOrdersForTicket(ticketId);
@@ -178,7 +179,7 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
       refetchDocs();
       refetch();
     } catch {
-      // best-effort
+      setUploadError('Nepodařilo se nahrát soubor.');
     } finally {
       setUploading(false);
       e.target.value = '';
@@ -539,6 +540,7 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
             <div className="text-muted" style={{ fontSize: '0.75rem', marginTop: 6 }}>
               PDF, DOCX, XLSX, JPG, PNG (max 20 MB)
             </div>
+            {uploadError && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 6 }}>{uploadError}</div>}
           </div>
 
           {/* List of attached documents */}
