@@ -21,7 +21,7 @@ CREATE TABLE "asset_type_revision_types" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "tenantId" TEXT NOT NULL,
     "assetTypeId" UUID NOT NULL,
-    "revisionTypeId" UUID NOT NULL,
+    "revisionTypeId" TEXT NOT NULL,
     "isRequired" BOOLEAN NOT NULL DEFAULT true,
     "intervalDaysOverride" INTEGER,
     "reminderDaysOverride" INTEGER,
