@@ -3,6 +3,7 @@ import { workOrdersApi, type CreateWorkOrderDto, type UpdateWorkOrderDto, type C
 
 export const woKeys = {
   all: ['workorders'] as const,
+  lists: () => ['workorders', 'list'] as const,
   list: (params?: Record<string, unknown>) => ['workorders', 'list', params] as const,
   stats: () => ['workorders', 'stats'] as const,
   detail: (id: string) => ['workorders', 'detail', id] as const,
@@ -45,7 +46,8 @@ export function useCreateWorkOrder() {
   return useMutation({
     mutationFn: (dto: CreateWorkOrderDto) => workOrdersApi.create(dto),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: woKeys.all });
+      qc.invalidateQueries({ queryKey: woKeys.lists() });
+      qc.invalidateQueries({ queryKey: woKeys.stats() });
     },
   });
 }
@@ -56,7 +58,8 @@ export function useCreateFromTicket() {
     mutationFn: ({ ticketId, dto }: { ticketId: string; dto: CreateFromTicketDto }) =>
       workOrdersApi.createFromTicket(ticketId, dto),
     onSuccess: (_, { ticketId }) => {
-      qc.invalidateQueries({ queryKey: woKeys.all });
+      qc.invalidateQueries({ queryKey: woKeys.lists() });
+      qc.invalidateQueries({ queryKey: woKeys.stats() });
       qc.invalidateQueries({ queryKey: woKeys.forTicket(ticketId) });
     },
   });
@@ -66,8 +69,10 @@ export function useUpdateWorkOrder() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, dto }: { id: string; dto: UpdateWorkOrderDto }) => workOrdersApi.update(id, dto),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: woKeys.all });
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: woKeys.lists() });
+      qc.invalidateQueries({ queryKey: woKeys.stats() });
+      qc.invalidateQueries({ queryKey: woKeys.detail(id) });
     },
   });
 }
@@ -76,8 +81,10 @@ export function useChangeWOStatus() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) => workOrdersApi.changeStatus(id, status),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: woKeys.all });
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: woKeys.lists() });
+      qc.invalidateQueries({ queryKey: woKeys.stats() });
+      qc.invalidateQueries({ queryKey: woKeys.detail(id) });
     },
   });
 }
@@ -86,8 +93,8 @@ export function useAddWOComment() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, text }: { id: string; text: string }) => workOrdersApi.addComment(id, text),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: woKeys.all });
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: woKeys.detail(id) });
     },
   });
 }
@@ -97,7 +104,8 @@ export function useDeleteWorkOrder() {
   return useMutation({
     mutationFn: (id: string) => workOrdersApi.remove(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: woKeys.all });
+      qc.invalidateQueries({ queryKey: woKeys.lists() });
+      qc.invalidateQueries({ queryKey: woKeys.stats() });
     },
   });
 }
