@@ -38,9 +38,9 @@ export class AssetQrController {
   async reissue(
     @CurrentUser() user: AuthUser,
     @Param('id') assetId: string,
-    @Body() body: { notes?: string },
+    @Body() body?: { notes?: string },
   ) {
-    return this.svc.reissue(user, assetId, body.notes);
+    return this.svc.reissue(user, assetId, body?.notes);
   }
 
   /* ─── POST /assets/:id/qr/mark-printed ─────────────────────── */

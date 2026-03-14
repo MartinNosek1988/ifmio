@@ -73,9 +73,24 @@ describe('Asset QR Codes (e2e)', () => {
     expect(res.body.message).toBeTruthy()
   })
 
+  it('returns invalid for malformed token (not 32 hex)', async () => {
+    const res = await api.get('/api/v1/qr/undefined').expect(200)
+    expect(res.body.status).toBe('disabled')
+    expect(res.body.assetId).toBe('')
+  })
+
   // ─── Reissue ──────────────────────────────────────────────────
 
   let newToken: string
+
+  it('reissues QR without body (empty request)', async () => {
+    // Regression: body must be optional — must not throw on missing dto.notes
+    const res = await api.post(`/api/v1/assets/${assetId}/qr/reissue`).expect(200)
+    expect(res.body.status).toBe('active')
+    // Roll back: create fresh active QR so the next reissue test starts clean
+    // (this reissue already replaced activeToken — that's fine, chain continues)
+    newToken = res.body.token
+  })
 
   it('reissues QR and deactivates previous', async () => {
     const res = await api.post(`/api/v1/assets/${assetId}/qr/reissue`).expect(200)

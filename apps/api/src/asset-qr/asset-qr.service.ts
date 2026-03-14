@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import * as QRCode from 'qrcode';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const PDFDocument = require('pdfkit') as typeof import('pdfkit');
 import { PrismaService } from '../prisma/prisma.service';
 import type { AuthUser } from '@ifmio/shared-types';
 import { AssetQrStatus } from '@prisma/client';
@@ -152,6 +154,11 @@ export class AssetQrService {
   /* ─── Resolve token (public) ────────────────────────────────────── */
 
   async resolveToken(token: string): Promise<{ assetId: string; status: AssetQrStatus; message?: string }> {
+    // Validate opaque token format: exactly 32 lowercase hex chars
+    if (!/^[0-9a-f]{32}$/.test(token)) {
+      return { assetId: '', status: 'disabled', message: 'QR kód není platný' };
+    }
+
     const qr = await this.prisma.assetQrCode.findUnique({
       where: { token },
       select: { assetId: true, status: true },
@@ -202,8 +209,6 @@ export class AssetQrService {
 
     const qrImageDataUrl = await this.generateQrImage(qr.token);
 
-    // Generate PDF using pdfkit
-    const PDFDocument = (await import('pdfkit')).default;
     const doc = new PDFDocument({ size: [200, 280], margin: 12 }); // small label size
 
     const chunks: Buffer[] = [];
