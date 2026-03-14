@@ -59,7 +59,8 @@ jobs:
             cd /opt/ifmio
             echo "Pull latest code"
             git fetch origin main
-            git checkout ${{ github.event.workflow_run.head_sha }}
+            git checkout main
+            git reset --hard origin/main
             echo "Build and restart"
             docker compose -f docker-compose.prod.yml build --no-cache
             docker compose -f docker-compose.prod.yml up -d
