@@ -61,7 +61,7 @@ export default function TechnicianAgendaPage() {
       {data.today.length > 0 && (
         <AgendaSection title="Dnešní úkoly" count={data.today.length}>
           {data.today.map(wo => (
-            <WoCard key={wo.id} wo={wo} onOpen={() => navigate('/workorders')} />
+            <WoCard key={wo.id} wo={wo} onOpen={() => navigate(`/workorders/${wo.id}/execute`)} />
           ))}
         </AgendaSection>
       )}
@@ -70,7 +70,7 @@ export default function TechnicianAgendaPage() {
       {data.overdue.length > 0 && (
         <AgendaSection title="Úkoly po termínu" count={data.overdue.length} variant="danger">
           {data.overdue.map(wo => (
-            <WoCard key={wo.id} wo={wo} onOpen={() => navigate('/workorders')} />
+            <WoCard key={wo.id} wo={wo} onOpen={() => navigate(`/workorders/${wo.id}/execute`)} />
           ))}
         </AgendaSection>
       )}
