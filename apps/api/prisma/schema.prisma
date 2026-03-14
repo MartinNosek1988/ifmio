@@ -903,9 +903,11 @@ model Protocol {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  property Property?      @relation(fields: [propertyId], references: [id], onDelete: SetNull)
-  lines    ProtocolLine[]
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property         Property?      @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  generatedPdfDoc  Document?      @relation("ProtocolGeneratedPdf", fields: [generatedPdfDocumentId], references: [id], onDelete: SetNull)
+  signedDoc        Document?      @relation("ProtocolSignedDoc", fields: [signedDocumentId], references: [id], onDelete: SetNull)
+  lines            ProtocolLine[]
 
   @@index([tenantId])
   @@index([tenantId, sourceType, sourceId])
@@ -1093,8 +1095,10 @@ model Document {
 
   tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdBy User?          @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  tags      DocumentTag[]
-  links     DocumentLink[]
+  tags                   DocumentTag[]
+  links                  DocumentLink[]
+  protocolsAsGeneratedPdf Protocol[]    @relation("ProtocolGeneratedPdf")
+  protocolsAsSignedDoc    Protocol[]    @relation("ProtocolSignedDoc")
 
   @@index([tenantId])
   @@index([tenantId, category])
