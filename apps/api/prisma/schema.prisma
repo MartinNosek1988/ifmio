@@ -53,6 +53,8 @@ model Tenant {
   revisionPlans       RevisionPlan[]
   revisionEvents      RevisionEvent[]
   protocols           Protocol[]
+  assetTypes          AssetType[]
+  assetTypeRevisionTypes AssetTypeRevisionType[]
 
   @@map("tenants")
 }
@@ -955,8 +957,9 @@ model RevisionType {
   createdAt                   DateTime @default(now())
   updatedAt                   DateTime @updatedAt
 
-  tenant Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  plans  RevisionPlan[]
+  tenant              Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plans               RevisionPlan[]
+  assetTypeAssignments AssetTypeRevisionType[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -1469,11 +1472,64 @@ enum CalEventType {
 
 // ─── ASSET MANAGEMENT ────────────────────────────────────────────
 
+model AssetType {
+  id                   String   @id @default(uuid())
+  tenantId             String
+  name                 String
+  code                 String
+  category             String   @default("ostatni")
+  description          String?  @db.Text
+  manufacturer         String?
+  model                String?
+  defaultLocationLabel String?
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  tenant               Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assets               Asset[]
+  activityAssignments  AssetTypeRevisionType[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+  @@map("asset_types")
+}
+
+model AssetTypeRevisionType {
+  id                                String   @id @default(uuid())
+  tenantId                          String
+  assetTypeId                       String
+  revisionTypeId                    String
+  isRequired                        Boolean  @default(true)
+  intervalDaysOverride              Int?
+  reminderDaysOverride              Int?
+  graceDaysOverride                 Int?
+  requiresProtocolOverride          Boolean?
+  requiresSupplierSignatureOverride Boolean?
+  requiresCustomerSignatureOverride Boolean?
+  note                              String?  @db.Text
+  sortOrder                         Int      @default(0)
+  createdAt                         DateTime @default(now())
+  updatedAt                         DateTime @updatedAt
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assetType    AssetType    @relation(fields: [assetTypeId], references: [id], onDelete: Cascade)
+  revisionType RevisionType @relation(fields: [revisionTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([assetTypeId, revisionTypeId])
+  @@index([tenantId])
+  @@index([assetTypeId])
+  @@index([revisionTypeId])
+  @@map("asset_type_revision_types")
+}
+
 model Asset {
   id              String        @id @default(uuid())
   tenantId        String
   propertyId      String?
   unitId          String?
+  assetTypeId     String?
   name            String
   category        AssetCategory @default(ostatni)
   manufacturer    String?
@@ -1495,10 +1551,12 @@ model Asset {
   tenant         Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   property       Property?            @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   unit           Unit?                @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  assetType      AssetType?           @relation(fields: [assetTypeId], references: [id], onDelete: SetNull)
   serviceRecords AssetServiceRecord[]
 
   @@index([tenantId])
   @@index([propertyId])
+  @@index([assetTypeId])
   @@map("assets")
 }
 

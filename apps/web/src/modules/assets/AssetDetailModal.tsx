@@ -163,6 +163,17 @@ function DetailView({ asset, onEdit }: { asset: Asset; onEdit: () => void }) {
 
   return (
     <div>
+      {asset.assetType && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, padding: '8px 12px', borderRadius: 8, background: 'var(--surface-2, var(--surface))', border: '1px solid var(--border)' }}>
+          <Badge variant="blue">{asset.assetType.code}</Badge>
+          <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{asset.assetType.name}</span>
+          {asset.assetType._count?.activityAssignments ? (
+            <span className="text-muted" style={{ fontSize: '0.78rem', marginLeft: 'auto' }}>
+              {asset.assetType._count.activityAssignments} činností
+            </span>
+          ) : null}
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: '0.9rem' }}>
         <InfoRow label="Výrobce" value={asset.manufacturer} />
         <InfoRow label="Model" value={asset.model} />

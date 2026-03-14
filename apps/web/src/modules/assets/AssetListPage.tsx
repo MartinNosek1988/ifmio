@@ -27,8 +27,10 @@ export interface Asset {
   notes: string | null;
   propertyId: string | null;
   unitId: string | null;
+  assetTypeId: string | null;
   property: { id: string; name: string } | null;
   unit: { id: string; name: string } | null;
+  assetType: { id: string; name: string; code: string; _count?: { activityAssignments: number } } | null;
   _count?: { serviceRecords: number };
 }
 
