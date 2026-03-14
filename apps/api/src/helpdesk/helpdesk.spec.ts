@@ -201,6 +201,47 @@ describe('Helpdesk (e2e)', () => {
     })
   })
 
+  describe('Access control', () => {
+    it('rejects create with non-existent requester user', async () => {
+      const api = authRequest(testApp.server, testApp.token)
+      await api
+        .post('/api/v1/helpdesk', {
+          title: 'Bad requester',
+          requesterUserId: '00000000-0000-0000-0000-000000000099',
+        })
+        .expect(400)
+    })
+
+    it('rejects create with non-existent dispatcher user', async () => {
+      const api = authRequest(testApp.server, testApp.token)
+      await api
+        .post('/api/v1/helpdesk', {
+          title: 'Bad dispatcher',
+          dispatcherUserId: '00000000-0000-0000-0000-000000000099',
+        })
+        .expect(400)
+    })
+
+    it('rejects update with non-existent assignee', async () => {
+      const api = authRequest(testApp.server, testApp.token)
+      await api
+        .put(`/api/v1/helpdesk/${ticketId}`, {
+          assigneeId: '00000000-0000-0000-0000-000000000099',
+        })
+        .expect(400)
+    })
+
+    it('rejects create with non-existent asset', async () => {
+      const api = authRequest(testApp.server, testApp.token)
+      await api
+        .post('/api/v1/helpdesk', {
+          title: 'Bad asset',
+          assetId: '00000000-0000-0000-0000-000000000099',
+        })
+        .expect(404)
+    })
+  })
+
   describe('DELETE /api/v1/helpdesk/:id', () => {
     it('deletes a ticket', async () => {
       const api = authRequest(testApp.server, testApp.token)
