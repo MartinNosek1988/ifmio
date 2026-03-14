@@ -64,7 +64,15 @@ describe('Operational Reports (e2e)', () => {
 
       expect(res.headers['content-type']).toContain('spreadsheetml')
       expect(res.headers['content-disposition']).toContain('provozni-report.xlsx')
-      expect(res.body).toBeTruthy()
+    })
+
+    it('returns CSV file', async () => {
+      const api = authRequest(testApp.server, testApp.token)
+      const res = await api.get('/api/v1/reports/operations/export?format=csv').expect(200)
+
+      expect(res.headers['content-type']).toContain('text/csv')
+      expect(res.headers['content-disposition']).toContain('provozni-report.csv')
+      expect(res.text).toContain('Typ;Název')
     })
   })
 
@@ -88,6 +96,14 @@ describe('Operational Reports (e2e)', () => {
 
       expect(res.headers['content-type']).toContain('spreadsheetml')
       expect(res.headers['content-disposition']).toContain('zarizeni-report.xlsx')
+    })
+
+    it('returns CSV file', async () => {
+      const api = authRequest(testApp.server, testApp.token)
+      const res = await api.get('/api/v1/reports/assets/export?format=csv').expect(200)
+
+      expect(res.headers['content-type']).toContain('text/csv')
+      expect(res.text).toContain('Zařízení;Kategorie')
     })
   })
 
@@ -114,6 +130,14 @@ describe('Operational Reports (e2e)', () => {
 
       expect(res.headers['content-type']).toContain('spreadsheetml')
       expect(res.headers['content-disposition']).toContain('protokoly-report.xlsx')
+    })
+
+    it('returns CSV file', async () => {
+      const api = authRequest(testApp.server, testApp.token)
+      const res = await api.get('/api/v1/reports/protocols/export?format=csv').expect(200)
+
+      expect(res.headers['content-type']).toContain('text/csv')
+      expect(res.text).toContain('Číslo;Název')
     })
   })
 })

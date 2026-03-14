@@ -76,6 +76,9 @@ export default function OperationalReportsPage() {
         <a href={exportUrl(tab)} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
           <Button icon={<Download size={14} />}>Export XLSX</Button>
         </a>
+        <a href={exportUrl(tab) + (exportUrl(tab).includes('?') ? '&' : '?') + 'format=csv'} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+          <Button icon={<Download size={14} />}>Export CSV</Button>
+        </a>
       </div>
 
       {/* Tabs */}
