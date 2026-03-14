@@ -1,6 +1,6 @@
 import { apiClient } from '../../../core/api/client';
 
-export type EventSource = 'custom' | 'workorder' | 'contract' | 'meter';
+export type EventSource = 'custom' | 'workorder' | 'contract' | 'meter' | 'helpdesk';
 
 export interface ApiCalendarEvent {
   id: string;
@@ -26,6 +26,7 @@ export interface CalendarStats {
   workorders: number;
   contracts: number;
   meters: number;
+  helpdesk: number;
 }
 
 export interface CreateCalendarEventDto {

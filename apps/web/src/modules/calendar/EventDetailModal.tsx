@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Modal, Badge, Button } from '../../shared/components';
 import type { BadgeVariant } from '../../shared/components';
 import { EVENT_TYPE_LABELS, label } from '../../constants/labels';
@@ -13,16 +14,16 @@ interface Props {
 }
 
 const SOURCE_COLOR: Record<string, BadgeVariant> = {
-  workorder: 'blue', contract: 'yellow', meter: 'yellow', custom: 'green',
+  workorder: 'blue', contract: 'yellow', meter: 'yellow', helpdesk: 'red', custom: 'green',
 };
 const SOURCE_LABEL: Record<string, string> = {
-  workorder: 'Work Order', contract: 'Smlouva', meter: 'Kalibrace', custom: 'Vlastní',
+  workorder: 'Pracovní úkol', contract: 'Smlouva', meter: 'Kalibrace', helpdesk: 'Požadavek', custom: 'Vlastní',
 };
 
 const TYP_COLOR: Record<string, BadgeVariant> = {
   schuze: 'purple', revize: 'yellow', udrzba: 'blue',
   predani: 'green', prohlidka: 'yellow', ostatni: 'muted',
-  workorder: 'blue', contract: 'yellow', meter: 'yellow',
+  helpdesk: 'red', workorder: 'blue', contract: 'yellow', meter: 'yellow',
 };
 
 const TYP_HEX: Record<string, string> = {
@@ -127,6 +128,14 @@ export default function EventDetailModal({ event, onClose, onUpdated }: Props) {
         </div>
       )}
 
+      {/* Source navigation */}
+      {event.source === 'helpdesk' && event.sourceId && (
+        <SourceNavButton label="Otevřít požadavek" path="/helpdesk" />
+      )}
+      {event.source === 'workorder' && event.sourceId && (
+        <SourceNavButton label="Otevřít úkol" path="/workorders" />
+      )}
+
       {/* Attendees */}
       {event.attendees && event.attendees.length > 0 && (
         <div>
@@ -144,6 +153,17 @@ export default function EventDetailModal({ event, onClose, onUpdated }: Props) {
         </div>
       )}
     </Modal>
+  );
+}
+
+function SourceNavButton({ label, path }: { label: string; path: string }) {
+  const navigate = useNavigate();
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <Button variant="primary" size="sm" onClick={() => navigate(path)}>
+        {label}
+      </Button>
+    </div>
   );
 }
 

@@ -1,6 +1,6 @@
 export interface CalendarEventDto {
   id: string
-  source: 'custom' | 'workorder' | 'contract' | 'meter'
+  source: 'custom' | 'workorder' | 'contract' | 'meter' | 'helpdesk'
   sourceId?: string
   title: string
   eventType: string
@@ -22,4 +22,5 @@ export interface CalendarStatsDto {
   workorders: number
   contracts: number
   meters: number
+  helpdesk: number
 }
