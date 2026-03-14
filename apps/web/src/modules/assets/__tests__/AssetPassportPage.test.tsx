@@ -145,7 +145,7 @@ describe('AssetPassportPage', () => {
 
   it('renders compliance status as compliant', async () => {
     renderPassport()
-    expect(await screen.findByText('Compliance OK')).toBeTruthy()
+    expect(await screen.findByText('V pořádku')).toBeTruthy()
   })
 
   it('renders tab navigation', async () => {
@@ -153,10 +153,10 @@ describe('AssetPassportPage', () => {
     await screen.findByText('Plynový kotel A')
     // "Revizní plány" appears in both tab and overview section, so use getAllByText
     expect(screen.getAllByText('Přehled').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText('Revizní plány').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText('Historie revizí').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Plán činností').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Historie').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('Dokumenty').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText('Audit').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Změny').length).toBeGreaterThanOrEqual(1)
   })
 
   it('shows asset without type badge when no assetTypeId', async () => {
@@ -164,7 +164,7 @@ describe('AssetPassportPage', () => {
     renderPassport('asset-2')
     await screen.findByText('Neidentifikované zařízení')
     expect(screen.getByText('Bez typu zařízení')).toBeTruthy()
-    expect(screen.getByText('Nekonfigurováno')).toBeTruthy()
+    expect(screen.getByText('Není nastaveno')).toBeTruthy()
   })
 
   it('shows no-asset-type info message when not_configured', async () => {
@@ -184,8 +184,8 @@ describe('AssetPassportPage', () => {
   it('shows Po termínu! badge in header when overdue', async () => {
     mockPassport = MOCK_PASSPORT_OVERDUE
     renderPassport()
-    await screen.findByText('Po termínu!')
-    expect(screen.getByText('Po termínu!')).toBeTruthy()
+    await screen.findByText('Po termínu')
+    expect(screen.getByText('Po termínu')).toBeTruthy()
   })
 
   it('renders overview tab with technical details by default', async () => {
