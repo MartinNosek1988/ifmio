@@ -74,6 +74,54 @@ export class WorkOrdersService {
     return items.map(serialize)
   }
 
+  async getMyAgenda(user: AuthUser) {
+    const now = new Date()
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const todayEnd = new Date(todayStart.getTime() + 86400000)
+    const scopeWhere = await this.scope.scopeByPropertyId(user)
+    const baseWhere: any = { tenantId: user.tenantId, ...scopeWhere, assigneeUserId: user.id }
+
+    const [todayWo, overdueWo, highPrioTickets, overdueTickets] = await Promise.all([
+      this.prisma.workOrder.findMany({
+        where: { ...baseWhere, status: { in: ['nova', 'v_reseni'] }, deadline: { gte: todayStart, lt: todayEnd } },
+        include: this.woInclude, take: 20,
+      }),
+      this.prisma.workOrder.findMany({
+        where: { ...baseWhere, status: { in: ['nova', 'v_reseni'] }, deadline: { lt: now } },
+        include: this.woInclude, take: 20,
+      }),
+      this.prisma.helpdeskTicket.findMany({
+        where: { tenantId: user.tenantId, ...scopeWhere, assigneeId: user.id, status: { in: ['open', 'in_progress'] }, priority: { in: ['high', 'urgent'] } },
+        include: { property: { select: { id: true, name: true } }, asset: { select: { id: true, name: true } } },
+        take: 20,
+      }),
+      this.prisma.helpdeskTicket.findMany({
+        where: { tenantId: user.tenantId, ...scopeWhere, assigneeId: user.id, status: { in: ['open', 'in_progress'] }, resolutionDueAt: { lt: now } },
+        include: { property: { select: { id: true, name: true } }, asset: { select: { id: true, name: true } } },
+        take: 20,
+      }),
+    ])
+
+    return {
+      today: todayWo.map(serialize),
+      overdue: overdueWo.map(serialize),
+      highPrioTickets: highPrioTickets.map(t => ({
+        id: t.id, number: t.number, title: t.title, priority: t.priority, status: t.status,
+        property: t.property?.name ?? null, asset: t.asset?.name ?? null,
+        createdAt: t.createdAt.toISOString(), dueAt: t.resolutionDueAt?.toISOString() ?? null,
+      })),
+      overdueTickets: overdueTickets.map(t => ({
+        id: t.id, number: t.number, title: t.title, priority: t.priority, status: t.status,
+        property: t.property?.name ?? null, asset: t.asset?.name ?? null,
+        createdAt: t.createdAt.toISOString(), dueAt: t.resolutionDueAt?.toISOString() ?? null,
+      })),
+      counts: {
+        todayWo: todayWo.length, overdueWo: overdueWo.length,
+        highPrioTickets: highPrioTickets.length, overdueTickets: overdueTickets.length,
+      },
+    }
+  }
+
   async getStats(user: AuthUser) {
     const tenantId = user.tenantId
     const scopeWhere = await this.scope.scopeByPropertyId(user)

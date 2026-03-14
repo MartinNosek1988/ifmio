@@ -34,6 +34,12 @@ export class WorkOrdersController {
     return this.service.getStats(user)
   }
 
+  @Get('my-agenda')
+  @ApiOperation({ summary: 'Dnešní agenda technika' })
+  myAgenda(@CurrentUser() user: AuthUser) {
+    return this.service.getMyAgenda(user)
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Detail work order' })
   detail(@CurrentUser() user: AuthUser, @Param('id') id: string) {
