@@ -1,14 +1,19 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common'
+
 import { PrismaService } from '../prisma/prisma.service';
 import { PropertyScopeService } from '../common/services/property-scope.service';
+import { AssetPlanInstantiationService } from '../asset-types/asset-plan-instantiation.service';
 import { Prisma } from '@prisma/client';
 import type { AuthUser } from '@ifmio/shared-types';
 
 @Injectable()
 export class AssetsService {
+  private readonly logger = new Logger(AssetsService.name)
+
   constructor(
     private prisma: PrismaService,
     private scope: PropertyScopeService,
+    private instantiation: AssetPlanInstantiationService,
   ) {}
 
   /* ─── List ──────────────────────────────────────────────────────── */
@@ -45,6 +50,7 @@ export class AssetsService {
       include: {
         property: { select: { id: true, name: true } },
         unit: { select: { id: true, name: true } },
+        assetType: { select: { id: true, name: true, code: true, _count: { select: { activityAssignments: true } } } },
         _count: { select: { serviceRecords: true } },
       },
     });
@@ -96,6 +102,7 @@ export class AssetsService {
     location?: string;
     propertyId?: string;
     unitId?: string;
+    assetTypeId?: string;
     status?: string;
     purchaseDate?: string;
     purchaseValue?: number;
@@ -108,7 +115,15 @@ export class AssetsService {
       await this.scope.verifyPropertyAccess(user, dto.propertyId);
     }
 
-    return this.prisma.asset.create({
+    // Validate assetTypeId belongs to same tenant
+    if (dto.assetTypeId) {
+      const at = await this.prisma.assetType.findFirst({
+        where: { id: dto.assetTypeId, tenantId: user.tenantId },
+      });
+      if (!at) throw new NotFoundException('Typ zařízení nenalezen');
+    }
+
+    const asset = await this.prisma.asset.create({
       data: {
         tenantId: user.tenantId,
         name: dto.name,
@@ -119,6 +134,7 @@ export class AssetsService {
         location: dto.location,
         propertyId: dto.propertyId || null,
         unitId: dto.unitId || null,
+        assetTypeId: dto.assetTypeId || null,
         status: (dto.status as any) || 'aktivni',
         purchaseDate: dto.purchaseDate ? new Date(dto.purchaseDate) : null,
         purchaseValue: dto.purchaseValue ?? null,
@@ -130,8 +146,18 @@ export class AssetsService {
       include: {
         property: { select: { id: true, name: true } },
         unit: { select: { id: true, name: true } },
+        assetType: { select: { id: true, name: true, code: true } },
       },
     });
+
+    // Best-effort: auto-instantiate plans if asset type is set
+    if (asset.assetTypeId) {
+      this.instantiation
+        .instantiatePlansForAsset(asset.id, asset.assetTypeId, user.tenantId)
+        .catch((err) => this.logger.error(`Auto-plan instantiation failed for asset ${asset.id}: ${err?.message}`))
+    }
+
+    return asset;
   }
 
   async getById(user: AuthUser, id: string) {
@@ -140,6 +166,7 @@ export class AssetsService {
       include: {
         property: { select: { id: true, name: true } },
         unit: { select: { id: true, name: true } },
+        assetType: { select: { id: true, name: true, code: true, _count: { select: { activityAssignments: true } } } },
         serviceRecords: { orderBy: { date: 'desc' } },
       },
     });
@@ -160,7 +187,7 @@ export class AssetsService {
     const strings = ['name', 'manufacturer', 'model', 'serialNumber', 'location', 'notes'];
     const enums = ['category', 'status'];
     const dates = ['purchaseDate', 'warrantyUntil', 'nextServiceDate', 'lastServiceDate'];
-    const refs = ['propertyId', 'unitId'];
+    const refs = ['propertyId', 'unitId', 'assetTypeId'];
 
     for (const k of strings) if (dto[k] !== undefined) data[k] = dto[k] || null;
     for (const k of enums) if (dto[k] !== undefined) data[k] = dto[k];
@@ -175,6 +202,7 @@ export class AssetsService {
       include: {
         property: { select: { id: true, name: true } },
         unit: { select: { id: true, name: true } },
+        assetType: { select: { id: true, name: true, code: true } },
       },
     });
   }

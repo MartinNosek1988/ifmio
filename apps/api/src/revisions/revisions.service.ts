@@ -160,6 +160,7 @@ export class RevisionsService {
       ...(query.propertyId ? { propertyId: query.propertyId } : {}),
       ...(query.revisionTypeId ? { revisionTypeId: query.revisionTypeId } : {}),
       ...(query.subjectId ? { revisionSubjectId: query.subjectId } : {}),
+      ...(query.assetId ? { assetId: query.assetId } : {}),
       ...(query.status ? { status: query.status } : {}),
       ...(query.search ? {
         OR: [
@@ -329,8 +330,13 @@ export class RevisionsService {
     const existing = await this.getPlan(user, id)
     const data: Record<string, unknown> = { ...dto }
 
-    // Recalculate nextDueAt if interval changed
-    if (dto.intervalDays && dto.intervalDays !== existing.intervalDays) {
+    // Parse nextDueAt string to Date if provided directly
+    if (dto.nextDueAt) {
+      data.nextDueAt = new Date(dto.nextDueAt)
+    }
+
+    // Recalculate nextDueAt if interval changed (only when nextDueAt not explicitly set)
+    if (!dto.nextDueAt && dto.intervalDays && dto.intervalDays !== existing.intervalDays) {
       if (existing.lastPerformedAt) {
         data.nextDueAt = new Date(
           new Date(existing.lastPerformedAt).getTime() + dto.intervalDays * DAY_MS,
@@ -338,7 +344,40 @@ export class RevisionsService {
       }
     }
 
-    return this.prisma.revisionPlan.update({ where: { id }, data })
+    // Mark as customized if auto-generated plan has scheduling fields changed
+    let markedCustomized = false
+    if ((existing as any).generatedFromAssetType && !(existing as any).isCustomized) {
+      const schedulingFields = ['intervalDays', 'reminderDaysBefore', 'isMandatory'] as const
+      const changed = schedulingFields.some((f) => dto[f] !== undefined && dto[f] !== (existing as any)[f])
+      if (changed) {
+        data.isCustomized = true
+        markedCustomized = true
+      }
+    }
+
+    const updated = await this.prisma.revisionPlan.update({ where: { id }, data })
+
+    // Write asset-level audit entry when a plan is marked customized
+    if (markedCustomized && (existing as any).assetId) {
+      await this.prisma.auditLog.create({
+        data: {
+          tenantId: user.tenantId,
+          userId: user.id,
+          action: 'PLAN_CUSTOMIZED',
+          entity: 'Asset',
+          entityId: (existing as any).assetId,
+          newData: {
+            planId: id,
+            revisionTypeName: (existing as any).revisionType?.name ?? null,
+            changedFields: ['intervalDays', 'reminderDaysBefore', 'isMandatory'].filter(
+              (f) => dto[f as keyof typeof dto] !== undefined,
+            ),
+          } as any,
+        },
+      }).catch(() => { /* non-fatal */ })
+    }
+
+    return updated
   }
 
   async deletePlan(user: AuthUser, id: string) {

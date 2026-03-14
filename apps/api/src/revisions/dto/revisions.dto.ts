@@ -87,12 +87,14 @@ export class UpdateRevisionPlanDto {
   @IsOptional() @IsString() responsibleUserId?: string
   @IsOptional() @IsEnum(['active', 'paused', 'archived']) status?: string
   @IsOptional() @IsBoolean() isMandatory?: boolean
+  @IsOptional() @IsDateString() nextDueAt?: string
 }
 
 export class RevisionPlanListQueryDto {
   @IsOptional() @IsString() propertyId?: string
   @IsOptional() @IsString() revisionTypeId?: string
   @IsOptional() @IsString() subjectId?: string
+  @IsOptional() @IsString() assetId?: string
   @IsOptional() @IsEnum(['active', 'paused', 'archived']) status?: string
   @IsOptional() @IsEnum(['compliant', 'due_soon', 'overdue', 'overdue_critical', 'performed_pending_protocol', 'performed_pending_signature', 'performed_unconfirmed']) complianceStatus?: string
   @IsOptional() @IsString() search?: string

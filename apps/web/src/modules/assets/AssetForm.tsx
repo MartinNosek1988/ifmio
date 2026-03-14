@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Modal, Button } from '../../shared/components';
 import { apiClient } from '../../core/api/client';
+import type { ApiAssetType } from '../asset-types/api/asset-types.api';
 
 interface Props {
   onClose: () => void;
@@ -25,6 +26,12 @@ export default function AssetForm({ onClose }: Props) {
     staleTime: 60_000,
   });
 
+  const { data: assetTypes = [] } = useQuery<ApiAssetType[]>({
+    queryKey: ['asset-types', 'list'],
+    queryFn: () => apiClient.get('/asset-types').then((r) => r.data),
+    staleTime: 60_000,
+  });
+
   const createMut = useMutation({
     mutationFn: (data: Record<string, unknown>) => apiClient.post('/assets', data),
     onSuccess: () => onClose(),
@@ -32,7 +39,7 @@ export default function AssetForm({ onClose }: Props) {
 
   const [form, setForm] = useState({
     name: '', category: 'ostatni', manufacturer: '', model: '', serialNumber: '',
-    location: '', propertyId: '', unitId: '', purchaseDate: '', purchaseValue: '',
+    location: '', propertyId: '', unitId: '', assetTypeId: '', purchaseDate: '', purchaseValue: '',
     warrantyUntil: '', serviceInterval: '', nextServiceDate: '', notes: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -57,6 +64,7 @@ export default function AssetForm({ onClose }: Props) {
       location: form.location || undefined,
       propertyId: form.propertyId || undefined,
       unitId: form.unitId || undefined,
+      assetTypeId: form.assetTypeId || undefined,
       purchaseDate: form.purchaseDate || undefined,
       purchaseValue: form.purchaseValue ? Number(form.purchaseValue) : undefined,
       warrantyUntil: form.warrantyUntil || undefined,
@@ -103,19 +111,43 @@ export default function AssetForm({ onClose }: Props) {
           </select>
         </div>
         <div>
-          <label className="form-label">Výrobce</label>
-          <input value={form.manufacturer} onChange={(e) => set('manufacturer', e.target.value)} style={inputStyle()} />
+          <label className="form-label">Typ zařízení</label>
+          <select value={form.assetTypeId} onChange={(e) => set('assetTypeId', e.target.value)} style={inputStyle()}>
+            <option value="">— Bez typu —</option>
+            {assetTypes.filter((t) => t.isActive).map((t) => (
+              <option key={t.id} value={t.id}>{t.name} ({t.code})</option>
+            ))}
+          </select>
+          {form.assetTypeId && (() => {
+            const sel = assetTypes.find((t) => t.id === form.assetTypeId)
+            return sel?._count?.activityAssignments ? (
+              <div style={{ fontSize: '0.78rem', color: 'var(--accent-blue)', marginTop: 3 }}>
+                Tento typ má definováno {sel._count.activityAssignments} činností
+              </div>
+            ) : null
+          })()}
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div>
+          <label className="form-label">Výrobce</label>
+          <input value={form.manufacturer} onChange={(e) => set('manufacturer', e.target.value)} style={inputStyle()} />
+        </div>
+        <div>
           <label className="form-label">Model</label>
           <input value={form.model} onChange={(e) => set('model', e.target.value)} style={inputStyle()} />
         </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div>
           <label className="form-label">Sériové číslo</label>
           <input value={form.serialNumber} onChange={(e) => set('serialNumber', e.target.value)} style={inputStyle()} />
+        </div>
+        <div>
+          <label className="form-label">Umístění</label>
+          <input value={form.location} onChange={(e) => set('location', e.target.value)} style={inputStyle()} placeholder="např. Suterén, 2.NP" />
         </div>
       </div>
 
@@ -127,13 +159,6 @@ export default function AssetForm({ onClose }: Props) {
             {properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </div>
-        <div>
-          <label className="form-label">Umístění</label>
-          <input value={form.location} onChange={(e) => set('location', e.target.value)} style={inputStyle()} placeholder="např. Suterén, 2.NP" />
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div>
           <label className="form-label">Datum pořízení</label>
           <input type="date" value={form.purchaseDate} onChange={(e) => set('purchaseDate', e.target.value)} style={inputStyle()} />

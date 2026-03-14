@@ -30,6 +30,7 @@ import { MetersModule } from './meters/meters.module';
 import { CalendarModule } from './calendar/calendar.module';
 import { SuperAdminModule } from './super-admin/super-admin.module';
 import { AssetsModule } from './assets/assets.module';
+import { AssetTypesModule } from './asset-types/asset-types.module';
 import { RevisionsModule } from './revisions/revisions.module';
 import { ProtocolsModule } from './protocols/protocols.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -88,6 +89,7 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
     CalendarModule,
     SuperAdminModule,
     AssetsModule,
+    AssetTypesModule,
     RevisionsModule,
     ProtocolsModule,
   ],

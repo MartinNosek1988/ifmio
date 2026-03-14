@@ -37,6 +37,8 @@ const ProtocolsPage = lazy(() => import('../modules/protocols/ProtocolsPage'));
 const RevisionsPage = lazy(() => import('../modules/revisions/RevisionsPage'));
 const RevisionDashboardPage = lazy(() => import('../modules/revisions/RevisionDashboardPage'));
 const RevisionSettingsPage = lazy(() => import('../modules/revisions/RevisionSettingsPage'));
+const AssetTypesPage = lazy(() => import('../modules/asset-types/AssetTypesPage'));
+const AssetPassportPage = lazy(() => import('../modules/assets/AssetPassportPage'));
 const SuperAdminPage = lazy(() => import('../modules/super-admin/SuperAdminPage'));
 
 function withBoundary(name: string, Component: React.ComponentType) {
@@ -65,6 +67,7 @@ export const router = createBrowserRouter([
       { path: 'helpdesk/dashboard', element: withBoundary('HelpDesk Dashboard', HelpdeskDashboardPage) },
       { path: 'helpdesk/sla-config', element: withBoundary('SLA konfigurace', SlaConfigPage) },
       { path: 'assets', element: withBoundary('Assets', AssetListPage) },
+      { path: 'assets/:id', element: withBoundary('Asset Passport', AssetPassportPage) },
       { path: 'meters', element: withBoundary('Měřidla', MetersPage) },
       { path: 'compliance', element: withBoundary('Compliance', CompliancePage) },
       { path: 'contracts', element: withBoundary('Smlouvy', ContractsPage) },
@@ -80,6 +83,7 @@ export const router = createBrowserRouter([
       { path: 'revisions', element: withBoundary('Revize', RevisionsPage) },
       { path: 'revisions/dashboard', element: withBoundary('Revize Dashboard', RevisionDashboardPage) },
       { path: 'revisions/settings', element: withBoundary('Revize Katalog', RevisionSettingsPage) },
+      { path: 'asset-types', element: withBoundary('Typy zařízení', AssetTypesPage) },
       { path: 'audit', element: withBoundary('Audit log', AuditPage) },
       { path: 'admin', element: withBoundary('Admin', AdminPage) },
       { path: 'settings', element: withBoundary('Nastaveni', SettingsPage) },
