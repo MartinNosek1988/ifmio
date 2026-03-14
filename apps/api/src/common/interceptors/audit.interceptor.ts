@@ -117,6 +117,7 @@ export class AuditInterceptor implements NestInterceptor {
       RevisionPlan: this.prisma.revisionPlan as unknown as PrismaModel,
       RevisionEvent: this.prisma.revisionEvent as unknown as PrismaModel,
       Protocol: this.prisma.protocol as unknown as PrismaModel,
+      workOrder: this.prisma.workOrder as unknown as PrismaModel,
     };
   }
 

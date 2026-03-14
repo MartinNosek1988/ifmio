@@ -136,6 +136,12 @@ export class HelpdeskService {
     if (dto.assetId) {
       await this.verifyAssetAccess(user, dto.assetId)
     }
+    if (dto.requesterUserId && dto.requesterUserId !== user.id) {
+      await this.verifyUserAccess(user, dto.requesterUserId)
+    }
+    if (dto.dispatcherUserId) {
+      await this.verifyUserAccess(user, dto.dispatcherUserId)
+    }
     const number = await this.nextTicketNumber(user.tenantId)
     const priority = dto.priority ?? 'medium'
     const now = new Date()
@@ -195,18 +201,24 @@ export class HelpdeskService {
       }
     }
 
-    // Responsibility fields
+    // Responsibility fields — verify tenant access
     if (dto.requesterUserId !== undefined && dto.requesterUserId !== existing.requesterUserId) {
+      let newName = '—'
+      if (dto.requesterUserId) { const u = await this.verifyUserAccess(user, dto.requesterUserId); newName = u.name }
       data.requesterUserId = dto.requesterUserId || null
-      changes.push({ field: 'Zadavatel požadavku', oldValue: existing.requester?.name ?? '—', newValue: '(změněn)' })
+      changes.push({ field: 'Zadavatel požadavku', oldValue: existing.requester?.name ?? '—', newValue: newName })
     }
     if (dto.dispatcherUserId !== undefined && dto.dispatcherUserId !== existing.dispatcherUserId) {
+      let newName = '—'
+      if (dto.dispatcherUserId) { const u = await this.verifyUserAccess(user, dto.dispatcherUserId); newName = u.name }
       data.dispatcherUserId = dto.dispatcherUserId || null
-      changes.push({ field: 'Dispečer požadavku', oldValue: existing.dispatcher?.name ?? '—', newValue: '(změněn)' })
+      changes.push({ field: 'Dispečer požadavku', oldValue: existing.dispatcher?.name ?? '—', newValue: newName })
     }
     if (dto.assigneeId !== undefined && dto.assigneeId !== existing.assigneeId) {
+      let newName = '—'
+      if (dto.assigneeId) { const u = await this.verifyUserAccess(user, dto.assigneeId); newName = u.name }
       data.assigneeId = dto.assigneeId || null
-      changes.push({ field: 'Řešitel požadavku', oldValue: existing.assignee?.name ?? '—', newValue: '(změněn)' })
+      changes.push({ field: 'Řešitel požadavku', oldValue: existing.assignee?.name ?? '—', newValue: newName })
     }
 
     // Status
@@ -453,6 +465,10 @@ export class HelpdeskService {
 
   async removeItem(user: AuthUser, ticketId: string, itemId: string) {
     await this.findOne(user, ticketId)
+    const item = await this.prisma.helpdeskItem.findFirst({
+      where: { id: itemId, ticketId },
+    })
+    if (!item) throw new NotFoundException('Položka nenalezena')
     await this.prisma.helpdeskItem.delete({ where: { id: itemId } })
   }
 
@@ -671,6 +687,15 @@ export class HelpdeskService {
 
   // ─── Helpers ──────────────────────────────────────────────────
 
+  private async verifyUserAccess(user: AuthUser, userId: string): Promise<{ id: string; name: string }> {
+    const target = await this.prisma.user.findFirst({
+      where: { id: userId, tenantId: user.tenantId, isActive: true },
+      select: { id: true, name: true },
+    })
+    if (!target) throw new BadRequestException('Uživatel nenalezen nebo není aktivní')
+    return target
+  }
+
   private async verifyAssetAccess(user: AuthUser, assetId: string) {
     const asset = await this.prisma.asset.findFirst({
       where: { id: assetId, tenantId: user.tenantId, deletedAt: null },
@@ -690,8 +715,8 @@ export class HelpdeskService {
     if (recipients.length === 0) return
 
     const num = this.fmtTicketNum(ticket.number)
-    const frontendUrl = process.env.FRONTEND_URL || `https://${process.env.DOMAIN || 'ifmio.com'}`
-    const ticketUrl = `${frontendUrl}/helpdesk`
+    const frontendUrl = process.env.FRONTEND_URL || (process.env.DOMAIN ? `https://${process.env.DOMAIN}` : '')
+    const ticketUrl = frontendUrl ? `${frontendUrl}/helpdesk` : ''
 
     let subject: string
     if (event === 'create') {
@@ -789,12 +814,12 @@ export class HelpdeskService {
 
     ${changesHtml}
 
-    <a href="${encodeURI(ticketUrl)}"
+    ${ticketUrl ? `<a href="${encodeURI(ticketUrl)}"
        style="display:inline-block;background:#6366f1;color:#fff;
               padding:12px 24px;border-radius:6px;text-decoration:none;
               font-weight:600;margin:16px 0;">
       Otevřít požadavek
-    </a>
+    </a>` : ''}
 
     <p style="color:#6b7280;font-size:12px;margin-top:32px;border-top:1px solid #f3f4f6;padding-top:16px;">
       Tento email byl odeslán systémem ifmio. Neodpovídejte na něj.
