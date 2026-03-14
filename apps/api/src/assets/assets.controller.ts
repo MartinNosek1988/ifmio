@@ -114,6 +114,7 @@ export class AssetsController {
   ) {
     return this.instantiation.executeSyncPlans(id, user.tenantId, {
       skipCustomized: body.skipCustomized !== false,
+      actorId: user.id,
     });
   }
 

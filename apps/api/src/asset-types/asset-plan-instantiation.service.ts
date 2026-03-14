@@ -96,7 +96,7 @@ export class AssetPlanInstantiationService {
   async executeSyncPlans(
     assetId: string,
     tenantId: string,
-    opts: { skipCustomized: boolean },
+    opts: { skipCustomized: boolean; actorId?: string },
   ): Promise<SyncResult> {
     const asset = await this.resolveAsset(assetId, tenantId)
 
@@ -162,7 +162,23 @@ export class AssetPlanInstantiationService {
       created++
     }
 
-    return { created, skipped, skippedCustomized }
+    const result: SyncResult = { created, skipped, skippedCustomized }
+
+    // Write audit log entry for the sync operation (best-effort)
+    if (created > 0 || skippedCustomized > 0) {
+      await this.prisma.auditLog.create({
+        data: {
+          tenantId,
+          userId: opts.actorId ?? null,
+          action: 'SYNC_PLANS',
+          entity: 'Asset',
+          entityId: assetId,
+          newData: result as any,
+        },
+      }).catch(() => { /* non-fatal */ })
+    }
+
+    return result
   }
 
   // ─── Helpers ───────────────────────────────────────────────────

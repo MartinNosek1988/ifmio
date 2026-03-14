@@ -4,6 +4,7 @@ import { PropertyScopeService } from '../common/services/property-scope.service'
 import type { AuthUser } from '@ifmio/shared-types'
 
 const DAY_MS = 86_400_000
+// TODO P7.3: make per-plan using Math.max(plan.reminderDaysBefore, 14)
 const DUE_SOON_DAYS = 30
 
 export type AssetComplianceStatus =
