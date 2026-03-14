@@ -295,6 +295,436 @@ export class ReportsService {
     };
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // OPERATIONAL REPORT (Helpdesk + Work Orders)
+  // ═══════════════════════════════════════════════════════════════
+
+  async getOperationalReport(user: AuthUser, query: {
+    propertyId?: string; dateFrom?: string; dateTo?: string;
+    priority?: string; status?: string; assetId?: string; onlyOverdue?: string;
+  }) {
+    const tenantId = user.tenantId
+    const scopeWhere = await this.scope.scopeByPropertyId(user)
+    const now = new Date()
+    const from = query.dateFrom ? new Date(query.dateFrom) : new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const to = query.dateTo ? new Date(query.dateTo + 'T23:59:59.999Z') : now
+
+    const ticketWhere: any = {
+      tenantId, ...scopeWhere, createdAt: { gte: from, lte: to },
+      ...(query.propertyId ? { propertyId: query.propertyId } : {}),
+      ...(query.priority ? { priority: query.priority } : {}),
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.assetId ? { assetId: query.assetId } : {}),
+      ...(query.onlyOverdue === 'true' ? { resolutionDueAt: { lt: now }, status: { in: ['open', 'in_progress'] } } : {}),
+    }
+    const woWhere: any = {
+      tenantId, ...scopeWhere, createdAt: { gte: from, lte: to },
+      ...(query.propertyId ? { propertyId: query.propertyId } : {}),
+      ...(query.priority ? { priority: query.priority } : {}),
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.assetId ? { assetId: query.assetId } : {}),
+      ...(query.onlyOverdue === 'true' ? { deadline: { lt: now }, status: { in: ['nova', 'v_reseni'] } } : {}),
+    }
+
+    const [
+      tickets, woItems,
+      ticketsByStatus, ticketsByPriority,
+      woByStatus, woByPriority,
+    ] = await Promise.all([
+      this.prisma.helpdeskTicket.findMany({
+        where: ticketWhere,
+        include: {
+          property: { select: { id: true, name: true } },
+          asset: { select: { id: true, name: true } },
+          assignee: { select: { id: true, name: true } },
+          requester: { select: { id: true, name: true } },
+          dispatcher: { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 500,
+      }),
+      this.prisma.workOrder.findMany({
+        where: woWhere,
+        include: {
+          property: { select: { id: true, name: true } },
+          asset: { select: { id: true, name: true } },
+          assigneeUser: { select: { id: true, name: true } },
+          requesterUser: { select: { id: true, name: true } },
+          dispatcherUser: { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 500,
+      }),
+      this.prisma.helpdeskTicket.groupBy({ by: ['status'], where: ticketWhere, _count: true }),
+      this.prisma.helpdeskTicket.groupBy({ by: ['priority'], where: ticketWhere, _count: true }),
+      this.prisma.workOrder.groupBy({ by: ['status'], where: woWhere, _count: true }),
+      this.prisma.workOrder.groupBy({ by: ['priority'], where: woWhere, _count: true }),
+    ])
+
+    const totalTickets = tickets.length
+    const openTickets = tickets.filter(t => t.status === 'open' || t.status === 'in_progress').length
+    const overdueTickets = tickets.filter(t =>
+      (t.status === 'open' || t.status === 'in_progress') && t.resolutionDueAt && t.resolutionDueAt < now,
+    ).length
+
+    const totalWo = woItems.length
+    const openWo = woItems.filter(w => w.status === 'nova' || w.status === 'v_reseni').length
+    const completedWo = woItems.filter(w => w.status === 'vyresena' || w.status === 'uzavrena').length
+
+    // Average resolution time (tickets with resolvedAt)
+    const resolvedTickets = tickets.filter(t => t.resolvedAt)
+    const avgResolveHours = resolvedTickets.length > 0
+      ? Math.round(resolvedTickets.reduce((s, t) => s + (t.resolvedAt!.getTime() - t.createdAt.getTime()), 0) / resolvedTickets.length / 3_600_000)
+      : null
+
+    const completedWoItems = woItems.filter(w => w.completedAt)
+    const avgCompleteHours = completedWoItems.length > 0
+      ? Math.round(completedWoItems.reduce((s, w) => s + (w.completedAt!.getTime() - w.createdAt.getTime()), 0) / completedWoItems.length / 3_600_000)
+      : null
+
+    // Top assets by issue count
+    const assetCounts = new Map<string, { id: string; name: string; count: number }>()
+    for (const t of tickets) {
+      if (t.asset) {
+        const e = assetCounts.get(t.asset.id) ?? { id: t.asset.id, name: t.asset.name, count: 0 }
+        e.count++
+        assetCounts.set(t.asset.id, e)
+      }
+    }
+    for (const w of woItems) {
+      if (w.asset) {
+        const e = assetCounts.get(w.asset.id) ?? { id: w.asset.id, name: w.asset.name, count: 0 }
+        e.count++
+        assetCounts.set(w.asset.id, e)
+      }
+    }
+    const topAssets = Array.from(assetCounts.values()).sort((a, b) => b.count - a.count).slice(0, 10)
+
+    // Top resolvers
+    const resolverCounts = new Map<string, { id: string; name: string; count: number }>()
+    for (const t of tickets) {
+      if (t.assignee) {
+        const e = resolverCounts.get(t.assignee.id) ?? { id: t.assignee.id, name: t.assignee.name, count: 0 }
+        e.count++
+        resolverCounts.set(t.assignee.id, e)
+      }
+    }
+    for (const w of woItems) {
+      if (w.assigneeUser) {
+        const e = resolverCounts.get(w.assigneeUser.id) ?? { id: w.assigneeUser.id, name: w.assigneeUser.name, count: 0 }
+        e.count++
+        resolverCounts.set(w.assigneeUser.id, e)
+      }
+    }
+    const topResolvers = Array.from(resolverCounts.values()).sort((a, b) => b.count - a.count).slice(0, 10)
+
+    return {
+      period: { from: from.toISOString(), to: to.toISOString() },
+      kpi: {
+        totalTickets, openTickets, overdueTickets,
+        totalWo, openWo, completedWo,
+        avgResolveHours, avgCompleteHours,
+      },
+      ticketsByStatus: ticketsByStatus.map(g => ({ status: g.status, count: g._count })),
+      ticketsByPriority: ticketsByPriority.map(g => ({ priority: g.priority, count: g._count })),
+      woByStatus: woByStatus.map(g => ({ status: g.status, count: g._count })),
+      woByPriority: woByPriority.map(g => ({ priority: g.priority, count: g._count })),
+      topAssets,
+      topResolvers,
+      tickets: tickets.map(t => ({
+        type: 'request' as const,
+        id: t.id,
+        number: t.number,
+        title: t.title,
+        property: t.property?.name ?? null,
+        asset: t.asset?.name ?? null,
+        requester: t.requester?.name ?? null,
+        dispatcher: t.dispatcher?.name ?? null,
+        resolver: t.assignee?.name ?? null,
+        priority: t.priority,
+        status: t.status,
+        createdAt: t.createdAt.toISOString(),
+        dueAt: t.resolutionDueAt?.toISOString() ?? null,
+        completedAt: t.resolvedAt?.toISOString() ?? null,
+      })),
+      workOrders: woItems.map(w => ({
+        type: 'work_order' as const,
+        id: w.id,
+        title: w.title,
+        property: w.property?.name ?? null,
+        asset: w.asset?.name ?? null,
+        requester: w.requesterUser?.name ?? w.requester ?? null,
+        dispatcher: w.dispatcherUser?.name ?? null,
+        resolver: w.assigneeUser?.name ?? w.assignee ?? null,
+        priority: w.priority,
+        status: w.status,
+        createdAt: w.createdAt.toISOString(),
+        dueAt: w.deadline?.toISOString() ?? null,
+        completedAt: w.completedAt?.toISOString() ?? null,
+      })),
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // ASSET TECHNICAL REPORT
+  // ═══════════════════════════════════════════════════════════════
+
+  async getAssetReport(user: AuthUser, query: {
+    propertyId?: string; assetId?: string; dateFrom?: string; dateTo?: string;
+  }) {
+    const tenantId = user.tenantId
+    const scopeWhere = await this.scope.scopeByPropertyId(user)
+    const now = new Date()
+    const from = query.dateFrom ? new Date(query.dateFrom) : new Date(now.getFullYear(), 0, 1)
+    const to = query.dateTo ? new Date(query.dateTo + 'T23:59:59.999Z') : now
+
+    const assetWhere: any = {
+      tenantId, deletedAt: null, ...scopeWhere,
+      ...(query.propertyId ? { propertyId: query.propertyId } : {}),
+      ...(query.assetId ? { id: query.assetId } : {}),
+    }
+
+    const assets = await this.prisma.asset.findMany({
+      where: assetWhere,
+      include: {
+        property: { select: { id: true, name: true } },
+        assetType: { select: { id: true, name: true } },
+        helpdeskTickets: {
+          where: { createdAt: { gte: from, lte: to } },
+          select: { id: true, status: true, createdAt: true },
+        },
+        workOrders: {
+          where: { createdAt: { gte: from, lte: to } },
+          select: { id: true, status: true, createdAt: true, deadline: true, completedAt: true },
+        },
+      },
+      orderBy: { name: 'asc' },
+      take: 200,
+    })
+
+    // Count protocols per asset via source relations
+    const assetIds = assets.map(a => a.id)
+    const woIds = assets.flatMap(a => a.workOrders.map(w => w.id))
+    const ticketIds = assets.flatMap(a => a.helpdeskTickets.map(t => t.id))
+
+    const protocols = woIds.length > 0 || ticketIds.length > 0
+      ? await this.prisma.protocol.findMany({
+          where: {
+            tenantId,
+            createdAt: { gte: from, lte: to },
+            OR: [
+              ...(woIds.length > 0 ? [{ sourceType: 'work_order' as const, sourceId: { in: woIds } }] : []),
+              ...(ticketIds.length > 0 ? [{ sourceType: 'helpdesk' as const, sourceId: { in: ticketIds } }] : []),
+            ],
+          },
+          select: { id: true, sourceType: true, sourceId: true, createdAt: true },
+        })
+      : []
+
+    const rows = assets.map(a => {
+      const requests = a.helpdeskTickets.length
+      const wos = a.workOrders.length
+      const openWo = a.workOrders.filter(w => w.status === 'nova' || w.status === 'v_reseni').length
+      const overdueWo = a.workOrders.filter(w =>
+        (w.status === 'nova' || w.status === 'v_reseni') && w.deadline && w.deadline < now,
+      ).length
+      const relatedProts = protocols.filter(p =>
+        (p.sourceType === 'work_order' && a.workOrders.some(w => w.id === p.sourceId)) ||
+        (p.sourceType === 'helpdesk' && a.helpdeskTickets.some(t => t.id === p.sourceId)),
+      ).length
+      const allDates = [
+        ...a.helpdeskTickets.map(t => t.createdAt),
+        ...a.workOrders.map(w => w.createdAt),
+      ]
+      const lastActivity = allDates.length > 0 ? new Date(Math.max(...allDates.map(d => d.getTime()))).toISOString() : null
+
+      return {
+        id: a.id,
+        name: a.name,
+        category: a.category,
+        property: a.property?.name ?? null,
+        assetType: a.assetType?.name ?? null,
+        requestCount: requests,
+        workOrderCount: wos,
+        protocolCount: relatedProts,
+        openWorkOrders: openWo,
+        overdueWorkOrders: overdueWo,
+        totalInterventions: requests + wos,
+        lastActivity,
+      }
+    })
+
+    // Sort by total interventions descending for "most problematic"
+    rows.sort((a, b) => b.totalInterventions - a.totalInterventions)
+
+    const kpi = {
+      totalAssets: rows.length,
+      assetsWithIssues: rows.filter(r => r.totalInterventions > 0).length,
+      totalRequests: rows.reduce((s, r) => s + r.requestCount, 0),
+      totalWorkOrders: rows.reduce((s, r) => s + r.workOrderCount, 0),
+      totalOpenWo: rows.reduce((s, r) => s + r.openWorkOrders, 0),
+      totalOverdueWo: rows.reduce((s, r) => s + r.overdueWorkOrders, 0),
+    }
+
+    return { period: { from: from.toISOString(), to: to.toISOString() }, kpi, rows }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // PROTOCOL REGISTER REPORT
+  // ═══════════════════════════════════════════════════════════════
+
+  async getProtocolReport(user: AuthUser, query: {
+    propertyId?: string; dateFrom?: string; dateTo?: string;
+    protocolType?: string; status?: string;
+  }) {
+    const tenantId = user.tenantId
+    const now = new Date()
+    const from = query.dateFrom ? new Date(query.dateFrom) : new Date(now.getFullYear(), 0, 1)
+    const to = query.dateTo ? new Date(query.dateTo + 'T23:59:59.999Z') : now
+
+    const where: any = {
+      tenantId,
+      createdAt: { gte: from, lte: to },
+      ...(query.propertyId ? { propertyId: query.propertyId } : {}),
+      ...(query.protocolType ? { protocolType: query.protocolType } : {}),
+      ...(query.status ? { status: query.status } : {}),
+    }
+
+    const [items, byType, byStatus] = await Promise.all([
+      this.prisma.protocol.findMany({
+        where,
+        include: {
+          property: { select: { id: true, name: true } },
+          _count: { select: { lines: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 500,
+      }),
+      this.prisma.protocol.groupBy({ by: ['protocolType'], where, _count: true }),
+      this.prisma.protocol.groupBy({ by: ['status'], where, _count: true }),
+    ])
+
+    const total = items.length
+    const completed = items.filter(p => p.status === 'completed' || p.status === 'confirmed').length
+    const confirmed = items.filter(p => p.status === 'confirmed').length
+    const withPdf = items.filter(p => p.generatedPdfDocumentId).length
+    const withoutPdf = total - withPdf
+    const withSigned = items.filter(p => p.signedDocumentId).length
+
+    return {
+      period: { from: from.toISOString(), to: to.toISOString() },
+      kpi: { total, completed, confirmed, withPdf, withoutPdf, withSigned },
+      byType: byType.map(g => ({ type: g.protocolType, count: g._count })),
+      byStatus: byStatus.map(g => ({ status: g.status, count: g._count })),
+      rows: items.map(p => ({
+        id: p.id,
+        number: p.number,
+        title: p.title,
+        protocolType: p.protocolType,
+        status: p.status,
+        sourceType: p.sourceType,
+        sourceId: p.sourceId,
+        property: p.property?.name ?? null,
+        resolverName: p.resolverName,
+        createdAt: p.createdAt.toISOString(),
+        completedAt: p.completedAt?.toISOString() ?? null,
+        handoverAt: p.handoverAt?.toISOString() ?? null,
+        satisfaction: p.satisfaction,
+        hasGeneratedPdf: !!p.generatedPdfDocumentId,
+        hasSignedDocument: !!p.signedDocumentId,
+        lineCount: p._count.lines,
+      })),
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // EXPORTS (XLSX)
+  // ═══════════════════════════════════════════════════════════════
+
+  async exportOperationalXlsx(user: AuthUser, query: Parameters<ReportsService['getOperationalReport']>[1]): Promise<Buffer> {
+    const report = await this.getOperationalReport(user, query)
+    const wb = new ExcelJS.Workbook()
+    wb.creator = 'ifmio'
+
+    const ws1 = wb.addWorksheet('Požadavky')
+    ws1.columns = [
+      { header: 'Číslo', key: 'number', width: 10 },
+      { header: 'Název', key: 'title', width: 30 },
+      { header: 'Nemovitost', key: 'property', width: 20 },
+      { header: 'Zařízení', key: 'asset', width: 20 },
+      { header: 'Zadavatel', key: 'requester', width: 18 },
+      { header: 'Dispečer', key: 'dispatcher', width: 18 },
+      { header: 'Řešitel', key: 'resolver', width: 18 },
+      { header: 'Priorita', key: 'priority', width: 12 },
+      { header: 'Stav', key: 'status', width: 12 },
+      { header: 'Vytvořeno', key: 'createdAt', width: 18 },
+      { header: 'Termín', key: 'dueAt', width: 18 },
+      { header: 'Dokončeno', key: 'completedAt', width: 18 },
+    ]
+    ws1.getRow(1).font = { bold: true }
+    for (const t of report.tickets) ws1.addRow(t)
+
+    const ws2 = wb.addWorksheet('Pracovní úkoly')
+    ws2.columns = ws1.columns.map(c => ({ ...c }))
+    ws2.getRow(1).font = { bold: true }
+    for (const w of report.workOrders) ws2.addRow(w)
+
+    return Buffer.from(await wb.xlsx.writeBuffer())
+  }
+
+  async exportAssetXlsx(user: AuthUser, query: Parameters<ReportsService['getAssetReport']>[1]): Promise<Buffer> {
+    const report = await this.getAssetReport(user, query)
+    const wb = new ExcelJS.Workbook()
+    wb.creator = 'ifmio'
+
+    const ws = wb.addWorksheet('Zařízení')
+    ws.columns = [
+      { header: 'Zařízení', key: 'name', width: 25 },
+      { header: 'Kategorie', key: 'category', width: 15 },
+      { header: 'Nemovitost', key: 'property', width: 20 },
+      { header: 'Typ', key: 'assetType', width: 20 },
+      { header: 'Požadavky', key: 'requestCount', width: 12 },
+      { header: 'Úkoly', key: 'workOrderCount', width: 12 },
+      { header: 'Protokoly', key: 'protocolCount', width: 12 },
+      { header: 'Otevřené úkoly', key: 'openWorkOrders', width: 14 },
+      { header: 'Po termínu', key: 'overdueWorkOrders', width: 12 },
+      { header: 'Celkem zásahů', key: 'totalInterventions', width: 14 },
+      { header: 'Poslední aktivita', key: 'lastActivity', width: 18 },
+    ]
+    ws.getRow(1).font = { bold: true }
+    for (const r of report.rows) ws.addRow(r)
+
+    return Buffer.from(await wb.xlsx.writeBuffer())
+  }
+
+  async exportProtocolXlsx(user: AuthUser, query: Parameters<ReportsService['getProtocolReport']>[1]): Promise<Buffer> {
+    const report = await this.getProtocolReport(user, query)
+    const wb = new ExcelJS.Workbook()
+    wb.creator = 'ifmio'
+
+    const ws = wb.addWorksheet('Protokoly')
+    ws.columns = [
+      { header: 'Číslo', key: 'number', width: 18 },
+      { header: 'Název', key: 'title', width: 25 },
+      { header: 'Typ', key: 'protocolType', width: 18 },
+      { header: 'Stav', key: 'status', width: 12 },
+      { header: 'Nemovitost', key: 'property', width: 20 },
+      { header: 'Řešitel', key: 'resolverName', width: 18 },
+      { header: 'Vytvořeno', key: 'createdAt', width: 18 },
+      { header: 'Dokončeno', key: 'completedAt', width: 18 },
+      { header: 'Předáno', key: 'handoverAt', width: 18 },
+      { header: 'Spokojenost', key: 'satisfaction', width: 14 },
+      { header: 'PDF', key: 'hasGeneratedPdf', width: 8 },
+      { header: 'Podpis', key: 'hasSignedDocument', width: 8 },
+    ]
+    ws.getRow(1).font = { bold: true }
+    for (const r of report.rows) {
+      ws.addRow({ ...r, hasGeneratedPdf: r.hasGeneratedPdf ? 'Ano' : 'Ne', hasSignedDocument: r.hasSignedDocument ? 'Ano' : 'Ne' })
+    }
+
+    return Buffer.from(await wb.xlsx.writeBuffer())
+  }
+
   async getPropertyReport(user: AuthUser) {
     const tenantId = user.tenantId;
     const ids = await this.scope.getAccessiblePropertyIds(user);

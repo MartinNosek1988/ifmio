@@ -26,6 +26,7 @@ const DirectoryPage = lazy(() => import('../modules/directory/DirectoryPage'));
 const CalendarPage = lazy(() => import('../modules/calendar/CalendarPage'));
 const CommunicationPage = lazy(() => import('../modules/communication/CommunicationPage'));
 const ReportingPage = lazy(() => import('../modules/reporting/ReportingPage'));
+const OperationalReportsPage = lazy(() => import('../modules/reporting/OperationalReportsPage'));
 const ReportsPage = lazy(() => import('../modules/reports/ReportsPage'));
 const AuditPage = lazy(() => import('../modules/audit/AuditPage'));
 const TeamPage = lazy(() => import('../modules/team/TeamPage'));
@@ -79,6 +80,7 @@ export const router = createBrowserRouter([
       { path: 'calendar', element: withBoundary('Kalendář', CalendarPage) },
       { path: 'communication', element: withBoundary('Komunikace', CommunicationPage) },
       { path: 'reporting', element: withBoundary('Reporting', ReportingPage) },
+      { path: 'reporting/operations', element: withBoundary('Provozní reporty', OperationalReportsPage) },
       { path: 'reports', element: withBoundary('Výkazy', ReportsPage) },
       { path: 'team', element: withBoundary('Tým', TeamPage) },
       { path: 'protocols', element: withBoundary('Protokoly', ProtocolsPage) },
