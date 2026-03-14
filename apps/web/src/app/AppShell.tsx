@@ -7,7 +7,7 @@ import {
   Wallet, AlertTriangle, TrendingUp,
   MessageSquare, Mail, Settings, BarChart3,
   ClipboardList, ClipboardCheck, ScrollText, UsersRound, FileCheck2,
-  User as UserIcon, LogOut, Shield,
+  User as UserIcon, LogOut, Shield, Menu, X,
 } from 'lucide-react';
 import { LoadingSpinner } from '../shared/components';
 import { GlobalSearch } from '../modules/search/GlobalSearch';
@@ -45,6 +45,7 @@ const NAV_SECTIONS: NavSection[] = [
     title: 'Provoz',
     items: [
       { to: '/helpdesk', label: 'Helpdesk', icon: <Headphones size={17} /> },
+      { to: '/my-agenda', label: 'Moje agenda', icon: <ClipboardCheck size={17} />, roles: ['tech'] },
       { to: '/workorders', label: 'Pracovní úkoly', icon: <Wrench size={17} />, roles: ['fm', 'tech', 'owner'] },
       { to: '/assets', label: 'Pasportizace', icon: <Box size={17} />, roles: ['fm', 'tech', 'owner'] },
       { to: '/revisions', label: 'Plán činností', icon: <ClipboardCheck size={17} />, roles: ['fm', 'tech', 'owner'] },
@@ -137,6 +138,10 @@ export default function AppShell() {
   const pageTitle = getPageTitle(location.pathname);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Close mobile sidebar on navigation
+  useEffect(() => { setSidebarOpen(false); }, [location.pathname]);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Close user menu on outside click
@@ -225,7 +230,10 @@ export default function AppShell() {
 
   return (
     <div>
-      <nav className="sidebar">
+      {/* Mobile sidebar overlay */}
+      <div className={`sidebar-overlay${sidebarOpen ? ' open' : ''}`} onClick={() => setSidebarOpen(false)} />
+
+      <nav className={`sidebar${sidebarOpen ? ' open' : ''}`}>
         <div className="sidebar__logo">ifmio</div>
         {visibleSections.map((sec) => (
           <div key={sec.title} className="sidebar__section">
@@ -272,6 +280,9 @@ export default function AppShell() {
 
       {/* Topbar */}
       <div className="topbar">
+        <button className="mobile-menu-btn" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Menu">
+          {sidebarOpen ? <X size={22} /> : <Menu size={22} />}
+        </button>
         <div className="topbar__title">{pageTitle}</div>
         <GlobalSearch />
         <div className="topbar__actions">
