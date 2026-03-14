@@ -55,6 +55,7 @@ model Tenant {
   protocols           Protocol[]
   assetTypes          AssetType[]
   assetTypeRevisionTypes AssetTypeRevisionType[]
+  assetQrCodes        AssetQrCode[]
 
   @@map("tenants")
 }
@@ -1568,11 +1569,46 @@ model Asset {
   serviceRecords   AssetServiceRecord[]
   revisionPlans    RevisionPlan[]       @relation("AssetRevisionPlans")
   revisionSubjects RevisionSubject[]    @relation("AssetRevisionSubjects")
+  qrCodes          AssetQrCode[]
 
   @@index([tenantId])
   @@index([propertyId])
   @@index([assetTypeId])
   @@map("assets")
+}
+
+// ─── ASSET QR CODES ───────────────────────────────────────────────
+
+model AssetQrCode {
+  id                 String        @id @default(uuid())
+  tenantId           String
+  assetId            String
+  token              String        @unique
+  humanCode          String
+  status             AssetQrStatus @default(active)
+  labelVersion       Int           @default(1)
+  generatedAt        DateTime      @default(now())
+  printedAt          DateTime?
+  replacedAt         DateTime?
+  replacedByQrCodeId String?
+  notes              String?       @db.Text
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  asset        Asset        @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  replacedBy   AssetQrCode? @relation("QrReplacement", fields: [replacedByQrCodeId], references: [id])
+  replacements AssetQrCode[] @relation("QrReplacement")
+
+  @@index([tenantId])
+  @@index([assetId])
+  @@index([token])
+  @@index([assetId, status])
+  @@map("asset_qr_codes")
+}
+
+enum AssetQrStatus {
+  active
+  replaced
+  disabled
 }
 
 enum AssetCategory {

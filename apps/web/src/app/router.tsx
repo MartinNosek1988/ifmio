@@ -40,6 +40,7 @@ const RevisionSettingsPage = lazy(() => import('../modules/revisions/RevisionSet
 const AssetTypesPage = lazy(() => import('../modules/asset-types/AssetTypesPage'));
 const AssetPassportPage = lazy(() => import('../modules/assets/AssetPassportPage'));
 const SuperAdminPage = lazy(() => import('../modules/super-admin/SuperAdminPage'));
+const QrResolvePage = lazy(() => import('../modules/asset-qr/QrResolvePage'));
 
 function withBoundary(name: string, Component: React.ComponentType) {
   return (
@@ -54,6 +55,7 @@ export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <RegisterPage /> },
   { path: '/verify-email', element: withBoundary('VerifyEmail', VerifyEmailPage) },
+  { path: '/q/:token', element: withBoundary('QR Scan', QrResolvePage) },
   {
     path: '/',
     element: <AppShell />,

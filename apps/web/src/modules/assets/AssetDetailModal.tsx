@@ -468,24 +468,222 @@ function ServicesTab({ assetId }: { assetId: string }) {
 /* ─── QR Tab ─────────────────────────────────────────────────────── */
 
 function QrTab({ assetId, name }: { assetId: string; name: string }) {
-  // Generate a simple QR code using a public API for display
-  const qrData = `ASSET:${assetId}`;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`;
+  const [showHistory, setShowHistory] = useState(false);
+  const [confirmReissue, setConfirmReissue] = useState(false);
+
+  const { data: qrData, isLoading } = useQuery({
+    queryKey: ['assets', assetId, 'qr'],
+    queryFn: () => apiClient.get(`/assets/${assetId}/qr`).then((r) => r.data),
+    staleTime: 60_000,
+  });
+
+  const { data: history = [], refetch: refetchHistory } = useQuery({
+    queryKey: ['assets', assetId, 'qr', 'history'],
+    queryFn: () => apiClient.get(`/assets/${assetId}/qr/history`).then((r) => r.data),
+    enabled: showHistory,
+    staleTime: 60_000,
+  });
+
+  const qc = useQueryClient();
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['assets', assetId, 'qr'] });
+
+  const createMut = useMutation({
+    mutationFn: () => apiClient.post(`/assets/${assetId}/qr`),
+    onSuccess: invalidate,
+  });
+
+  const reissueMut = useMutation({
+    mutationFn: () => apiClient.post(`/assets/${assetId}/qr/reissue`),
+    onSuccess: () => { invalidate(); setConfirmReissue(false); refetchHistory(); },
+  });
+
+  const markPrintedMut = useMutation({
+    mutationFn: () => apiClient.post(`/assets/${assetId}/qr/mark-printed`),
+    onSuccess: invalidate,
+  });
+
+  const hasQr = qrData && 'token' in qrData;
+  const fmtDate = (v: string | null) => v ? new Date(v).toLocaleDateString('cs-CZ') : '—';
+
+  const STATUS_LABEL = { active: 'Aktivní', replaced: 'Nahrazený', disabled: 'Neaktivní' };
+  const STATUS_COLOR = { active: 'var(--accent-green)', replaced: 'var(--text-muted)', disabled: 'var(--danger)' };
+
+  const handleDownloadLabel = () => {
+    const link = document.createElement('a');
+    link.href = `/api/v1/assets/${assetId}/qr/label.pdf`;
+    link.download = `qr-stitek-${hasQr ? qrData.humanCode : assetId}.pdf`;
+    link.click();
+  };
+
+  const handlePrint = () => {
+    if (!hasQr) return;
+    const win = window.open('', '_blank', 'width=400,height=500');
+    if (!win) return;
+    win.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>QR štítek – ${name}</title>
+        <style>
+          body { margin: 0; font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #fff; }
+          .label { border: 2px solid #000; border-radius: 8px; padding: 20px; text-align: center; width: 220px; }
+          img { display: block; margin: 0 auto 10px; }
+          .code { font-size: 20px; font-weight: bold; letter-spacing: 2px; margin-bottom: 6px; }
+          .name { font-size: 11px; font-weight: bold; margin-bottom: 3px; }
+          .location { font-size: 10px; color: #555; margin-bottom: 6px; }
+          .brand { font-size: 8px; color: #888; }
+          @media print { body { margin: 0; } .label { border: 2px solid #000; } }
+        </style>
+      </head>
+      <body>
+        <div class="label">
+          <img src="${qrData.qrImageDataUrl}" width="180" height="180" alt="QR" />
+          <div class="code">${qrData.humanCode}</div>
+          <div class="name">${name}</div>
+          <div class="brand">ifmio.cz</div>
+        </div>
+        <script>window.onload = () => { window.print(); }<\/script>
+      </body>
+      </html>
+    `);
+    win.document.close();
+    if (!qrData.printedAt) markPrintedMut.mutate();
+  };
+
+  if (isLoading) {
+    return <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>Načítám…</div>;
+  }
 
   return (
-    <div style={{ textAlign: 'center', padding: 20 }}>
-      <img src={qrUrl} alt="QR" style={{ borderRadius: 8, marginBottom: 12 }} width={200} height={200} />
-      <div style={{ fontWeight: 600, marginBottom: 4 }}>{name}</div>
-      <div style={{ fontSize: '.78rem', color: 'var(--text-muted)', marginBottom: 16 }}>
-        ID: {assetId}
+    <div>
+      {/* Header */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: 4 }}>QR štítek zařízení</div>
+        <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+          Naskenováním QR kódu se otevře karta zařízení v aplikaci.
+        </div>
       </div>
-      <Button size="sm" onClick={() => {
-        const a = document.createElement('a');
-        a.href = qrUrl; a.download = `asset-${assetId.slice(0, 8)}.png`;
-        a.target = '_blank'; a.click();
-      }}>
-        Stáhnout QR kód
-      </Button>
+
+      {!hasQr ? (
+        /* ─── No QR yet ────────────────────────────────────────── */
+        <div style={{ textAlign: 'center', padding: '32px 16px', border: '1px dashed var(--border)', borderRadius: 10 }}>
+          <QrCode size={48} style={{ margin: '0 auto 16px', color: 'var(--text-muted)', display: 'block' }} />
+          <div style={{ fontWeight: 600, marginBottom: 6 }}>Zařízení nemá QR kód</div>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 20 }}>
+            Vygenerujte QR kód a vytiskněte ho jako štítek pro identifikaci zařízení v terénu.
+          </div>
+          <Button variant="primary" icon={<Plus size={14} />} onClick={() => createMut.mutate()} disabled={createMut.isPending}>
+            {createMut.isPending ? 'Generuji…' : 'Vygenerovat QR kód'}
+          </Button>
+        </div>
+      ) : (
+        /* ─── Active QR ────────────────────────────────────────── */
+        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 24, alignItems: 'start' }}>
+          {/* QR image */}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ background: '#fff', padding: 10, borderRadius: 8, border: '1px solid var(--border)', display: 'inline-block' }}>
+              <img src={qrData.qrImageDataUrl} alt="QR kód" width={160} height={160} />
+            </div>
+            <div style={{ marginTop: 8, fontWeight: 700, fontSize: '1.1rem', letterSpacing: '0.15em', fontFamily: 'monospace' }}>
+              {qrData.humanCode}
+            </div>
+          </div>
+
+          {/* Info + Actions */}
+          <div>
+            {/* Status */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px',
+                borderRadius: 12, fontSize: '0.78rem', fontWeight: 600,
+                background: STATUS_COLOR[qrData.status as keyof typeof STATUS_COLOR] + '20',
+                color: STATUS_COLOR[qrData.status as keyof typeof STATUS_COLOR],
+              }}>
+                <CheckCircle size={12} />
+                {STATUS_LABEL[qrData.status as keyof typeof STATUS_LABEL]}
+              </span>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                verze {qrData.labelVersion}
+              </span>
+            </div>
+
+            {/* Metadata */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16, fontSize: '0.82rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Datum vytvoření</span>
+                <span>{fmtDate(qrData.generatedAt)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Datum tisku</span>
+                <span>{qrData.printedAt ? fmtDate(qrData.printedAt) : <span style={{ color: 'var(--text-muted)' }}>Nevytisknuto</span>}</span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <Button size="sm" onClick={handlePrint}>
+                  Vytisknout štítek
+                </Button>
+                <Button size="sm" onClick={handleDownloadLabel}>
+                  Stáhnout PDF
+                </Button>
+                {!qrData.printedAt && (
+                  <Button size="sm" onClick={() => markPrintedMut.mutate()} disabled={markPrintedMut.isPending}>
+                    Označit jako vytisknuto
+                  </Button>
+                )}
+              </div>
+
+              {/* Reissue */}
+              {!confirmReissue ? (
+                <div style={{ marginTop: 6 }}>
+                  <Button size="sm" style={{ color: 'var(--accent-orange, #f59e0b)' }} onClick={() => setConfirmReissue(true)}>
+                    Vydat nový QR kód
+                  </Button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface-2, var(--surface))' }}>
+                  <span style={{ fontSize: '0.82rem', color: 'var(--accent-orange, #f59e0b)' }}>
+                    Starý QR kód bude deaktivován. Pokračovat?
+                  </span>
+                  <Button size="sm" variant="primary" onClick={() => reissueMut.mutate()} disabled={reissueMut.isPending}>
+                    {reissueMut.isPending ? 'Vydávám…' : 'Ano'}
+                  </Button>
+                  <Button size="sm" onClick={() => setConfirmReissue(false)}>Ne</Button>
+                </div>
+              )}
+
+              {/* History toggle */}
+              <div style={{ marginTop: 8 }}>
+                <button
+                  style={{ fontSize: '0.78rem', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                  onClick={() => setShowHistory((v) => !v)}
+                >
+                  {showHistory ? 'Skrýt historii' : 'Zobrazit historii QR kódů'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* History */}
+      {showHistory && history.length > 0 && (
+        <div style={{ marginTop: 20, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+          <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: 10 }}>Historie QR kódů</div>
+          {(history as any[]).map((h) => (
+            <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: '0.8rem' }}>
+              <div style={{ fontFamily: 'monospace', fontWeight: 600 }}>{h.humanCode}</div>
+              <div style={{ display: 'flex', gap: 10, color: 'var(--text-muted)' }}>
+                <span style={{ color: STATUS_COLOR[h.status as keyof typeof STATUS_COLOR] }}>{STATUS_LABEL[h.status as keyof typeof STATUS_LABEL]}</span>
+                <span>{fmtDate(h.generatedAt)}</span>
+                {h.replacedAt && <span>→ {fmtDate(h.replacedAt)}</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
