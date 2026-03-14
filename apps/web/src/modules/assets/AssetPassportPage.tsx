@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useState, lazy, Suspense } from 'react'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, CheckCircle, AlertTriangle, XCircle, MinusCircle,
@@ -12,6 +12,10 @@ import {
 import type { BadgeVariant, Column } from '../../shared/components'
 import { apiClient } from '../../core/api/client'
 import type { Asset } from './AssetListPage'
+import { useFieldChecks } from '../field-checks/api/field-checks.queries'
+import type { FieldCheckItem, FieldCheckConfidenceLevel } from '../field-checks/api/field-checks.api'
+
+const FieldCheckModal = lazy(() => import('../field-checks/FieldCheckModal'))
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -140,9 +144,23 @@ const TABS = [
   { id: 'overview', label: 'Přehled', icon: <Activity size={14} /> },
   { id: 'plans', label: 'Plán činností', icon: <ClipboardList size={14} /> },
   { id: 'history', label: 'Historie', icon: <History size={14} /> },
+  { id: 'checks', label: 'Kontroly', icon: <CheckCircle size={14} /> },
   { id: 'documents', label: 'Dokumenty', icon: <FileText size={14} /> },
   { id: 'audit', label: 'Změny', icon: <ScrollText size={14} /> },
 ]
+
+const CONFIDENCE_LABEL: Record<FieldCheckConfidenceLevel, string> = {
+  low: 'Nízká', medium: 'Střední', high: 'Vysoká',
+}
+const CONFIDENCE_COLOR: Record<FieldCheckConfidenceLevel, BadgeVariant> = {
+  low: 'yellow', medium: 'blue', high: 'green',
+}
+const CHECK_RESULT_LABEL: Record<string, string> = {
+  ok: 'V pořádku', issue_found: 'Závada', needs_follow_up: 'Sledovat', not_accessible: 'Nepřístupné',
+}
+const CHECK_RESULT_COLOR: Record<string, BadgeVariant> = {
+  ok: 'green', issue_found: 'red', needs_follow_up: 'yellow', not_accessible: 'muted',
+}
 
 // ─── Compliance Header Badge ─────────────────────────────────────────
 
@@ -643,12 +661,78 @@ function OverviewTab({ passport }: { passport: PassportResponse }) {
   )
 }
 
+// ─── Field Checks Tab ────────────────────────────────────────────────
+
+function FieldChecksTab({ assetId }: { assetId: string }) {
+  const { data, isLoading } = useFieldChecks(assetId)
+
+  if (isLoading) return <LoadingState />
+
+  const checks: FieldCheckItem[] = data?.data ?? []
+
+  if (checks.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
+        <CheckCircle size={32} style={{ opacity: 0.3, marginBottom: 12 }} />
+        <p style={{ margin: 0 }}>Žádné záznamy o kontrolách</p>
+        <p style={{ margin: '6px 0 0', fontSize: '0.85rem' }}>Kontroly se vytvoří při skenování QR kódu zařízení v terénu.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {checks.map((check) => (
+        <div key={check.id} style={{
+          border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px',
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12,
+        }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
+              {check.result && (
+                <Badge variant={CHECK_RESULT_COLOR[check.result] ?? 'muted'}>
+                  {CHECK_RESULT_LABEL[check.result] ?? check.result}
+                </Badge>
+              )}
+              <Badge variant={CONFIDENCE_COLOR[check.confidenceLevel]}>
+                Věrohodnost: {CONFIDENCE_LABEL[check.confidenceLevel]}
+              </Badge>
+            </div>
+            <div style={{ fontSize: '0.83rem', color: 'var(--text-muted)' }}>
+              {new Date(check.startedAt).toLocaleString('cs-CZ')}
+              {check.user && <> · {check.user.name}</>}
+              {check.notes && <div style={{ marginTop: 4 }}>{check.notes}</div>}
+            </div>
+            {check.signals.length > 0 && (
+              <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                {check.signals.map((s) => (
+                  <span key={s.id} style={{
+                    fontSize: '0.75rem', padding: '2px 7px',
+                    background: s.isValid !== false ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                    color: s.isValid !== false ? '#16a34a' : '#dc2626',
+                    borderRadius: 4,
+                  }}>
+                    {s.signalType}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ─── Main Page ──────────────────────────────────────────────────────
 
 export default function AssetPassportPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [tab, setTab] = useState('overview')
+  const [showFieldCheck, setShowFieldCheck] = useState(false)
+  const scanToken = searchParams.get('scanToken')
 
   const { data: passport, isLoading, error } = useQuery<PassportResponse>({
     queryKey: ['assets', id, 'passport'],
@@ -688,6 +772,23 @@ export default function AssetPassportPage() {
         </div>
         <ComplianceHeaderBadge status={compliance.status} />
       </div>
+
+      {/* QR scan context banner */}
+      {scanToken && (
+        <div style={{
+          padding: '10px 16px', marginBottom: 12,
+          background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 8,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.88rem', color: '#16a34a' }}>
+            <CheckCircle size={15} />
+            <span>QR kód naskenován — zařízení ověřeno</span>
+          </div>
+          <Button size="sm" onClick={() => setShowFieldCheck(true)}>
+            Spustit kontrolu
+          </Button>
+        </div>
+      )}
 
       {/* Overdue banner */}
       <OverdueBanner count={compliance.overduePlans} />
@@ -731,9 +832,23 @@ export default function AssetPassportPage() {
         {tab === 'overview' && <OverviewTab passport={passport} />}
         {tab === 'plans' && <PlansTab assetId={id!} hasAssetType={hasAssetType} />}
         {tab === 'history' && <HistoryTab assetId={id!} />}
+        {tab === 'checks' && <FieldChecksTab assetId={id!} />}
         {tab === 'documents' && <DocumentsTab assetId={id!} />}
         {tab === 'audit' && <AuditTab assetId={id!} />}
       </div>
+
+      {/* Field check modal */}
+      {showFieldCheck && (
+        <Suspense fallback={null}>
+          <FieldCheckModal
+            assetId={id!}
+            assetName={asset.name}
+            scanEventId={scanToken ? undefined : undefined}
+            onClose={() => setShowFieldCheck(false)}
+            onSuccess={() => setTab('checks')}
+          />
+        </Suspense>
+      )}
     </div>
   )
 }

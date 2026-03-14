@@ -56,6 +56,8 @@ model Tenant {
   assetTypes          AssetType[]
   assetTypeRevisionTypes AssetTypeRevisionType[]
   assetQrCodes        AssetQrCode[]
+  assetQrScanEvents   AssetQrScanEvent[]
+  fieldCheckExecutions AssetFieldCheckExecution[]
 
   @@map("tenants")
 }
@@ -100,6 +102,8 @@ model User {
   approvedInvoices        Invoice[]                @relation("InvoiceApprover")
   rejectedInvoices        Invoice[]                @relation("InvoiceRejecter")
   responsiblePlans        RevisionPlan[]
+  qrScanEvents            AssetQrScanEvent[]
+  fieldCheckExecutions    AssetFieldCheckExecution[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -1006,8 +1010,9 @@ model RevisionPlan {
   revisionType        RevisionType            @relation(fields: [revisionTypeId], references: [id], onDelete: Cascade)
   responsibleUser     User?                   @relation(fields: [responsibleUserId], references: [id], onDelete: SetNull)
   asset               Asset?                  @relation("AssetRevisionPlans", fields: [assetId], references: [id], onDelete: SetNull)
-  assetTypeAssignment AssetTypeRevisionType?  @relation(fields: [assetTypeAssignmentId], references: [id], onDelete: SetNull)
-  events              RevisionEvent[]
+  assetTypeAssignment  AssetTypeRevisionType?   @relation(fields: [assetTypeAssignmentId], references: [id], onDelete: SetNull)
+  events               RevisionEvent[]
+  fieldCheckExecutions AssetFieldCheckExecution[]
 
   @@index([tenantId])
   @@index([tenantId, propertyId, nextDueAt])
@@ -1566,10 +1571,12 @@ model Asset {
   property         Property?            @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   unit             Unit?                @relation(fields: [unitId], references: [id], onDelete: SetNull)
   assetType        AssetType?           @relation(fields: [assetTypeId], references: [id], onDelete: SetNull)
-  serviceRecords   AssetServiceRecord[]
-  revisionPlans    RevisionPlan[]       @relation("AssetRevisionPlans")
-  revisionSubjects RevisionSubject[]    @relation("AssetRevisionSubjects")
-  qrCodes          AssetQrCode[]
+  serviceRecords       AssetServiceRecord[]
+  revisionPlans        RevisionPlan[]       @relation("AssetRevisionPlans")
+  revisionSubjects     RevisionSubject[]    @relation("AssetRevisionSubjects")
+  qrCodes              AssetQrCode[]
+  qrScanEvents         AssetQrScanEvent[]
+  fieldCheckExecutions AssetFieldCheckExecution[]
 
   @@index([tenantId])
   @@index([propertyId])
@@ -1595,8 +1602,9 @@ model AssetQrCode {
 
   tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   asset        Asset        @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  replacedBy   AssetQrCode? @relation("QrReplacement", fields: [replacedByQrCodeId], references: [id])
+  replacedBy   AssetQrCode?  @relation("QrReplacement", fields: [replacedByQrCodeId], references: [id])
   replacements AssetQrCode[] @relation("QrReplacement")
+  scanEvents   AssetQrScanEvent[]
 
   @@index([tenantId])
   @@index([assetId])
@@ -1644,4 +1652,135 @@ model AssetServiceRecord {
   @@index([assetId])
   @@index([tenantId])
   @@map("asset_service_records")
+}
+
+// ─── QR SCAN AUDIT & FIELD CHECKS ────────────────────────────────
+
+enum QrScanOutcome {
+  resolved
+  invalid
+  replaced
+  disabled
+  unauthorized
+}
+
+enum QrScanSource {
+  qr_scan
+  manual_open
+  redirected_after_login
+}
+
+model AssetQrScanEvent {
+  id                 String          @id @default(uuid())
+  tenantId           String
+  assetId            String
+  assetQrCodeId      String?
+  userId             String
+  outcome            QrScanOutcome   @default(resolved)
+  source             QrScanSource    @default(qr_scan)
+  scannedAt          DateTime        @default(now())
+  appVersion         String?
+  deviceInfo         String?
+  ipAddress          String?
+  userAgent          String?
+  latitude           Decimal?        @db.Decimal(10, 7)
+  longitude          Decimal?        @db.Decimal(10, 7)
+  accuracyMeters     Decimal?        @db.Decimal(8, 2)
+  locationCapturedAt DateTime?
+  notes              String?         @db.Text
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  asset       Asset        @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  assetQrCode AssetQrCode? @relation(fields: [assetQrCodeId], references: [id], onDelete: SetNull)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fieldChecks AssetFieldCheckExecution[]
+
+  @@index([tenantId])
+  @@index([assetId])
+  @@index([userId])
+  @@index([assetQrCodeId])
+  @@index([scannedAt])
+  @@map("asset_qr_scan_events")
+}
+
+enum FieldCheckType {
+  daily_check
+  inspection
+  service_check
+  route_check
+  custom
+}
+
+enum FieldCheckStatus {
+  started
+  completed
+  failed
+  cancelled
+}
+
+enum FieldCheckResult {
+  ok
+  issue_found
+  needs_follow_up
+  not_accessible
+}
+
+enum FieldCheckConfidenceLevel {
+  low
+  medium
+  high
+}
+
+enum FieldCheckSignalType {
+  qr_scan
+  gps
+  photo
+  reading
+  checklist
+  manual_code
+}
+
+model AssetFieldCheckExecution {
+  id               String                    @id @default(uuid())
+  tenantId         String
+  assetId          String
+  userId           String
+  scanEventId      String?
+  revisionPlanId   String?
+  checkType        FieldCheckType            @default(daily_check)
+  startedAt        DateTime                  @default(now())
+  completedAt      DateTime?
+  status           FieldCheckStatus          @default(started)
+  result           FieldCheckResult?
+  notes            String?                   @db.Text
+  confidenceLevel  FieldCheckConfidenceLevel @default(low)
+  confidenceScore  Int                       @default(0)
+
+  tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  asset        Asset             @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scanEvent    AssetQrScanEvent? @relation(fields: [scanEventId], references: [id], onDelete: SetNull)
+  revisionPlan RevisionPlan?     @relation(fields: [revisionPlanId], references: [id], onDelete: SetNull)
+  signals      AssetFieldCheckSignal[]
+
+  @@index([tenantId])
+  @@index([assetId])
+  @@index([userId])
+  @@index([scanEventId])
+  @@index([startedAt])
+  @@map("asset_field_check_executions")
+}
+
+model AssetFieldCheckSignal {
+  id                    String               @id @default(uuid())
+  fieldCheckExecutionId String
+  signalType            FieldCheckSignalType
+  isValid               Boolean?
+  payloadJson           Json
+  createdAt             DateTime             @default(now())
+
+  execution AssetFieldCheckExecution @relation(fields: [fieldCheckExecutionId], references: [id], onDelete: Cascade)
+
+  @@index([fieldCheckExecutionId])
+  @@map("asset_field_check_signals")
 }
