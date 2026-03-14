@@ -5,7 +5,7 @@ import type { BadgeVariant } from '../../shared/components';
 import { apiClient } from '../../core/api/client';
 import type { Asset } from './AssetListPage';
 import {
-  Wrench, FileText, QrCode, AlertTriangle, CheckCircle, RefreshCw,
+  Wrench, FileText, QrCode, AlertTriangle, CheckCircle, RefreshCw, Save, Plus,
 } from 'lucide-react';
 
 /* ─── types ──────────────────────────────────────────────────────── */
