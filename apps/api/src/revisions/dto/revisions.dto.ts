@@ -87,6 +87,7 @@ export class UpdateRevisionPlanDto {
   @IsOptional() @IsString() responsibleUserId?: string
   @IsOptional() @IsEnum(['active', 'paused', 'archived']) status?: string
   @IsOptional() @IsBoolean() isMandatory?: boolean
+  @IsOptional() @IsDateString() nextDueAt?: string
 }
 
 export class RevisionPlanListQueryDto {

@@ -330,8 +330,13 @@ export class RevisionsService {
     const existing = await this.getPlan(user, id)
     const data: Record<string, unknown> = { ...dto }
 
-    // Recalculate nextDueAt if interval changed
-    if (dto.intervalDays && dto.intervalDays !== existing.intervalDays) {
+    // Parse nextDueAt string to Date if provided directly
+    if (dto.nextDueAt) {
+      data.nextDueAt = new Date(dto.nextDueAt)
+    }
+
+    // Recalculate nextDueAt if interval changed (only when nextDueAt not explicitly set)
+    if (!dto.nextDueAt && dto.intervalDays && dto.intervalDays !== existing.intervalDays) {
       if (existing.lastPerformedAt) {
         data.nextDueAt = new Date(
           new Date(existing.lastPerformedAt).getTime() + dto.intervalDays * DAY_MS,
