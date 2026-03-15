@@ -738,11 +738,14 @@ export class ReportsService {
 
   async exportOperationalCsv(user: AuthUser, query: Parameters<ReportsService['getOperationalReport']>[1]): Promise<string> {
     const report = await this.getOperationalReport(user, query)
-    const headers = ['Typ', 'Název', 'Nemovitost', 'Zařízení', 'Zadavatel', 'Dispečer', 'Řešitel', 'Priorita', 'Stav', 'Vytvořeno', 'Termín', 'Dokončeno']
+    const ORIGIN_LABELS: Record<string, string> = { manual: 'Manuální', recurring_plan: 'Opakované' }
+    const headers = ['Typ', 'Název', 'Zdroj', 'Nemovitost', 'Zařízení', 'Zadavatel', 'Dispečer', 'Řešitel', 'Priorita', 'Stav', 'Vytvořeno', 'Termín', 'Dokončeno']
     const allRows = [...report.tickets, ...report.workOrders]
     const rows = allRows.map(r => [
       r.type === 'request' ? 'Požadavek' : 'Úkol',
-      r.title, r.property ?? '', r.asset ?? '', r.requester ?? '', r.dispatcher ?? '', r.resolver ?? '',
+      r.title,
+      ORIGIN_LABELS[(r as any).requestOrigin] ?? 'Manuální',
+      r.property ?? '', r.asset ?? '', r.requester ?? '', r.dispatcher ?? '', r.resolver ?? '',
       r.priority, r.status, r.createdAt, r.dueAt ?? '', r.completedAt ?? '',
     ])
     return toCsv(headers, rows)

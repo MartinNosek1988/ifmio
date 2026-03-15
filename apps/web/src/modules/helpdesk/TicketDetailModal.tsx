@@ -342,7 +342,7 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
               </div>
               {ticket.recurringPlan.assetId && (
                 <div style={{ marginTop: 8 }}>
-                  <Button size="sm" onClick={() => window.open(`/assets/${ticket.recurringPlan!.assetId}`, '_blank')}>
+                  <Button size="sm" onClick={() => window.open(`/assets/${ticket.recurringPlan!.assetId}?tab=recurring`, '_blank')}>
                     Otevřít zdrojový plán
                   </Button>
                 </div>

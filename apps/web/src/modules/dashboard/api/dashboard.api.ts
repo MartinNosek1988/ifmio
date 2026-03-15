@@ -9,6 +9,8 @@ export interface OperationalDashboard {
     todayWoDeadlines: number
     overdueRevisions: number
     incompleteProtocols: number
+    openRecurring: number
+    overdueRecurring: number
   }
   workload: {
     openTickets: number

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { PropertyScopeService } from '../common/services/property-scope.service'
 import { CalendarEventDto, CalendarStatsDto } from './calendar.dto'
+import { toBusinessDate } from '../common/utils/date.utils'
 import type { AuthUser } from '@ifmio/shared-types';
 
 function serializeEvent(item: any): CalendarEventDto {
@@ -10,8 +11,8 @@ function serializeEvent(item: any): CalendarEventDto {
     source: 'custom',
     title: item.title,
     eventType: item.eventType,
-    date: item.date.toISOString().slice(0, 10),
-    dateTo: item.dateTo?.toISOString().slice(0, 10) ?? null,
+    date: toBusinessDate(item.date),
+    dateTo: item.dateTo ? toBusinessDate(item.dateTo) : null,
     timeFrom: item.timeFrom ?? null,
     timeTo: item.timeTo ?? null,
     propertyId: item.propertyId ?? null,
@@ -91,7 +92,7 @@ export class CalendarService {
             sourceId: wo.id,
             title: `WO: ${wo.title}`,
             eventType: 'workorder',
-            date: wo.deadline!.toISOString().slice(0, 10),
+            date: toBusinessDate(wo.deadline!),
             propertyId: wo.propertyId ?? null,
             propertyName: wo.property?.name ?? null,
             description: wo.description ?? null,
@@ -119,16 +120,18 @@ export class CalendarService {
         })
         for (const t of tickets) {
           const num = `HD-${String(t.number).padStart(4, '0')}`
+          const isRecurring = (t as any).requestOrigin === 'recurring_plan'
+          const prefix = isRecurring ? 'Opakovaná činnost' : 'Požadavek'
           results.push({
             id: `hd-${t.id}`,
             source: 'helpdesk',
             sourceId: t.id,
-            title: `Požadavek: ${num} – ${t.title}`,
+            title: `${prefix}: ${num} – ${t.title}`,
             eventType: 'helpdesk',
-            date: t.resolutionDueAt!.toISOString().slice(0, 10),
+            date: toBusinessDate(t.resolutionDueAt!),
             propertyId: t.propertyId ?? null,
             propertyName: t.property?.name ?? null,
-            description: [t.asset?.name ? `Zařízení: ${t.asset.name}` : '', t.assignee?.name ? `Řešitel: ${t.assignee.name}` : ''].filter(Boolean).join(', ') || null,
+            description: [isRecurring ? 'Opakovaná činnost' : '', t.asset?.name ? `Zařízení: ${t.asset.name}` : '', t.assignee?.name ? `Řešitel: ${t.assignee.name}` : ''].filter(Boolean).join(', ') || null,
             location: null,
             attendees: t.assignee?.name ? [t.assignee.name] : [],
           })
@@ -158,7 +161,7 @@ export class CalendarService {
             sourceId: la.id,
             title: `Smlouva: ${la.contractNumber || resName || 'Bez čísla'}`,
             eventType: 'contract',
-            date: la.endDate!.toISOString().slice(0, 10),
+            date: toBusinessDate(la.endDate!),
             propertyId: la.propertyId ?? null,
             propertyName: la.property?.name ?? null,
             description: resName ? `Nájemce: ${resName}` : null,
@@ -187,7 +190,7 @@ export class CalendarService {
             sourceId: m.id,
             title: `Kalibrace: ${m.name} (${m.serialNumber})`,
             eventType: 'meter',
-            date: m.calibrationDue!.toISOString().slice(0, 10),
+            date: toBusinessDate(m.calibrationDue!),
             propertyId: m.propertyId ?? null,
             propertyName: m.property?.name ?? null,
             description: `Typ: ${m.meterType}, Jednotka: ${m.unit}`,

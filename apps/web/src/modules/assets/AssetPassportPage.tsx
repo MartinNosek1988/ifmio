@@ -732,7 +732,7 @@ export default function AssetPassportPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const [tab, setTab] = useState('overview')
+  const [tab, setTab] = useState(searchParams.get('tab') ?? 'overview')
   const [showFieldCheck, setShowFieldCheck] = useState(false)
   const scanToken = searchParams.get('scanToken')
 
