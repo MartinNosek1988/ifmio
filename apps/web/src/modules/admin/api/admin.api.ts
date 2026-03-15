@@ -17,10 +17,11 @@ export const adminApi = {
     apiClient.get('/admin/export').then((r) => r.data),
 
   mioConfig: {
-    get:    () =>
-      apiClient.get('/mio/config').then((r) => r.data),
-    update: (dto: any) =>
-      apiClient.put('/mio/config', dto).then((r) => r.data),
+    get:      () => apiClient.get('/mio/config').then((r) => r.data),
+    meta:     () => apiClient.get('/mio/config/meta').then((r) => r.data),
+    defaults: () => apiClient.get('/mio/config/defaults').then((r) => r.data),
+    update:   (dto: any) => apiClient.put('/mio/config', dto).then((r) => r.data),
+    reset:    (section?: string) => apiClient.post('/mio/config/reset', { section }).then((r) => r.data),
   },
 
   users: {

@@ -1,19 +1,167 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, BadRequestException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 
-// ─── Default Mio governance config ──────────────────────────────
+// ─── Centralized rule & threshold metadata ──────────────────────
+
+export interface ThresholdMeta {
+  label: string
+  description: string
+  min: number
+  max: number
+  step: number
+  defaultValue: number
+}
+
+export interface RuleMeta {
+  code: string
+  label: string
+  description: string
+  impact: string
+  defaultEnabled: boolean
+}
+
+export const FINDING_RULES_META: RuleMeta[] = [
+  {
+    code: 'overdue_recurring_request',
+    label: 'Opakované požadavky po termínu',
+    description: 'Detekuje opakované požadavky, které překročily plánovaný termín.',
+    impact: 'Po vypnutí se nové záznamy tohoto typu nebudou vyhodnocovat.',
+    defaultEnabled: true,
+  },
+  {
+    code: 'overdue_revision',
+    label: 'Revize po termínu',
+    description: 'Detekuje revize zařízení, které jsou po termínu a vyžadují pozornost.',
+    impact: 'Po vypnutí se nové záznamy tohoto typu nebudou vyhodnocovat.',
+    defaultEnabled: true,
+  },
+  {
+    code: 'overdue_work_order',
+    label: 'Pracovní úkoly po termínu',
+    description: 'Detekuje pracovní úkoly, které překročily plánovaný termín.',
+    impact: 'Po vypnutí se nové záznamy tohoto typu nebudou vyhodnocovat.',
+    defaultEnabled: true,
+  },
+  {
+    code: 'urgent_ticket_no_assignee',
+    label: 'Urgentní požadavky bez řešitele',
+    description: 'Detekuje urgentní požadavky, které nemají přiřazeného řešitele.',
+    impact: 'Po vypnutí se nové záznamy tohoto typu nebudou vyhodnocovat.',
+    defaultEnabled: true,
+  },
+  {
+    code: 'asset_no_recurring_plan',
+    label: 'Zařízení bez opakované činnosti',
+    description: 'Upozorní na zařízení, která nemají nastavenou žádnou opakovanou činnost.',
+    impact: 'Po vypnutí se nové záznamy tohoto typu nebudou vyhodnocovat.',
+    defaultEnabled: true,
+  },
+]
+
+export const RECOMMENDATION_RULES_META: RuleMeta[] = [
+  {
+    code: 'recurring_plans_adoption',
+    label: 'Automatizace opakovaných činností',
+    description: 'Doporučí nastavení opakovaných činností při dostatečném počtu zařízení.',
+    impact: 'Po vypnutí se toto doporučení přestane zobrazovat uživatelům.',
+    defaultEnabled: true,
+  },
+  {
+    code: 'reporting_export_tip',
+    label: 'Tip na export přehledů',
+    description: 'Připomene možnost exportu dat při větším objemu požadavků.',
+    impact: 'Po vypnutí se toto doporučení přestane zobrazovat uživatelům.',
+    defaultEnabled: true,
+  },
+  {
+    code: 'helpdesk_filtering_tip',
+    label: 'Tip na filtry helpdesku',
+    description: 'Doporučí využití filtrů při větším počtu požadavků.',
+    impact: 'Po vypnutí se toto doporučení přestane zobrazovat uživatelům.',
+    defaultEnabled: true,
+  },
+  {
+    code: 'attachments_protocol_tip',
+    label: 'Tip na protokoly k úkolům',
+    description: 'Doporučí přidávání protokolů k dokončeným úkolům.',
+    impact: 'Po vypnutí se toto doporučení přestane zobrazovat uživatelům.',
+    defaultEnabled: true,
+  },
+  {
+    code: 'security_access_tip',
+    label: 'Kontrola přístupů',
+    description: 'Doporučí kontrolu přístupových práv při větším počtu uživatelů.',
+    impact: 'Po vypnutí se toto doporučení přestane zobrazovat uživatelům.',
+    defaultEnabled: true,
+  },
+]
+
+export const THRESHOLDS_META: Record<string, ThresholdMeta> = {
+  RECURRING_ADOPTION_MIN_ASSETS: {
+    label: 'Min. zařízení pro tip na opakované činnosti',
+    description: 'Minimální počet zařízení, při kterém se zobrazí doporučení na opakované činnosti.',
+    min: 1, max: 100, step: 1, defaultValue: 3,
+  },
+  RECURRING_ADOPTION_MAX_PLANS: {
+    label: 'Max. plánů pro tip na opakované činnosti',
+    description: 'Pokud má tenant méně plánů než tato hodnota, zobrazí se doporučení.',
+    min: 0, max: 100, step: 1, defaultValue: 2,
+  },
+  REPORTING_TIP_MIN_TICKETS: {
+    label: 'Min. požadavků pro tip na exporty',
+    description: 'Minimální počet požadavků, při kterém se zobrazí tip na export přehledů.',
+    min: 1, max: 500, step: 5, defaultValue: 10,
+  },
+  HELPDESK_FILTER_TIP_MIN_TICKETS: {
+    label: 'Min. požadavků pro tip na filtry',
+    description: 'Minimální počet požadavků, při kterém se zobrazí tip na využití filtrů.',
+    min: 1, max: 500, step: 5, defaultValue: 20,
+  },
+  PROTOCOL_TIP_MIN_COMPLETED_WO: {
+    label: 'Min. úkolů pro tip na protokoly',
+    description: 'Minimální počet dokončených úkolů, při kterém se zobrazí tip na protokoly.',
+    min: 1, max: 200, step: 1, defaultValue: 5,
+  },
+  SECURITY_TIP_MIN_USERS: {
+    label: 'Min. uživatelů pro tip na přístupy',
+    description: 'Minimální počet aktivních uživatelů, při kterém se zobrazí tip na kontrolu přístupů.',
+    min: 1, max: 100, step: 1, defaultValue: 3,
+  },
+}
+
+export const AUTO_TICKET_DESCRIPTIONS: Record<string, string> = {
+  overdue_recurring_request: 'Zjištění se stále zobrazí, ale nevznikne automaticky ticket.',
+  overdue_revision: 'Zjištění se stále zobrazí, ale nevznikne automaticky ticket.',
+  overdue_work_order: 'Zjištění se stále zobrazí, ale nevznikne automaticky ticket.',
+  urgent_ticket_no_assignee: 'Zjištění se stále zobrazí, ale nevznikne automaticky ticket.',
+  asset_no_recurring_plan: 'Zjištění se stále zobrazí, ale nevznikne automaticky ticket.',
+}
+
+export const DASHBOARD_META: Record<string, { label: string; description: string; impact: string }> = {
+  showFindings: {
+    label: 'Upozornění na dashboardu',
+    description: 'Sekce s Mio upozorněními na hlavním dashboardu.',
+    impact: 'Blok se skryje z dashboardu, ale zůstane dostupný v Mio Insights.',
+  },
+  showRecommendations: {
+    label: 'Doporučení na dashboardu',
+    description: 'Sekce s Mio doporučeními na hlavním dashboardu.',
+    impact: 'Blok se skryje z dashboardu, ale zůstane dostupný v Mio Insights.',
+  },
+  showMioStrip: {
+    label: 'Mio přehled (KPI karty)',
+    description: 'Informační strip s Mio funkcemi na dashboardu.',
+    impact: 'Blok se skryje z dashboardu.',
+  },
+}
+
+// ─── Config types ───────────────────────────────────────────────
+
 export interface MioConfig {
-  // Rule family toggles
   enabledFindings: Record<string, boolean>
   enabledRecommendations: Record<string, boolean>
-
-  // Auto-ticket policy overrides (code → true/false)
   autoTicketPolicy: Record<string, boolean>
-
-  // Threshold overrides
   thresholds: Record<string, number>
-
-  // Dashboard visibility
   dashboard: {
     showFindings: boolean
     showRecommendations: boolean
@@ -21,39 +169,34 @@ export interface MioConfig {
   }
 }
 
-const DEFAULT_CONFIG: MioConfig = {
-  enabledFindings: {
-    overdue_recurring_request: true,
-    overdue_revision: true,
-    overdue_work_order: true,
-    urgent_ticket_no_assignee: true,
-    asset_no_recurring_plan: true,
-  },
-  enabledRecommendations: {
-    recurring_plans_adoption: true,
-    reporting_export_tip: true,
-    helpdesk_filtering_tip: true,
-    attachments_protocol_tip: true,
-    security_access_tip: true,
-  },
-  autoTicketPolicy: {
-    overdue_revision: true,
-    urgent_ticket_no_assignee: true,
-  },
-  thresholds: {
-    RECURRING_ADOPTION_MIN_ASSETS: 3,
-    RECURRING_ADOPTION_MAX_PLANS: 2,
-    REPORTING_TIP_MIN_TICKETS: 10,
-    HELPDESK_FILTER_TIP_MIN_TICKETS: 20,
-    PROTOCOL_TIP_MIN_COMPLETED_WO: 5,
-    SECURITY_TIP_MIN_USERS: 3,
-  },
-  dashboard: {
-    showFindings: true,
-    showRecommendations: true,
-    showMioStrip: true,
-  },
+// Build defaults from metadata
+function buildDefaultConfig(): MioConfig {
+  const enabledFindings: Record<string, boolean> = {}
+  for (const r of FINDING_RULES_META) enabledFindings[r.code] = r.defaultEnabled
+
+  const enabledRecommendations: Record<string, boolean> = {}
+  for (const r of RECOMMENDATION_RULES_META) enabledRecommendations[r.code] = r.defaultEnabled
+
+  const thresholds: Record<string, number> = {}
+  for (const [key, meta] of Object.entries(THRESHOLDS_META)) thresholds[key] = meta.defaultValue
+
+  return {
+    enabledFindings,
+    enabledRecommendations,
+    autoTicketPolicy: {
+      overdue_revision: true,
+      urgent_ticket_no_assignee: true,
+    },
+    thresholds,
+    dashboard: {
+      showFindings: true,
+      showRecommendations: true,
+      showMioStrip: true,
+    },
+  }
 }
+
+const DEFAULT_CONFIG = buildDefaultConfig()
 
 @Injectable()
 export class MioConfigService {
@@ -79,6 +222,11 @@ export class MioConfigService {
   }
 
   async updateConfig(tenantId: string, patch: Partial<MioConfig>): Promise<MioConfig> {
+    // Validate thresholds
+    if (patch.thresholds) {
+      this.validateThresholds(patch.thresholds)
+    }
+
     const current = await this.getConfig(tenantId)
 
     const merged: MioConfig = {
@@ -99,7 +247,73 @@ export class MioConfigService {
     return merged
   }
 
+  async resetConfig(tenantId: string, section?: string): Promise<MioConfig> {
+    const current = await this.getConfig(tenantId)
+    let merged: MioConfig
+
+    if (!section) {
+      // Full reset
+      merged = { ...DEFAULT_CONFIG }
+    } else {
+      // Section-level reset
+      merged = { ...current }
+      switch (section) {
+        case 'enabledFindings':
+          merged.enabledFindings = { ...DEFAULT_CONFIG.enabledFindings }
+          break
+        case 'enabledRecommendations':
+          merged.enabledRecommendations = { ...DEFAULT_CONFIG.enabledRecommendations }
+          break
+        case 'autoTicketPolicy':
+          merged.autoTicketPolicy = { ...DEFAULT_CONFIG.autoTicketPolicy }
+          break
+        case 'thresholds':
+          merged.thresholds = { ...DEFAULT_CONFIG.thresholds }
+          break
+        case 'dashboard':
+          merged.dashboard = { ...DEFAULT_CONFIG.dashboard }
+          break
+        default:
+          throw new BadRequestException(`Neznámá sekce: ${section}`)
+      }
+    }
+
+    await this.prisma.tenantSettings.upsert({
+      where: { tenantId },
+      create: { tenantId, mioConfig: merged as any },
+      update: { mioConfig: merged as any },
+    })
+
+    return merged
+  }
+
   getDefaults(): MioConfig {
     return { ...DEFAULT_CONFIG }
+  }
+
+  getMeta() {
+    return {
+      findings: FINDING_RULES_META,
+      recommendations: RECOMMENDATION_RULES_META,
+      thresholds: THRESHOLDS_META,
+      autoTicketDescriptions: AUTO_TICKET_DESCRIPTIONS,
+      dashboard: DASHBOARD_META,
+    }
+  }
+
+  private validateThresholds(thresholds: Record<string, number>) {
+    for (const [key, value] of Object.entries(thresholds)) {
+      if (typeof value !== 'number' || !isFinite(value)) {
+        throw new BadRequestException(`Neplatná hodnota pro ${key}: musí být číslo`)
+      }
+      const meta = THRESHOLDS_META[key]
+      if (!meta) continue // unknown key, skip (future-proof)
+      if (value < meta.min) {
+        throw new BadRequestException(`${meta.label}: minimální hodnota je ${meta.min}`)
+      }
+      if (value > meta.max) {
+        throw new BadRequestException(`${meta.label}: maximální hodnota je ${meta.max}`)
+      }
+    }
   }
 }
