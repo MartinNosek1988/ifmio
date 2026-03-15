@@ -361,7 +361,8 @@ function WebhookCard({ webhook, eventTypes, onUpdate, onDelete, onTest }: {
                     <span className="text-muted">{new Date(d.attemptedAt).toLocaleString('cs-CZ', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                     {d.errorSummary && <span style={{ color: '#ef4444' }}>{d.errorSummary}</span>}
                   </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
         </div>
