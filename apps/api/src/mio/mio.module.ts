@@ -5,6 +5,7 @@ import { MioFindingsService } from './mio-findings.service'
 import { MioConfigService } from './mio-config.service'
 import { MioDigestService } from './mio-digest.service'
 import { MioObservabilityService } from './mio-observability.service'
+import { MioWebhookService } from './mio-webhook.service'
 import { HelpdeskModule } from '../helpdesk/helpdesk.module'
 import { WorkOrdersModule } from '../work-orders/work-orders.module'
 import { DashboardModule } from '../dashboard/dashboard.module'
@@ -20,7 +21,7 @@ import { PropertyScopeModule } from '../common/services/property-scope.module'
     CalendarModule, ProtocolsModule, AssetsModule, PropertyScopeModule,
   ],
   controllers: [MioController],
-  providers: [MioService, MioFindingsService, MioConfigService, MioDigestService, MioObservabilityService],
-  exports: [MioFindingsService, MioConfigService, MioDigestService, MioObservabilityService],
+  providers: [MioService, MioFindingsService, MioConfigService, MioDigestService, MioObservabilityService, MioWebhookService],
+  exports: [MioFindingsService, MioConfigService, MioDigestService, MioObservabilityService, MioWebhookService],
 })
 export class MioModule {}
