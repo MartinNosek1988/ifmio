@@ -18,7 +18,6 @@ const PRIO_COLOR: Record<string, BadgeVariant> = {
 export default function RecurringPlansTab({ assetId, propertyId }: Props) {
   const { data: plans = [], isLoading } = useRecurringPlans({ assetId });
   const updateMutation = useUpdateRecurringPlan();
-  const deleteMutation = useDeleteRecurringPlan();
   const [showForm, setShowForm] = useState(false);
   const [editPlan, setEditPlan] = useState<RecurringPlan | undefined>();
 
