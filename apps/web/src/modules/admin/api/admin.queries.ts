@@ -104,6 +104,29 @@ export function useResetMioConfig() {
   })
 }
 
+export function useMioDigestPrefs() {
+  return useQuery({
+    queryKey: ['mio', 'digestPrefs'] as const,
+    queryFn:  () => adminApi.mioDigestPrefs.get(),
+  })
+}
+
+export function useUpdateMioDigestPrefs() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (dto: any) => adminApi.mioDigestPrefs.update(dto),
+    onSuccess:  () => qc.invalidateQueries({ queryKey: ['mio', 'digestPrefs'] }),
+  })
+}
+
+export function useResetMioDigestPrefs() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => adminApi.mioDigestPrefs.reset(),
+    onSuccess:  () => qc.invalidateQueries({ queryKey: ['mio', 'digestPrefs'] }),
+  })
+}
+
 export function useDeactivateUser() {
   const qc = useQueryClient()
   return useMutation({

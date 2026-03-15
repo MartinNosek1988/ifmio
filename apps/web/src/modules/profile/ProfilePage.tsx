@@ -1,8 +1,9 @@
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../core/api/client';
+import { useMioDigestPrefs, useUpdateMioDigestPrefs, useResetMioDigestPrefs } from '../admin/api/admin.queries';
 import {
-  User, Shield, SlidersHorizontal, Camera, Save, Eye, EyeOff, Check,
+  User, Shield, SlidersHorizontal, Camera, Save, Eye, EyeOff, Check, RotateCcw, Mail,
 } from 'lucide-react';
 
 /* ─── types ──────────────────────────────────────────────────────── */
@@ -302,6 +303,189 @@ function PreferencesTab({ profile, onSave, saving }: {
           <button className="profile-btn-primary" disabled={saving}
             onClick={() => onSave({ language: lang, timezone: tz, dateFormat: df, notifEmail: notif })}>
             <Save size={15} /> {saving ? 'Ukládám...' : 'Uložit preference'}
+          </button>
+        </div>
+      )}
+
+      {/* ── Mio Digest Preferences ─────────────────────────────── */}
+      <MioDigestSection />
+    </div>
+  );
+}
+
+/* ─── Mio Digest Preferences ────────────────────────────────────── */
+
+function MioDigestSection() {
+  const { data: prefs, isLoading } = useMioDigestPrefs();
+  const updateMut = useUpdateMioDigestPrefs();
+  const resetMut = useResetMioDigestPrefs();
+  const [toast, setToast] = useState<string | null>(null);
+  const [local, setLocal] = useState<any>(null);
+
+  if (isLoading || !prefs) return null;
+
+  // Init local state from effective settings
+  if (!local && prefs) {
+    setLocal({ ...prefs.effective });
+    return null;
+  }
+
+  const isOverride = prefs.source === 'user_override';
+  const isDirty = JSON.stringify(local) !== JSON.stringify(prefs.effective);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2500);
+  };
+
+  const handleSave = async () => {
+    try {
+      const result = await updateMut.mutateAsync({
+        enabled: local.enabled,
+        frequency: local.frequency,
+        includeFindings: local.includeFindings,
+        includeRecommendations: local.includeRecommendations,
+        minSeverity: local.minSeverity,
+      });
+      setLocal({ ...result.effective });
+      showToast('Nastavení uloženo');
+    } catch (err: any) {
+      showToast(err?.response?.data?.message ?? 'Chyba při ukládání');
+    }
+  };
+
+  const handleReset = async () => {
+    if (!confirm('Obnovit výchozí nastavení organizace?')) return;
+    try {
+      const result = await resetMut.mutateAsync();
+      setLocal({ ...result.effective });
+      showToast('Obnoveno na výchozí nastavení organizace');
+    } catch {
+      showToast('Chyba při obnově');
+    }
+  };
+
+  const inputStyle: React.CSSProperties = {
+    padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border, #374151)',
+    background: 'var(--surface, #1f2937)', color: 'var(--text, #d1d5db)', fontSize: '.85rem',
+    width: 200,
+  };
+
+  return (
+    <div className="profile-card" style={{ marginTop: 16 }}>
+      {toast && (
+        <div className="profile-alert profile-alert-success" style={{ marginBottom: 12 }}>
+          <Check size={14} /> {toast}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h3 className="profile-card-title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Mail size={16} /> E-mailové přehledy Mio
+          </h3>
+          <p style={{ color: '#9ca3af', fontSize: '.78rem', margin: '4px 0 12px' }}>
+            Souhrn zjištění a doporučení od Mia zasílaný e-mailem.
+          </p>
+        </div>
+        {isOverride && (
+          <button className="profile-btn-secondary" onClick={handleReset} disabled={resetMut.isPending}
+            style={{ fontSize: '.78rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <RotateCcw size={12} /> Výchozí
+          </button>
+        )}
+      </div>
+
+      {/* Source indicator */}
+      <div style={{
+        padding: '8px 12px', borderRadius: 6, marginBottom: 16, fontSize: '.8rem',
+        background: isOverride ? 'rgba(99,102,241,0.1)' : 'rgba(156,163,175,0.1)',
+        color: isOverride ? '#818cf8' : '#9ca3af',
+        border: `1px solid ${isOverride ? 'rgba(99,102,241,0.2)' : 'rgba(156,163,175,0.2)'}`,
+      }}>
+        {isOverride
+          ? 'Aktuálně používáte vlastní nastavení.'
+          : 'Aktuálně přebíráte výchozí nastavení organizace.'
+        }
+        {!isOverride && prefs.tenantDefaults && (
+          <span style={{ marginLeft: 6 }}>
+            ({prefs.tenantDefaults.frequency === 'off' ? 'Vypnuto' :
+              prefs.tenantDefaults.frequency === 'weekly' ? 'Týdně' : 'Denně'})
+          </span>
+        )}
+      </div>
+
+      {/* Enable toggle */}
+      <div style={{ marginBottom: 12 }}>
+        <label className="profile-toggle-row">
+          <input type="checkbox" checked={local.enabled !== false}
+            onChange={(e) => setLocal((c: any) => ({ ...c, enabled: e.target.checked }))} />
+          <span className="profile-toggle-track"><span className="profile-toggle-thumb" /></span>
+          <div>
+            <span style={{ color: '#d1d5db', fontSize: '.85rem' }}>Zapnout e-mailové přehledy</span>
+            <div style={{ color: '#9ca3af', fontSize: '.75rem' }}>Dostanete souhrn zjištění a doporučení podle svého nastavení.</div>
+          </div>
+        </label>
+      </div>
+
+      {local.enabled !== false && (
+        <>
+          {/* Frequency */}
+          <div className="profile-field" style={{ marginBottom: 12 }}>
+            <label>Frekvence</label>
+            <select style={inputStyle} value={local.frequency ?? 'daily'}
+              onChange={(e) => setLocal((c: any) => ({ ...c, frequency: e.target.value }))}>
+              <option value="daily">Denně</option>
+              <option value="weekly">Týdně (pondělí)</option>
+            </select>
+            <span className="profile-hint">Určuje, jak často vám Mio pošle souhrnný e-mail.</span>
+          </div>
+
+          {/* Include findings */}
+          <div style={{ marginBottom: 8 }}>
+            <label className="profile-toggle-row">
+              <input type="checkbox" checked={local.includeFindings !== false}
+                onChange={(e) => setLocal((c: any) => ({ ...c, includeFindings: e.target.checked }))} />
+              <span className="profile-toggle-track"><span className="profile-toggle-thumb" /></span>
+              <div>
+                <span style={{ color: '#d1d5db', fontSize: '.85rem' }}>Zahrnout upozornění</span>
+                <div style={{ color: '#9ca3af', fontSize: '.75rem' }}>Do přehledu zahrne provozní zjištění a rizika.</div>
+              </div>
+            </label>
+          </div>
+
+          {/* Include recommendations */}
+          <div style={{ marginBottom: 12 }}>
+            <label className="profile-toggle-row">
+              <input type="checkbox" checked={local.includeRecommendations !== false}
+                onChange={(e) => setLocal((c: any) => ({ ...c, includeRecommendations: e.target.checked }))} />
+              <span className="profile-toggle-track"><span className="profile-toggle-thumb" /></span>
+              <div>
+                <span style={{ color: '#d1d5db', fontSize: '.85rem' }}>Zahrnout doporučení</span>
+                <div style={{ color: '#9ca3af', fontSize: '.75rem' }}>Do přehledu zahrne tipy pro efektivitu a bezpečnost.</div>
+              </div>
+            </label>
+          </div>
+
+          {/* Min severity */}
+          <div className="profile-field" style={{ marginBottom: 12 }}>
+            <label>Minimální závažnost</label>
+            <select style={inputStyle} value={local.minSeverity ?? 'info'}
+              onChange={(e) => setLocal((c: any) => ({ ...c, minSeverity: e.target.value }))}>
+              <option value="info">Vše (info a výše)</option>
+              <option value="warning">Varování a kritická</option>
+              <option value="critical">Jen kritická</option>
+            </select>
+            <span className="profile-hint">Určuje, od jaké závažnosti se upozornění do přehledu zařadí.</span>
+          </div>
+        </>
+      )}
+
+      {/* Save bar */}
+      {isDirty && (
+        <div className="profile-save-bar">
+          <button className="profile-btn-primary" onClick={handleSave} disabled={updateMut.isPending}>
+            <Save size={15} /> {updateMut.isPending ? 'Ukládám...' : 'Uložit nastavení'}
           </button>
         </div>
       )}
