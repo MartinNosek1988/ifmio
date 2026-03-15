@@ -1335,6 +1335,7 @@ model MioWebhookSubscription {
 
   tenant     Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   deliveries MioWebhookDeliveryLog[]
+  outbox     MioWebhookOutbox[]
 
   @@index([tenantId])
   @@index([tenantId, isEnabled])
@@ -1358,6 +1359,29 @@ model MioWebhookDeliveryLog {
   @@index([subscriptionId, createdAt])
   @@index([eventId])
   @@map("mio_webhook_delivery_logs")
+}
+
+model MioWebhookOutbox {
+  id             String    @id @default(uuid())
+  subscriptionId String
+  eventId        String
+  eventType      String
+  payload        Json      // serialized MioEvent
+  status         String    @default("pending") // pending | processing | sent | failed | exhausted
+  retryCount     Int       @default(0)
+  maxRetries     Int       @default(3)
+  nextAttemptAt  DateTime  @default(now())
+  lastAttemptAt  DateTime?
+  lastHttpStatus Int?
+  lastError      String?
+  processedAt    DateTime?
+  createdAt      DateTime  @default(now())
+
+  subscription MioWebhookSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt])
+  @@index([subscriptionId])
+  @@map("mio_webhook_outbox")
 }
 
 enum ReportType {
