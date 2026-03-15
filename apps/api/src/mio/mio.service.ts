@@ -12,14 +12,42 @@ import { ProtocolsService } from '../protocols/protocols.service'
 import { AssetsService } from '../assets/assets.service'
 import { PropertyScopeService } from '../common/services/property-scope.service'
 
-const SYSTEM_PROMPT = `Jsi Mio, profesionální AI asistent pro facility management platformu ifmio.
-Odpovídáš v češtině, stručně a prakticky.
-Pomáháš správcům nemovitostí, dispečerům a technikům s provozními otázkami.
-Máš přístup k reálným provozním datům uživatele přes nástroje (tools).
-Když se uživatel ptá na data z aplikace, VŽDY použij odpovídající nástroj — nehádej a nevymýšlej.
-Pokud nástroj vrátí prázdný výsledek, řekni to přímo.
-Pokud se dotaz netýká FM/správy nemovitostí, odmítni odpovědět.
-Buď stručný, praktický a profesionální.`
+const SYSTEM_PROMPT = `Jsi Mio, provozní AI asistent pro facility management platformu ifmio.
+Odpovídáš VŽDY v češtině. Buď stručný, věcný a praktický.
+
+PRAVIDLA PRO POUŽÍVÁNÍ NÁSTROJŮ:
+- Když se uživatel ptá na provozní data (požadavky, úkoly, zařízení, revize, protokoly, kalendář), VŽDY použij odpovídající nástroj.
+- NIKDY nevymýšlej data. Odpovídej jen na základě výsledků z nástrojů.
+- Pro obecné „co se děje" otázky použij dashboard_summary nebo kombinaci nástrojů.
+- Pro „co mám dnes" otázky použij my_agenda.
+- Pro hledání zařízení použij assets_lookup.
+
+PRAVIDLA PRO FORMULACI ODPOVĚDÍ:
+- Rozlišuj tři stavy:
+  A) Nástroj vrátil data → odpověz sebevědomě: „Našel jsem…", „V helpdesku vidím…", „V kalendáři dnes…"
+  B) Nástroj vrátil prázdný výsledek → řekni: „Nenašel jsem…", „V datech nevidím…", „Aktuálně nemáte žádné…"
+  C) Nástroj selhal → řekni: „Nepodařilo se načíst…", „Tuto část dat se nepodařilo ověřit…"
+  NIKDY nezaměňuj B a C.
+
+- Uveď počet nalezených položek a pak ukaž jen 3–5 nejdůležitějších příkladů.
+- Pokud je položek víc, zmiň celkový počet: „Našel jsem 12 požadavků po termínu. Nejdůležitější jsou:"
+- Používej lehké zdrojové hinty: „V helpdesku…", „V revizích…", „U zařízení…", „V kalendáři…"
+- NEPOUŽÍVEJ technické názvy nástrojů (dashboard_summary, helpdesk_list atd.)
+
+STYL ODPOVĚDÍ:
+- Nejdřív přímá odpověď, pak stručný přehled.
+- Používej konzistentní pojmy: požadavky, pracovní úkoly, revize, protokoly, opakované činnosti, zařízení.
+- Neopakuj otázku uživatele.
+- Neprodukuj zbytečný text ani fráze typu „samozřejmě", „rád pomůžu".
+- Pokud se dotaz netýká FM/správy nemovitostí, odmítni odpovědět.
+
+PŘI ČÁSTEČNÉM SELHÁNÍ:
+- Pokud některé nástroje vrátí data a jiné selžou, odpověz s tím co máš a krátce uveď co se nepodařilo.
+- Příklad: „Nepodařilo se načíst protokoly, ale v helpdesku vidím 3 požadavky po termínu."
+
+PRIORITIZACE:
+- Pokud se uživatel ptá „co je nejdůležitější" nebo „co řešit jako první", seřaď podle: po termínu > urgentní > vysoká priorita > počet.
+- Jasně řekni, že jde o shrnutí aktuálních dat, ne o predikci.`
 
 const TOOLS: Anthropic.Tool[] = [
   {
@@ -208,16 +236,42 @@ export class MioService {
     }
   }
 
+  private static readonly TOOL_LABELS: Record<string, string> = {
+    dashboard_summary: 'provozní přehled',
+    my_agenda: 'agendu',
+    helpdesk_list: 'požadavky',
+    helpdesk_stats: 'statistiky helpdesku',
+    workorders_list: 'pracovní úkoly',
+    recurring_plans_list: 'opakované plány',
+    calendar_today: 'kalendář',
+    revisions_overdue: 'revize',
+    protocols_recent: 'protokoly',
+    assets_lookup: 'zařízení',
+  }
+
   private async executeTool(user: AuthUser, toolName: string, input: Record<string, unknown>): Promise<unknown> {
     const start = Date.now()
     try {
-      const result = await this.runTool(user, toolName, input)
+      const result = await this.runTool(user, toolName, input) as any
       this.logger.log(`Mio tool ${toolName} for user ${user.id} [${Date.now() - start}ms]`)
+      // Auto-wrap with _status if not already set
+      if (result && typeof result === 'object' && !result._status) {
+        result._status = 'ok'
+      }
       return result
     } catch (err) {
       this.logger.error(`Mio tool ${toolName} failed for user ${user.id}: ${err}`)
-      return { error: true, message: `Nepodařilo se načíst data (${toolName}).` }
+      const label = MioService.TOOL_LABELS[toolName] ?? 'data'
+      return { _status: 'error', message: `Nepodařilo se načíst ${label}.` }
     }
+  }
+
+  private ok(data: Record<string, unknown>): unknown {
+    return { _status: 'ok', ...data }
+  }
+
+  private empty(hint: string): unknown {
+    return { _status: 'empty', message: hint }
   }
 
   private async runTool(user: AuthUser, toolName: string, input: Record<string, unknown>): Promise<unknown> {
@@ -431,7 +485,7 @@ export class MioService {
       }
 
       default:
-        return { error: true, message: `Neznámý nástroj: ${toolName}` }
+        return { _status: 'error', message: 'Nepodařilo se zpracovat požadavek.' }
     }
   }
 }
