@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import {
   Building2, Users, Percent, UserCheck, Headphones, AlertTriangle,
-  FileText, Wallet, Plus, Wrench, Clock, CheckCircle, Calendar, ClipboardCheck,
+  FileText, Wallet, Wrench, Clock, CheckCircle, Calendar, ClipboardCheck,
+  MessageSquare, Search, Lightbulb, Shield, BarChart3,
 } from 'lucide-react';
 import { KpiCard, Badge, Button } from '../../shared/components';
 import { LoadingState } from '../../shared/components/LoadingState';
@@ -40,13 +41,16 @@ export default function DashboardPage() {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Dashboard</h1>
-          <p className="page-subtitle">Přehled správy nemovitostí</p>
+          <h1 className="page-title">Provoz pod kontrolou</h1>
+          <p className="page-subtitle">Co je potřeba řešit dnes</p>
         </div>
       </div>
 
       {/* ── ATTENTION SECTION (operational) ─────────────────────── */}
       {ops && <AttentionSection ops={ops} uxRole={uxRole} />}
+
+      {/* ── MIO VALUE STRIP ─────────────────────────────────────── */}
+      {uxRole !== 'resident' && <MioValueStrip />}
 
       {/* Mio Findings */}
       {uxRole !== 'resident' && <FindingsSection />}
@@ -88,7 +92,7 @@ export default function DashboardPage() {
         <KpiCard label="Měsíční objem" value={formatKc(kpi.monthlyPrescriptionVolume ?? 0)} color="var(--accent-green)" icon={<Wallet size={18} />} />
       </div>
 
-      {/* Quick Actions */}
+      {/* Quick Actions — role-aware */}
       <div style={{
         display: 'flex', gap: 8, marginBottom: 24, padding: '12px 16px',
         background: 'var(--surface-2, var(--surface))', borderRadius: 8, border: '1px solid var(--border)', flexWrap: 'wrap',
@@ -96,8 +100,9 @@ export default function DashboardPage() {
         <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', alignSelf: 'center', marginRight: 8 }}>Rychlé akce:</span>
         <Button icon={<Headphones size={14} />} onClick={() => navigate('/helpdesk')}>Požadavky</Button>
         <Button icon={<Wrench size={14} />} onClick={() => navigate('/workorders')}>Úkoly</Button>
+        <Button icon={<Search size={14} />} onClick={() => navigate('/mio/insights')}>Mio Insights</Button>
+        <Button icon={<BarChart3 size={14} />} onClick={() => navigate('/reporting/operations')}>Reporting</Button>
         <Button icon={<Calendar size={14} />} onClick={() => navigate('/calendar')}>Kalendář</Button>
-        {uxRole === 'fm' && <Button icon={<Plus size={14} />} onClick={() => navigate('/properties?action=new')}>Nová nemovitost</Button>}
       </div>
 
       {/* ── OPERATIONAL LISTS ──────────────────────────────────── */}
@@ -154,6 +159,103 @@ export default function DashboardPage() {
           )}
         </div>
       )}
+
+      {/* ── TRUST / CONTROL BLOCK ─────────────────────────────── */}
+      {(uxRole === 'fm' || uxRole === 'owner') && <TrustBlock />}
+    </div>
+  );
+}
+
+// ─── Mio Value Strip ─────────────────────────────────────────────
+
+function MioValueStrip() {
+  const navigate = useNavigate();
+  return (
+    <div style={{
+      display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20,
+    }} className="kpi-grid-4">
+      <ValueCard
+        icon={<MessageSquare size={20} />}
+        title="Mio odpovídá"
+        desc="Dotazy nad reálnými provozními daty"
+        color="#6366f1"
+        onClick={() => {}}
+      />
+      <ValueCard
+        icon={<Search size={20} />}
+        title="Mio upozorňuje"
+        desc="Detekce problémů a provozních rizik"
+        color="#ef4444"
+        onClick={() => navigate('/mio/insights?tab=findings')}
+      />
+      <ValueCard
+        icon={<Lightbulb size={20} />}
+        title="Mio radí"
+        desc="Doporučení pro efektivitu a bezpečnost"
+        color="#3b82f6"
+        onClick={() => navigate('/mio/insights?tab=recommendations')}
+      />
+    </div>
+  );
+}
+
+function ValueCard({ icon, title, desc, color, onClick }: {
+  icon: React.ReactNode; title: string; desc: string; color: string; onClick: () => void;
+}) {
+  return (
+    <div onClick={onClick} style={{
+      padding: '16px 18px', borderRadius: 10, border: '1px solid var(--border)',
+      background: 'var(--surface)', cursor: 'pointer',
+      display: 'flex', gap: 12, alignItems: 'center',
+      transition: 'border-color 0.15s',
+    }}>
+      <div style={{
+        width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center',
+        justifyContent: 'center', background: color + '15', color, flexShrink: 0,
+      }}>
+        {icon}
+      </div>
+      <div>
+        <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{title}</div>
+        <div className="text-muted" style={{ fontSize: '0.78rem' }}>{desc}</div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Trust / Control Block ───────────────────────────────────────
+
+function TrustBlock() {
+  return (
+    <div style={{
+      marginTop: 24, padding: '20px 24px', borderRadius: 12,
+      background: 'var(--surface-2, var(--surface))', border: '1px solid var(--border)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+        <Shield size={18} style={{ color: 'var(--accent-green, #10b981)' }} />
+        <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>Bezpečnost a kontrola</div>
+      </div>
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, fontSize: '0.82rem',
+        color: 'var(--text-muted)', lineHeight: 1.6,
+      }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <CheckCircle size={14} style={{ flexShrink: 0, marginTop: 3, color: 'var(--accent-green, #10b981)' }} />
+          <span>Přístup k datům je omezen podle role a přidělených objektů.</span>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <CheckCircle size={14} style={{ flexShrink: 0, marginTop: 3, color: 'var(--accent-green, #10b981)' }} />
+          <span>Mio průběžně vyhodnocuje provozní rizika a doporučení.</span>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <CheckCircle size={14} style={{ flexShrink: 0, marginTop: 3, color: 'var(--accent-green, #10b981)' }} />
+          <span>Každé zjištění má návaznost — od nálezu k řešení a doložení.</span>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <CheckCircle size={14} style={{ flexShrink: 0, marginTop: 3, color: 'var(--accent-green, #10b981)' }} />
+          <span>Přehledy a evidence lze exportovat pro audit a kontrolu.</span>
+        </div>
+      </div>
     </div>
   );
 }
