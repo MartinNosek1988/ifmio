@@ -1,10 +1,14 @@
 import { useState, useRef } from 'react';
-import { useTenantSettings, useUpdateSettings, useMioConfig, useUpdateMioConfig } from '../admin/api/admin.queries';
+import {
+  useTenantSettings, useUpdateSettings,
+  useMioConfig, useMioConfigMeta, useMioConfigDefaults,
+  useUpdateMioConfig, useResetMioConfig,
+} from '../admin/api/admin.queries';
 import { adminApi } from '../admin/api/admin.api';
 import { LoadingState, ErrorState, Button } from '../../shared/components';
 import {
   Building2, Mail, FileText, Bell, Palette, Download, Bot,
-  Save, Upload, X, Check,
+  Save, Upload, X, Check, RotateCcw,
 } from 'lucide-react';
 
 type TabKey = 'firma' | 'email' | 'fakturace' | 'upominky' | 'vzhled' | 'mio' | 'export';
@@ -456,41 +460,16 @@ function ExportTab() {
 
 /* ─── MIO GOVERNANCE ────────────────────────────────────────────────── */
 
-const FINDING_LABELS: Record<string, string> = {
-  overdue_recurring_request: 'Opakované požadavky po termínu',
-  overdue_revision: 'Revize po termínu',
-  overdue_work_order: 'Pracovní úkoly po termínu',
-  urgent_ticket_no_assignee: 'Urgentní požadavky bez řešitele',
-  asset_no_recurring_plan: 'Zařízení bez opakované činnosti',
-};
-
-const RECOMMENDATION_LABELS: Record<string, string> = {
-  recurring_plans_adoption: 'Automatizace opakovaných činností',
-  reporting_export_tip: 'Tip na export přehledů',
-  helpdesk_filtering_tip: 'Tip na filtry helpdesku',
-  attachments_protocol_tip: 'Tip na protokoly k úkolům',
-  security_access_tip: 'Kontrola přístupů',
-};
-
-const THRESHOLD_LABELS: Record<string, { label: string; hint: string }> = {
-  RECURRING_ADOPTION_MIN_ASSETS: { label: 'Min. zařízení pro tip na opakované činnosti', hint: 'Počet zařízení' },
-  RECURRING_ADOPTION_MAX_PLANS: { label: 'Max. plánů pro tip na opakované činnosti', hint: 'Počet plánů' },
-  REPORTING_TIP_MIN_TICKETS: { label: 'Min. požadavků pro tip na exporty', hint: 'Počet požadavků' },
-  HELPDESK_FILTER_TIP_MIN_TICKETS: { label: 'Min. požadavků pro tip na filtry', hint: 'Počet požadavků' },
-  PROTOCOL_TIP_MIN_COMPLETED_WO: { label: 'Min. úkolů pro tip na protokoly', hint: 'Počet úkolů' },
-  SECURITY_TIP_MIN_USERS: { label: 'Min. uživatelů pro tip na přístupy', hint: 'Počet uživatelů' },
-};
-
 function MioGovernanceTab() {
   const { data: config, isLoading } = useMioConfig();
+  const { data: meta } = useMioConfigMeta();
+  const { data: defaults } = useMioConfigDefaults();
   const updateMut = useUpdateMioConfig();
-  const [saved, setSaved] = useState(false);
+  const resetMut = useResetMioConfig();
+  const [toast, setToast] = useState<string | null>(null);
   const [localConfig, setLocalConfig] = useState<any>(null);
 
-  // Sync when data arrives
-  const cfg = localConfig ?? config;
-
-  if (isLoading || !cfg) return <LoadingState text="Načítání Mio konfigurace..." />;
+  if (isLoading || !config) return <LoadingState text="Načítání Mio konfigurace..." />;
 
   // Initialize local state on first render
   if (!localConfig && config) {
@@ -498,17 +477,39 @@ function MioGovernanceTab() {
     return null;
   }
 
+  // Metadata-driven rendering (fallback to config keys if meta not loaded yet)
+  const findingsMeta: { code: string; label: string; description: string; impact: string }[] =
+    meta?.findings ?? Object.keys(localConfig.enabledFindings).map((code: string) => ({
+      code, label: code, description: '', impact: '',
+    }));
+  const recsMeta: { code: string; label: string; description: string; impact: string }[] =
+    meta?.recommendations ?? Object.keys(localConfig.enabledRecommendations).map((code: string) => ({
+      code, label: code, description: '', impact: '',
+    }));
+  const thresholdsMeta: Record<string, { label: string; description: string; min: number; max: number; step: number; defaultValue: number }> =
+    meta?.thresholds ?? {};
+  const dashMeta: Record<string, { label: string; description: string; impact: string }> =
+    meta?.dashboard ?? {};
+  const autoTicketDescs: Record<string, string> = meta?.autoTicketDescriptions ?? {};
+
+  const isDirty = JSON.stringify(localConfig) !== JSON.stringify(config);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2500);
+  };
+
   const toggleFinding = (code: string) => {
     setLocalConfig((c: any) => ({
       ...c,
-      enabledFindings: { ...c.enabledFindings, [code]: !c.enabledFindings[code] },
+      enabledFindings: { ...c.enabledFindings, [code]: !(c.enabledFindings[code] !== false) },
     }));
   };
 
   const toggleRecommendation = (code: string) => {
     setLocalConfig((c: any) => ({
       ...c,
-      enabledRecommendations: { ...c.enabledRecommendations, [code]: !c.enabledRecommendations[code] },
+      enabledRecommendations: { ...c.enabledRecommendations, [code]: !(c.enabledRecommendations[code] !== false) },
     }));
   };
 
@@ -519,7 +520,14 @@ function MioGovernanceTab() {
     }));
   };
 
-  const setThreshold = (key: string, value: number) => {
+  const setThreshold = (key: string, raw: string) => {
+    const meta = thresholdsMeta[key];
+    let value = parseInt(raw, 10);
+    if (isNaN(value)) value = meta?.defaultValue ?? 0;
+    if (meta) {
+      if (value < meta.min) value = meta.min;
+      if (value > meta.max) value = meta.max;
+    }
     setLocalConfig((c: any) => ({
       ...c,
       thresholds: { ...c.thresholds, [key]: value },
@@ -534,103 +542,228 @@ function MioGovernanceTab() {
   };
 
   const handleSave = async () => {
-    await updateMut.mutateAsync(localConfig);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    try {
+      const result = await updateMut.mutateAsync(localConfig);
+      setLocalConfig(JSON.parse(JSON.stringify(result)));
+      showToast('Uloženo');
+    } catch (err: any) {
+      showToast(err?.response?.data?.message ?? 'Chyba při ukládání');
+    }
+  };
+
+  const handleResetSection = async (section: string, label: string) => {
+    if (!confirm(`Obnovit "${label}" na výchozí nastavení?`)) return;
+    try {
+      const result = await resetMut.mutateAsync(section);
+      setLocalConfig(JSON.parse(JSON.stringify(result)));
+      showToast(`${label} — obnoveno na výchozí`);
+    } catch {
+      showToast('Chyba při obnově');
+    }
+  };
+
+  const handleResetAll = async () => {
+    if (!confirm('Obnovit CELOU Mio konfiguraci na výchozí nastavení systému?')) return;
+    try {
+      const result = await resetMut.mutateAsync(undefined);
+      setLocalConfig(JSON.parse(JSON.stringify(result)));
+      showToast('Celá konfigurace obnovena na výchozí');
+    } catch {
+      showToast('Chyba při obnově');
+    }
   };
 
   return (
     <div>
-      {saved && (
+      {toast && (
         <div className="settings-saved-toast">
-          <Check size={14} /> Uloženo
+          <Check size={14} /> {toast}
         </div>
       )}
 
-      <SectionCard title="Pravidla upozornění (Findings)">
-        <p style={{ fontSize: '.78rem', color: 'var(--text-muted)', marginBottom: 12 }}>
-          Zapněte/vypněte jednotlivá pravidla detekce. Vypnutá pravidla nebudou generovat nová zjištění.
-        </p>
-        {Object.entries(FINDING_LABELS).map(([code, label]) => (
-          <ToggleRow
-            key={code}
-            label={label}
-            checked={localConfig.enabledFindings[code] !== false}
-            onToggle={() => toggleFinding(code)}
+      {/* ── Findings ──────────────────────────────────────────────── */}
+      <GovSectionCard
+        title="Upozornění"
+        description="Určuje, které typy zjištění bude Mio vyhodnocovat. Po vypnutí se nové záznamy daného typu nebudou vytvářet."
+        onReset={() => handleResetSection('enabledFindings', 'Upozornění')}
+      >
+        {findingsMeta.map(rule => (
+          <GovToggleRow
+            key={rule.code}
+            label={rule.label}
+            code={rule.code}
+            description={rule.description}
+            checked={localConfig.enabledFindings[rule.code] !== false}
+            onToggle={() => toggleFinding(rule.code)}
           />
         ))}
-      </SectionCard>
+      </GovSectionCard>
 
-      <SectionCard title="Doporučení (Recommendations)">
-        <p style={{ fontSize: '.78rem', color: 'var(--text-muted)', marginBottom: 12 }}>
-          Zapněte/vypněte jednotlivá doporučení Mio.
-        </p>
-        {Object.entries(RECOMMENDATION_LABELS).map(([code, label]) => (
-          <ToggleRow
-            key={code}
-            label={label}
-            checked={localConfig.enabledRecommendations[code] !== false}
-            onToggle={() => toggleRecommendation(code)}
+      {/* ── Recommendations ───────────────────────────────────────── */}
+      <GovSectionCard
+        title="Doporučení"
+        description="Určuje, která doporučení se mohou zobrazovat uživatelům."
+        onReset={() => handleResetSection('enabledRecommendations', 'Doporučení')}
+      >
+        {recsMeta.map(rule => (
+          <GovToggleRow
+            key={rule.code}
+            label={rule.label}
+            code={rule.code}
+            description={rule.description}
+            checked={localConfig.enabledRecommendations[rule.code] !== false}
+            onToggle={() => toggleRecommendation(rule.code)}
           />
         ))}
-      </SectionCard>
+      </GovSectionCard>
 
-      <SectionCard title="Automatické tickety">
-        <p style={{ fontSize: '.78rem', color: 'var(--text-muted)', marginBottom: 12 }}>
-          Která zjištění mají automaticky vytvářet helpdesk požadavek.
-        </p>
-        {Object.entries(FINDING_LABELS).map(([code, label]) => (
-          <ToggleRow
-            key={code}
-            label={label}
-            checked={localConfig.autoTicketPolicy[code] === true}
-            onToggle={() => toggleAutoTicket(code)}
+      {/* ── Auto-ticket ───────────────────────────────────────────── */}
+      <GovSectionCard
+        title="Automatické zakládání požadavků"
+        description="Určuje, zda se z daného zjištění automaticky založí požadavek v Helpdesku. Zjištění se stále zobrazí, ale nevznikne ticket."
+        onReset={() => handleResetSection('autoTicketPolicy', 'Automatické zakládání')}
+      >
+        {findingsMeta.map(rule => (
+          <GovToggleRow
+            key={rule.code}
+            label={rule.label}
+            code={rule.code}
+            description={autoTicketDescs[rule.code] ?? ''}
+            checked={localConfig.autoTicketPolicy[rule.code] === true}
+            onToggle={() => toggleAutoTicket(rule.code)}
           />
         ))}
-      </SectionCard>
+      </GovSectionCard>
 
-      <SectionCard title="Prahové hodnoty">
-        <p style={{ fontSize: '.78rem', color: 'var(--text-muted)', marginBottom: 12 }}>
-          Nastavte prahy, při kterých se doporučení zobrazí.
-        </p>
-        {Object.entries(THRESHOLD_LABELS).map(([key, { label, hint }]) => (
-          <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-            <label style={{ flex: 1, fontSize: '.85rem' }}>{label}</label>
-            <input
-              className="settings-input"
-              type="number"
-              min={0}
-              style={{ width: 90 }}
-              value={localConfig.thresholds[key] ?? 0}
-              onChange={(e) => setThreshold(key, parseInt(e.target.value, 10) || 0)}
-              title={hint}
+      {/* ── Thresholds ────────────────────────────────────────────── */}
+      <GovSectionCard
+        title="Prahy a citlivost"
+        description="Nastavte prahy, při kterých se doporučení začnou zobrazovat. Hodnoty ovlivňují citlivost Mio doporučení."
+        onReset={() => handleResetSection('thresholds', 'Prahy')}
+      >
+        {Object.entries(localConfig.thresholds).map(([key, value]) => {
+          const tm = thresholdsMeta[key];
+          return (
+            <div key={key} style={{ marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '.85rem', fontWeight: 500 }}>{tm?.label ?? key}</div>
+                  {tm?.description && (
+                    <div style={{ fontSize: '.75rem', color: 'var(--text-muted)', marginTop: 2 }}>{tm.description}</div>
+                  )}
+                </div>
+                <input
+                  className="settings-input"
+                  type="number"
+                  min={tm?.min ?? 0}
+                  max={tm?.max ?? 9999}
+                  step={tm?.step ?? 1}
+                  style={{ width: 90 }}
+                  value={value as number}
+                  onChange={(e) => setThreshold(key, e.target.value)}
+                />
+              </div>
+              {tm && defaults && (
+                <div style={{ fontSize: '.72rem', color: 'var(--text-muted)', marginTop: 2, textAlign: 'right' }}>
+                  Výchozí: {tm.defaultValue}
+                  {' · '}rozsah: {tm.min}–{tm.max}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </GovSectionCard>
+
+      {/* ── Dashboard ─────────────────────────────────────────────── */}
+      <GovSectionCard
+        title="Dashboard"
+        description="Ovládejte, které Mio sekce se zobrazí na hlavním dashboardu. Data zůstanou vždy dostupná v Mio Insights."
+        onReset={() => handleResetSection('dashboard', 'Dashboard')}
+      >
+        {Object.entries(localConfig.dashboard).map(([key, value]) => {
+          const dm = dashMeta[key];
+          return (
+            <GovToggleRow
+              key={key}
+              label={dm?.label ?? key}
+              description={dm?.impact ?? ''}
+              checked={value as boolean}
+              onToggle={() => toggleDashboard(key)}
             />
-          </div>
-        ))}
-      </SectionCard>
+          );
+        })}
+      </GovSectionCard>
 
-      <SectionCard title="Zobrazení na dashboardu">
-        <p style={{ fontSize: '.78rem', color: 'var(--text-muted)', marginBottom: 12 }}>
-          Ovládejte, které Mio sekce se zobrazí na hlavním dashboardu.
-        </p>
-        <ToggleRow
-          label="Mio upozornění (Findings)"
-          checked={localConfig.dashboard.showFindings !== false}
-          onToggle={() => toggleDashboard('showFindings')}
-        />
-        <ToggleRow
-          label="Mio doporučení (Recommendations)"
-          checked={localConfig.dashboard.showRecommendations !== false}
-          onToggle={() => toggleDashboard('showRecommendations')}
-        />
-        <ToggleRow
-          label="Mio strip (KPI karty)"
-          checked={localConfig.dashboard.showMioStrip !== false}
-          onToggle={() => toggleDashboard('showMioStrip')}
-        />
-      </SectionCard>
+      {/* ── Footer ────────────────────────────────────────────────── */}
+      <div className="settings-footer" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <Button onClick={handleSave} disabled={updateMut.isPending || !isDirty}>
+          <Save size={15} />
+          {updateMut.isPending ? 'Ukládám...' : isDirty ? 'Uložit změny' : 'Uloženo'}
+        </Button>
+        <button
+          className="btn btn--sm btn--ghost"
+          onClick={handleResetAll}
+          disabled={resetMut.isPending}
+          style={{ fontSize: '.82rem', display: 'flex', alignItems: 'center', gap: 4 }}
+        >
+          <RotateCcw size={13} />
+          Obnovit vše na výchozí
+        </button>
+      </div>
+    </div>
+  );
+}
 
-      <SaveFooter saving={updateMut.isPending} onSave={handleSave} />
+function GovSectionCard({ title, description, onReset, children }: {
+  title: string; description: string; onReset: () => void; children: React.ReactNode;
+}) {
+  return (
+    <div className="settings-card">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+        <div>
+          <h3 className="settings-card__title" style={{ marginBottom: 4 }}>{title}</h3>
+          <p style={{ fontSize: '.78rem', color: 'var(--text-muted)', margin: 0 }}>{description}</p>
+        </div>
+        <button
+          className="btn btn--sm btn--ghost"
+          onClick={onReset}
+          title="Obnovit výchozí nastavení sekce"
+          style={{ fontSize: '.75rem', display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}
+        >
+          <RotateCcw size={12} /> Výchozí
+        </button>
+      </div>
+      <div style={{ marginTop: 8 }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function GovToggleRow({ label, code, description, checked, onToggle }: {
+  label: string; code?: string; description?: string; checked: boolean; onToggle: () => void;
+}) {
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <label className="settings-toggle-row">
+        <div
+          className={`settings-toggle${checked ? ' active' : ''}`}
+          onClick={onToggle}
+          role="switch"
+          aria-checked={checked}
+        >
+          <div className="settings-toggle__thumb" />
+        </div>
+        <div style={{ flex: 1 }}>
+          <span style={{ fontSize: '.85rem' }}>{label}</span>
+          {code && <span style={{ fontSize: '.72rem', color: 'var(--text-muted)', marginLeft: 6 }}>{code}</span>}
+        </div>
+      </label>
+      {description && (
+        <div style={{ fontSize: '.75rem', color: 'var(--text-muted)', marginLeft: 44, marginTop: -2 }}>
+          {description}
+        </div>
+      )}
     </div>
   );
 }

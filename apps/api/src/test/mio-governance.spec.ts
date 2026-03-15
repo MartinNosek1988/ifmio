@@ -24,6 +24,34 @@ describe('Mio Governance Config (e2e)', () => {
     expect(res.body.dashboard.showFindings).toBe(true)
   })
 
+  it('GET /mio/config/meta returns rule metadata', async () => {
+    const api = authRequest(testApp.server, testApp.token)
+    const res = await api.get('/api/v1/mio/config/meta').expect(200)
+
+    expect(res.body.findings).toBeInstanceOf(Array)
+    expect(res.body.findings.length).toBeGreaterThan(0)
+    expect(res.body.findings[0]).toHaveProperty('code')
+    expect(res.body.findings[0]).toHaveProperty('label')
+    expect(res.body.findings[0]).toHaveProperty('description')
+    expect(res.body.findings[0]).toHaveProperty('impact')
+
+    expect(res.body.recommendations).toBeInstanceOf(Array)
+    expect(res.body.thresholds).toHaveProperty('RECURRING_ADOPTION_MIN_ASSETS')
+    expect(res.body.thresholds.RECURRING_ADOPTION_MIN_ASSETS).toHaveProperty('min')
+    expect(res.body.thresholds.RECURRING_ADOPTION_MIN_ASSETS).toHaveProperty('max')
+    expect(res.body.thresholds.RECURRING_ADOPTION_MIN_ASSETS).toHaveProperty('defaultValue')
+    expect(res.body.dashboard).toHaveProperty('showFindings')
+  })
+
+  it('GET /mio/config/defaults returns system defaults', async () => {
+    const api = authRequest(testApp.server, testApp.token)
+    const res = await api.get('/api/v1/mio/config/defaults').expect(200)
+
+    expect(res.body.enabledFindings.overdue_revision).toBe(true)
+    expect(res.body.thresholds.SECURITY_TIP_MIN_USERS).toBe(3)
+    expect(res.body.dashboard.showFindings).toBe(true)
+  })
+
   it('PUT /mio/config updates and persists config', async () => {
     const api = authRequest(testApp.server, testApp.token)
 
@@ -43,6 +71,20 @@ describe('Mio Governance Config (e2e)', () => {
     const read = await api.get('/api/v1/mio/config').expect(200)
     expect(read.body.enabledFindings.overdue_revision).toBe(false)
     expect(read.body.thresholds.SECURITY_TIP_MIN_USERS).toBe(10)
+  })
+
+  it('PUT /mio/config rejects invalid threshold values', async () => {
+    const api = authRequest(testApp.server, testApp.token)
+
+    // Negative value
+    await api.put('/api/v1/mio/config', {
+      thresholds: { SECURITY_TIP_MIN_USERS: -5 },
+    }).expect(400)
+
+    // Exceeds max
+    await api.put('/api/v1/mio/config', {
+      thresholds: { SECURITY_TIP_MIN_USERS: 999 },
+    }).expect(400)
   })
 
   it('PUT /mio/config updates dashboard visibility', async () => {
@@ -70,6 +112,65 @@ describe('Mio Governance Config (e2e)', () => {
     expect(res.body.autoTicketPolicy.overdue_revision).toBe(false)
     expect(res.body.autoTicketPolicy.overdue_work_order).toBe(true)
     expect(res.body.autoTicketPolicy.urgent_ticket_no_assignee).toBe(true)
+  })
+
+  it('POST /mio/config/reset restores full defaults', async () => {
+    const api = authRequest(testApp.server, testApp.token)
+
+    // First customize
+    await api.put('/api/v1/mio/config', {
+      enabledFindings: { overdue_revision: false },
+      thresholds: { SECURITY_TIP_MIN_USERS: 50 },
+      dashboard: { showFindings: false },
+    }).expect(200)
+
+    // Full reset
+    const res = await api.post('/api/v1/mio/config/reset', {}).expect(201)
+    expect(res.body.enabledFindings.overdue_revision).toBe(true)
+    expect(res.body.thresholds.SECURITY_TIP_MIN_USERS).toBe(3)
+    expect(res.body.dashboard.showFindings).toBe(true)
+
+    // Verify persistence
+    const read = await api.get('/api/v1/mio/config').expect(200)
+    expect(read.body.enabledFindings.overdue_revision).toBe(true)
+  })
+
+  it('POST /mio/config/reset with section resets only that section', async () => {
+    const api = authRequest(testApp.server, testApp.token)
+
+    // Customize multiple sections
+    await api.put('/api/v1/mio/config', {
+      enabledFindings: { overdue_revision: false },
+      thresholds: { SECURITY_TIP_MIN_USERS: 50 },
+    }).expect(200)
+
+    // Reset only thresholds
+    const res = await api.post('/api/v1/mio/config/reset', { section: 'thresholds' }).expect(201)
+    expect(res.body.thresholds.SECURITY_TIP_MIN_USERS).toBe(3) // reset
+    expect(res.body.enabledFindings.overdue_revision).toBe(false) // untouched
+  })
+
+  it('POST /mio/config/reset rejects invalid section', async () => {
+    const api = authRequest(testApp.server, testApp.token)
+    await api.post('/api/v1/mio/config/reset', { section: 'nonexistent' }).expect(400)
+  })
+
+  it('partial config merges with defaults for missing keys', async () => {
+    const api = authRequest(testApp.server, testApp.token)
+
+    // Reset first, then set only one key
+    await api.post('/api/v1/mio/config/reset', {}).expect(201)
+    await api.put('/api/v1/mio/config', {
+      enabledFindings: { overdue_revision: false },
+    }).expect(200)
+
+    // All other keys should still have defaults
+    const res = await api.get('/api/v1/mio/config').expect(200)
+    expect(res.body.enabledFindings.overdue_revision).toBe(false)
+    expect(res.body.enabledFindings.overdue_work_order).toBe(true)
+    expect(res.body.enabledFindings.asset_no_recurring_plan).toBe(true)
+    expect(res.body.enabledRecommendations.security_access_tip).toBe(true)
+    expect(res.body.thresholds.SECURITY_TIP_MIN_USERS).toBe(3)
   })
 
   it('detection respects disabled findings', async () => {

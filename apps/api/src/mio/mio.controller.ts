@@ -28,12 +28,37 @@ export class MioController {
     return this.config.getConfig(user.tenantId)
   }
 
+  @Get('config/meta')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Mio governance metadata (labels, bounds, defaults)' })
+  getConfigMeta() {
+    return this.config.getMeta()
+  }
+
+  @Get('config/defaults')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Mio governance default config' })
+  getConfigDefaults() {
+    return this.config.getDefaults()
+  }
+
   @Put('config')
   @Roles(...ROLES_MANAGE)
   @AuditAction('TenantSettings', 'MIO_CONFIG_UPDATE')
   @ApiOperation({ summary: 'Update Mio governance config' })
   updateConfig(@CurrentUser() user: AuthUser, @Body() dto: any) {
     return this.config.updateConfig(user.tenantId, dto)
+  }
+
+  @Post('config/reset')
+  @Roles(...ROLES_MANAGE)
+  @AuditAction('TenantSettings', 'MIO_CONFIG_RESET')
+  @ApiOperation({ summary: 'Reset Mio config (full or section)' })
+  resetConfig(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: { section?: string },
+  ) {
+    return this.config.resetConfig(user.tenantId, dto?.section)
   }
 
   @Post('chat')

@@ -2,10 +2,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminApi } from './admin.api'
 
 export const adminKeys = {
-  tenant:    () => ['admin', 'tenant']     as const,
-  settings:  () => ['admin', 'settings']   as const,
-  users:     () => ['admin', 'users']      as const,
-  mioConfig: () => ['admin', 'mioConfig']  as const,
+  tenant:      () => ['admin', 'tenant']       as const,
+  settings:    () => ['admin', 'settings']     as const,
+  users:       () => ['admin', 'users']        as const,
+  mioConfig:   () => ['admin', 'mioConfig']    as const,
+  mioMeta:     () => ['admin', 'mioMeta']      as const,
+  mioDefaults: () => ['admin', 'mioDefaults']  as const,
 }
 
 export function useTenantInfo() {
@@ -70,10 +72,34 @@ export function useMioConfig() {
   })
 }
 
+export function useMioConfigMeta() {
+  return useQuery({
+    queryKey: adminKeys.mioMeta(),
+    queryFn:  () => adminApi.mioConfig.meta(),
+    staleTime: 60 * 60 * 1000, // metadata rarely changes
+  })
+}
+
+export function useMioConfigDefaults() {
+  return useQuery({
+    queryKey: adminKeys.mioDefaults(),
+    queryFn:  () => adminApi.mioConfig.defaults(),
+    staleTime: 60 * 60 * 1000,
+  })
+}
+
 export function useUpdateMioConfig() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (dto: any) => adminApi.mioConfig.update(dto),
+    onSuccess:  () => qc.invalidateQueries({ queryKey: adminKeys.mioConfig() }),
+  })
+}
+
+export function useResetMioConfig() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (section?: string) => adminApi.mioConfig.reset(section),
     onSuccess:  () => qc.invalidateQueries({ queryKey: adminKeys.mioConfig() }),
   })
 }
