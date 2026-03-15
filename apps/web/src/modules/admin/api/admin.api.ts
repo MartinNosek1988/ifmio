@@ -25,9 +25,19 @@ export const adminApi = {
   },
 
   mioDigestPrefs: {
-    get:    () => apiClient.get('/mio/digest/preferences').then((r) => r.data),
-    update: (dto: any) => apiClient.put('/mio/digest/preferences', dto).then((r) => r.data),
-    reset:  () => apiClient.delete('/mio/digest/preferences').then((r) => r.data),
+    get:     () => apiClient.get('/mio/digest/preferences').then((r) => r.data),
+    update:  (dto: any) => apiClient.put('/mio/digest/preferences', dto).then((r) => r.data),
+    reset:   () => apiClient.delete('/mio/digest/preferences').then((r) => r.data),
+    status:  () => apiClient.get('/mio/digest/status').then((r) => r.data),
+    history: () => apiClient.get('/mio/digest/history').then((r) => r.data),
+    preview: () => apiClient.get('/mio/digest/preview').then((r) => r.data),
+  },
+
+  mioAdmin: {
+    overview: () => apiClient.get('/mio/admin/overview').then((r) => r.data),
+    jobs:     () => apiClient.get('/mio/admin/jobs').then((r) => r.data),
+    digests:  (days = 7) => apiClient.get(`/mio/admin/digests?days=${days}`).then((r) => r.data),
+    failures: () => apiClient.get('/mio/admin/failures').then((r) => r.data),
   },
 
   users: {

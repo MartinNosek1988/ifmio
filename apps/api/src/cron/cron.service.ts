@@ -7,6 +7,7 @@ import { ScheduledReportsService } from '../reports/scheduled-reports.service';
 import { RecurringPlansService } from '../recurring-plans/recurring-plans.service';
 import { MioFindingsService } from '../mio/mio-findings.service';
 import { MioDigestService } from '../mio/mio-digest.service';
+import { MioObservabilityService } from '../mio/mio-observability.service';
 
 const ONE_HOUR = 60 * 60 * 1000;
 const SIX_HOURS = 6 * ONE_HOUR;
@@ -33,6 +34,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     private readonly recurringPlans: RecurringPlansService,
     private readonly mioFindings: MioFindingsService,
     private readonly mioDigest: MioDigestService,
+    private readonly mioObs: MioObservabilityService,
   ) {}
 
   onModuleInit() {
@@ -331,11 +333,22 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async runMioDetection() {
+    const startedAt = new Date();
     try {
       const result = await this.mioFindings.runDetection();
       this.logger.log(`Mio detection: ${result.checked} tenants, ${result.created} new, ${result.resolved} resolved, ${result.ticketsCreated} tickets`);
+      await this.mioObs.logJobRun({
+        jobType: 'detection', startedAt, status: 'success',
+        tenantCount: result.checked, itemsCreated: result.created,
+        itemsResolved: result.resolved,
+        summary: `${result.created} nových, ${result.resolved} vyřešených, ${result.ticketsCreated} ticketů`,
+      }).catch(() => {});
     } catch (err) {
       this.logger.error('Mio detection job FAILED', (err as Error).stack);
+      await this.mioObs.logJobRun({
+        jobType: 'detection', startedAt, status: 'failed',
+        summary: 'Kontrola selhala',
+      }).catch(() => {});
     }
   }
 
@@ -360,14 +373,34 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     this.lastMioDigestDate = dateStr;
     try {
       // Always process daily
-      await this.mioDigest.sendMioDigests('daily');
+      const startDaily = new Date();
+      const daily = await this.mioDigest.sendMioDigests('daily');
+      await this.mioObs.logJobRun({
+        jobType: 'digest_daily', startedAt: startDaily,
+        status: daily.failed > 0 ? 'partial' : 'success',
+        tenantCount: daily.tenants, emailsSent: daily.sent,
+        skippedCount: daily.skipped, failureCount: daily.failed,
+        summary: `${daily.sent} odesláno, ${daily.skipped} přeskočeno`,
+      }).catch(() => {});
 
       // Weekly on Mondays
       if (now.getDay() === 1) {
-        await this.mioDigest.sendMioDigests('weekly');
+        const startWeekly = new Date();
+        const weekly = await this.mioDigest.sendMioDigests('weekly');
+        await this.mioObs.logJobRun({
+          jobType: 'digest_weekly', startedAt: startWeekly,
+          status: weekly.failed > 0 ? 'partial' : 'success',
+          tenantCount: weekly.tenants, emailsSent: weekly.sent,
+          skippedCount: weekly.skipped, failureCount: weekly.failed,
+          summary: `${weekly.sent} odesláno, ${weekly.skipped} přeskočeno`,
+        }).catch(() => {});
       }
     } catch (err) {
       this.logger.error('Mio digest job FAILED', (err as Error).stack);
+      await this.mioObs.logJobRun({
+        jobType: 'digest_daily', startedAt: now, status: 'failed',
+        summary: 'Odesílání přehledů selhalo',
+      }).catch(() => {});
     }
   }
 }

@@ -32,6 +32,7 @@ const OperationalReportsPage = lazy(() => import('../modules/reporting/Operation
 const ReportsPage = lazy(() => import('../modules/reports/ReportsPage'));
 const AuditPage = lazy(() => import('../modules/audit/AuditPage'));
 const MioInsightsPage = lazy(() => import('../modules/mio-insights/MioInsightsPage'));
+const MioAdminPage = lazy(() => import('../modules/mio/MioAdminPage'));
 const TeamPage = lazy(() => import('../modules/team/TeamPage'));
 const AdminPage = lazy(() => import('../modules/admin/AdminPage'));
 const SettingsPage = lazy(() => import('../modules/settings/SettingsPage'));
@@ -87,6 +88,7 @@ export const router = createBrowserRouter([
       { path: 'reporting', element: withBoundary('Reporting', ReportingPage) },
       { path: 'reporting/operations', element: withBoundary('Provozní reporty', OperationalReportsPage) },
       { path: 'mio/insights', element: withBoundary('Mio Insights', MioInsightsPage) },
+      { path: 'mio/admin', element: withBoundary('Mio Admin', MioAdminPage) },
       { path: 'reports', element: withBoundary('Výkazy', ReportsPage) },
       { path: 'team', element: withBoundary('Tým', TeamPage) },
       { path: 'protocols', element: withBoundary('Protokoly', ProtocolsPage) },
