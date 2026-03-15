@@ -766,6 +766,7 @@ model HelpdeskTicket {
   generationKey      String?   @unique
   plannedForDate     DateTime?
   requestOrigin      String?   // 'manual' | 'recurring_plan' | 'revision'
+  recurringCompletionAppliedAt DateTime?  // idempotence: set once when plan is advanced
 
   tenant    Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   property  Property?         @relation(fields: [propertyId], references: [id], onDelete: SetNull)

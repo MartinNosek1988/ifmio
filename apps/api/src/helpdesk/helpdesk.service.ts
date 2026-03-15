@@ -294,6 +294,12 @@ export class HelpdeskService {
       )
     }
 
+    // Advance recurring plan on terminal status (best-effort, non-blocking for response)
+    if (dto.status === 'resolved' || dto.status === 'closed') {
+      try { await this.applyRecurringCompletion(id, new Date()) }
+      catch (err) { this.logger.error(`Recurring completion callback failed: ${err}`) }
+    }
+
     return serialized
   }
 
@@ -443,6 +449,10 @@ export class HelpdeskService {
         newValue: STATUS_LABELS['resolved'],
       },
     ]).catch((err) => this.logger.error(`Email notification failed: ${err}`))
+
+    // Advance recurring plan
+    try { await this.applyRecurringCompletion(id, now) }
+    catch (err) { this.logger.error(`Recurring completion callback failed: ${err}`) }
 
     return serialized
   }
@@ -702,6 +712,61 @@ export class HelpdeskService {
       select: { id: true },
     })
     if (!asset) throw new NotFoundException('Zařízení nenalezeno')
+  }
+
+  /**
+   * Advance recurring plan when a generated ticket reaches terminal status.
+   * Idempotent: uses recurringCompletionAppliedAt as guard.
+   */
+  private async applyRecurringCompletion(ticketId: string, completedAt: Date) {
+    const ticket = await this.prisma.helpdeskTicket.findUnique({
+      where: { id: ticketId },
+      select: { recurringPlanId: true, requestOrigin: true, recurringCompletionAppliedAt: true },
+    })
+
+    // Skip: not a recurring ticket, or already applied
+    if (!ticket?.recurringPlanId || ticket.requestOrigin !== 'recurring_plan') return
+    if (ticket.recurringCompletionAppliedAt) return
+
+    const plan = await this.prisma.recurringActivityPlan.findUnique({
+      where: { id: ticket.recurringPlanId },
+    })
+    if (!plan || !plan.isActive) return
+
+    // Mark ticket as applied (idempotence guard)
+    await this.prisma.helpdeskTicket.update({
+      where: { id: ticketId },
+      data: { recurringCompletionAppliedAt: completedAt },
+    })
+
+    // Update plan
+    const updateData: Record<string, unknown> = { lastCompletedAt: completedAt }
+
+    if (plan.scheduleMode === 'from_completion') {
+      // Compute next occurrence from completion date
+      const d = new Date(completedAt)
+      switch (plan.frequencyUnit) {
+        case 'day': d.setDate(d.getDate() + plan.frequencyInterval); break
+        case 'week': d.setDate(d.getDate() + 7 * plan.frequencyInterval); break
+        case 'month':
+          d.setMonth(d.getMonth() + plan.frequencyInterval)
+          if (plan.dayOfMonth) d.setDate(Math.min(plan.dayOfMonth, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()))
+          break
+        case 'year':
+          d.setFullYear(d.getFullYear() + plan.frequencyInterval)
+          if (plan.monthOfYear) d.setMonth(plan.monthOfYear - 1)
+          if (plan.dayOfMonth) d.setDate(Math.min(plan.dayOfMonth, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()))
+          break
+      }
+      updateData.nextPlannedAt = d
+    }
+
+    await this.prisma.recurringActivityPlan.update({
+      where: { id: plan.id },
+      data: updateData,
+    })
+
+    this.logger.log(`Recurring plan ${plan.id} advanced: lastCompletedAt=${completedAt.toISOString()}${plan.scheduleMode === 'from_completion' ? `, nextPlannedAt=${(updateData.nextPlannedAt as Date).toISOString()}` : ''}`)
   }
 
   // ─── Email Notifications ─────────────────────────────────────
