@@ -204,7 +204,7 @@ function WebhookForm({ eventTypes, onSave, onCancel, initial }: {
         <Button onClick={handleSave} disabled={saving || !name || !url || selected.size === 0}>
           {saving ? 'Ukládám...' : 'Uložit'}
         </Button>
-        <Button variant="secondary" onClick={onCancel}><X size={14} /> Zrušit</Button>
+        <Button variant="default" onClick={onCancel}><X size={14} /> Zrušit</Button>
       </div>
     </div>
   );
