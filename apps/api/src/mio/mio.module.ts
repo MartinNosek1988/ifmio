@@ -9,11 +9,12 @@ import { RecurringPlansModule } from '../recurring-plans/recurring-plans.module'
 import { CalendarModule } from '../calendar/calendar.module'
 import { ProtocolsModule } from '../protocols/protocols.module'
 import { AssetsModule } from '../assets/assets.module'
+import { PropertyScopeModule } from '../common/services/property-scope.module'
 
 @Module({
   imports: [
     HelpdeskModule, WorkOrdersModule, DashboardModule, RecurringPlansModule,
-    CalendarModule, ProtocolsModule, AssetsModule,
+    CalendarModule, ProtocolsModule, AssetsModule, PropertyScopeModule,
   ],
   controllers: [MioController],
   providers: [MioService, MioFindingsService],
