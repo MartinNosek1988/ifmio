@@ -2,10 +2,14 @@ import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import Anthropic from '@anthropic-ai/sdk'
 import type { AuthUser } from '@ifmio/shared-types'
+import { PrismaService } from '../prisma/prisma.service'
 import { HelpdeskService } from '../helpdesk/helpdesk.service'
 import { WorkOrdersService } from '../work-orders/work-orders.service'
 import { DashboardService } from '../dashboard/dashboard.service'
 import { RecurringPlansService } from '../recurring-plans/recurring-plans.service'
+import { CalendarService } from '../calendar/calendar.service'
+import { ProtocolsService } from '../protocols/protocols.service'
+import { AssetsService } from '../assets/assets.service'
 
 const SYSTEM_PROMPT = `Jsi Mio, profesionální AI asistent pro facility management platformu ifmio.
 Odpovídáš v češtině, stručně a prakticky.
@@ -73,6 +77,45 @@ const TOOLS: Anthropic.Tool[] = [
       required: [],
     },
   },
+  {
+    name: 'calendar_today',
+    description: 'Vrátí dnešní kalendářní události a provozní termíny (helpdesk, WO, smlouvy, revize). Použij pro "co se dnes děje".',
+    input_schema: { type: 'object' as const, properties: {}, required: [] },
+  },
+  {
+    name: 'revisions_overdue',
+    description: 'Vrátí revize/plány činností po termínu. Použij pro otázky na compliance a revize.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        search: { type: 'string', description: 'hledání v názvu nebo zařízení' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'protocols_recent',
+    description: 'Vrátí nedávné protokoly. Použij pro otázky na protokoly, výstupy práce, dokončené kontroly.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        status: { type: 'string', description: 'draft, completed, confirmed', enum: ['draft', 'completed', 'confirmed'] },
+        search: { type: 'string', description: 'hledání v čísle/názvu protokolu' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'assets_lookup',
+    description: 'Hledá zařízení podle názvu, lokace, sériového čísla. Použij pro otázky na konkrétní zařízení, kotelnu, VZT, apod.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        query: { type: 'string', description: 'hledaný výraz (název, lokace, sériové číslo)' },
+      },
+      required: [],
+    },
+  },
 ]
 
 @Injectable()
@@ -82,10 +125,14 @@ export class MioService {
 
   constructor(
     private config: ConfigService,
+    private prisma: PrismaService,
     private helpdesk: HelpdeskService,
     private workOrders: WorkOrdersService,
     private dashboard: DashboardService,
     private recurringPlans: RecurringPlansService,
+    private calendar: CalendarService,
+    private protocols: ProtocolsService,
+    private assets: AssetsService,
   ) {
     const apiKey = this.config.get<string>('ANTHROPIC_API_KEY')
     if (apiKey) {
@@ -286,6 +333,97 @@ export class MioService {
             asset: (p as any).asset?.name ?? null,
             property: (p as any).property?.name ?? null,
             generatedCount: (p as any)._count?.generatedTickets ?? 0,
+          })),
+        }
+      }
+
+      case 'calendar_today': {
+        const today = new Date()
+        const from = today.toISOString().slice(0, 10)
+        const to = from
+        const events = await this.calendar.getEvents(user, { from, to })
+        return {
+          total: events.length,
+          events: events.slice(0, 15).map(e => ({
+            title: e.title,
+            source: e.source,
+            date: e.date,
+            property: e.propertyName ?? null,
+            description: e.description ?? null,
+          })),
+        }
+      }
+
+      case 'revisions_overdue': {
+        const now = new Date()
+        const scopeWhere: any = {}
+        const plans = await this.prisma.revisionPlan.findMany({
+          where: {
+            tenantId: user.tenantId,
+            status: 'active',
+            nextDueAt: { lt: now },
+            ...scopeWhere,
+          },
+          include: {
+            revisionType: { select: { name: true } },
+            asset: { select: { name: true } },
+            property: { select: { name: true } },
+          },
+          take: 10,
+          orderBy: { nextDueAt: 'asc' },
+        })
+        return {
+          total: plans.length,
+          revisions: plans.map(p => ({
+            title: p.title,
+            revisionType: p.revisionType?.name ?? null,
+            asset: p.asset?.name ?? null,
+            property: p.property?.name ?? null,
+            nextDueAt: p.nextDueAt.toISOString(),
+            overdueDays: Math.floor((now.getTime() - p.nextDueAt.getTime()) / 86400000),
+          })),
+        }
+      }
+
+      case 'protocols_recent': {
+        const result = await this.protocols.list(user, {
+          status: input.status as string,
+          search: input.search as string,
+          limit: 10,
+          page: 1,
+        })
+        return {
+          total: result.total,
+          showing: result.data.length,
+          protocols: result.data.map((p: any) => ({
+            number: p.number,
+            title: p.title ?? null,
+            type: p.protocolType,
+            status: p.status,
+            property: p.property?.name ?? null,
+            resolver: p.resolverName ?? null,
+            completedAt: p.completedAt?.toISOString() ?? null,
+            hasPdf: !!p.generatedPdfDocumentId,
+          })),
+        }
+      }
+
+      case 'assets_lookup': {
+        const q = (input.query as string) ?? ''
+        const result = await this.assets.list(user, { search: q })
+        const limited = (result as any[]).slice(0, 10)
+        return {
+          total: (result as any[]).length,
+          showing: limited.length,
+          assets: limited.map((a: any) => ({
+            id: a.id,
+            name: a.name,
+            category: a.category,
+            status: a.status,
+            location: a.location ?? null,
+            property: a.property?.name ?? null,
+            assetType: a.assetType?.name ?? null,
+            serialNumber: a.serialNumber ?? null,
           })),
         }
       }
