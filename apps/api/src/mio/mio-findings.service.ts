@@ -322,6 +322,17 @@ export class MioFindingsService {
     })
   }
 
+  async restore(user: AuthUser, id: string) {
+    const finding = await this.prisma.mioFinding.findFirst({
+      where: { id, tenantId: user.tenantId, status: { in: ['dismissed', 'snoozed'] } },
+    })
+    if (!finding) return null
+    return this.prisma.mioFinding.update({
+      where: { id },
+      data: { status: 'active', dismissedAt: null, snoozedUntil: null },
+    })
+  }
+
   // ─── RECOMMENDATION API ──────────────────────────────────────
 
   async listRecommendations(user: AuthUser) {
