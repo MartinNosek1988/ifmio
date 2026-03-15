@@ -6,10 +6,12 @@ import {
 import { KpiCard, Badge, Button } from '../../shared/components';
 import { LoadingState } from '../../shared/components/LoadingState';
 import { ErrorState } from '../../shared/components/ErrorState';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useDashboardOverview, useOperationalDashboard } from './api/dashboard.queries';
 import { formatKc, formatCzDate } from '../../shared/utils/format';
 import { useRoleUX } from '../../shared/hooks/useRoleUX';
-import type { OperationalDashboard } from './api/dashboard.api';
+import { dashboardApi } from './api/dashboard.api';
+import type { OperationalDashboard, MioFinding } from './api/dashboard.api';
 
 const PRIORITY_LABELS: Record<string, string> = {
   low: 'Nízká', medium: 'Normální', high: 'Vysoká', urgent: 'Urgentní',
@@ -45,6 +47,9 @@ export default function DashboardPage() {
 
       {/* ── ATTENTION SECTION (operational) ─────────────────────── */}
       {ops && <AttentionSection ops={ops} uxRole={uxRole} />}
+
+      {/* Mio Findings */}
+      {uxRole !== 'resident' && <FindingsSection />}
 
       {/* Alerts */}
       {alerts.length > 0 && (
@@ -291,6 +296,60 @@ function RecentList({ title, items, emptyText, ctaLabel, ctaPath }: {
           </div>
         ))
       )}
+    </div>
+  );
+}
+
+// ─── Mio Findings Section ────────────────────────────────────────
+
+const SEV_COLOR: Record<string, 'red' | 'yellow' | 'blue'> = { critical: 'red', warning: 'yellow', info: 'blue' };
+const SEV_LABEL: Record<string, string> = { critical: 'Kritické', warning: 'Varování', info: 'Informace' };
+
+function FindingsSection() {
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const { data: findings = [] } = useQuery<MioFinding[]>({
+    queryKey: ['mio', 'findings'],
+    queryFn: () => dashboardApi.findings(),
+    refetchInterval: 120_000,
+  });
+  const dismissMut = useMutation({
+    mutationFn: (id: string) => dashboardApi.dismissFinding(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['mio', 'findings'] }),
+  });
+
+  if (findings.length === 0) return null;
+
+  return (
+    <div style={{
+      marginBottom: 20, padding: 14, borderRadius: 12,
+      background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)',
+    }}>
+      <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: '1.1rem' }}>🔍</span> Mio upozorňuje ({findings.length})
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {findings.slice(0, 8).map(f => (
+          <div key={f.id} style={{
+            display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
+            borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)',
+          }}>
+            <Badge variant={SEV_COLOR[f.severity] ?? 'blue'}>{SEV_LABEL[f.severity] ?? f.severity}</Badge>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 500, fontSize: '0.85rem' }}>{f.title}</div>
+              {f.description && <div className="text-muted" style={{ fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.description}</div>}
+            </div>
+            <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+              {f.helpdeskTicketId ? (
+                <Button size="sm" onClick={() => navigate('/helpdesk')}>Ticket</Button>
+              ) : f.actionUrl ? (
+                <Button size="sm" onClick={() => navigate(f.actionUrl!)}>{f.actionLabel ?? 'Otevřít'}</Button>
+              ) : null}
+              <Button size="sm" onClick={() => dismissMut.mutate(f.id)} disabled={dismissMut.isPending}>Skrýt</Button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
