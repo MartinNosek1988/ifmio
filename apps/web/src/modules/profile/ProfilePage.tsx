@@ -1,9 +1,13 @@
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../core/api/client';
-import { useMioDigestPrefs, useUpdateMioDigestPrefs, useResetMioDigestPrefs } from '../admin/api/admin.queries';
+import {
+  useMioDigestPrefs, useUpdateMioDigestPrefs, useResetMioDigestPrefs,
+  useMioDigestStatus, useMioDigestHistory, useMioDigestPreview,
+} from '../admin/api/admin.queries';
 import {
   User, Shield, SlidersHorizontal, Camera, Save, Eye, EyeOff, Check, RotateCcw, Mail,
+  Clock, CheckCircle, XCircle, SkipForward, Search,
 } from 'lucide-react';
 
 /* ─── types ──────────────────────────────────────────────────────── */
@@ -309,6 +313,7 @@ function PreferencesTab({ profile, onSave, saving }: {
 
       {/* ── Mio Digest Preferences ─────────────────────────────── */}
       <MioDigestSection />
+      <MioDigestStatusSection />
     </div>
   );
 }
@@ -489,6 +494,162 @@ function MioDigestSection() {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ─── Mio Digest Status & History ────────────────────────────────── */
+
+const STATUS_ICON: Record<string, React.ReactNode> = {
+  sent: <CheckCircle size={14} style={{ color: '#10b981' }} />,
+  skipped: <SkipForward size={14} style={{ color: '#f59e0b' }} />,
+  failed: <XCircle size={14} style={{ color: '#ef4444' }} />,
+};
+const STATUS_LABEL: Record<string, string> = {
+  sent: 'Odesláno', skipped: 'Přeskočeno', failed: 'Selhalo',
+};
+const FREQ_LABEL: Record<string, string> = { daily: 'Denní', weekly: 'Týdenní' };
+
+function MioDigestStatusSection() {
+  const { data: status } = useMioDigestStatus();
+  const { data: history } = useMioDigestHistory();
+  const { data: preview, refetch: fetchPreview, isFetching: previewLoading } = useMioDigestPreview();
+  const [showPreview, setShowPreview] = useState(false);
+
+  if (!status) return null;
+
+  const effective = status.effective;
+  const lastSentAt = status.lastSentAt;
+  const lastResult = status.lastResult;
+  const nextSend = status.nextPlannedSend;
+
+  // Build effective summary line
+  const summaryParts: string[] = [];
+  if (effective.frequency === 'daily') summaryParts.push('Denně');
+  else if (effective.frequency === 'weekly') summaryParts.push('Týdně');
+  if (effective.includeFindings) summaryParts.push('upozornění');
+  if (effective.includeRecommendations) summaryParts.push('doporučení');
+  const sevLabels: Record<string, string> = { info: 'vše', warning: 'varování+', critical: 'jen kritická' };
+  summaryParts.push(sevLabels[effective.minSeverity] ?? 'vše');
+
+  return (
+    <div className="profile-card" style={{ marginTop: 16 }}>
+      <h3 className="profile-card-title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <Clock size={16} /> Stav přehledu
+      </h3>
+
+      {/* Summary */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
+        <StatusRow label="Nastavení" value={
+          !effective.enabled ? 'Vypnuto' : summaryParts.join(', ')
+        } />
+        <StatusRow label="Zdroj" value={
+          status.source === 'user_override' ? 'Vlastní nastavení' : 'Výchozí organizace'
+        } />
+        <StatusRow label="Poslední odeslání" value={
+          lastSentAt
+            ? new Date(lastSentAt).toLocaleString('cs-CZ', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+            : 'Zatím neodeslán'
+        } />
+        <StatusRow label="Další plánované" value={nextSend ?? 'Odesílání je vypnuto'} />
+        {lastResult && (
+          <StatusRow label="Poslední výsledek" value={
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {STATUS_ICON[lastResult.status]}
+              {STATUS_LABEL[lastResult.status] ?? lastResult.status}
+              {lastResult.status === 'sent' && ` (${lastResult.findingsCount} upoz., ${lastResult.recommendationsCount} dopor.)`}
+              {lastResult.skippedReason && ` — ${lastResult.skippedReason}`}
+            </span>
+          } />
+        )}
+      </div>
+
+      {/* Preview button */}
+      <div style={{ marginBottom: 16 }}>
+        <button
+          className="profile-btn-secondary"
+          onClick={() => { setShowPreview(!showPreview); if (!showPreview) fetchPreview(); }}
+          disabled={previewLoading}
+          style={{ fontSize: '.82rem', display: 'flex', alignItems: 'center', gap: 4 }}
+        >
+          <Search size={13} />
+          {showPreview ? 'Skrýt náhled' : 'Zobrazit náhled'}
+        </button>
+      </div>
+
+      {/* Preview content */}
+      {showPreview && preview && (
+        <div style={{
+          padding: 12, borderRadius: 8, marginBottom: 16,
+          background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)',
+          fontSize: '.82rem',
+        }}>
+          <div style={{ fontWeight: 600, marginBottom: 8 }}>
+            Náhled: {preview.totalItems} položek
+            {preview.criticalCount > 0 && ` · ${preview.criticalCount} kritických`}
+            {preview.warningCount > 0 && ` · ${preview.warningCount} varování`}
+          </div>
+          {preview.findings?.length > 0 && (
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ fontWeight: 500, color: '#9ca3af', marginBottom: 4 }}>Upozornění ({preview.findings.length})</div>
+              {preview.findings.slice(0, 5).map((f: any, i: number) => (
+                <div key={i} style={{ padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  {f.title}
+                </div>
+              ))}
+              {preview.findings.length > 5 && <div style={{ color: '#6b7280' }}>… a dalších {preview.findings.length - 5}</div>}
+            </div>
+          )}
+          {preview.recommendations?.length > 0 && (
+            <div>
+              <div style={{ fontWeight: 500, color: '#9ca3af', marginBottom: 4 }}>Doporučení ({preview.recommendations.length})</div>
+              {preview.recommendations.map((r: any, i: number) => (
+                <div key={i} style={{ padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  {r.title}
+                </div>
+              ))}
+            </div>
+          )}
+          {preview.totalItems === 0 && (
+            <div style={{ color: '#9ca3af' }}>Aktuálně nejsou žádné relevantní položky k odeslání.</div>
+          )}
+        </div>
+      )}
+
+      {/* History */}
+      {history && history.length > 0 && (
+        <div>
+          <h4 style={{ color: '#d1d5db', fontSize: '.85rem', fontWeight: 600, marginBottom: 8 }}>Historie odeslání</h4>
+          <div style={{ maxHeight: 200, overflow: 'auto' }}>
+            {history.map((h: any) => (
+              <div key={h.id} style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0',
+                borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '.82rem',
+              }}>
+                {STATUS_ICON[h.status] ?? null}
+                <span style={{ color: '#9ca3af', minWidth: 100 }}>
+                  {new Date(h.createdAt).toLocaleString('cs-CZ', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </span>
+                <span style={{ color: '#d1d5db' }}>{FREQ_LABEL[h.frequency] ?? h.frequency}</span>
+                <span style={{ color: '#d1d5db' }}>
+                  {STATUS_LABEL[h.status] ?? h.status}
+                  {h.status === 'sent' && ` · ${h.findingsCount} upoz., ${h.recommendationsCount} dopor.`}
+                </span>
+                {h.skippedReason && <span style={{ color: '#6b7280' }}>— {h.skippedReason}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatusRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div>
+      <div style={{ fontSize: '.75rem', color: '#6b7280', marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: '.85rem', color: '#d1d5db' }}>{value}</div>
     </div>
   );
 }

@@ -92,6 +92,24 @@ export class MioController {
     return this.digest.deleteUserPreferences(user)
   }
 
+  @Get('digest/status')
+  @ApiOperation({ summary: 'Digest status (current user)' })
+  getDigestStatus(@CurrentUser() user: AuthUser) {
+    return this.digest.getDigestStatus(user)
+  }
+
+  @Get('digest/history')
+  @ApiOperation({ summary: 'Digest delivery history (current user)' })
+  getDigestHistory(@CurrentUser() user: AuthUser) {
+    return this.digest.getDigestHistory(user)
+  }
+
+  @Get('digest/preview')
+  @ApiOperation({ summary: 'Preview digest content (current user)' })
+  getDigestPreview(@CurrentUser() user: AuthUser) {
+    return this.digest.getDigestPreview(user)
+  }
+
   @Post('digest/send')
   @Roles(...ROLES_MANAGE)
   @ApiOperation({ summary: 'Ručně odeslat Mio digest' })

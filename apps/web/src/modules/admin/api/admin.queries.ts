@@ -123,7 +123,32 @@ export function useResetMioDigestPrefs() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: () => adminApi.mioDigestPrefs.reset(),
-    onSuccess:  () => qc.invalidateQueries({ queryKey: ['mio', 'digestPrefs'] }),
+    onSuccess:  () => {
+      qc.invalidateQueries({ queryKey: ['mio', 'digestPrefs'] })
+      qc.invalidateQueries({ queryKey: ['mio', 'digestStatus'] })
+    },
+  })
+}
+
+export function useMioDigestStatus() {
+  return useQuery({
+    queryKey: ['mio', 'digestStatus'] as const,
+    queryFn:  () => adminApi.mioDigestPrefs.status(),
+  })
+}
+
+export function useMioDigestHistory() {
+  return useQuery({
+    queryKey: ['mio', 'digestHistory'] as const,
+    queryFn:  () => adminApi.mioDigestPrefs.history(),
+  })
+}
+
+export function useMioDigestPreview() {
+  return useQuery({
+    queryKey: ['mio', 'digestPreview'] as const,
+    queryFn:  () => adminApi.mioDigestPrefs.preview(),
+    enabled: false, // only fetch on demand
   })
 }
 

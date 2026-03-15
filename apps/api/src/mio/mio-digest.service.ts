@@ -238,7 +238,11 @@ export class MioDigestService {
         }
 
         const digest = await this.buildMioDigest(fakeAuth, effectiveConfig)
-        if (digest.totalItems === 0) { skipped++; continue }
+        if (digest.totalItems === 0) {
+          skipped++
+          await this.logDelivery(tenantId, user.id, frequency, 'skipped', 0, 0, 'Nebyly nalezeny žádné relevantní položky')
+          continue
+        }
 
         const subject = this.buildSubject(digest, frequency)
         const html = this.buildHtml(digest, user.name, tenantName, frequency)
@@ -246,6 +250,7 @@ export class MioDigestService {
         const ok = await this.email.send({ to: user.email, subject, html })
         if (ok) {
           sent++
+          await this.logDelivery(tenantId, user.id, frequency, 'sent', digest.findings.length, digest.recommendations.length)
           // Update or create lastSentAt tracking
           if (sub) {
             await this.prisma.scheduledReportSubscription.update({
@@ -253,7 +258,6 @@ export class MioDigestService {
               data: { lastSentAt: now },
             })
           } else {
-            // Auto-create subscription record for tracking
             await this.prisma.scheduledReportSubscription.create({
               data: {
                 tenantId, userId: user.id,
@@ -265,13 +269,132 @@ export class MioDigestService {
               },
             })
           }
+        } else {
+          await this.logDelivery(tenantId, user.id, frequency, 'failed', 0, 0, 'Odeslání se nepodařilo')
         }
       } catch (err) {
         this.logger.error(`Mio digest for ${user.email} failed: ${err}`)
+        try {
+          await this.logDelivery(tenantId, user.id, frequency, 'failed', 0, 0, 'Odeslání se nepodařilo')
+        } catch { /* ignore log failure */ }
       }
     }
 
     return { sent, skipped }
+  }
+
+  // ─── STATUS / HISTORY / PREVIEW ────────────────────────────────
+
+  async getDigestStatus(user: AuthUser) {
+    const prefs = await this.getUserPreferences(user)
+    const effective = prefs.effective
+
+    // Last sent from subscription
+    const sub = await this.prisma.scheduledReportSubscription.findFirst({
+      where: { tenantId: user.tenantId, userId: user.id, reportType: 'mio_digest' },
+      select: { lastSentAt: true },
+    })
+
+    // Last log entry
+    const lastLog = await this.prisma.mioDigestLog.findFirst({
+      where: { userId: user.id, tenantId: user.tenantId },
+      orderBy: { createdAt: 'desc' },
+      select: { status: true, findingsCount: true, recommendationsCount: true, createdAt: true, skippedReason: true },
+    })
+
+    const lastSentAt = sub?.lastSentAt ?? null
+    const nextPlannedSend = this.computeNextSend(effective)
+
+    return {
+      ...prefs,
+      lastSentAt,
+      lastResult: lastLog ? {
+        status: lastLog.status,
+        findingsCount: lastLog.findingsCount,
+        recommendationsCount: lastLog.recommendationsCount,
+        at: lastLog.createdAt,
+        skippedReason: lastLog.skippedReason,
+      } : null,
+      nextPlannedSend,
+    }
+  }
+
+  async getDigestHistory(user: AuthUser, limit = 10) {
+    return this.prisma.mioDigestLog.findMany({
+      where: { userId: user.id, tenantId: user.tenantId },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select: {
+        id: true, frequency: true, status: true,
+        findingsCount: true, recommendationsCount: true,
+        skippedReason: true, createdAt: true,
+      },
+    })
+  }
+
+  async getDigestPreview(user: AuthUser) {
+    const config = await this.mioConfig.getConfig(user.tenantId)
+    const prefs = await this.getUserPreferences(user)
+
+    const effectiveConfig: MioConfig = {
+      ...config,
+      digest: {
+        ...config.digest,
+        includeFindings: prefs.effective.includeFindings,
+        includeRecommendations: prefs.effective.includeRecommendations,
+        minSeverity: prefs.effective.minSeverity as any,
+      },
+    }
+
+    const digest = await this.buildMioDigest(user, effectiveConfig)
+    return {
+      totalItems: digest.totalItems,
+      criticalCount: digest.criticalCount,
+      warningCount: digest.warningCount,
+      infoCount: digest.infoCount,
+      findings: digest.findings,
+      recommendations: digest.recommendations,
+    }
+  }
+
+  private computeNextSend(effective: { enabled: boolean; frequency: string }): string | null {
+    if (!effective.enabled) return null
+    if (effective.frequency === 'off') return null
+
+    const now = new Date()
+    const hour = now.getHours()
+
+    if (effective.frequency === 'daily') {
+      if (hour < 7) return 'Dnes v ~7:00'
+      const tomorrow = new Date(now)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      return `Zítra v ~7:00`
+    }
+
+    if (effective.frequency === 'weekly') {
+      const day = now.getDay() // 0=Sun, 1=Mon
+      if (day === 1 && hour < 7) return 'Dnes v ~7:00'
+      const daysUntilMonday = day === 0 ? 1 : 8 - day
+      const next = new Date(now)
+      next.setDate(next.getDate() + daysUntilMonday)
+      return `V pondělí ${next.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'numeric' })} v ~7:00`
+    }
+
+    return null
+  }
+
+  private async logDelivery(
+    tenantId: string, userId: string, frequency: string,
+    status: string, findingsCount: number, recommendationsCount: number,
+    skippedReason?: string,
+  ) {
+    try {
+      await this.prisma.mioDigestLog.create({
+        data: { tenantId, userId, frequency, status, findingsCount, recommendationsCount, skippedReason },
+      })
+    } catch (err) {
+      this.logger.error(`Failed to log digest delivery: ${err}`)
+    }
   }
 
   // ─── DIGEST CONTENT BUILDER ──────────────────────────────────
