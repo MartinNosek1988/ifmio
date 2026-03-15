@@ -56,7 +56,6 @@ export default function RecurringPlansTab({ assetId, propertyId }: Props) {
               plan={plan}
               onEdit={() => { setEditPlan(plan); setShowForm(true); }}
               onToggle={() => handleToggle(plan)}
-              onDelete={() => handleDelete(plan)}
             />
           ))}
         </div>
