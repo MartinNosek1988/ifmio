@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
+import { MioConfigService, type MioConfig } from './mio-config.service'
 import type { AuthUser } from '@ifmio/shared-types'
 
 // Severity → Helpdesk priority mapping
@@ -9,7 +10,7 @@ const SEVERITY_TO_PRIORITY: Record<string, string> = {
   info: 'medium',
 }
 
-// ─── Centralized recommendation thresholds ────────────────────
+// ─── Centralized recommendation thresholds (defaults) ─────────
 const THRESHOLDS = {
   RECURRING_ADOPTION_MIN_ASSETS: 3,
   RECURRING_ADOPTION_MAX_PLANS: 2,
@@ -19,10 +20,8 @@ const THRESHOLDS = {
   SECURITY_TIP_MIN_USERS: 3,
 }
 
-// Auto-ticket policy: only truly escalation-worthy findings create tickets
-// overdue_recurring_request and overdue_work_order are finding-only
-// (the original ticket/WO already exists as an actionable object)
-const AUTO_TICKET_CODES = new Set([
+// Default auto-ticket codes (overridable by MioConfig)
+const DEFAULT_AUTO_TICKET_CODES = new Set([
   'overdue_revision',
   'urgent_ticket_no_assignee',
 ])
@@ -31,7 +30,7 @@ interface FindingRule {
   code: string
   title: string
   severity: string
-  run: (tenantId: string, prisma: PrismaService) => Promise<DetectedIssue[]>
+  run: (tenantId: string, prisma: PrismaService, thresholds: Record<string, number>) => Promise<DetectedIssue[]>
 }
 
 interface DetectedIssue {
@@ -49,7 +48,10 @@ interface DetectedIssue {
 export class MioFindingsService {
   private readonly logger = new Logger(MioFindingsService.name)
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private mioConfig: MioConfigService,
+  ) {}
 
   // ─── DETECTION SCAN ─────────────────────────────────────────
 
@@ -79,11 +81,18 @@ export class MioFindingsService {
     const now = new Date()
     let created = 0, resolved = 0, ticketsCreated = 0
 
+    const config = await this.mioConfig.getConfig(tenantId)
     const detectedFingerprints = new Set<string>()
 
+    // Build effective thresholds (config overrides defaults)
+    const effectiveThresholds = { ...THRESHOLDS, ...config.thresholds }
+
     for (const rule of RULES) {
+      // Skip disabled finding families
+      if (config.enabledFindings[rule.code] === false) continue
+
       try {
-        const issues = await rule.run(tenantId, this.prisma)
+        const issues = await rule.run(tenantId, this.prisma, effectiveThresholds)
 
         for (const issue of issues) {
           detectedFingerprints.add(issue.fingerprint)
@@ -128,8 +137,9 @@ export class MioFindingsService {
             })
             created++
 
-            // Auto-ticket if policy says so
-            if (AUTO_TICKET_CODES.has(rule.code) && rule.severity !== 'info') {
+            // Auto-ticket: respect tenant config override, fall back to default policy
+            const autoTicket = config.autoTicketPolicy[rule.code] ?? DEFAULT_AUTO_TICKET_CODES.has(rule.code)
+            if (autoTicket && rule.severity !== 'info') {
               const ticket = await this.createTicketForFinding(tenantId, finding)
               if (ticket) ticketsCreated++
             }
@@ -142,8 +152,11 @@ export class MioFindingsService {
 
     // Run recommendation rules
     for (const rule of RECOMMENDATION_RULES) {
+      // Skip disabled recommendation families
+      if (config.enabledRecommendations[rule.code] === false) continue
+
       try {
-        const issues = await rule.run(tenantId, this.prisma)
+        const issues = await rule.run(tenantId, this.prisma, effectiveThresholds)
         for (const issue of issues) {
           detectedFingerprints.add(issue.fingerprint)
           const existing = await this.prisma.mioFinding.findUnique({ where: { fingerprint: issue.fingerprint } })
@@ -372,7 +385,7 @@ const RULES: FindingRule[] = [
     code: 'overdue_recurring_request',
     title: 'Opakované požadavky jsou po termínu',
     severity: 'warning',
-    run: async (tenantId, prisma) => {
+    run: async (tenantId, prisma, _thresholds) => {
       const now = new Date()
       const tickets = await prisma.helpdeskTicket.findMany({
         where: {
@@ -399,7 +412,7 @@ const RULES: FindingRule[] = [
     code: 'overdue_revision',
     title: 'Revize je po termínu',
     severity: 'critical',
-    run: async (tenantId, prisma) => {
+    run: async (tenantId, prisma, _thresholds) => {
       const now = new Date()
       const plans = await prisma.revisionPlan.findMany({
         where: { tenantId, status: 'active', nextDueAt: { lt: now } },
@@ -421,7 +434,7 @@ const RULES: FindingRule[] = [
     code: 'overdue_work_order',
     title: 'Pracovní úkol je po termínu',
     severity: 'warning',
-    run: async (tenantId, prisma) => {
+    run: async (tenantId, prisma, _thresholds) => {
       const now = new Date()
       const wos = await prisma.workOrder.findMany({
         where: { tenantId, status: { in: ['nova', 'v_reseni'] }, deadline: { lt: now } },
@@ -443,7 +456,7 @@ const RULES: FindingRule[] = [
     code: 'urgent_ticket_no_assignee',
     title: 'Urgentní požadavek nemá přiřazeného řešitele',
     severity: 'critical',
-    run: async (tenantId, prisma) => {
+    run: async (tenantId, prisma, _thresholds) => {
       const tickets = await prisma.helpdeskTicket.findMany({
         where: {
           tenantId,
@@ -469,7 +482,7 @@ const RULES: FindingRule[] = [
     code: 'asset_no_recurring_plan',
     title: 'Zařízení nemá nastavenou opakovanou činnost',
     severity: 'info',
-    run: async (tenantId, prisma) => {
+    run: async (tenantId, prisma, _thresholds) => {
       const assets = await prisma.asset.findMany({
         where: {
           tenantId,
@@ -498,7 +511,7 @@ interface RecommendationRule {
   code: string
   title: string
   category: string
-  run: (tenantId: string, prisma: PrismaService) => Promise<DetectedIssue[]>
+  run: (tenantId: string, prisma: PrismaService, thresholds: Record<string, number>) => Promise<DetectedIssue[]>
 }
 
 const RECOMMENDATION_RULES: RecommendationRule[] = [
@@ -506,12 +519,12 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
     code: 'recurring_plans_adoption',
     title: 'Opakované činnosti můžete automatizovat',
     category: 'efficiency',
-    run: async (tenantId, prisma) => {
+    run: async (tenantId, prisma, thresholds) => {
       const [assetCount, planCount] = await Promise.all([
         prisma.asset.count({ where: { tenantId, deletedAt: null } }),
         prisma.recurringActivityPlan.count({ where: { tenantId, isActive: true } }),
       ])
-      if (assetCount > THRESHOLDS.RECURRING_ADOPTION_MIN_ASSETS && planCount < THRESHOLDS.RECURRING_ADOPTION_MAX_PLANS) {
+      if (assetCount > thresholds.RECURRING_ADOPTION_MIN_ASSETS && planCount < thresholds.RECURRING_ADOPTION_MAX_PLANS) {
         return [{
           fingerprint: `rec:recurring_adoption:${tenantId}`,
           description: `Máte ${assetCount} zařízení, ale jen ${planCount} opakovaných plánů. Nastavte opakované činnosti pro pravidelnou údržbu.`,
@@ -526,10 +539,10 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
     code: 'reporting_export_tip',
     title: 'Přehledy můžete exportovat do CSV/XLSX',
     category: 'efficiency',
-    run: async (tenantId, prisma) => {
+    run: async (tenantId, prisma, thresholds) => {
       // Show when tenant has >10 tickets but probably hasn't used exports
       const ticketCount = await prisma.helpdeskTicket.count({ where: { tenantId } })
-      if (ticketCount > THRESHOLDS.REPORTING_TIP_MIN_TICKETS) {
+      if (ticketCount > thresholds.REPORTING_TIP_MIN_TICKETS) {
         return [{
           fingerprint: `rec:reporting_export:${tenantId}`,
           description: 'Provozní přehledy, zařízení a protokoly můžete exportovat pro další zpracování.',
@@ -544,9 +557,9 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
     code: 'helpdesk_filtering_tip',
     title: 'Helpdesk můžete filtrovat podle zdroje a priority',
     category: 'adoption',
-    run: async (tenantId, prisma) => {
+    run: async (tenantId, prisma, thresholds) => {
       const ticketCount = await prisma.helpdeskTicket.count({ where: { tenantId } })
-      if (ticketCount > THRESHOLDS.HELPDESK_FILTER_TIP_MIN_TICKETS) {
+      if (ticketCount > thresholds.HELPDESK_FILTER_TIP_MIN_TICKETS) {
         return [{
           fingerprint: `rec:helpdesk_filter:${tenantId}`,
           description: 'Při větším počtu požadavků využijte filtry podle zdroje (manuální / opakované), priority a stavu.',
@@ -561,7 +574,7 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
     code: 'attachments_protocol_tip',
     title: 'K úkolům můžete přidávat přílohy a protokoly',
     category: 'adoption',
-    run: async (tenantId, prisma) => {
+    run: async (tenantId, prisma, thresholds) => {
       // Show when tenant has completed WOs but no protocols linked
       const completedWo = await prisma.workOrder.count({
         where: { tenantId, status: { in: ['vyresena', 'uzavrena'] } },
@@ -569,7 +582,7 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
       const protocolCount = await prisma.protocol.count({
         where: { tenantId, sourceType: 'work_order' },
       })
-      if (completedWo > THRESHOLDS.PROTOCOL_TIP_MIN_COMPLETED_WO && protocolCount === 0) {
+      if (completedWo > thresholds.PROTOCOL_TIP_MIN_COMPLETED_WO && protocolCount === 0) {
         return [{
           fingerprint: `rec:protocol_adoption:${tenantId}`,
           description: 'K pracovním úkolům můžete přidávat přílohy a protokoly pro lepší dohledatelnost a audit.',
@@ -584,10 +597,10 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
     code: 'security_access_tip',
     title: 'Zkontrolujte bezpečnostní nastavení přístupů',
     category: 'security',
-    run: async (tenantId, prisma) => {
+    run: async (tenantId, prisma, thresholds) => {
       // Show when tenant has >3 active users (worth reviewing access)
       const userCount = await prisma.user.count({ where: { tenantId, isActive: true } })
-      if (userCount > THRESHOLDS.SECURITY_TIP_MIN_USERS) {
+      if (userCount > thresholds.SECURITY_TIP_MIN_USERS) {
         return [{
           fingerprint: `rec:security_access:${tenantId}`,
           description: 'S větším počtem uživatelů doporučujeme zkontrolovat role, přístupy k objektům a bezpečnostní nastavení.',

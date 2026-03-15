@@ -1,10 +1,12 @@
-import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common'
+import { Controller, Get, Put, Post, Body, Param, Query } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { Roles } from '../common/decorators/roles.decorator'
 import { ROLES_MANAGE } from '../common/constants/roles.constants'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
+import { AuditAction } from '../common/decorators/audit.decorator'
 import { MioService } from './mio.service'
 import { MioFindingsService } from './mio-findings.service'
+import { MioConfigService } from './mio-config.service'
 import type { AuthUser } from '@ifmio/shared-types'
 
 @ApiTags('Mio')
@@ -14,7 +16,25 @@ export class MioController {
   constructor(
     private service: MioService,
     private findings: MioFindingsService,
+    private config: MioConfigService,
   ) {}
+
+  // ─── Config (governance) ────────────────────────────────────
+
+  @Get('config')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Mio governance config' })
+  getConfig(@CurrentUser() user: AuthUser) {
+    return this.config.getConfig(user.tenantId)
+  }
+
+  @Put('config')
+  @Roles(...ROLES_MANAGE)
+  @AuditAction('TenantSettings', 'MIO_CONFIG_UPDATE')
+  @ApiOperation({ summary: 'Update Mio governance config' })
+  updateConfig(@CurrentUser() user: AuthUser, @Body() dto: any) {
+    return this.config.updateConfig(user.tenantId, dto)
+  }
 
   @Post('chat')
   @ApiOperation({ summary: 'Mio AI chat' })

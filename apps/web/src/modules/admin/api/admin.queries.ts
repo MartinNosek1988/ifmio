@@ -2,9 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminApi } from './admin.api'
 
 export const adminKeys = {
-  tenant:   () => ['admin', 'tenant']   as const,
-  settings: () => ['admin', 'settings'] as const,
-  users:    () => ['admin', 'users']    as const,
+  tenant:    () => ['admin', 'tenant']     as const,
+  settings:  () => ['admin', 'settings']   as const,
+  users:     () => ['admin', 'users']      as const,
+  mioConfig: () => ['admin', 'mioConfig']  as const,
 }
 
 export function useTenantInfo() {
@@ -59,6 +60,21 @@ export function useUpdateUser() {
     mutationFn: ({ id, dto }: { id: string; dto: { name?: string; role?: string; isActive?: boolean } }) =>
       adminApi.users.update(id, dto),
     onSuccess: () => qc.invalidateQueries({ queryKey: adminKeys.users() }),
+  })
+}
+
+export function useMioConfig() {
+  return useQuery({
+    queryKey: adminKeys.mioConfig(),
+    queryFn:  () => adminApi.mioConfig.get(),
+  })
+}
+
+export function useUpdateMioConfig() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (dto: any) => adminApi.mioConfig.update(dto),
+    onSuccess:  () => qc.invalidateQueries({ queryKey: adminKeys.mioConfig() }),
   })
 }
 
