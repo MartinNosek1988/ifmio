@@ -72,4 +72,34 @@ export class MioController {
   runDetection(@CurrentUser() user: AuthUser) {
     return this.findings.runDetectionForUser(user)
   }
+
+  // ─── Recommendations ───────────────────────────────────────
+
+  @Get('recommendations')
+  @ApiOperation({ summary: 'Seznam Mio doporučení' })
+  listRecommendations(@CurrentUser() user: AuthUser) {
+    return this.findings.listRecommendations(user)
+  }
+
+  @Get('recommendations/summary')
+  @ApiOperation({ summary: 'Souhrn doporučení' })
+  recommendationsSummary(@CurrentUser() user: AuthUser) {
+    return this.findings.getRecommendationSummary(user)
+  }
+
+  @Post('recommendations/:id/dismiss')
+  @ApiOperation({ summary: 'Skrýt doporučení' })
+  dismissRecommendation(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.findings.dismiss(user, id)
+  }
+
+  @Post('recommendations/:id/snooze')
+  @ApiOperation({ summary: 'Odložit doporučení' })
+  snoozeRecommendation(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: { until: string },
+  ) {
+    return this.findings.snooze(user, id, new Date(dto.until))
+  }
 }

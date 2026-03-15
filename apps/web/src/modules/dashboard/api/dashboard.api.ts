@@ -69,4 +69,10 @@ export const dashboardApi = {
 
   dismissFinding: (id: string) =>
     apiClient.post(`/mio/findings/${id}/dismiss`).then((r) => r.data),
+
+  recommendations: () =>
+    apiClient.get<MioFinding[]>('/mio/recommendations').then((r) => r.data),
+
+  dismissRecommendation: (id: string) =>
+    apiClient.post(`/mio/recommendations/${id}/dismiss`).then((r) => r.data),
 }

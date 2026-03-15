@@ -130,12 +130,40 @@ export class MioFindingsService {
       }
     }
 
-    // Resolve findings no longer detected
-    const activeFindings = await this.prisma.mioFinding.findMany({
+    // Run recommendation rules
+    for (const rule of RECOMMENDATION_RULES) {
+      try {
+        const issues = await rule.run(tenantId, this.prisma)
+        for (const issue of issues) {
+          detectedFingerprints.add(issue.fingerprint)
+          const existing = await this.prisma.mioFinding.findUnique({ where: { fingerprint: issue.fingerprint } })
+          if (existing) {
+            const update: Record<string, unknown> = { lastDetectedAt: now }
+            if (existing.status === 'resolved') { update.status = 'active'; update.resolvedAt = null }
+            await this.prisma.mioFinding.update({ where: { id: existing.id }, data: update })
+          } else {
+            await this.prisma.mioFinding.create({
+              data: {
+                tenantId, kind: 'recommendation', code: rule.code, title: rule.title,
+                description: issue.description, category: rule.category, severity: 'info', confidence: 'medium',
+                fingerprint: issue.fingerprint, actionLabel: issue.actionLabel ?? null, actionUrl: issue.actionUrl ?? null,
+                firstDetectedAt: now, lastDetectedAt: now,
+              },
+            })
+            created++
+          }
+        }
+      } catch (err) {
+        this.logger.error(`Recommendation ${rule.code} failed: ${err}`)
+      }
+    }
+
+    // Resolve findings/recommendations no longer detected (skip dismissed)
+    const activeItems = await this.prisma.mioFinding.findMany({
       where: { tenantId, status: 'active' },
       select: { id: true, fingerprint: true },
     })
-    for (const f of activeFindings) {
+    for (const f of activeItems) {
       if (!detectedFingerprints.has(f.fingerprint)) {
         await this.prisma.mioFinding.update({
           where: { id: f.id },
@@ -239,6 +267,27 @@ export class MioFindingsService {
       where: { id },
       data: { status: 'snoozed', snoozedUntil: until },
     })
+  }
+
+  // ─── RECOMMENDATION API ──────────────────────────────────────
+
+  async listRecommendations(user: AuthUser) {
+    return this.prisma.mioFinding.findMany({
+      where: { tenantId: user.tenantId, kind: 'recommendation', status: 'active' },
+      orderBy: { lastDetectedAt: 'desc' },
+      take: 20,
+    })
+  }
+
+  async getRecommendationSummary(user: AuthUser) {
+    const tenantId = user.tenantId
+    const [total, efficiency, security, adoption] = await Promise.all([
+      this.prisma.mioFinding.count({ where: { tenantId, kind: 'recommendation', status: 'active' } }),
+      this.prisma.mioFinding.count({ where: { tenantId, kind: 'recommendation', status: 'active', category: 'efficiency' } }),
+      this.prisma.mioFinding.count({ where: { tenantId, kind: 'recommendation', status: 'active', category: 'security' } }),
+      this.prisma.mioFinding.count({ where: { tenantId, kind: 'recommendation', status: 'active', category: 'adoption' } }),
+    ])
+    return { total, efficiency, security, adoption }
   }
 
   async createTicketManual(user: AuthUser, id: string) {
@@ -375,6 +424,115 @@ const RULES: FindingRule[] = [
         actionLabel: 'Nastavit plán',
         actionUrl: `/assets/${a.id}?tab=recurring`,
       }))
+    },
+  },
+]
+
+// ─── RECOMMENDATION RULES ─────────────────────────────────────
+
+interface RecommendationRule {
+  code: string
+  title: string
+  category: string
+  run: (tenantId: string, prisma: PrismaService) => Promise<DetectedIssue[]>
+}
+
+const RECOMMENDATION_RULES: RecommendationRule[] = [
+  {
+    code: 'recurring_plans_adoption',
+    title: 'Opakované činnosti můžete automatizovat',
+    category: 'efficiency',
+    run: async (tenantId, prisma) => {
+      // Show when >3 assets but <2 recurring plans
+      const [assetCount, planCount] = await Promise.all([
+        prisma.asset.count({ where: { tenantId, deletedAt: null } }),
+        prisma.recurringActivityPlan.count({ where: { tenantId, isActive: true } }),
+      ])
+      if (assetCount > 3 && planCount < 2) {
+        return [{
+          fingerprint: `rec:recurring_adoption:${tenantId}`,
+          description: `Máte ${assetCount} zařízení, ale jen ${planCount} opakovaných plánů. Nastavte opakované činnosti pro pravidelnou údržbu.`,
+          actionLabel: 'Otevřít zařízení',
+          actionUrl: '/assets',
+        }]
+      }
+      return []
+    },
+  },
+  {
+    code: 'reporting_export_tip',
+    title: 'Přehledy můžete exportovat do CSV/XLSX',
+    category: 'efficiency',
+    run: async (tenantId, prisma) => {
+      // Show when tenant has >10 tickets but probably hasn't used exports
+      const ticketCount = await prisma.helpdeskTicket.count({ where: { tenantId } })
+      if (ticketCount > 10) {
+        return [{
+          fingerprint: `rec:reporting_export:${tenantId}`,
+          description: 'Provozní přehledy, zařízení a protokoly můžete exportovat pro další zpracování.',
+          actionLabel: 'Otevřít reporting',
+          actionUrl: '/reporting/operations',
+        }]
+      }
+      return []
+    },
+  },
+  {
+    code: 'helpdesk_filtering_tip',
+    title: 'Helpdesk můžete filtrovat podle zdroje a priority',
+    category: 'adoption',
+    run: async (tenantId, prisma) => {
+      const ticketCount = await prisma.helpdeskTicket.count({ where: { tenantId } })
+      if (ticketCount > 20) {
+        return [{
+          fingerprint: `rec:helpdesk_filter:${tenantId}`,
+          description: 'Při větším počtu požadavků využijte filtry podle zdroje (manuální / opakované), priority a stavu.',
+          actionLabel: 'Otevřít helpdesk',
+          actionUrl: '/helpdesk',
+        }]
+      }
+      return []
+    },
+  },
+  {
+    code: 'attachments_protocol_tip',
+    title: 'K úkolům můžete přidávat přílohy a protokoly',
+    category: 'adoption',
+    run: async (tenantId, prisma) => {
+      // Show when tenant has completed WOs but no protocols linked
+      const completedWo = await prisma.workOrder.count({
+        where: { tenantId, status: { in: ['vyresena', 'uzavrena'] } },
+      })
+      const protocolCount = await prisma.protocol.count({
+        where: { tenantId, sourceType: 'work_order' },
+      })
+      if (completedWo > 5 && protocolCount === 0) {
+        return [{
+          fingerprint: `rec:protocol_adoption:${tenantId}`,
+          description: 'K pracovním úkolům můžete přidávat přílohy a protokoly pro lepší dohledatelnost a audit.',
+          actionLabel: 'Otevřít úkoly',
+          actionUrl: '/workorders',
+        }]
+      }
+      return []
+    },
+  },
+  {
+    code: 'security_access_tip',
+    title: 'Zkontrolujte bezpečnostní nastavení přístupů',
+    category: 'security',
+    run: async (tenantId, prisma) => {
+      // Show when tenant has >3 active users (worth reviewing access)
+      const userCount = await prisma.user.count({ where: { tenantId, isActive: true } })
+      if (userCount > 3) {
+        return [{
+          fingerprint: `rec:security_access:${tenantId}`,
+          description: 'S větším počtem uživatelů doporučujeme zkontrolovat role, přístupy k objektům a bezpečnostní nastavení.',
+          actionLabel: 'Otevřít tým',
+          actionUrl: '/team',
+        }]
+      }
+      return []
     },
   },
 ]

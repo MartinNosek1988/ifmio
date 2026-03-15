@@ -51,6 +51,9 @@ export default function DashboardPage() {
       {/* Mio Findings */}
       {uxRole !== 'resident' && <FindingsSection />}
 
+      {/* Mio Recommendations */}
+      {(uxRole === 'fm' || uxRole === 'owner') && <RecommendationsSection />}
+
       {/* Alerts */}
       {alerts.length > 0 && (
         <div style={{ marginBottom: 20 }}>
@@ -346,6 +349,62 @@ function FindingsSection() {
                 <Button size="sm" onClick={() => navigate(f.actionUrl!)}>{f.actionLabel ?? 'Otevřít'}</Button>
               ) : null}
               <Button size="sm" onClick={() => dismissMut.mutate(f.id)} disabled={dismissMut.isPending}>Skrýt</Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Mio Recommendations Section ─────────────────────────────────
+
+const CAT_COLOR: Record<string, 'blue' | 'green' | 'purple' | 'yellow'> = {
+  efficiency: 'blue', security: 'yellow', adoption: 'green', integration: 'purple',
+};
+const CAT_LABEL: Record<string, string> = {
+  efficiency: 'Efektivita', security: 'Bezpečnost', adoption: 'Používání', integration: 'Integrace',
+};
+
+function RecommendationsSection() {
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const { data: recs = [] } = useQuery<MioFinding[]>({
+    queryKey: ['mio', 'recommendations'],
+    queryFn: () => dashboardApi.recommendations(),
+    refetchInterval: 300_000,
+  });
+  const dismissMut = useMutation({
+    mutationFn: (id: string) => dashboardApi.dismissRecommendation(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['mio', 'recommendations'] }),
+  });
+
+  if (recs.length === 0) return null;
+
+  return (
+    <div style={{
+      marginBottom: 20, padding: 14, borderRadius: 12,
+      background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)',
+    }}>
+      <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: '1.1rem' }}>💡</span> Mio radí ({recs.length})
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {recs.slice(0, 5).map(r => (
+          <div key={r.id} style={{
+            display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
+            borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)',
+          }}>
+            <Badge variant={CAT_COLOR[(r as any).category] ?? 'blue'}>{CAT_LABEL[(r as any).category] ?? 'Tip'}</Badge>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 500, fontSize: '0.85rem' }}>{r.title}</div>
+              {r.description && <div className="text-muted" style={{ fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.description}</div>}
+            </div>
+            <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+              {r.actionUrl && (
+                <Button size="sm" onClick={() => navigate(r.actionUrl!)}>{r.actionLabel ?? 'Zjistit více'}</Button>
+              )}
+              <Button size="sm" onClick={() => dismissMut.mutate(r.id)} disabled={dismissMut.isPending}>Skrýt</Button>
             </div>
           </div>
         ))}
