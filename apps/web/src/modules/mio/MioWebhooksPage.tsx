@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '../admin/api/admin.api';
 import { Badge, Button, LoadingState } from '../../shared/components';
 import {
-  Plus, Trash2, Send, Check, X, ChevronDown, ChevronUp, Eye, EyeOff,
+  Plus, Trash2, Send, Check, X, ChevronDown, ChevronUp, Eye, EyeOff, RotateCcw,
 } from 'lucide-react';
 
 const EVENT_LABELS: Record<string, string> = {
@@ -218,12 +218,32 @@ function WebhookCard({ webhook, eventTypes, onUpdate, onDelete, onTest }: {
   const [editing, setEditing] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
   const [showDeliveries, setShowDeliveries] = useState(false);
+  const [deliveryFilter, setDeliveryFilter] = useState<string>('');
+  const [secretData, setSecretData] = useState<string | null>(null);
+  const qc = useQueryClient();
 
   const { data: deliveries } = useQuery({
-    queryKey: ['mio', 'webhooks', webhook.id, 'deliveries'],
-    queryFn: () => adminApi.mioWebhooks.deliveries(webhook.id),
+    queryKey: ['mio', 'webhooks', webhook.id, 'deliveries', deliveryFilter],
+    queryFn: () => adminApi.mioWebhooks.deliveries(webhook.id, deliveryFilter ? { status: deliveryFilter } : undefined),
     enabled: showDeliveries,
   });
+
+  const rotateMut = useMutation({
+    mutationFn: () => adminApi.mioWebhooks.rotateSecret(webhook.id),
+    onSuccess: (data: any) => {
+      setSecretData(data.secret);
+      qc.invalidateQueries({ queryKey: ['mio', 'webhooks'] });
+    },
+  });
+
+  const handleRevealSecret = async () => {
+    if (secretData) { setShowSecret(!showSecret); return; }
+    try {
+      const detail = await adminApi.mioWebhooks.detail(webhook.id);
+      setSecretData(detail.secret);
+      setShowSecret(true);
+    } catch { /* ignore */ }
+  };
 
   const toggleMut = useMutation({
     mutationFn: () => adminApi.mioWebhooks.update(webhook.id, { isEnabled: !webhook.isEnabled }),
@@ -287,12 +307,22 @@ function WebhookCard({ webhook, eventTypes, onUpdate, onDelete, onTest }: {
           {webhook.kindFilter && <div className="text-muted" style={{ fontSize: '.78rem' }}>Filtr: {webhook.kindFilter}</div>}
           {webhook.minSeverity && <div className="text-muted" style={{ fontSize: '.78rem' }}>Min. závažnost: {webhook.minSeverity}</div>}
 
-          <div style={{ marginTop: 8, fontSize: '.78rem' }}>
-            <span className="text-muted">Tajemství: </span>
-            <code style={{ fontSize: '.75rem' }}>{showSecret ? webhook.secret : '••••••••••••'}</code>
-            <button onClick={() => setShowSecret(!showSecret)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', marginLeft: 4 }}>
-              {showSecret ? <EyeOff size={12} /> : <Eye size={12} />}
-            </button>
+          {/* Secret section */}
+          <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 6, background: 'var(--surface-2, rgba(0,0,0,0.1))', fontSize: '.78rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span className="text-muted">Tajemství: </span>
+              <code style={{ fontSize: '.75rem' }}>{showSecret && secretData ? secretData : (webhook.secretMasked ?? '••••••••••••')}</code>
+              <button onClick={handleRevealSecret} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                {showSecret ? <EyeOff size={12} /> : <Eye size={12} />}
+              </button>
+              <button
+                onClick={() => { if (confirm('Otočit tajemství? Po otočení přestane fungovat původní podpis.')) rotateMut.mutate(); }}
+                disabled={rotateMut.isPending}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 3, fontSize: '.75rem' }}
+              >
+                <RotateCcw size={11} /> Otočit
+              </button>
+            </div>
           </div>
 
           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
@@ -304,19 +334,33 @@ function WebhookCard({ webhook, eventTypes, onUpdate, onDelete, onTest }: {
             </Button>
           </div>
 
-          {showDeliveries && deliveries && (
-            <div style={{ marginTop: 10, maxHeight: 200, overflow: 'auto' }}>
-              {deliveries.length === 0 ? (
-                <div className="text-muted" style={{ fontSize: '.82rem' }}>Zatím žádná doručení.</div>
-              ) : deliveries.map((d: any) => (
-                <div key={d.id} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: '.8rem' }}>
-                  <Badge variant={STATUS_BADGE[d.status]?.variant ?? 'muted'}>{STATUS_BADGE[d.status]?.label ?? d.status}</Badge>
-                  <span className="text-muted">{EVENT_LABELS[d.eventType] ?? d.eventType}</span>
-                  {d.httpStatus && <span className="text-muted">HTTP {d.httpStatus}</span>}
-                  {d.retryCount > 0 && <span className="text-muted">Pokus {d.retryCount + 1}</span>}
-                  <span className="text-muted">{new Date(d.attemptedAt).toLocaleString('cs-CZ', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                  {d.errorSummary && <span style={{ color: '#ef4444' }}>{d.errorSummary}</span>}
-                </div>
+          {/* Delivery logs */}
+          {showDeliveries && (
+            <div style={{ marginTop: 10 }}>
+              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                {['', 'sent', 'failed', 'exhausted'].map(s => (
+                  <button key={s} onClick={() => setDeliveryFilter(s)} style={{
+                    padding: '3px 10px', borderRadius: 14, fontSize: '.75rem', fontWeight: 500, cursor: 'pointer',
+                    border: deliveryFilter === s ? '2px solid var(--primary, #6366f1)' : '1px solid var(--border)',
+                    background: deliveryFilter === s ? 'var(--primary, #6366f1)' : 'transparent',
+                    color: deliveryFilter === s ? '#fff' : 'var(--text-muted)',
+                  }}>
+                    {s === '' ? 'Vše' : STATUS_BADGE[s]?.label ?? s}
+                  </button>
+                ))}
+              </div>
+              <div style={{ maxHeight: 220, overflow: 'auto' }}>
+                {(!deliveries || deliveries.length === 0) ? (
+                  <div className="text-muted" style={{ fontSize: '.82rem' }}>Zatím žádná doručení.</div>
+                ) : deliveries.map((d: any) => (
+                  <div key={d.id} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: '.8rem' }}>
+                    <Badge variant={STATUS_BADGE[d.status]?.variant ?? 'muted'}>{STATUS_BADGE[d.status]?.label ?? d.status}</Badge>
+                    <span className="text-muted">{EVENT_LABELS[d.eventType] ?? d.eventType}</span>
+                    {d.httpStatus && <span className="text-muted">HTTP {d.httpStatus}</span>}
+                    {d.retryCount > 0 && <span className="text-muted">Pokus {d.retryCount + 1}</span>}
+                    <span className="text-muted">{new Date(d.attemptedAt).toLocaleString('cs-CZ', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                    {d.errorSummary && <span style={{ color: '#ef4444' }}>{d.errorSummary}</span>}
+                  </div>
               ))}
             </div>
           )}

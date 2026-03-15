@@ -46,13 +46,28 @@ export class MioWebhookService {
   // ─── SUBSCRIPTION CRUD ────────────────────────────────────────
 
   async listSubscriptions(user: AuthUser) {
-    return this.prisma.mioWebhookSubscription.findMany({
+    const subs = await this.prisma.mioWebhookSubscription.findMany({
       where: { tenantId: user.tenantId },
       orderBy: { createdAt: 'desc' },
       include: {
         _count: { select: { deliveries: true } },
       },
     })
+
+    // Hide secret from list view, show only masked version
+    return subs.map(s => ({
+      ...s,
+      secretMasked: s.secret.slice(0, 8) + '••••••••',
+      secret: undefined, // don't leak in list
+    }))
+  }
+
+  async getSubscription(user: AuthUser, id: string) {
+    const sub = await this.prisma.mioWebhookSubscription.findFirst({
+      where: { id, tenantId: user.tenantId },
+    })
+    if (!sub) throw new NotFoundException('Webhook nenalezen')
+    return sub // includes secret for detail/reveal view
   }
 
   async createSubscription(user: AuthUser, dto: {
@@ -120,16 +135,36 @@ export class MioWebhookService {
     await this.prisma.mioWebhookSubscription.delete({ where: { id } })
   }
 
-  async getDeliveryLogs(user: AuthUser, subscriptionId: string, limit = 20) {
+  async getDeliveryLogs(user: AuthUser, subscriptionId: string, filters?: {
+    status?: string; eventType?: string; limit?: number
+  }) {
     const sub = await this.prisma.mioWebhookSubscription.findFirst({
       where: { id: subscriptionId, tenantId: user.tenantId },
     })
     if (!sub) throw new NotFoundException('Webhook nenalezen')
 
+    const where: any = { subscriptionId }
+    if (filters?.status) where.status = filters.status
+    if (filters?.eventType) where.eventType = filters.eventType
+
     return this.prisma.mioWebhookDeliveryLog.findMany({
-      where: { subscriptionId },
+      where,
       orderBy: { createdAt: 'desc' },
-      take: limit,
+      take: filters?.limit ?? 30,
+    })
+  }
+
+  async rotateSecret(user: AuthUser, id: string) {
+    const sub = await this.prisma.mioWebhookSubscription.findFirst({
+      where: { id, tenantId: user.tenantId },
+    })
+    if (!sub) throw new NotFoundException('Webhook nenalezen')
+
+    const newSecret = randomUUID() + '-' + randomUUID()
+
+    return this.prisma.mioWebhookSubscription.update({
+      where: { id },
+      data: { secret: newSecret },
     })
   }
 
