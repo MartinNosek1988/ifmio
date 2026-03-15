@@ -1221,9 +1221,11 @@ model MioFinding {
   id              String    @id @default(uuid())
   tenantId        String
   propertyId      String?
+  kind            String    @default("finding")  // finding | recommendation
   code            String
   title           String
   description     String?   @db.Text
+  category        String?   // efficiency | security | adoption | integration | data_quality
   severity        String    @default("info")
   confidence      String    @default("high")
   status          String    @default("active")
