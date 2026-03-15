@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, RefreshCw, Calendar, Clock } from 'lucide-react';
+import { Plus, Calendar, Clock } from 'lucide-react';
 import { Badge, Button, EmptyState } from '../../shared/components';
 import type { BadgeVariant } from '../../shared/components';
 import { useRecurringPlans, useUpdateRecurringPlan, useDeleteRecurringPlan } from './api/recurring-plans.queries';
@@ -74,8 +74,8 @@ export default function RecurringPlansTab({ assetId, propertyId }: Props) {
   );
 }
 
-function PlanCard({ plan, onEdit, onToggle, onDelete }: {
-  plan: RecurringPlan; onEdit: () => void; onToggle: () => void; onDelete: () => void;
+function PlanCard({ plan, onEdit, onToggle }: {
+  plan: RecurringPlan; onEdit: () => void; onToggle: () => void;
 }) {
   const summary = formatRecurrence(plan);
   const nextDate = plan.nextPlannedAt ? new Date(plan.nextPlannedAt).toLocaleDateString('cs-CZ') : '—';
