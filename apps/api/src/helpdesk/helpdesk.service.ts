@@ -49,6 +49,7 @@ export class HelpdeskService {
     assignee:   { select: USER_SELECT },
     requester:  { select: USER_SELECT },
     dispatcher: { select: USER_SELECT },
+    recurringPlan: { select: { id: true, title: true, scheduleMode: true, frequencyUnit: true, frequencyInterval: true } },
     _count:     { select: { items: true } },
   } as const
 
@@ -60,6 +61,7 @@ export class HelpdeskService {
     assignee:   { select: USER_SELECT },
     requester:  { select: USER_SELECT },
     dispatcher: { select: USER_SELECT },
+    recurringPlan: { select: { id: true, title: true, scheduleMode: true, frequencyUnit: true, frequencyInterval: true, assetId: true } },
     items:      { orderBy: { createdAt: 'asc' as const } },
     protocol:   true,
   } as const
@@ -91,6 +93,8 @@ export class HelpdeskService {
           { description: { contains: search, mode: 'insensitive' } },
         ],
       } : {}),
+      ...(query.requestOrigin ? { requestOrigin: query.requestOrigin } : {}),
+      ...(query.recurringPlanId ? { recurringPlanId: query.recurringPlanId } : {}),
     }
 
     const [items, total] = await Promise.all([

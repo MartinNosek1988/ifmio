@@ -59,6 +59,7 @@ export default function HelpdeskPage() {
   const [filterPriority, setFilterPriority] = useState('');
   const [filterOverdue, setFilterOverdue] = useState(false);
   const [filterEscalated, setFilterEscalated] = useState(false);
+  const [filterOrigin, setFilterOrigin] = useState('');
   const [selectedTicket, setSelectedTicket] = useState<ApiTicket | null>(null);
   const [deleteTicket, setDeleteTicket] = useState<ApiTicket | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -69,6 +70,7 @@ export default function HelpdeskPage() {
     ...(filterPriority ? { priority: filterPriority } : {}),
     ...(filterOverdue ? { overdue: 'true' } : {}),
     ...(filterEscalated ? { escalated: 'true' } : {}),
+    ...(filterOrigin ? { requestOrigin: filterOrigin } : {}),
     limit: 100,
   });
 
@@ -130,6 +132,12 @@ export default function HelpdeskPage() {
         const d = new Date(t.resolutionDueAt)
         return <span className="text-muted text-sm">{d.toLocaleDateString('cs-CZ')}</span>
       },
+    },
+    {
+      key: 'origin', label: 'Zdroj',
+      render: (t) => t.requestOrigin === 'recurring_plan'
+        ? <Badge variant="purple">Opakované</Badge>
+        : <span className="text-muted text-sm">Manuální</span>,
     },
     {
       key: 'createdAt', label: 'Vytvořeno',
@@ -217,6 +225,11 @@ export default function HelpdeskPage() {
         >
           Eskalované
         </Button>
+        <select value={filterOrigin} onChange={(e) => setFilterOrigin(e.target.value)} style={selectStyle}>
+          <option value="">Všechny zdroje</option>
+          <option value="manual">Manuální</option>
+          <option value="recurring_plan">Opakované</option>
+        </select>
       </div>
 
       {tickets.length === 0 ? (

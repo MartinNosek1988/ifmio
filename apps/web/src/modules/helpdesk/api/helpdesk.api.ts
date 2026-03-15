@@ -31,6 +31,11 @@ export interface ApiTicket {
   firstResponseAt: string | null
   escalationLevel: number
   escalatedAt: string | null
+  recurringPlanId: string | null
+  requestOrigin: string | null
+  plannedForDate: string | null
+  generationKey: string | null
+  recurringPlan?: { id: string; title: string; scheduleMode: string; frequencyUnit: string; frequencyInterval: number; assetId?: string } | null
   property?: { id: string; name: string } | null
   unit?: { id: string; name: string } | null
   resident?: { id: string; firstName: string; lastName: string } | null
