@@ -319,11 +319,26 @@ export class MioController {
     return this.webhooks.deleteSubscription(user, id)
   }
 
+  @Get('webhooks/:id/detail')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Webhook detail (includes secret)' })
+  getWebhookDetail(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.webhooks.getSubscription(user, id)
+  }
+
   @Get('webhooks/:id/deliveries')
   @Roles(...ROLES_MANAGE)
-  @ApiOperation({ summary: 'Webhook delivery logs' })
-  getWebhookDeliveries(@CurrentUser() user: AuthUser, @Param('id') id: string) {
-    return this.webhooks.getDeliveryLogs(user, id)
+  @ApiOperation({ summary: 'Webhook delivery logs (filterable)' })
+  getWebhookDeliveries(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Query('status') status?: string,
+    @Query('eventType') eventType?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.webhooks.getDeliveryLogs(user, id, {
+      status, eventType, limit: limit ? parseInt(limit, 10) : undefined,
+    })
   }
 
   @Post('webhooks/:id/test')
@@ -331,6 +346,14 @@ export class MioController {
   @ApiOperation({ summary: 'Send test webhook' })
   testWebhook(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.webhooks.sendTestEvent(user, id)
+  }
+
+  @Post('webhooks/:id/rotate-secret')
+  @Roles(...ROLES_MANAGE)
+  @AuditAction('MioWebhook', 'ROTATE_SECRET')
+  @ApiOperation({ summary: 'Rotate webhook secret' })
+  rotateSecret(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.webhooks.rotateSecret(user, id)
   }
 
   @Get('webhooks/event-types')

@@ -34,13 +34,16 @@ export const adminApi = {
   },
 
   mioWebhooks: {
-    list:       () => apiClient.get('/mio/webhooks').then((r) => r.data),
-    create:     (dto: any) => apiClient.post('/mio/webhooks', dto).then((r) => r.data),
-    update:     (id: string, dto: any) => apiClient.put(`/mio/webhooks/${id}`, dto).then((r) => r.data),
-    remove:     (id: string) => apiClient.delete(`/mio/webhooks/${id}`).then((r) => r.data),
-    deliveries: (id: string) => apiClient.get(`/mio/webhooks/${id}/deliveries`).then((r) => r.data),
-    test:       (id: string) => apiClient.post(`/mio/webhooks/${id}/test`).then((r) => r.data),
-    eventTypes: () => apiClient.get('/mio/webhooks/event-types').then((r) => r.data),
+    list:          () => apiClient.get('/mio/webhooks').then((r) => r.data),
+    detail:        (id: string) => apiClient.get(`/mio/webhooks/${id}/detail`).then((r) => r.data),
+    create:        (dto: any) => apiClient.post('/mio/webhooks', dto).then((r) => r.data),
+    update:        (id: string, dto: any) => apiClient.put(`/mio/webhooks/${id}`, dto).then((r) => r.data),
+    remove:        (id: string) => apiClient.delete(`/mio/webhooks/${id}`).then((r) => r.data),
+    deliveries:    (id: string, params?: { status?: string; eventType?: string }) =>
+      apiClient.get(`/mio/webhooks/${id}/deliveries`, { params }).then((r) => r.data),
+    test:          (id: string) => apiClient.post(`/mio/webhooks/${id}/test`).then((r) => r.data),
+    rotateSecret:  (id: string) => apiClient.post(`/mio/webhooks/${id}/rotate-secret`).then((r) => r.data),
+    eventTypes:    () => apiClient.get('/mio/webhooks/event-types').then((r) => r.data),
   },
 
   mioAdmin: {
