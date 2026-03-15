@@ -358,13 +358,20 @@ export class MioController {
 
   @Get('webhooks/:id/outbox')
   @Roles(...ROLES_MANAGE)
-  @ApiOperation({ summary: 'Webhook outbox items' })
+  @ApiOperation({ summary: 'Webhook outbox items (paginated)' })
   getOutboxItems(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
     @Query('status') status?: string,
+    @Query('eventType') eventType?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
   ) {
-    return this.webhooks.getOutboxItems(user, id, { status })
+    return this.webhooks.getOutboxItems(user, id, {
+      status, eventType,
+      limit: limit ? parseInt(limit, 10) : undefined,
+      offset: offset ? parseInt(offset, 10) : undefined,
+    })
   }
 
   @Get('webhooks/:id/outbox-summary')

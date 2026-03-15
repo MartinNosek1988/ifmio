@@ -418,8 +418,8 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
   private async processWebhookOutbox() {
     try {
       const result = await this.mioWebhooks.processOutbox();
-      if (result.processed > 0) {
-        this.logger.log(`Webhook outbox: ${result.processed} processed, ${result.sent} sent, ${result.failed} retry, ${result.exhausted} exhausted`);
+      if (result.processed > 0 || result.recovered > 0) {
+        this.logger.log(`Webhook outbox: ${result.processed} processed, ${result.sent} sent, ${result.failed} retry, ${result.exhausted} exhausted, ${result.recovered} recovered`);
       }
     } catch (err) {
       this.logger.error('Webhook outbox processing FAILED', (err as Error).stack);
