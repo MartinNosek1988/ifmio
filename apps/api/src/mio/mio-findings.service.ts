@@ -1,6 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { MioConfigService, type MioConfig } from './mio-config.service'
+import { MioWebhookService, type MioEvent } from './mio-webhook.service'
+import { randomUUID } from 'crypto'
 import type { AuthUser } from '@ifmio/shared-types'
 
 // Severity → Helpdesk priority mapping
@@ -51,7 +53,28 @@ export class MioFindingsService {
   constructor(
     private prisma: PrismaService,
     private mioConfig: MioConfigService,
+    @Inject(forwardRef(() => MioWebhookService)) private webhooks: MioWebhookService,
   ) {}
+
+  private emitWebhook(tenantId: string, eventType: string, finding: any) {
+    const event: MioEvent = {
+      eventId: randomUUID(),
+      eventType,
+      occurredAt: new Date().toISOString(),
+      tenantId,
+      kind: finding.kind ?? 'finding',
+      code: finding.code,
+      severity: finding.severity,
+      status: finding.status,
+      title: finding.title,
+      description: finding.description,
+      entityType: finding.entityType,
+      entityId: finding.entityId,
+      propertyId: finding.propertyId,
+      actionUrl: finding.actionUrl,
+    }
+    this.webhooks.emitEvent(tenantId, event).catch(() => {})
+  }
 
   // ─── DETECTION SCAN ─────────────────────────────────────────
 
@@ -136,6 +159,7 @@ export class MioFindingsService {
               },
             })
             created++
+            this.emitWebhook(tenantId, 'mio.finding.created', finding)
 
             // Auto-ticket: respect tenant config override, fall back to default policy
             const autoTicket = config.autoTicketPolicy[rule.code] ?? DEFAULT_AUTO_TICKET_CODES.has(rule.code)
@@ -165,7 +189,7 @@ export class MioFindingsService {
             if (existing.status === 'resolved') { update.status = 'active'; update.resolvedAt = null }
             await this.prisma.mioFinding.update({ where: { id: existing.id }, data: update })
           } else {
-            await this.prisma.mioFinding.create({
+            const rec = await this.prisma.mioFinding.create({
               data: {
                 tenantId, kind: 'recommendation', code: rule.code, title: rule.title,
                 description: issue.description, category: rule.category, severity: 'info', confidence: 'medium',
@@ -174,6 +198,7 @@ export class MioFindingsService {
               },
             })
             created++
+            this.emitWebhook(tenantId, 'mio.recommendation.created', rec)
           }
         }
       } catch (err) {
@@ -184,7 +209,7 @@ export class MioFindingsService {
     // Resolve findings/recommendations no longer detected (skip dismissed)
     const activeItems = await this.prisma.mioFinding.findMany({
       where: { tenantId, status: 'active' },
-      select: { id: true, fingerprint: true },
+      select: { id: true, fingerprint: true, kind: true, code: true, severity: true, title: true, description: true, entityType: true, entityId: true, propertyId: true, actionUrl: true, status: true },
     })
     for (const f of activeItems) {
       if (!detectedFingerprints.has(f.fingerprint)) {
@@ -193,6 +218,7 @@ export class MioFindingsService {
           data: { status: 'resolved', resolvedAt: now },
         })
         resolved++
+        this.emitWebhook(tenantId, 'mio.finding.resolved', { ...f, status: 'resolved' })
       }
     }
 
@@ -238,6 +264,9 @@ export class MioFindingsService {
     })
 
     this.logger.log(`Auto-ticket HD-${String(number).padStart(4, '0')} created for finding ${finding.code}`)
+    this.emitWebhook(tenantId, 'mio.insight.ticket_created', {
+      ...finding, status: 'active', metadata: { ticketId: ticket.id, ticketNumber: number },
+    })
     return true
   }
 
@@ -318,10 +347,13 @@ export class MioFindingsService {
       where: { id, tenantId: user.tenantId },
     })
     if (!finding) return null
-    return this.prisma.mioFinding.update({
+    const updated = await this.prisma.mioFinding.update({
       where: { id },
       data: { status: 'dismissed', dismissedAt: new Date() },
     })
+    const eventType = finding.kind === 'recommendation' ? 'mio.recommendation.dismissed' : 'mio.finding.dismissed'
+    this.emitWebhook(user.tenantId, eventType, updated)
+    return updated
   }
 
   async snooze(user: AuthUser, id: string, until: Date) {
@@ -329,10 +361,13 @@ export class MioFindingsService {
       where: { id, tenantId: user.tenantId },
     })
     if (!finding) return null
-    return this.prisma.mioFinding.update({
+    const updated = await this.prisma.mioFinding.update({
       where: { id },
       data: { status: 'snoozed', snoozedUntil: until },
     })
+    const eventType = finding.kind === 'recommendation' ? 'mio.recommendation.snoozed' : 'mio.finding.snoozed'
+    this.emitWebhook(user.tenantId, eventType, updated)
+    return updated
   }
 
   async restore(user: AuthUser, id: string) {
@@ -340,10 +375,12 @@ export class MioFindingsService {
       where: { id, tenantId: user.tenantId, status: { in: ['dismissed', 'snoozed'] } },
     })
     if (!finding) return null
-    return this.prisma.mioFinding.update({
+    const updated = await this.prisma.mioFinding.update({
       where: { id },
       data: { status: 'active', dismissedAt: null, snoozedUntil: null },
     })
+    this.emitWebhook(user.tenantId, 'mio.finding.restored', updated)
+    return updated
   }
 
   // ─── RECOMMENDATION API ──────────────────────────────────────

@@ -1,7 +1,9 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common'
+import { Injectable, Logger, BadRequestException, Inject, forwardRef } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { EmailService } from '../email/email.service'
 import { MioConfigService, type MioConfig } from './mio-config.service'
+import { MioWebhookService, type MioEvent } from './mio-webhook.service'
+import { randomUUID } from 'crypto'
 import type { AuthUser } from '@ifmio/shared-types'
 
 const TENANT_WIDE_ROLES = ['tenant_owner', 'tenant_admin']
@@ -24,7 +26,32 @@ export class MioDigestService {
     private prisma: PrismaService,
     private email: EmailService,
     private mioConfig: MioConfigService,
+    @Inject(forwardRef(() => MioWebhookService)) private webhooks: MioWebhookService,
   ) {}
+
+  private emitDigestEvent(tenantId: string, eventType: string, data: {
+    userId: string; userEmail?: string; frequency: string;
+    findingsCount: number; recommendationsCount: number;
+    status: string; skippedReason?: string;
+  }) {
+    const event: MioEvent = {
+      eventId: randomUUID(),
+      eventType,
+      occurredAt: new Date().toISOString(),
+      tenantId,
+      kind: 'digest',
+      status: data.status,
+      title: eventType === 'mio.digest.sent' ? 'Mio přehled odeslán' : 'Odeslání Mio přehledu selhalo',
+      metadata: {
+        userId: data.userId,
+        frequency: data.frequency,
+        findingsCount: data.findingsCount,
+        recommendationsCount: data.recommendationsCount,
+        ...(data.skippedReason ? { skippedReason: data.skippedReason } : {}),
+      },
+    }
+    this.webhooks.emitEvent(tenantId, event).catch(() => {})
+  }
 
   // ─── USER PREFERENCES API ────────────────────────────────────
 
@@ -251,6 +278,12 @@ export class MioDigestService {
         if (ok) {
           sent++
           await this.logDelivery(tenantId, user.id, frequency, 'sent', digest.findings.length, digest.recommendations.length)
+          this.emitDigestEvent(tenantId, 'mio.digest.sent', {
+            userId: user.id, userEmail: user.email, frequency,
+            findingsCount: digest.findings.length,
+            recommendationsCount: digest.recommendations.length,
+            status: 'sent',
+          })
           // Update or create lastSentAt tracking
           if (sub) {
             await this.prisma.scheduledReportSubscription.update({
@@ -271,11 +304,21 @@ export class MioDigestService {
           }
         } else {
           await this.logDelivery(tenantId, user.id, frequency, 'failed', 0, 0, 'Odeslání se nepodařilo')
+          this.emitDigestEvent(tenantId, 'mio.digest.failed', {
+            userId: user.id, userEmail: user.email, frequency,
+            findingsCount: 0, recommendationsCount: 0,
+            status: 'failed', skippedReason: 'Odeslání se nepodařilo',
+          })
         }
       } catch (err) {
         this.logger.error(`Mio digest for ${user.email} failed: ${err}`)
         try {
           await this.logDelivery(tenantId, user.id, frequency, 'failed', 0, 0, 'Odeslání se nepodařilo')
+          this.emitDigestEvent(tenantId, 'mio.digest.failed', {
+            userId: user.id, userEmail: user.email, frequency,
+            findingsCount: 0, recommendationsCount: 0,
+            status: 'failed', skippedReason: 'Odeslání se nepodařilo',
+          })
         } catch { /* ignore log failure */ }
       }
     }

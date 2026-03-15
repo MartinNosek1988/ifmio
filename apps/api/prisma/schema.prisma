@@ -62,6 +62,7 @@ model Tenant {
   recurringPlans       RecurringActivityPlan[]
   mioFindings          MioFinding[]
   mioDigestLogs        MioDigestLog[]
+  mioWebhookSubscriptions MioWebhookSubscription[]
 
   @@map("tenants")
 }
@@ -1317,6 +1318,46 @@ model MioJobRunLog {
 
   @@index([jobType, createdAt])
   @@map("mio_job_run_logs")
+}
+
+model MioWebhookSubscription {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  endpointUrl String
+  secret      String   // HMAC signing secret
+  isEnabled   Boolean  @default(true)
+  eventTypes  String[] // e.g. ["mio.finding.created", "mio.finding.resolved"]
+  kindFilter  String?  // finding | recommendation | null (all)
+  minSeverity String?  // critical | warning | info | null (all)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant     Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deliveries MioWebhookDeliveryLog[]
+
+  @@index([tenantId])
+  @@index([tenantId, isEnabled])
+  @@map("mio_webhook_subscriptions")
+}
+
+model MioWebhookDeliveryLog {
+  id             String   @id @default(uuid())
+  subscriptionId String
+  eventId        String
+  eventType      String
+  attemptedAt    DateTime @default(now())
+  status         String   // sent | failed | exhausted
+  httpStatus     Int?
+  retryCount     Int      @default(0)
+  errorSummary   String?
+  createdAt      DateTime @default(now())
+
+  subscription MioWebhookSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId, createdAt])
+  @@index([eventId])
+  @@map("mio_webhook_delivery_logs")
 }
 
 enum ReportType {
