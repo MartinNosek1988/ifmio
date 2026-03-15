@@ -64,6 +64,12 @@ export class MioController {
     return this.findings.snooze(user, id, new Date(dto.until))
   }
 
+  @Post('insights/:id/restore')
+  @ApiOperation({ summary: 'Obnovit skrytý/odložený insight' })
+  restoreInsight(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.findings.restore(user, id)
+  }
+
   // ─── Findings ───────────────────────────────────────────────
 
   @Get('findings')
