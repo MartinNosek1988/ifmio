@@ -60,6 +60,7 @@ model Tenant {
   fieldCheckExecutions AssetFieldCheckExecution[]
   reportSubscriptions  ScheduledReportSubscription[]
   recurringPlans       RecurringActivityPlan[]
+  mioFindings          MioFinding[]
 
   @@map("tenants")
 }
@@ -1212,6 +1213,42 @@ enum EntityType {
   revision
   asset
   work_order
+}
+
+// ─── MIO FINDINGS ─────────────────────────────────────────────────
+
+model MioFinding {
+  id              String    @id @default(uuid())
+  tenantId        String
+  propertyId      String?
+  code            String
+  title           String
+  description     String?   @db.Text
+  severity        String    @default("info")
+  confidence      String    @default("high")
+  status          String    @default("active")
+  entityType      String?
+  entityId        String?
+  entityCount     Int?
+  fingerprint     String    @unique
+  actionLabel     String?
+  actionUrl       String?
+  helpdeskTicketId String?
+  ticketCreatedAutomatically Boolean @default(false)
+  firstDetectedAt DateTime  @default(now())
+  lastDetectedAt  DateTime  @default(now())
+  resolvedAt      DateTime?
+  dismissedAt     DateTime?
+  snoozedUntil    DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, severity, status])
+  @@map("mio_findings")
 }
 
 // ─── SCHEDULED REPORTS ────────────────────────────────────────────

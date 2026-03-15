@@ -5,6 +5,7 @@ import { HelpdeskEscalationService } from '../helpdesk/helpdesk-escalation.servi
 import { RevisionEscalationService } from '../revisions/revision-escalation.service';
 import { ScheduledReportsService } from '../reports/scheduled-reports.service';
 import { RecurringPlansService } from '../recurring-plans/recurring-plans.service';
+import { MioFindingsService } from '../mio/mio-findings.service';
 
 const ONE_HOUR = 60 * 60 * 1000;
 const SIX_HOURS = 6 * ONE_HOUR;
@@ -29,6 +30,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     private readonly revisionEscalation: RevisionEscalationService,
     private readonly scheduledReports: ScheduledReportsService,
     private readonly recurringPlans: RecurringPlansService,
+    private readonly mioFindings: MioFindingsService,
   ) {}
 
   onModuleInit() {
@@ -39,6 +41,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     this.initDailyDigest();
     this.initScheduledReports();
     this.initRecurringGeneration();
+    this.initMioDetection();
   }
 
   onModuleDestroy() {
@@ -313,6 +316,23 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
       }
     } catch (err) {
       this.logger.error('Recurring generation job FAILED', (err as Error).stack);
+    }
+  }
+
+  // ─── Mio Findings Detection ───────────────────────────────
+
+  private initMioDetection() {
+    this.logger.log('Mio findings detection enabled — running every 6 hours');
+    setTimeout(() => this.runMioDetection(), 200_000);
+    setInterval(() => this.runMioDetection(), SIX_HOURS);
+  }
+
+  private async runMioDetection() {
+    try {
+      const result = await this.mioFindings.runDetection();
+      this.logger.log(`Mio detection: ${result.checked} tenants, ${result.created} new, ${result.resolved} resolved, ${result.ticketsCreated} tickets`);
+    } catch (err) {
+      this.logger.error('Mio detection job FAILED', (err as Error).stack);
     }
   }
 }

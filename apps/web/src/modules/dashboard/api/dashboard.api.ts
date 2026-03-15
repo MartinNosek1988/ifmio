@@ -31,10 +31,42 @@ export interface OperationalDashboard {
   }[]
 }
 
+export interface MioFinding {
+  id: string
+  code: string
+  title: string
+  description: string | null
+  severity: string
+  status: string
+  entityType: string | null
+  entityId: string | null
+  actionLabel: string | null
+  actionUrl: string | null
+  helpdeskTicketId: string | null
+  ticketCreatedAutomatically: boolean
+  lastDetectedAt: string
+}
+
+export interface FindingsSummary {
+  total: number
+  critical: number
+  warning: number
+  info: number
+}
+
 export const dashboardApi = {
   overview: () =>
     apiClient.get('/dashboard').then((r) => r.data),
 
   operational: () =>
     apiClient.get<OperationalDashboard>('/dashboard/operational').then((r) => r.data),
+
+  findings: () =>
+    apiClient.get<MioFinding[]>('/mio/findings', { params: { status: 'active' } }).then((r) => r.data),
+
+  findingsSummary: () =>
+    apiClient.get<FindingsSummary>('/mio/findings/summary').then((r) => r.data),
+
+  dismissFinding: (id: string) =>
+    apiClient.post(`/mio/findings/${id}/dismiss`).then((r) => r.data),
 }
