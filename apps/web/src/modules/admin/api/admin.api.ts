@@ -24,6 +24,12 @@ export const adminApi = {
     reset:    (section?: string) => apiClient.post('/mio/config/reset', { section }).then((r) => r.data),
   },
 
+  mioDigestPrefs: {
+    get:    () => apiClient.get('/mio/digest/preferences').then((r) => r.data),
+    update: (dto: any) => apiClient.put('/mio/digest/preferences', dto).then((r) => r.data),
+    reset:  () => apiClient.delete('/mio/digest/preferences').then((r) => r.data),
+  },
+
   users: {
     list:       () =>
       apiClient.get('/admin/users').then((r) => r.data),

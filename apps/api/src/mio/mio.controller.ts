@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Post, Body, Param, Query } from '@nestjs/common'
+import { Controller, Get, Put, Post, Delete, Body, Param, Query } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { Roles } from '../common/decorators/roles.decorator'
 import { ROLES_MANAGE } from '../common/constants/roles.constants'
@@ -61,6 +61,35 @@ export class MioController {
     @Body() dto: { section?: string },
   ) {
     return this.config.resetConfig(user.tenantId, dto?.section)
+  }
+
+  // ─── Digest user preferences ───────────────────────────────
+
+  @Get('digest/preferences')
+  @ApiOperation({ summary: 'Mio digest preferences (current user)' })
+  async getDigestPreferences(@CurrentUser() user: AuthUser) {
+    return this.digest.getUserPreferences(user)
+  }
+
+  @Put('digest/preferences')
+  @ApiOperation({ summary: 'Update Mio digest preferences (current user)' })
+  async updateDigestPreferences(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: {
+      enabled?: boolean
+      frequency?: string
+      includeFindings?: boolean
+      includeRecommendations?: boolean
+      minSeverity?: string
+    },
+  ) {
+    return this.digest.updateUserPreferences(user, dto)
+  }
+
+  @Delete('digest/preferences')
+  @ApiOperation({ summary: 'Reset to tenant defaults (current user)' })
+  async deleteDigestPreferences(@CurrentUser() user: AuthUser) {
+    return this.digest.deleteUserPreferences(user)
   }
 
   @Post('digest/send')

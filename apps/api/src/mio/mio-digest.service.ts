@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger, BadRequestException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { EmailService } from '../email/email.service'
 import { MioConfigService, type MioConfig } from './mio-config.service'
@@ -7,6 +7,14 @@ import type { AuthUser } from '@ifmio/shared-types'
 const TENANT_WIDE_ROLES = ['tenant_owner', 'tenant_admin']
 const SEVERITY_ORDER: Record<string, number> = { critical: 3, warning: 2, info: 1 }
 const SEV_LABEL: Record<string, string> = { critical: 'Kritické', warning: 'Varování', info: 'Informace' }
+const VALID_FREQUENCIES = ['daily', 'weekly']
+const VALID_SEVERITIES = ['critical', 'warning', 'info']
+
+export interface MioDigestMeta {
+  includeFindings?: boolean
+  includeRecommendations?: boolean
+  minSeverity?: string
+}
 
 @Injectable()
 export class MioDigestService {
@@ -17,6 +25,112 @@ export class MioDigestService {
     private email: EmailService,
     private mioConfig: MioConfigService,
   ) {}
+
+  // ─── USER PREFERENCES API ────────────────────────────────────
+
+  async getUserPreferences(user: AuthUser) {
+    const config = await this.mioConfig.getConfig(user.tenantId)
+    const sub = await this.prisma.scheduledReportSubscription.findFirst({
+      where: { tenantId: user.tenantId, userId: user.id, reportType: 'mio_digest' },
+    })
+
+    const tenantDefaults = {
+      enabled: config.digest.enabled,
+      frequency: config.digest.defaultFrequency,
+      includeFindings: config.digest.includeFindings,
+      includeRecommendations: config.digest.includeRecommendations,
+      minSeverity: config.digest.minSeverity,
+    }
+
+    if (!sub) {
+      return {
+        source: 'tenant_default' as const,
+        effective: tenantDefaults,
+        override: null,
+        tenantDefaults,
+      }
+    }
+
+    const meta = (sub.metadata ?? {}) as MioDigestMeta
+    const override = {
+      enabled: sub.isEnabled,
+      frequency: sub.frequency,
+      includeFindings: meta.includeFindings ?? tenantDefaults.includeFindings,
+      includeRecommendations: meta.includeRecommendations ?? tenantDefaults.includeRecommendations,
+      minSeverity: meta.minSeverity ?? tenantDefaults.minSeverity,
+    }
+
+    return {
+      source: 'user_override' as const,
+      effective: override,
+      override,
+      tenantDefaults,
+    }
+  }
+
+  async updateUserPreferences(user: AuthUser, dto: {
+    enabled?: boolean
+    frequency?: string
+    includeFindings?: boolean
+    includeRecommendations?: boolean
+    minSeverity?: string
+  }) {
+    // Validate
+    if (dto.frequency && !VALID_FREQUENCIES.includes(dto.frequency)) {
+      throw new BadRequestException(`Neplatná frekvence: ${dto.frequency}`)
+    }
+    if (dto.minSeverity && !VALID_SEVERITIES.includes(dto.minSeverity)) {
+      throw new BadRequestException(`Neplatná závažnost: ${dto.minSeverity}`)
+    }
+
+    const existing = await this.prisma.scheduledReportSubscription.findFirst({
+      where: { tenantId: user.tenantId, userId: user.id, reportType: 'mio_digest' },
+    })
+
+    const meta: MioDigestMeta = {
+      includeFindings: dto.includeFindings,
+      includeRecommendations: dto.includeRecommendations,
+      minSeverity: dto.minSeverity,
+    }
+
+    if (existing) {
+      const existingMeta = (existing.metadata ?? {}) as MioDigestMeta
+      const mergedMeta: MioDigestMeta = {
+        includeFindings: dto.includeFindings ?? existingMeta.includeFindings,
+        includeRecommendations: dto.includeRecommendations ?? existingMeta.includeRecommendations,
+        minSeverity: dto.minSeverity ?? existingMeta.minSeverity,
+      }
+      await this.prisma.scheduledReportSubscription.update({
+        where: { id: existing.id },
+        data: {
+          isEnabled: dto.enabled ?? existing.isEnabled,
+          frequency: (dto.frequency as any) ?? existing.frequency,
+          metadata: mergedMeta as any,
+        },
+      })
+    } else {
+      await this.prisma.scheduledReportSubscription.create({
+        data: {
+          tenantId: user.tenantId,
+          userId: user.id,
+          reportType: 'mio_digest' as any,
+          frequency: (dto.frequency as any) ?? 'daily',
+          format: 'email_only' as any,
+          isEnabled: dto.enabled ?? true,
+          metadata: meta as any,
+        },
+      })
+    }
+
+    return this.getUserPreferences(user)
+  }
+
+  async deleteUserPreferences(user: AuthUser) {
+    await this.prisma.scheduledReportSubscription.deleteMany({
+      where: { tenantId: user.tenantId, userId: user.id, reportType: 'mio_digest' },
+    })
+    return this.getUserPreferences(user)
+  }
 
   // ─── MAIN ENTRY — called by CronService ──────────────────────
 
@@ -62,7 +176,7 @@ export class MioDigestService {
     // Check for explicit mio_digest subscriptions
     const subs = await this.prisma.scheduledReportSubscription.findMany({
       where: { tenantId, reportType: 'mio_digest', isEnabled: true },
-      select: { userId: true, frequency: true, lastSentAt: true, id: true },
+      select: { userId: true, frequency: true, lastSentAt: true, id: true, metadata: true },
     })
     const subsByUser = new Map(subs.map(s => [s.userId, s]))
 
@@ -111,7 +225,19 @@ export class MioDigestService {
           email: user.email, name: user.name,
         }
 
-        const digest = await this.buildMioDigest(fakeAuth, config)
+        // Per-user metadata overrides tenant config
+        const userMeta = sub ? (sub.metadata as MioDigestMeta | null) ?? {} : {}
+        const effectiveConfig: MioConfig = {
+          ...config,
+          digest: {
+            ...config.digest,
+            includeFindings: userMeta.includeFindings ?? config.digest.includeFindings,
+            includeRecommendations: userMeta.includeRecommendations ?? config.digest.includeRecommendations,
+            minSeverity: (userMeta.minSeverity as any) ?? config.digest.minSeverity,
+          },
+        }
+
+        const digest = await this.buildMioDigest(fakeAuth, effectiveConfig)
         if (digest.totalItems === 0) { skipped++; continue }
 
         const subject = this.buildSubject(digest, frequency)
