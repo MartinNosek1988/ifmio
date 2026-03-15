@@ -13,6 +13,7 @@ import type { BadgeVariant, Column } from '../../shared/components'
 import { apiClient } from '../../core/api/client'
 import type { Asset } from './AssetListPage'
 import { useFieldChecks } from '../field-checks/api/field-checks.queries'
+import RecurringPlansTab from '../recurring-plans/RecurringPlansTab'
 import type { FieldCheckItem, FieldCheckConfidenceLevel } from '../field-checks/api/field-checks.api'
 
 const FieldCheckModal = lazy(() => import('../field-checks/FieldCheckModal'))
@@ -143,6 +144,7 @@ const STATUS_COLOR: Record<string, BadgeVariant> = {
 const TABS = [
   { id: 'overview', label: 'Přehled', icon: <Activity size={14} /> },
   { id: 'plans', label: 'Plán činností', icon: <ClipboardList size={14} /> },
+  { id: 'recurring', label: 'Opakované činnosti', icon: <RefreshCw size={14} /> },
   { id: 'history', label: 'Historie', icon: <History size={14} /> },
   { id: 'checks', label: 'Kontroly', icon: <CheckCircle size={14} /> },
   { id: 'documents', label: 'Dokumenty', icon: <FileText size={14} /> },
@@ -831,6 +833,7 @@ export default function AssetPassportPage() {
       <div>
         {tab === 'overview' && <OverviewTab passport={passport} />}
         {tab === 'plans' && <PlansTab assetId={id!} hasAssetType={hasAssetType} />}
+        {tab === 'recurring' && <RecurringPlansTab assetId={id!} propertyId={asset?.propertyId ?? undefined} />}
         {tab === 'history' && <HistoryTab assetId={id!} />}
         {tab === 'checks' && <FieldChecksTab assetId={id!} />}
         {tab === 'documents' && <DocumentsTab assetId={id!} />}
