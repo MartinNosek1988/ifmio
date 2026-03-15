@@ -7,6 +7,7 @@ const MAX_RETRIES = 3
 const RETRY_DELAYS_MS = [10_000, 60_000, 300_000] // 10s, 1min, 5min
 const DELIVERY_TIMEOUT = 10_000
 const BATCH_SIZE = 50
+const STALE_PROCESSING_THRESHOLD_MS = 120_000 // 2min — items stuck in processing longer are recovered
 
 const VALID_EVENT_TYPES = [
   'mio.finding.created', 'mio.finding.resolved', 'mio.finding.dismissed',
@@ -170,15 +171,56 @@ export class MioWebhookService {
     }
   }
 
+  // ─── STALE PROCESSING RECOVERY ─────────────────────────────
+
+  async recoverStaleProcessing(): Promise<number> {
+    const threshold = new Date(Date.now() - STALE_PROCESSING_THRESHOLD_MS)
+
+    const stale = await this.prisma.mioWebhookOutbox.findMany({
+      where: { status: 'processing', lastAttemptAt: { lt: threshold } },
+      select: { id: true, retryCount: true, maxRetries: true },
+    })
+
+    let recovered = 0
+    for (const item of stale) {
+      const newRetry = item.retryCount + 1
+      if (newRetry >= item.maxRetries) {
+        await this.prisma.mioWebhookOutbox.update({
+          where: { id: item.id },
+          data: { status: 'exhausted', lastError: 'Běh byl obnoven po přerušení', processedAt: new Date() },
+        })
+      } else {
+        await this.prisma.mioWebhookOutbox.update({
+          where: { id: item.id },
+          data: {
+            status: 'pending', retryCount: newRetry,
+            nextAttemptAt: new Date(Date.now() + (RETRY_DELAYS_MS[newRetry - 1] ?? 300_000)),
+            lastError: 'Obnoveno po přerušeném zpracování',
+          },
+        })
+      }
+      recovered++
+    }
+
+    if (recovered > 0) {
+      this.logger.log(`Webhook outbox: recovered ${recovered} stale processing items`)
+    }
+
+    return recovered
+  }
+
   // ─── OUTBOX: PROCESS PENDING (called by cron) ────────────────
 
-  async processOutbox(): Promise<{ processed: number; sent: number; failed: number; exhausted: number }> {
+  async processOutbox(): Promise<{ processed: number; sent: number; failed: number; exhausted: number; recovered: number }> {
+    // First recover any stale processing items
+    const recovered = await this.recoverStaleProcessing()
+
     const now = new Date()
 
     // Claim pending items ready for delivery
     const items = await this.prisma.mioWebhookOutbox.findMany({
       where: {
-        status: { in: ['pending', 'failed'] },
+        status: 'pending',
         nextAttemptAt: { lte: now },
       },
       include: {
@@ -258,7 +300,7 @@ export class MioWebhookService {
       }
     }
 
-    return { processed: items.length, sent, failed, exhausted }
+    return { processed: items.length, sent, failed, exhausted, recovered }
   }
 
   // ─── RETRY / RESEND ──────────────────────────────────────────
@@ -279,7 +321,7 @@ export class MioWebhookService {
         status: 'pending',
         retryCount: 0,
         nextAttemptAt: new Date(),
-        lastError: null,
+        lastError: 'Ručně znovu zařazeno',
         processedAt: null,
       },
     })
@@ -323,21 +365,38 @@ export class MioWebhookService {
     })
     if (!sub) throw new NotFoundException('Webhook nenalezen')
 
-    const [pending, exhausted, lastSuccess] = await Promise.all([
-      this.prisma.mioWebhookOutbox.count({ where: { subscriptionId, status: { in: ['pending', 'processing'] } } }),
+    const [pending, processing, exhausted, lastSuccess, lastFailure, recentFailed24h] = await Promise.all([
+      this.prisma.mioWebhookOutbox.count({ where: { subscriptionId, status: 'pending' } }),
+      this.prisma.mioWebhookOutbox.count({ where: { subscriptionId, status: 'processing' } }),
       this.prisma.mioWebhookOutbox.count({ where: { subscriptionId, status: 'exhausted' } }),
       this.prisma.mioWebhookOutbox.findFirst({
         where: { subscriptionId, status: 'sent' },
         orderBy: { processedAt: 'desc' },
         select: { processedAt: true },
       }),
+      this.prisma.mioWebhookOutbox.findFirst({
+        where: { subscriptionId, status: { in: ['failed', 'exhausted'] } },
+        orderBy: { lastAttemptAt: 'desc' },
+        select: { lastAttemptAt: true, lastError: true },
+      }),
+      this.prisma.mioWebhookDeliveryLog.count({
+        where: { subscriptionId, status: { in: ['failed', 'exhausted'] }, createdAt: { gte: new Date(Date.now() - 24 * 3_600_000) } },
+      }),
     ])
 
-    return { pending, exhausted, lastSuccess: lastSuccess?.processedAt ?? null }
+    const health = exhausted > 3 || recentFailed24h > 5 ? 'warning' : pending + processing > 10 ? 'busy' : 'ok'
+
+    return {
+      pending, processing, exhausted,
+      lastSuccess: lastSuccess?.processedAt ?? null,
+      lastFailure: lastFailure ? { at: lastFailure.lastAttemptAt, error: lastFailure.lastError } : null,
+      recentFailed24h,
+      health,
+    }
   }
 
   async getOutboxItems(user: AuthUser, subscriptionId: string, filters?: {
-    status?: string; limit?: number
+    status?: string; eventType?: string; limit?: number; offset?: number
   }) {
     const sub = await this.prisma.mioWebhookSubscription.findFirst({
       where: { id: subscriptionId, tenantId: user.tenantId },
@@ -346,16 +405,24 @@ export class MioWebhookService {
 
     const where: any = { subscriptionId }
     if (filters?.status) where.status = filters.status
+    if (filters?.eventType) where.eventType = filters.eventType
 
-    return this.prisma.mioWebhookOutbox.findMany({
-      where, orderBy: { createdAt: 'desc' }, take: filters?.limit ?? 30,
-      select: {
-        id: true, eventId: true, eventType: true, status: true,
-        retryCount: true, maxRetries: true, nextAttemptAt: true,
-        lastAttemptAt: true, lastHttpStatus: true, lastError: true,
-        processedAt: true, createdAt: true,
-      },
-    })
+    const [items, total] = await Promise.all([
+      this.prisma.mioWebhookOutbox.findMany({
+        where, orderBy: { createdAt: 'desc' },
+        take: filters?.limit ?? 30,
+        skip: filters?.offset ?? 0,
+        select: {
+          id: true, eventId: true, eventType: true, status: true,
+          retryCount: true, maxRetries: true, nextAttemptAt: true,
+          lastAttemptAt: true, lastHttpStatus: true, lastError: true,
+          processedAt: true, createdAt: true,
+        },
+      }),
+      this.prisma.mioWebhookOutbox.count({ where }),
+    ])
+
+    return { items, total, limit: filters?.limit ?? 30, offset: filters?.offset ?? 0 }
   }
 
   // ─── ADMIN VISIBILITY ────────────────────────────────────────
