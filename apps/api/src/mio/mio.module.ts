@@ -3,6 +3,7 @@ import { MioController } from './mio.controller'
 import { MioService } from './mio.service'
 import { MioFindingsService } from './mio-findings.service'
 import { MioConfigService } from './mio-config.service'
+import { MioDigestService } from './mio-digest.service'
 import { HelpdeskModule } from '../helpdesk/helpdesk.module'
 import { WorkOrdersModule } from '../work-orders/work-orders.module'
 import { DashboardModule } from '../dashboard/dashboard.module'
@@ -18,7 +19,7 @@ import { PropertyScopeModule } from '../common/services/property-scope.module'
     CalendarModule, ProtocolsModule, AssetsModule, PropertyScopeModule,
   ],
   controllers: [MioController],
-  providers: [MioService, MioFindingsService, MioConfigService],
-  exports: [MioFindingsService, MioConfigService],
+  providers: [MioService, MioFindingsService, MioConfigService, MioDigestService],
+  exports: [MioFindingsService, MioConfigService, MioDigestService],
 })
 export class MioModule {}

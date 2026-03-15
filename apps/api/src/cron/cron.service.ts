@@ -6,6 +6,7 @@ import { RevisionEscalationService } from '../revisions/revision-escalation.serv
 import { ScheduledReportsService } from '../reports/scheduled-reports.service';
 import { RecurringPlansService } from '../recurring-plans/recurring-plans.service';
 import { MioFindingsService } from '../mio/mio-findings.service';
+import { MioDigestService } from '../mio/mio-digest.service';
 
 const ONE_HOUR = 60 * 60 * 1000;
 const SIX_HOURS = 6 * ONE_HOUR;
@@ -31,6 +32,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     private readonly scheduledReports: ScheduledReportsService,
     private readonly recurringPlans: RecurringPlansService,
     private readonly mioFindings: MioFindingsService,
+    private readonly mioDigest: MioDigestService,
   ) {}
 
   onModuleInit() {
@@ -42,6 +44,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     this.initScheduledReports();
     this.initRecurringGeneration();
     this.initMioDetection();
+    this.initMioDigest();
   }
 
   onModuleDestroy() {
@@ -333,6 +336,38 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(`Mio detection: ${result.checked} tenants, ${result.created} new, ${result.resolved} resolved, ${result.ticketsCreated} tickets`);
     } catch (err) {
       this.logger.error('Mio detection job FAILED', (err as Error).stack);
+    }
+  }
+
+  // ─── Mio Digest ─────────────────────────────────────────────
+
+  private initMioDigest() {
+    this.logger.log('Mio digest enabled — daily at ~7:00, weekly on Mondays');
+    setInterval(() => this.maybeRunMioDigest(), ONE_HOUR);
+    setTimeout(() => this.maybeRunMioDigest(), 250_000);
+  }
+
+  private lastMioDigestDate = '';
+
+  private async maybeRunMioDigest() {
+    const now = new Date();
+    const hour = now.getHours();
+    const dateStr = now.toISOString().slice(0, 10);
+
+    // Run between 6:00-9:00, once per day
+    if (hour < 6 || hour > 9 || dateStr === this.lastMioDigestDate) return;
+
+    this.lastMioDigestDate = dateStr;
+    try {
+      // Always process daily
+      await this.mioDigest.sendMioDigests('daily');
+
+      // Weekly on Mondays
+      if (now.getDay() === 1) {
+        await this.mioDigest.sendMioDigests('weekly');
+      }
+    } catch (err) {
+      this.logger.error('Mio digest job FAILED', (err as Error).stack);
     }
   }
 }
