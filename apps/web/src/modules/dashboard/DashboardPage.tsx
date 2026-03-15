@@ -9,6 +9,7 @@ import { LoadingState } from '../../shared/components/LoadingState';
 import { ErrorState } from '../../shared/components/ErrorState';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useDashboardOverview, useOperationalDashboard } from './api/dashboard.queries';
+import { useMioConfig } from '../admin/api/admin.queries';
 import { formatKc, formatCzDate } from '../../shared/utils/format';
 import { useRoleUX } from '../../shared/hooks/useRoleUX';
 import { dashboardApi } from './api/dashboard.api';
@@ -27,7 +28,12 @@ export default function DashboardPage() {
   const uxRole = useRoleUX();
   const { data, isLoading, isError, refetch } = useDashboardOverview();
   const { data: ops } = useOperationalDashboard();
+  const { data: mioConfig } = useMioConfig();
   const navigate = useNavigate();
+
+  const showMioStrip = mioConfig?.dashboard?.showMioStrip !== false;
+  const showFindings = mioConfig?.dashboard?.showFindings !== false;
+  const showRecs = mioConfig?.dashboard?.showRecommendations !== false;
 
   if (isLoading) return <LoadingState text="Načítání dashboardu..." />;
   if (isError) return <ErrorState onRetry={refetch} />;
@@ -50,13 +56,13 @@ export default function DashboardPage() {
       {ops && <AttentionSection ops={ops} uxRole={uxRole} />}
 
       {/* ── MIO VALUE STRIP ─────────────────────────────────────── */}
-      {uxRole !== 'resident' && <MioValueStrip />}
+      {uxRole !== 'resident' && showMioStrip && <MioValueStrip />}
 
       {/* Mio Findings */}
-      {uxRole !== 'resident' && <FindingsSection />}
+      {uxRole !== 'resident' && showFindings && <FindingsSection />}
 
       {/* Mio Recommendations */}
-      {(uxRole === 'fm' || uxRole === 'owner') && <RecommendationsSection />}
+      {(uxRole === 'fm' || uxRole === 'owner') && showRecs && <RecommendationsSection />}
 
       {/* Alerts */}
       {alerts.length > 0 && (

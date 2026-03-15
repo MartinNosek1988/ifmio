@@ -1352,6 +1352,9 @@ model TenantSettings {
 
   address String?
 
+  // Mio Governance
+  mioConfig Json? // structured JSON for Mio rule toggles, thresholds, visibility
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

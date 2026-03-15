@@ -16,6 +16,13 @@ export const adminApi = {
   exportData: () =>
     apiClient.get('/admin/export').then((r) => r.data),
 
+  mioConfig: {
+    get:    () =>
+      apiClient.get('/mio/config').then((r) => r.data),
+    update: (dto: any) =>
+      apiClient.put('/mio/config', dto).then((r) => r.data),
+  },
+
   users: {
     list:       () =>
       apiClient.get('/admin/users').then((r) => r.data),
