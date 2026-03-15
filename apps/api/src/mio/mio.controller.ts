@@ -9,6 +9,7 @@ import { MioFindingsService } from './mio-findings.service'
 import { MioConfigService } from './mio-config.service'
 import { MioDigestService } from './mio-digest.service'
 import { MioObservabilityService } from './mio-observability.service'
+import { MioWebhookService } from './mio-webhook.service'
 import type { AuthUser } from '@ifmio/shared-types'
 
 @ApiTags('Mio')
@@ -21,6 +22,7 @@ export class MioController {
     private config: MioConfigService,
     private digest: MioDigestService,
     private obs: MioObservabilityService,
+    private webhooks: MioWebhookService,
   ) {}
 
   // ─── Config (governance) ────────────────────────────────────
@@ -282,5 +284,59 @@ export class MioController {
   @ApiOperation({ summary: 'Recent failures' })
   getAdminFailures(@CurrentUser() user: AuthUser) {
     return this.obs.getRecentFailures(user.tenantId)
+  }
+
+  // ─── Webhook integrations ─────────────────────────────────────
+
+  @Get('webhooks')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'List webhook subscriptions' })
+  listWebhooks(@CurrentUser() user: AuthUser) {
+    return this.webhooks.listSubscriptions(user)
+  }
+
+  @Post('webhooks')
+  @Roles(...ROLES_MANAGE)
+  @AuditAction('MioWebhook', 'CREATE')
+  @ApiOperation({ summary: 'Create webhook subscription' })
+  createWebhook(@CurrentUser() user: AuthUser, @Body() dto: any) {
+    return this.webhooks.createSubscription(user, dto)
+  }
+
+  @Put('webhooks/:id')
+  @Roles(...ROLES_MANAGE)
+  @AuditAction('MioWebhook', 'UPDATE')
+  @ApiOperation({ summary: 'Update webhook subscription' })
+  updateWebhook(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: any) {
+    return this.webhooks.updateSubscription(user, id, dto)
+  }
+
+  @Delete('webhooks/:id')
+  @Roles(...ROLES_MANAGE)
+  @AuditAction('MioWebhook', 'DELETE')
+  @ApiOperation({ summary: 'Delete webhook subscription' })
+  deleteWebhook(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.webhooks.deleteSubscription(user, id)
+  }
+
+  @Get('webhooks/:id/deliveries')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Webhook delivery logs' })
+  getWebhookDeliveries(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.webhooks.getDeliveryLogs(user, id)
+  }
+
+  @Post('webhooks/:id/test')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Send test webhook' })
+  testWebhook(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.webhooks.sendTestEvent(user, id)
+  }
+
+  @Get('webhooks/event-types')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Available event types' })
+  getEventTypes() {
+    return this.webhooks.getValidEventTypes()
   }
 }
