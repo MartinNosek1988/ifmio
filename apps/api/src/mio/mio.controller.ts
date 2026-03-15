@@ -356,6 +356,32 @@ export class MioController {
     return this.webhooks.rotateSecret(user, id)
   }
 
+  @Get('webhooks/:id/outbox')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Webhook outbox items' })
+  getOutboxItems(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Query('status') status?: string,
+  ) {
+    return this.webhooks.getOutboxItems(user, id, { status })
+  }
+
+  @Get('webhooks/:id/outbox-summary')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Webhook outbox summary' })
+  getOutboxSummary(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.webhooks.getOutboxSummary(user, id)
+  }
+
+  @Post('webhooks/outbox/:deliveryId/retry')
+  @Roles(...ROLES_MANAGE)
+  @AuditAction('MioWebhook', 'RETRY_DELIVERY')
+  @ApiOperation({ summary: 'Retry failed/exhausted delivery' })
+  retryDelivery(@CurrentUser() user: AuthUser, @Param('deliveryId') deliveryId: string) {
+    return this.webhooks.retryDelivery(user, deliveryId)
+  }
+
   @Get('webhooks/event-types')
   @Roles(...ROLES_MANAGE)
   @ApiOperation({ summary: 'Available event types' })

@@ -8,6 +8,7 @@ import { RecurringPlansService } from '../recurring-plans/recurring-plans.servic
 import { MioFindingsService } from '../mio/mio-findings.service';
 import { MioDigestService } from '../mio/mio-digest.service';
 import { MioObservabilityService } from '../mio/mio-observability.service';
+import { MioWebhookService } from '../mio/mio-webhook.service';
 
 const ONE_HOUR = 60 * 60 * 1000;
 const SIX_HOURS = 6 * ONE_HOUR;
@@ -35,6 +36,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     private readonly mioFindings: MioFindingsService,
     private readonly mioDigest: MioDigestService,
     private readonly mioObs: MioObservabilityService,
+    private readonly mioWebhooks: MioWebhookService,
   ) {}
 
   onModuleInit() {
@@ -47,6 +49,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     this.initRecurringGeneration();
     this.initMioDetection();
     this.initMioDigest();
+    this.initWebhookOutbox();
   }
 
   onModuleDestroy() {
@@ -401,6 +404,25 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
         jobType: 'digest_daily', startedAt: now, status: 'failed',
         summary: 'Odesílání přehledů selhalo',
       }).catch(() => {});
+    }
+  }
+
+  // ─── Webhook Outbox Worker ──────────────────────────────────
+
+  private initWebhookOutbox() {
+    this.logger.log('Webhook outbox worker enabled — processing every 15s');
+    setInterval(() => this.processWebhookOutbox(), 15_000);
+    setTimeout(() => this.processWebhookOutbox(), 10_000);
+  }
+
+  private async processWebhookOutbox() {
+    try {
+      const result = await this.mioWebhooks.processOutbox();
+      if (result.processed > 0) {
+        this.logger.log(`Webhook outbox: ${result.processed} processed, ${result.sent} sent, ${result.failed} retry, ${result.exhausted} exhausted`);
+      }
+    } catch (err) {
+      this.logger.error('Webhook outbox processing FAILED', (err as Error).stack);
     }
   }
 }
