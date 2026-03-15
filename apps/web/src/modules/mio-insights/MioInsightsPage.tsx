@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { AlertTriangle, Lightbulb, ExternalLink, X, Clock } from 'lucide-react';
+import { ExternalLink, X } from 'lucide-react';
 import { KpiCard, Badge, Button, LoadingState, EmptyState } from '../../shared/components';
 import type { BadgeVariant } from '../../shared/components';
 import { apiClient } from '../../core/api/client';
