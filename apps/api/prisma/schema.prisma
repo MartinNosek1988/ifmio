@@ -1280,6 +1280,7 @@ model ScheduledReportSubscription {
 
 enum ReportType {
   daily_digest
+  mio_digest
   operations
   assets
   protocols

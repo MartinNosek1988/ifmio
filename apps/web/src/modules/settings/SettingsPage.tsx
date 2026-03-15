@@ -694,6 +694,62 @@ function MioGovernanceTab() {
         })}
       </GovSectionCard>
 
+      {/* ── Digest ──────────────────────────────────────────────── */}
+      {localConfig.digest && (
+        <GovSectionCard
+          title="E-mailové přehledy Mio"
+          description="Nastavení automatických e-mailových souhrnů Mio zjištění a doporučení pro uživatele organizace."
+          onReset={() => handleResetSection('digest', 'E-mailové přehledy')}
+        >
+          <GovToggleRow
+            label="Zapnout e-mailové přehledy"
+            description="Po vypnutí se žádný uživatel v organizaci nedostane Mio digest."
+            checked={localConfig.digest.enabled !== false}
+            onToggle={() => setLocalConfig((c: any) => ({ ...c, digest: { ...c.digest, enabled: !c.digest.enabled } }))}
+          />
+          <GovToggleRow
+            label="Zahrnout upozornění"
+            description="Vypnutím se ze souhrnu odstraní sekce s upozorněními."
+            checked={localConfig.digest.includeFindings !== false}
+            onToggle={() => setLocalConfig((c: any) => ({ ...c, digest: { ...c.digest, includeFindings: !c.digest.includeFindings } }))}
+          />
+          <GovToggleRow
+            label="Zahrnout doporučení"
+            description="Vypnutím se ze souhrnu odstraní sekce s doporučeními."
+            checked={localConfig.digest.includeRecommendations !== false}
+            onToggle={() => setLocalConfig((c: any) => ({ ...c, digest: { ...c.digest, includeRecommendations: !c.digest.includeRecommendations } }))}
+          />
+          <div style={{ marginTop: 10, marginBottom: 8 }}>
+            <div style={{ fontSize: '.85rem', fontWeight: 500, marginBottom: 4 }}>Výchozí frekvence</div>
+            <div style={{ fontSize: '.75rem', color: 'var(--text-muted)', marginBottom: 6 }}>Uživatel si může frekvenci změnit ve svém profilu.</div>
+            <select
+              className="settings-input"
+              style={{ width: 200 }}
+              value={localConfig.digest.defaultFrequency ?? 'daily'}
+              onChange={(e) => setLocalConfig((c: any) => ({ ...c, digest: { ...c.digest, defaultFrequency: e.target.value } }))}
+            >
+              <option value="daily">Denně</option>
+              <option value="weekly">Týdně (pondělí)</option>
+              <option value="off">Vypnuto</option>
+            </select>
+          </div>
+          <div style={{ marginTop: 10 }}>
+            <div style={{ fontSize: '.85rem', fontWeight: 500, marginBottom: 4 }}>Minimální závažnost</div>
+            <div style={{ fontSize: '.75rem', color: 'var(--text-muted)', marginBottom: 6 }}>Zahrnout pouze zjištění s touto nebo vyšší závažností.</div>
+            <select
+              className="settings-input"
+              style={{ width: 200 }}
+              value={localConfig.digest.minSeverity ?? 'info'}
+              onChange={(e) => setLocalConfig((c: any) => ({ ...c, digest: { ...c.digest, minSeverity: e.target.value } }))}
+            >
+              <option value="info">Vše (info a výše)</option>
+              <option value="warning">Varování a kritická</option>
+              <option value="critical">Jen kritická</option>
+            </select>
+          </div>
+        </GovSectionCard>
+      )}
+
       {/* ── Footer ────────────────────────────────────────────────── */}
       <div className="settings-footer" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
         <Button onClick={handleSave} disabled={updateMut.isPending || !isDirty}>

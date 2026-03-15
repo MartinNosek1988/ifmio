@@ -7,6 +7,7 @@ import { AuditAction } from '../common/decorators/audit.decorator'
 import { MioService } from './mio.service'
 import { MioFindingsService } from './mio-findings.service'
 import { MioConfigService } from './mio-config.service'
+import { MioDigestService } from './mio-digest.service'
 import type { AuthUser } from '@ifmio/shared-types'
 
 @ApiTags('Mio')
@@ -17,6 +18,7 @@ export class MioController {
     private service: MioService,
     private findings: MioFindingsService,
     private config: MioConfigService,
+    private digest: MioDigestService,
   ) {}
 
   // ─── Config (governance) ────────────────────────────────────
@@ -59,6 +61,14 @@ export class MioController {
     @Body() dto: { section?: string },
   ) {
     return this.config.resetConfig(user.tenantId, dto?.section)
+  }
+
+  @Post('digest/send')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Ručně odeslat Mio digest' })
+  sendDigest(@Body() dto: { frequency?: string }) {
+    const freq = dto?.frequency === 'weekly' ? 'weekly' : 'daily'
+    return this.digest.sendMioDigests(freq as any)
   }
 
   @Post('chat')

@@ -137,6 +137,34 @@ export const AUTO_TICKET_DESCRIPTIONS: Record<string, string> = {
   asset_no_recurring_plan: 'Zjištění se stále zobrazí, ale nevznikne automaticky ticket.',
 }
 
+export const DIGEST_META: Record<string, { label: string; description: string; impact: string }> = {
+  enabled: {
+    label: 'E-mailové přehledy Mio',
+    description: 'Zapne možnost zasílání Mio přehledů e-mailem.',
+    impact: 'Po vypnutí se žádný uživatel v organizaci nedostane Mio digest.',
+  },
+  includeFindings: {
+    label: 'Zahrnout upozornění',
+    description: 'Zda mají přehledy obsahovat Mio upozornění (findings).',
+    impact: 'Vypnutím se ze souhrnu odstraní sekce s upozorněními.',
+  },
+  includeRecommendations: {
+    label: 'Zahrnout doporučení',
+    description: 'Zda mají přehledy obsahovat Mio doporučení.',
+    impact: 'Vypnutím se ze souhrnu odstraní sekce s doporučeními.',
+  },
+  defaultFrequency: {
+    label: 'Výchozí frekvence',
+    description: 'Frekvence zasílání pro nové uživatele.',
+    impact: 'Uživatel si může frekvenci změnit ve svém profilu.',
+  },
+  minSeverity: {
+    label: 'Minimální závažnost',
+    description: 'Zahrnout pouze zjištění s touto nebo vyšší závažností.',
+    impact: 'Informační zjištění nebudou zahrnuta, pokud nastavíte „varování" nebo vyšší.',
+  },
+}
+
 export const DASHBOARD_META: Record<string, { label: string; description: string; impact: string }> = {
   showFindings: {
     label: 'Upozornění na dashboardu',
@@ -167,6 +195,13 @@ export interface MioConfig {
     showRecommendations: boolean
     showMioStrip: boolean
   }
+  digest: {
+    enabled: boolean
+    includeFindings: boolean
+    includeRecommendations: boolean
+    defaultFrequency: 'daily' | 'weekly' | 'off'
+    minSeverity: 'critical' | 'warning' | 'info'
+  }
 }
 
 // Build defaults from metadata
@@ -193,6 +228,13 @@ function buildDefaultConfig(): MioConfig {
       showRecommendations: true,
       showMioStrip: true,
     },
+    digest: {
+      enabled: true,
+      includeFindings: true,
+      includeRecommendations: true,
+      defaultFrequency: 'daily',
+      minSeverity: 'info',
+    },
   }
 }
 
@@ -218,6 +260,7 @@ export class MioConfigService {
       autoTicketPolicy: { ...DEFAULT_CONFIG.autoTicketPolicy, ...stored.autoTicketPolicy },
       thresholds: { ...DEFAULT_CONFIG.thresholds, ...stored.thresholds },
       dashboard: { ...DEFAULT_CONFIG.dashboard, ...stored.dashboard },
+      digest: { ...DEFAULT_CONFIG.digest, ...stored.digest },
     }
   }
 
@@ -235,6 +278,7 @@ export class MioConfigService {
       autoTicketPolicy: { ...current.autoTicketPolicy, ...patch.autoTicketPolicy },
       thresholds: { ...current.thresholds, ...patch.thresholds },
       dashboard: { ...current.dashboard, ...patch.dashboard },
+      digest: { ...current.digest, ...patch.digest },
     }
 
     // Ensure tenant settings row exists
@@ -273,6 +317,9 @@ export class MioConfigService {
         case 'dashboard':
           merged.dashboard = { ...DEFAULT_CONFIG.dashboard }
           break
+        case 'digest':
+          merged.digest = { ...DEFAULT_CONFIG.digest }
+          break
         default:
           throw new BadRequestException(`Neznámá sekce: ${section}`)
       }
@@ -298,6 +345,7 @@ export class MioConfigService {
       thresholds: THRESHOLDS_META,
       autoTicketDescriptions: AUTO_TICKET_DESCRIPTIONS,
       dashboard: DASHBOARD_META,
+      digest: DIGEST_META,
     }
   }
 
