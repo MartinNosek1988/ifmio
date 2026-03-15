@@ -26,6 +26,44 @@ export class MioController {
     return { response }
   }
 
+  // ─── Insights (unified) ─────────────────────────────────────
+
+  @Get('insights')
+  @ApiOperation({ summary: 'Sjednocený seznam findings + recommendations' })
+  listInsights(
+    @CurrentUser() user: AuthUser,
+    @Query('kind') kind?: string,
+    @Query('status') status?: string,
+    @Query('severity') severity?: string,
+    @Query('category') category?: string,
+    @Query('search') search?: string,
+    @Query('hasTicket') hasTicket?: string,
+  ) {
+    return this.findings.listInsights(user, { kind, status, severity, category, search, hasTicket })
+  }
+
+  @Get('insights/summary')
+  @ApiOperation({ summary: 'Souhrn insights' })
+  insightsSummary(@CurrentUser() user: AuthUser) {
+    return this.findings.getInsightsSummary(user)
+  }
+
+  @Post('insights/:id/dismiss')
+  @ApiOperation({ summary: 'Skrýt insight' })
+  dismissInsight(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.findings.dismiss(user, id)
+  }
+
+  @Post('insights/:id/snooze')
+  @ApiOperation({ summary: 'Odložit insight' })
+  snoozeInsight(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: { until: string },
+  ) {
+    return this.findings.snooze(user, id, new Date(dto.until))
+  }
+
   // ─── Findings ───────────────────────────────────────────────
 
   @Get('findings')

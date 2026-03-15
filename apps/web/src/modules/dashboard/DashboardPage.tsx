@@ -330,6 +330,7 @@ function FindingsSection() {
     }}>
       <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
         <span style={{ fontSize: '1.1rem' }}>🔍</span> Mio upozorňuje ({findings.length})
+        <a href="/mio/insights?tab=findings" style={{ marginLeft: 'auto', fontSize: '0.78rem', color: 'var(--primary, #6366f1)' }}>Zobrazit vše</a>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {findings.slice(0, 8).map(f => (
@@ -388,6 +389,7 @@ function RecommendationsSection() {
     }}>
       <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
         <span style={{ fontSize: '1.1rem' }}>💡</span> Mio radí ({recs.length})
+        <a href="/mio/insights?tab=recommendations" style={{ marginLeft: 'auto', fontSize: '0.78rem', color: 'var(--primary, #6366f1)' }}>Zobrazit vše</a>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {recs.slice(0, 5).map(r => (

@@ -234,6 +234,49 @@ export class MioFindingsService {
 
   // ─── API METHODS ────────────────────────────────────────────
 
+  async listInsights(user: AuthUser, query?: {
+    kind?: string; status?: string; severity?: string; category?: string; search?: string; hasTicket?: string
+  }) {
+    const where: any = { tenantId: user.tenantId }
+    if (query?.kind) where.kind = query.kind
+    if (query?.status) where.status = query.status
+    else where.status = { not: 'resolved' } // default: hide resolved
+    if (query?.severity) where.severity = query.severity
+    if (query?.category) where.category = query.category
+    if (query?.hasTicket === 'true') where.helpdeskTicketId = { not: null }
+    if (query?.hasTicket === 'false') where.helpdeskTicketId = null
+    if (query?.search) {
+      where.OR = [
+        { title: { contains: query.search, mode: 'insensitive' } },
+        { description: { contains: query.search, mode: 'insensitive' } },
+      ]
+    }
+
+    return this.prisma.mioFinding.findMany({
+      where,
+      orderBy: [
+        { kind: 'asc' }, // findings first
+        { severity: 'desc' },
+        { lastDetectedAt: 'desc' },
+      ],
+      take: 100,
+    })
+  }
+
+  async getInsightsSummary(user: AuthUser) {
+    const tenantId = user.tenantId
+    const [activeFindings, criticalFindings, activeRecs, snoozed, resolvedLast30] = await Promise.all([
+      this.prisma.mioFinding.count({ where: { tenantId, kind: 'finding', status: 'active' } }),
+      this.prisma.mioFinding.count({ where: { tenantId, kind: 'finding', status: 'active', severity: 'critical' } }),
+      this.prisma.mioFinding.count({ where: { tenantId, kind: 'recommendation', status: 'active' } }),
+      this.prisma.mioFinding.count({ where: { tenantId, status: 'snoozed' } }),
+      this.prisma.mioFinding.count({
+        where: { tenantId, status: 'resolved', resolvedAt: { gte: new Date(Date.now() - 30 * 86400000) } },
+      }),
+    ])
+    return { activeFindings, criticalFindings, activeRecs, snoozed, resolvedLast30 }
+  }
+
   async listFindings(user: AuthUser, query?: { status?: string; severity?: string }) {
     const where: any = { tenantId: user.tenantId }
     if (query?.status) where.status = query.status
