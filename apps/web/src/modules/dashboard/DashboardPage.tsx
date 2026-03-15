@@ -314,7 +314,7 @@ function FindingsSection() {
   const { data: findings = [] } = useQuery<MioFinding[]>({
     queryKey: ['mio', 'findings'],
     queryFn: () => dashboardApi.findings(),
-    refetchInterval: 120_000,
+    refetchInterval: 300_000,
   });
   const dismissMut = useMutation({
     mutationFn: (id: string) => dashboardApi.dismissFinding(id),

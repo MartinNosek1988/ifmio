@@ -10,6 +10,7 @@ import { RecurringPlansService } from '../recurring-plans/recurring-plans.servic
 import { CalendarService } from '../calendar/calendar.service'
 import { ProtocolsService } from '../protocols/protocols.service'
 import { AssetsService } from '../assets/assets.service'
+import { PropertyScopeService } from '../common/services/property-scope.service'
 
 const SYSTEM_PROMPT = `Jsi Mio, profesionální AI asistent pro facility management platformu ifmio.
 Odpovídáš v češtině, stručně a prakticky.
@@ -133,6 +134,7 @@ export class MioService {
     private calendar: CalendarService,
     private protocols: ProtocolsService,
     private assets: AssetsService,
+    private scope: PropertyScopeService,
   ) {
     const apiKey = this.config.get<string>('ANTHROPIC_API_KEY')
     if (apiKey) {
@@ -356,14 +358,14 @@ export class MioService {
 
       case 'revisions_overdue': {
         const now = new Date()
-        const scopeWhere: any = {}
+        const scopeWhere = await this.scope.scopeByPropertyId(user)
         const plans = await this.prisma.revisionPlan.findMany({
           where: {
             tenantId: user.tenantId,
             status: 'active',
             nextDueAt: { lt: now },
             ...scopeWhere,
-          },
+          } as any,
           include: {
             revisionType: { select: { name: true } },
             asset: { select: { name: true } },

@@ -9,11 +9,21 @@ const SEVERITY_TO_PRIORITY: Record<string, string> = {
   info: 'medium',
 }
 
-// Auto-ticket policy: which codes auto-create tickets
+// ─── Centralized recommendation thresholds ────────────────────
+const THRESHOLDS = {
+  RECURRING_ADOPTION_MIN_ASSETS: 3,
+  RECURRING_ADOPTION_MAX_PLANS: 2,
+  REPORTING_TIP_MIN_TICKETS: 10,
+  HELPDESK_FILTER_TIP_MIN_TICKETS: 20,
+  PROTOCOL_TIP_MIN_COMPLETED_WO: 5,
+  SECURITY_TIP_MIN_USERS: 3,
+}
+
+// Auto-ticket policy: only truly escalation-worthy findings create tickets
+// overdue_recurring_request and overdue_work_order are finding-only
+// (the original ticket/WO already exists as an actionable object)
 const AUTO_TICKET_CODES = new Set([
-  'overdue_recurring_request',
   'overdue_revision',
-  'overdue_work_order',
   'urgent_ticket_no_assignee',
 ])
 
@@ -443,12 +453,11 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
     title: 'Opakované činnosti můžete automatizovat',
     category: 'efficiency',
     run: async (tenantId, prisma) => {
-      // Show when >3 assets but <2 recurring plans
       const [assetCount, planCount] = await Promise.all([
         prisma.asset.count({ where: { tenantId, deletedAt: null } }),
         prisma.recurringActivityPlan.count({ where: { tenantId, isActive: true } }),
       ])
-      if (assetCount > 3 && planCount < 2) {
+      if (assetCount > THRESHOLDS.RECURRING_ADOPTION_MIN_ASSETS && planCount < THRESHOLDS.RECURRING_ADOPTION_MAX_PLANS) {
         return [{
           fingerprint: `rec:recurring_adoption:${tenantId}`,
           description: `Máte ${assetCount} zařízení, ale jen ${planCount} opakovaných plánů. Nastavte opakované činnosti pro pravidelnou údržbu.`,
@@ -466,7 +475,7 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
     run: async (tenantId, prisma) => {
       // Show when tenant has >10 tickets but probably hasn't used exports
       const ticketCount = await prisma.helpdeskTicket.count({ where: { tenantId } })
-      if (ticketCount > 10) {
+      if (ticketCount > THRESHOLDS.REPORTING_TIP_MIN_TICKETS) {
         return [{
           fingerprint: `rec:reporting_export:${tenantId}`,
           description: 'Provozní přehledy, zařízení a protokoly můžete exportovat pro další zpracování.',
@@ -483,7 +492,7 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
     category: 'adoption',
     run: async (tenantId, prisma) => {
       const ticketCount = await prisma.helpdeskTicket.count({ where: { tenantId } })
-      if (ticketCount > 20) {
+      if (ticketCount > THRESHOLDS.HELPDESK_FILTER_TIP_MIN_TICKETS) {
         return [{
           fingerprint: `rec:helpdesk_filter:${tenantId}`,
           description: 'Při větším počtu požadavků využijte filtry podle zdroje (manuální / opakované), priority a stavu.',
@@ -506,7 +515,7 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
       const protocolCount = await prisma.protocol.count({
         where: { tenantId, sourceType: 'work_order' },
       })
-      if (completedWo > 5 && protocolCount === 0) {
+      if (completedWo > THRESHOLDS.PROTOCOL_TIP_MIN_COMPLETED_WO && protocolCount === 0) {
         return [{
           fingerprint: `rec:protocol_adoption:${tenantId}`,
           description: 'K pracovním úkolům můžete přidávat přílohy a protokoly pro lepší dohledatelnost a audit.',
@@ -524,7 +533,7 @@ const RECOMMENDATION_RULES: RecommendationRule[] = [
     run: async (tenantId, prisma) => {
       // Show when tenant has >3 active users (worth reviewing access)
       const userCount = await prisma.user.count({ where: { tenantId, isActive: true } })
-      if (userCount > 3) {
+      if (userCount > THRESHOLDS.SECURITY_TIP_MIN_USERS) {
         return [{
           fingerprint: `rec:security_access:${tenantId}`,
           description: 'S větším počtem uživatelů doporučujeme zkontrolovat role, přístupy k objektům a bezpečnostní nastavení.',
