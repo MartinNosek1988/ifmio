@@ -166,6 +166,7 @@ export class DashboardService {
       openWo, overdueWo, todayWoDeadlines,
       resolvedLast30, completedWoLast30,
       overdueRevisions, incompleteProtocols,
+      openRecurring, overdueRecurring,
       recentTicketList, recentWoList,
     ] = await Promise.all([
       // Helpdesk
@@ -202,6 +203,13 @@ export class DashboardService {
       isTech ? Promise.resolve(0) : this.prisma.protocol.count({
         where: { tenantId, status: 'draft', ...scopeWhere } as any,
       }),
+      // Recurring metrics
+      this.prisma.helpdeskTicket.count({
+        where: { tenantId, status: { in: ['open', 'in_progress'] }, requestOrigin: 'recurring_plan', ...scopeWhere, ...myFilter } as any,
+      }),
+      this.prisma.helpdeskTicket.count({
+        where: { tenantId, status: { in: ['open', 'in_progress'] }, requestOrigin: 'recurring_plan', resolutionDueAt: { lt: now }, ...scopeWhere, ...myFilter } as any,
+      }),
       // Recent lists (last 5)
       this.prisma.helpdeskTicket.findMany({
         where: { tenantId, status: { in: ['open', 'in_progress'] }, ...scopeWhere, ...myFilter } as any,
@@ -226,6 +234,8 @@ export class DashboardService {
         todayWoDeadlines,
         overdueRevisions,
         incompleteProtocols,
+        openRecurring,
+        overdueRecurring,
       },
       workload: {
         openTickets,

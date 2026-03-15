@@ -241,6 +241,9 @@ function AttentionSection({ ops, uxRole }: { ops: OperationalDashboard; uxRole: 
         {(uxRole === 'fm') && attention.incompleteProtocols > 0 && (
           <AttentionPill label={`${attention.incompleteProtocols} nedokončených protokolů`} onClick={() => navigate('/protocols')} />
         )}
+        {attention.overdueRecurring > 0 && (
+          <AttentionPill label={`${attention.overdueRecurring} opakovaných po termínu`} onClick={() => navigate('/helpdesk?requestOrigin=recurring_plan&overdue=true')} />
+        )}
       </div>
     </div>
   );
