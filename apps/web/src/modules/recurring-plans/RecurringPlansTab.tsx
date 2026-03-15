@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Plus, Calendar, Clock } from 'lucide-react';
 import { Badge, Button, EmptyState } from '../../shared/components';
 import type { BadgeVariant } from '../../shared/components';
-import { useRecurringPlans, useUpdateRecurringPlan, useDeleteRecurringPlan } from './api/recurring-plans.queries';
+import { useRecurringPlans, useUpdateRecurringPlan } from './api/recurring-plans.queries';
 import { formatRecurrence, type RecurringPlan } from './api/recurring-plans.api';
 import RecurringPlanForm from './RecurringPlanForm';
 
@@ -26,11 +26,6 @@ export default function RecurringPlansTab({ assetId, propertyId }: Props) {
     updateMutation.mutate({ id: plan.id, dto: { isActive: !plan.isActive } });
   };
 
-  const handleDelete = (plan: RecurringPlan) => {
-    if (confirm(`Smazat plán "${plan.title}"?`)) {
-      deleteMutation.mutate(plan.id);
-    }
-  };
 
   if (isLoading) return <div className="text-muted" style={{ padding: 20 }}>Načítání...</div>;
 
