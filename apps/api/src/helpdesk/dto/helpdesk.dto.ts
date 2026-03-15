@@ -23,6 +23,12 @@ export class HelpdeskListQueryDto {
   @IsOptional() @IsBooleanString()
   escalated?: string;
 
+  @IsOptional() @IsString()
+  requestOrigin?: string;
+
+  @IsOptional() @IsString()
+  recurringPlanId?: string;
+
   @IsOptional() @Type(() => Number) @IsNumber()
   page?: number;
 

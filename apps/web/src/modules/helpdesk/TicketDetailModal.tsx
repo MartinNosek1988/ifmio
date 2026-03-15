@@ -326,6 +326,30 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
             />
           </div>
 
+          {/* Recurring plan context */}
+          {ticket.requestOrigin === 'recurring_plan' && ticket.recurringPlan && (
+            <div style={{
+              marginBottom: 16, padding: 12, borderRadius: 8,
+              background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)',
+            }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                Kontext opakované činnosti
+                <Badge variant="purple">Automaticky vygenerováno</Badge>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: '0.85rem' }}>
+                <InfoField label="Zdrojový plán" value={ticket.recurringPlan.title} />
+                <InfoField label="Plánováno na" value={ticket.plannedForDate ? new Date(ticket.plannedForDate).toLocaleDateString('cs-CZ') : '—'} />
+              </div>
+              {ticket.recurringPlan.assetId && (
+                <div style={{ marginTop: 8 }}>
+                  <Button size="sm" onClick={() => window.open(`/assets/${ticket.recurringPlan!.assetId}`, '_blank')}>
+                    Otevřít zdrojový plán
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Linked work orders */}
           <div style={{
             marginBottom: 16, padding: 12, borderRadius: 8,

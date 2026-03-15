@@ -110,6 +110,14 @@ function PlanCard({ plan, onEdit, onToggle }: {
       {plan.description && (
         <div className="text-muted" style={{ fontSize: '0.8rem', marginTop: 8 }}>{plan.description}</div>
       )}
+
+      {genCount > 0 && (
+        <div style={{ marginTop: 8 }}>
+          <a href={`/helpdesk?recurringPlanId=${plan.id}`} style={{ fontSize: '0.82rem', color: 'var(--primary, #6366f1)' }}>
+            Otevřít vygenerované požadavky →
+          </a>
+        </div>
+      )}
     </div>
   );
 }

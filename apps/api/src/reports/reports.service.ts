@@ -452,6 +452,7 @@ export class ReportsService {
         createdAt: t.createdAt.toISOString(),
         dueAt: t.resolutionDueAt?.toISOString() ?? null,
         completedAt: t.resolvedAt?.toISOString() ?? null,
+        requestOrigin: (t as any).requestOrigin ?? 'manual',
       })),
       workOrders: woItems.map(w => ({
         type: 'work_order' as const,
