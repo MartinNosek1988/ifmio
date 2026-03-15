@@ -1300,6 +1300,25 @@ model MioDigestLog {
   @@map("mio_digest_logs")
 }
 
+model MioJobRunLog {
+  id           String   @id @default(uuid())
+  jobType      String   // detection | digest_daily | digest_weekly
+  status       String   // success | partial | failed
+  startedAt    DateTime
+  finishedAt   DateTime @default(now())
+  tenantCount  Int      @default(0)
+  itemsCreated Int      @default(0)
+  itemsResolved Int     @default(0)
+  emailsSent   Int      @default(0)
+  skippedCount Int      @default(0)
+  failureCount Int      @default(0)
+  summary      String?
+  createdAt    DateTime @default(now())
+
+  @@index([jobType, createdAt])
+  @@map("mio_job_run_logs")
+}
+
 enum ReportType {
   daily_digest
   mio_digest

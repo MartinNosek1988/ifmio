@@ -8,6 +8,7 @@ import { MioService } from './mio.service'
 import { MioFindingsService } from './mio-findings.service'
 import { MioConfigService } from './mio-config.service'
 import { MioDigestService } from './mio-digest.service'
+import { MioObservabilityService } from './mio-observability.service'
 import type { AuthUser } from '@ifmio/shared-types'
 
 @ApiTags('Mio')
@@ -19,6 +20,7 @@ export class MioController {
     private findings: MioFindingsService,
     private config: MioConfigService,
     private digest: MioDigestService,
+    private obs: MioObservabilityService,
   ) {}
 
   // ─── Config (governance) ────────────────────────────────────
@@ -247,5 +249,38 @@ export class MioController {
     @Body() dto: { until: string },
   ) {
     return this.findings.snooze(user, id, new Date(dto.until))
+  }
+
+  // ─── Admin observability ──────────────────────────────────────
+
+  @Get('admin/overview')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Mio admin overview' })
+  getAdminOverview(@CurrentUser() user: AuthUser) {
+    return this.obs.getOverview(user.tenantId)
+  }
+
+  @Get('admin/jobs')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Recent Mio job runs' })
+  getAdminJobs() {
+    return this.obs.getRecentJobs()
+  }
+
+  @Get('admin/digests')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Digest delivery overview' })
+  getAdminDigests(
+    @CurrentUser() user: AuthUser,
+    @Query('days') days?: string,
+  ) {
+    return this.obs.getDigestDelivery(user.tenantId, days ? parseInt(days, 10) || 7 : 7)
+  }
+
+  @Get('admin/failures')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Recent failures' })
+  getAdminFailures(@CurrentUser() user: AuthUser) {
+    return this.obs.getRecentFailures(user.tenantId)
   }
 }

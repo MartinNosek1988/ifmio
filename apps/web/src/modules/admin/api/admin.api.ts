@@ -33,6 +33,13 @@ export const adminApi = {
     preview: () => apiClient.get('/mio/digest/preview').then((r) => r.data),
   },
 
+  mioAdmin: {
+    overview: () => apiClient.get('/mio/admin/overview').then((r) => r.data),
+    jobs:     () => apiClient.get('/mio/admin/jobs').then((r) => r.data),
+    digests:  (days = 7) => apiClient.get(`/mio/admin/digests?days=${days}`).then((r) => r.data),
+    failures: () => apiClient.get('/mio/admin/failures').then((r) => r.data),
+  },
+
   users: {
     list:       () =>
       apiClient.get('/admin/users').then((r) => r.data),
