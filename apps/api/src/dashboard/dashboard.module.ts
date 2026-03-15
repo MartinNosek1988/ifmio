@@ -8,5 +8,6 @@ import { PropertyScopeModule }  from '../common/services/property-scope.module'
   imports:     [PrismaModule, PropertyScopeModule],
   providers:   [DashboardService],
   controllers: [DashboardController],
+  exports:     [DashboardService],
 })
 export class DashboardModule {}
