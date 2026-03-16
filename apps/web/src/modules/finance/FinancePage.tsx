@@ -19,6 +19,7 @@ import { DokladyTab } from './components/DokladyTab';
 import { ParovaniTab } from './components/ParovaniTab';
 import { AccountsTab } from './components/AccountsTab';
 import { DebtorsTab } from './components/DebtorsTab';
+import KontoTab from './components/KontoTab';
 
 // Modal components
 import { PredpisDetail } from './components/PredpisDetail';
@@ -30,6 +31,7 @@ const TABS = [
   { key: 'bank', label: 'Banka' },
   { key: 'doklady', label: 'Doklady' },
   { key: 'parovani', label: 'Párování' },
+  { key: 'konto', label: 'Konto' },
   { key: 'accounts', label: 'Účty' },
   { key: 'debtors', label: 'Dlužníci' },
 ] as const;
@@ -271,6 +273,9 @@ export default function FinancePage() {
 
       {/* ── TAB: ÚČTY ─────────────────────────────────────────────── */}
       {tab === 'accounts' && <AccountsTab accounts={accounts} />}
+
+      {/* ── TAB: KONTO ────────────────────────────────────────────── */}
+      {tab === 'konto' && <KontoTab />}
 
       {/* ── TAB: DLUŽNÍCI ─────────────────────────────────────────── */}
       {tab === 'debtors' && <DebtorsTab prescriptions={prescriptions} getPropName={getPropName} getTenantName={getTenantName} />}

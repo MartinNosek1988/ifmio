@@ -70,6 +70,7 @@ const NAV_SECTIONS: NavSection[] = [
     roles: ['fm', 'owner'],
     items: [
       { to: '/finance', label: 'Finance', icon: <Wallet size={17} /> },
+      { to: '/finance?tab=konto', label: 'Konto vlastníků', icon: <Wallet size={17} /> },
       { to: '/finance?tab=debtors', label: 'Dlužníci', icon: <AlertTriangle size={17} /> },
       { to: '/finance?tab=revenues', label: 'Výnosy SVJ', icon: <TrendingUp size={17} /> },
     ],
