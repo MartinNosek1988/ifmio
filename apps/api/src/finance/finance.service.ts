@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import * as iconv from 'iconv-lite';
 import { PrismaService } from '../prisma/prisma.service';
 import { PropertyScopeService } from '../common/services/property-scope.service';
 import { KontoService } from '../konto/konto.service';
@@ -367,10 +368,10 @@ export class FinanceService {
     if (!bankAccount) throw new NotFoundException('Bankovní účet nenalezen')
     await this.scope.verifyEntityAccess(user, bankAccount.propertyId)
 
-    const content  = file.buffer.toString('utf-8')
+    const content  = this.decodeBuffer(file.buffer)
     const fileName = file.originalname.toLowerCase()
 
-    const format = fileName.endsWith('.abo') || fileName.endsWith('.bbf')
+    const format = fileName.endsWith('.abo') || fileName.endsWith('.bbf') || fileName.endsWith('.gpc')
       ? 'abo' : 'csv'
 
     const parsed = format === 'abo'
@@ -412,15 +413,22 @@ export class FinanceService {
 
         await this.prisma.bankTransaction.create({
           data: {
-            tenantId:       user.tenantId,
+            tenantId:            user.tenantId,
             bankAccountId,
-            date:           new Date(tx.date),
-            amount:         tx.amount,
-            type:           tx.type,
-            counterparty:   tx.counterparty || null,
-            variableSymbol: tx.variableSymbol || null,
-            description:    tx.description || null,
-            status:         'unmatched',
+            date:                new Date(tx.date),
+            amount:              tx.amount,
+            type:                tx.type,
+            counterparty:        tx.counterparty || null,
+            variableSymbol:      tx.variableSymbol || null,
+            specificSymbol:      tx.specificSymbol ?? null,
+            constantSymbol:      tx.constantSymbol ?? null,
+            counterpartyAccount: tx.counterpartyAccount ?? null,
+            counterpartyBankCode: tx.counterpartyBankCode ?? null,
+            counterpartyIban:    tx.counterpartyIban ?? null,
+            messageForRecipient: tx.messageForRecipient ?? null,
+            description:         tx.description || null,
+            importSource:        format,
+            status:              'unmatched',
           },
         })
         imported++
@@ -449,6 +457,35 @@ export class FinanceService {
       parseErrors:  parsed.errors.length,
       status:       finalLog.status,
     }
+  }
+
+  // ─── ENCODING DETECTION ──────────────────────────────────────
+
+  private decodeBuffer(buffer: Buffer): string {
+    // UTF-8 BOM
+    if (buffer[0] === 0xEF && buffer[1] === 0xBB && buffer[2] === 0xBF) {
+      return buffer.toString('utf-8')
+    }
+
+    // Try UTF-8 — check for replacement characters indicating invalid sequences
+    const utf8 = buffer.toString('utf-8')
+    if (!utf8.includes('\uFFFD')) {
+      return utf8
+    }
+
+    // Heuristic: check for common Czech Windows-1250 byte values
+    // ě=0xEC, š=0x9A, č=0xE8, ř=0xF8, ž=0x9E, ů=0xF9, ú=0xFA, á=0xE1, í=0xED
+    const w1250Markers = [0xEC, 0x9A, 0xE8, 0xF8, 0x9E, 0xF9, 0xFA, 0xE1, 0xED]
+    let w1250Score = 0
+    for (let i = 0; i < Math.min(buffer.length, 1000); i++) {
+      if (w1250Markers.includes(buffer[i])) w1250Score++
+    }
+
+    if (w1250Score >= 2) {
+      return iconv.decode(buffer, 'win1250')
+    }
+
+    return utf8
   }
 
   // ─── PÁROVÁNÍ TRANSAKCÍ ───────────────────────────────────────

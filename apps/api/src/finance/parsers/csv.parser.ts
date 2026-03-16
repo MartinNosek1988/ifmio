@@ -1,13 +1,17 @@
 export interface ParsedTransaction {
-  date:         string
-  amount:       number
-  type:         'credit' | 'debit'
-  counterparty: string
-  variableSymbol?: string
-  specificSymbol?: string
-  constantSymbol?: string
-  description?: string
-  rawRow:       string
+  date:                 string
+  amount:               number
+  type:                 'credit' | 'debit'
+  counterparty:         string
+  variableSymbol?:      string | null
+  specificSymbol?:      string | null
+  constantSymbol?:      string | null
+  counterpartyAccount?: string | null
+  counterpartyBankCode?: string | null
+  counterpartyIban?:    string | null
+  description?:         string
+  messageForRecipient?: string | null
+  rawRow:               string
 }
 
 export interface ParseResult {
@@ -53,7 +57,13 @@ export function parseCsv(content: string): ParseResult {
   const typeCol    = findCol('typ', 'type', 'směr', 'smer')
   const counterCol = findCol('protistrana', 'counterparty', 'název', 'nazev', 'příjemce')
   const vsCol      = findCol('variabilní', 'variable', 'vs')
+  const ssCol      = findCol('specifický', 'specific', 'ss', 'spec. symbol', 'specificky')
+  const ksCol      = findCol('konstantní', 'constant', 'ks', 'konst. symbol', 'konstantni')
   const descCol    = findCol('poznámka', 'popis', 'description', 'zpráva', 'zprava')
+  const counterAccCol = findCol('protiúčet', 'protiucet', 'číslo účtu', 'cislo uctu', 'číslo protiúčtu')
+  const counterBankCol = findCol('kód banky', 'kod banky', 'bank code', 'banka protistrany')
+  const ibanCol    = findCol('iban')
+  const messageCol = findCol('zpráva pro příjemce', 'zprava pro prijemce', 'message', 'remittance')
 
   for (let i = headerIdx + 1; i < lines.length; i++) {
     const line = lines[i]
@@ -94,10 +104,16 @@ export function parseCsv(content: string): ParseResult {
         date,
         amount,
         type,
-        counterparty: counterCol >= 0 ? cols[counterCol] ?? '' : '',
-        variableSymbol: vsCol >= 0 ? cols[vsCol] ?? undefined : undefined,
-        description:    descCol >= 0 ? cols[descCol] ?? undefined : undefined,
-        rawRow:         line,
+        counterparty:        counterCol >= 0 ? cols[counterCol] ?? '' : '',
+        variableSymbol:      vsCol >= 0 ? cols[vsCol]?.trim() || null : null,
+        specificSymbol:      ssCol >= 0 ? cols[ssCol]?.trim() || null : null,
+        constantSymbol:      ksCol >= 0 ? cols[ksCol]?.trim() || null : null,
+        counterpartyAccount: counterAccCol >= 0 ? cols[counterAccCol]?.trim() || null : null,
+        counterpartyBankCode: counterBankCol >= 0 ? cols[counterBankCol]?.trim() || null : null,
+        counterpartyIban:    ibanCol >= 0 ? cols[ibanCol]?.trim() || null : null,
+        description:         descCol >= 0 ? cols[descCol] ?? undefined : undefined,
+        messageForRecipient: messageCol >= 0 ? cols[messageCol]?.trim() || null : null,
+        rawRow:              line,
       })
     } catch (err) {
       result.errors.push({ row: i, message: `Chyba parsování: ${err}` })
