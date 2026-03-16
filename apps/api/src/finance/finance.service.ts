@@ -509,6 +509,20 @@ export class FinanceService {
             prescriptionId: matchedPrescription.id,
           },
         })
+
+        // Auto-post to konto: CREDIT
+        if (matchedPrescription.unitId && matchedPrescription.residentId) {
+          try {
+            const account = await this.konto.getOrCreateAccount(
+              user.tenantId, matchedPrescription.propertyId, matchedPrescription.unitId, matchedPrescription.residentId,
+            )
+            const entry = await this.konto.postCredit(account.id, Number(tx.amount), 'BANK_TRANSACTION', tx.id, `Platba ${tx.variableSymbol ?? 'bez VS'}`, tx.date)
+            await this.prisma.bankTransaction.update({ where: { id: tx.id }, data: { ledgerEntryId: entry.id } })
+          } catch (err) {
+            this.logger.error(`Auto-posting match ${tx.id} to konto failed: ${err}`)
+          }
+        }
+
         matched++
         results.push({
           transactionId:  tx.id,
@@ -616,6 +630,15 @@ export class FinanceService {
         include: { items: true },
       })
 
+      // Auto-post to konto: DEBIT
+      try {
+        const account = await this.konto.getOrCreateAccount(user.tenantId, dto.propertyId, unit.id, resident.id)
+        const entry = await this.konto.postDebit(account.id, amount, 'PRESCRIPTION', prescription.id, `Předpis ${unit.name} ${month}/${year}`, validFrom)
+        await this.prisma.prescription.update({ where: { id: prescription.id }, data: { ledgerEntryId: entry.id } })
+      } catch (err) {
+        this.logger.error(`Auto-posting bulk prescription ${prescription.id} to konto failed: ${err}`)
+      }
+
       created.push({
         prescriptionId: prescription.id,
         unitId:         unit.id,
@@ -698,6 +721,19 @@ export class FinanceService {
     })
     if (!prescription) throw new NotFoundException('Předpis nenalezen')
     await this.scope.verifyPropertyAccess(user, prescription.propertyId)
+
+    // Reversal: post CREDIT to cancel the DEBIT
+    if (prescription.ledgerEntryId) {
+      try {
+        const entry = await this.prisma.ledgerEntry.findUnique({ where: { id: prescription.ledgerEntryId } })
+        if (entry) {
+          await this.konto.postCredit(entry.accountId, Number(entry.amount), 'MANUAL_ADJUSTMENT', id, `Storno předpisu: ${prescription.description}`)
+        }
+        await this.prisma.prescription.update({ where: { id }, data: { ledgerEntryId: null } })
+      } catch (err) {
+        this.logger.error(`Reversal for prescription ${id} failed: ${err}`)
+      }
+    }
 
     await this.prisma.prescriptionItem.deleteMany({ where: { prescriptionId: id } })
     await this.prisma.prescription.delete({ where: { id } })
