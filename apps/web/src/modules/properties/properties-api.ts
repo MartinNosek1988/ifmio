@@ -1,5 +1,8 @@
 import { apiClient } from '../../core/api/client';
 
+export type PropertyLegalMode = 'SVJ' | 'BD' | 'RENTAL' | 'OWNERSHIP' | 'OTHER';
+export type AccountingSystemType = 'POHODA' | 'MONEY_S3' | 'PREMIER' | 'VARIO' | 'NONE';
+
 /** API property shape (backend) */
 export interface ApiProperty {
   id: string;
@@ -11,6 +14,14 @@ export interface ApiProperty {
   type: string;
   ownership: string;
   status: string;
+  ico?: string | null;
+  dic?: string | null;
+  isVatPayer?: boolean;
+  legalMode?: PropertyLegalMode;
+  managedFrom?: string | null;
+  managedTo?: string | null;
+  accountingSystem?: AccountingSystemType | null;
+  country?: string;
   createdAt: string;
   updatedAt: string;
   units: ApiUnit[];
@@ -35,6 +46,13 @@ export interface CreatePropertyPayload {
   postalCode: string;
   type: string;
   ownership: string;
+  ico?: string | null;
+  dic?: string | null;
+  isVatPayer?: boolean;
+  legalMode?: PropertyLegalMode;
+  managedFrom?: string | null;
+  managedTo?: string | null;
+  accountingSystem?: AccountingSystemType | null;
 }
 
 export interface UpdatePropertyPayload extends Partial<CreatePropertyPayload> {}

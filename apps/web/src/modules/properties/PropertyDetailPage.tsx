@@ -7,7 +7,7 @@ import type { Column } from '../../shared/components';
 import { useProperty } from './use-properties';
 import { propertiesApi } from './properties-api';
 import type { ApiUnit } from './properties-api';
-import PropertyForm from './PropertyForm';
+import PropertyForm, { LEGAL_MODE_LABEL } from './PropertyForm';
 import UnitForm from './UnitForm';
 import BulkUnitForm from './BulkUnitForm';
 
@@ -97,6 +97,22 @@ export default function PropertyDetailPage() {
           <p className="page-subtitle">
             {[property.address, property.city].filter(Boolean).join(', ')}
           </p>
+          {/* P0 info strip */}
+          <div style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap', fontSize: '0.82rem' }}>
+            {property.legalMode && property.legalMode !== 'OWNERSHIP' && (
+              <Badge variant={property.legalMode === 'SVJ' ? 'purple' : property.legalMode === 'BD' ? 'blue' : 'muted'}>
+                {LEGAL_MODE_LABEL[property.legalMode] ?? property.legalMode}
+              </Badge>
+            )}
+            {property.ico && <span style={{ color: 'var(--text-muted)' }}>IČ: <strong>{property.ico}</strong>{property.dic ? ` / DIČ: ${property.dic}` : ''}</span>}
+            {property.isVatPayer && <Badge variant="yellow">DPH</Badge>}
+            {property.managedFrom && (
+              <span style={{ color: 'var(--text-muted)' }}>
+                Správa: {new Date(property.managedFrom).toLocaleDateString('cs-CZ')}
+                {property.managedTo ? ` – ${new Date(property.managedTo).toLocaleDateString('cs-CZ')}` : ''}
+              </span>
+            )}
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <Button icon={<Pencil size={15} />} onClick={() => setShowEditProp(true)}>Upravit</Button>
