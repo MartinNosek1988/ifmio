@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PropertyScopeService } from '../common/services/property-scope.service';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
 import { CreateOccupancyDto } from './dto/create-occupancy.dto';
+import type { SpaceType } from '@prisma/client';
 import type { AuthUser } from '@ifmio/shared-types';
 
 @Injectable()
@@ -55,14 +56,30 @@ export class UnitsService {
 
   async create(user: AuthUser, propertyId: string, dto: CreateUnitDto) {
     await this.verifyProperty(user, propertyId);
+    const { validFrom, validTo, spaceType, ...rest } = dto;
     return this.prisma.unit.create({
-      data: { propertyId, ...dto },
+      data: {
+        propertyId,
+        ...rest,
+        spaceType: spaceType as SpaceType | undefined,
+        validFrom: validFrom ? new Date(validFrom) : undefined,
+        validTo: validTo ? new Date(validTo) : undefined,
+      },
     });
   }
 
   async update(user: AuthUser, propertyId: string, id: string, dto: UpdateUnitDto) {
     await this.findOne(user, propertyId, id);
-    return this.prisma.unit.update({ where: { id }, data: dto });
+    const { validFrom, validTo, spaceType, ...rest } = dto;
+    return this.prisma.unit.update({
+      where: { id },
+      data: {
+        ...rest,
+        ...(spaceType !== undefined && { spaceType: spaceType as SpaceType }),
+        ...(validFrom !== undefined && { validFrom: validFrom ? new Date(validFrom) : null }),
+        ...(validTo !== undefined && { validTo: validTo ? new Date(validTo) : null }),
+      },
+    });
   }
 
   async remove(user: AuthUser, propertyId: string, id: string) {
@@ -74,13 +91,51 @@ export class UnitsService {
     user: AuthUser, propertyId: string,
     unitId: string, dto: CreateOccupancyDto,
   ) {
+    const property = await this.verifyProperty(user, propertyId);
     await this.findOne(user, propertyId, unitId);
 
-    // End previous active occupancy of same role
+    const newStart = new Date(dto.startDate);
+
+    // ── Validation: ownership share sum ──
+    if (dto.ownershipShare !== undefined && dto.role === 'owner') {
+      const existing = await this.prisma.occupancy.findMany({
+        where: { unitId, role: 'owner', isActive: true },
+        select: { ownershipShare: true },
+      });
+      const currentSum = existing.reduce((s, o) => s + Number(o.ownershipShare ?? 1), 0);
+      if (currentSum + dto.ownershipShare > 1.001) {
+        throw new BadRequestException('Součet podílů vlastníků překračuje 100%.');
+      }
+    }
+
+    // ── SVJ gap prevention ──
+    if (property.legalMode === 'SVJ' && dto.role === 'owner') {
+      const lastOwner = await this.prisma.occupancy.findFirst({
+        where: { unitId, role: 'owner', isActive: false },
+        orderBy: { endDate: 'desc' },
+        select: { endDate: true },
+      });
+      if (lastOwner?.endDate) {
+        const gap = newStart.getTime() - lastOwner.endDate.getTime();
+        if (gap > 86_400_000) { // more than 1 day gap
+          throw new BadRequestException(
+            'SVJ jednotka nemůže mít období bez vlastníka. Nastavte endDate předchozího vlastníka shodně se startDate nového vlastníka.',
+          );
+        }
+      }
+    }
+
+    // ── Auto-close previous active occupancy of same role ──
     await this.prisma.occupancy.updateMany({
       where: { unitId, role: dto.role, isActive: true },
-      data: { isActive: false, endDate: new Date(dto.startDate) },
+      data: { isActive: false, endDate: newStart },
     });
+
+    // ── Auto-generate VS if not provided ──
+    let vs = dto.variableSymbol;
+    if (!vs) {
+      vs = await this.generateVs(user.tenantId, propertyId);
+    }
 
     const occupancy = await this.prisma.occupancy.create({
       data: {
@@ -88,8 +143,12 @@ export class UnitsService {
         unitId,
         residentId: dto.residentId,
         role: dto.role,
-        startDate: new Date(dto.startDate),
+        startDate: newStart,
         endDate: dto.endDate ? new Date(dto.endDate) : null,
+        ownershipShare: dto.ownershipShare,
+        personCount: dto.personCount,
+        isPrimaryPayer: dto.isPrimaryPayer ?? true,
+        variableSymbol: vs,
         note: dto.note,
         isActive: true,
       },
@@ -130,5 +189,27 @@ export class UnitsService {
     }
 
     return updated;
+  }
+
+  // ─── VS GENERATOR ────────────────────────────────────────────
+
+  private async generateVs(tenantId: string, propertyId: string): Promise<string> {
+    // Sequential strategy: find max numeric VS in property, add 1
+    const existing = await this.prisma.occupancy.findMany({
+      where: {
+        tenantId,
+        unit: { propertyId },
+        variableSymbol: { not: null },
+      },
+      select: { variableSymbol: true },
+    });
+
+    let maxNum = 0;
+    for (const o of existing) {
+      const num = parseInt(o.variableSymbol ?? '0', 10);
+      if (!isNaN(num) && num > maxNum) maxNum = num;
+    }
+
+    return String(maxNum + 1).padStart(6, '0');
   }
 }

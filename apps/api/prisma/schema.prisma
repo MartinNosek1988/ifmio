@@ -187,17 +187,25 @@ model AuditLog {
 // ─── PROPERTY ─────────────────────────────────────────────────────
 
 model Property {
-  id         String         @id @default(uuid())
-  tenantId   String
-  name       String
-  address    String
-  city       String
-  postalCode String
-  type       PropertyType
-  ownership  OwnershipType
-  status     PropertyStatus @default(active)
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
+  id               String             @id @default(uuid())
+  tenantId         String
+  name             String
+  address          String
+  city             String
+  postalCode       String
+  type             PropertyType
+  ownership        OwnershipType
+  status           PropertyStatus     @default(active)
+  ico              String?            // IČ subjektu (SVJ/BD)
+  dic              String?            // DIČ
+  isVatPayer       Boolean            @default(false)
+  legalMode        PropertyLegalMode  @default(OWNERSHIP)
+  managedFrom      DateTime?          // ve správě od
+  managedTo        DateTime?          // ve správě do
+  accountingSystem AccountingSystem?
+  country          String             @default("CZ")
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
 
   tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   units           Unit[]
@@ -264,15 +272,45 @@ enum PropertyStatus {
   archived
 }
 
+enum PropertyLegalMode {
+  SVJ
+  BD
+  RENTAL
+  OWNERSHIP
+  OTHER
+}
+
+enum AccountingSystem {
+  POHODA
+  MONEY_S3
+  PREMIER
+  VARIO
+  NONE
+}
+
 model Unit {
-  id         String   @id @default(uuid())
-  propertyId String
-  name       String
-  floor      Int?
-  area       Float?
-  isOccupied Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id                 String    @id @default(uuid())
+  propertyId         String
+  name               String
+  floor              Int?
+  area               Float?                          // podlahová plocha m²
+  isOccupied         Boolean   @default(false)
+  knDesignation      String?                         // KN označení "123/45"
+  ownDesignation     String?                         // vlastní označení (č. dveří)
+  spaceType          SpaceType @default(RESIDENTIAL)
+  commonAreaShare    Decimal?  @db.Decimal(10, 6)    // podíl na společných částech (0.034567)
+  heatingArea        Float?                          // vytápěná plocha m²
+  tuvArea            Float?                          // plocha pro TUV m²
+  heatingCoefficient Float?                          // koeficient vytápění
+  personCount        Int?                            // výchozí počet osob
+  disposition        String?                         // 1+1, 2+kk
+  hasElevator        Boolean?
+  heatingMethod      String?                         // způsob vytápění
+  validFrom          DateTime?
+  validTo            DateTime?
+  extAllocatorRef    String?                         // pár. symbol pro ext. rozúčtovatele
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   property        Property         @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   residents       Resident[]
@@ -288,22 +326,41 @@ model Unit {
   @@map("units")
 }
 
+enum SpaceType {
+  RESIDENTIAL
+  NON_RESIDENTIAL
+  GARAGE
+  PARKING
+  CELLAR
+  LAND
+}
+
 // ─── RESIDENT ─────────────────────────────────────────────────────
 
 model Resident {
-  id         String       @id @default(uuid())
-  tenantId   String
-  propertyId String?
-  unitId     String?
-  firstName  String
-  lastName   String
-  email      String?
-  phone      String?
-  role       ResidentRole
-  isActive   Boolean      @default(true)
-  hasDebt    Boolean      @default(false)
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
+  id                       String       @id @default(uuid())
+  tenantId                 String
+  propertyId               String?
+  unitId                   String?
+  firstName                String
+  lastName                 String
+  email                    String?
+  phone                    String?
+  role                     ResidentRole
+  isActive                 Boolean      @default(true)
+  hasDebt                  Boolean      @default(false)
+  isLegalEntity            Boolean      @default(false)
+  ico                      String?      // IČ právnické osoby
+  dic                      String?      // DIČ
+  companyName              String?      // název firmy
+  correspondenceAddress    String?
+  correspondenceCity       String?
+  correspondencePostalCode String?
+  dataBoxId                String?      // ID datové schránky
+  birthDate                DateTime?
+  note                     String?      @db.Text
+  createdAt                DateTime     @default(now())
+  updatedAt                DateTime     @updatedAt
 
   tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   property         Property?         @relation(fields: [propertyId], references: [id], onDelete: SetNull)
@@ -334,17 +391,21 @@ enum ResidentRole {
 // ─── OCCUPANCY ────────────────────────────────────────────────────
 
 model Occupancy {
-  id         String        @id @default(uuid())
-  tenantId   String
-  unitId     String
-  residentId String
-  role       OccupancyRole
-  startDate  DateTime
-  endDate    DateTime?
-  isActive   Boolean       @default(true)
-  note       String?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  id              String        @id @default(uuid())
+  tenantId        String
+  unitId          String
+  residentId      String
+  role            OccupancyRole
+  startDate       DateTime
+  endDate         DateTime?
+  isActive        Boolean       @default(true)
+  ownershipShare  Decimal?      @db.Decimal(10, 6) // podíl spoluvlastníka (0.5 = 50%)
+  personCount     Int?          // počet osob v domácnosti (přepíše unit.personCount)
+  isPrimaryPayer  Boolean       @default(true) // kdo dostane předpis
+  variableSymbol  String?       // VS přiřazený tomuto vztahu
+  note            String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   unit     Unit     @relation(fields: [unitId], references: [id], onDelete: Cascade)
@@ -353,6 +414,7 @@ model Occupancy {
   @@index([tenantId])
   @@index([unitId])
   @@index([residentId])
+  @@index([variableSymbol])
   @@map("occupancies")
 }
 

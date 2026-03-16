@@ -1,5 +1,6 @@
 import {
   IsString, IsUUID, IsEnum, IsOptional, IsDateString,
+  IsNumber, IsInt, IsBoolean, Min, Max, MaxLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -25,6 +26,18 @@ export class CreateOccupancyDto {
   @ApiPropertyOptional({ example: '2025-12-31' })
   @IsOptional() @IsDateString()
   endDate?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) @Max(1)
+  ownershipShare?: number;
+
+  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0)
+  personCount?: number;
+
+  @ApiPropertyOptional() @IsOptional() @IsBoolean()
+  isPrimaryPayer?: boolean;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20)
+  variableSymbol?: string;
 
   @ApiPropertyOptional()
   @IsOptional() @IsString()

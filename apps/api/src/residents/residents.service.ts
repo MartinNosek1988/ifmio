@@ -94,6 +94,16 @@ export class ResidentsService {
         role: dto.role,
         propertyId: dto.propertyId,
         unitId: dto.unitId,
+        isLegalEntity: dto.isLegalEntity,
+        ico: dto.ico,
+        dic: dto.dic,
+        companyName: dto.companyName,
+        correspondenceAddress: dto.correspondenceAddress,
+        correspondenceCity: dto.correspondenceCity,
+        correspondencePostalCode: dto.correspondencePostalCode,
+        dataBoxId: dto.dataBoxId,
+        birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
+        note: dto.note,
       },
     });
   }

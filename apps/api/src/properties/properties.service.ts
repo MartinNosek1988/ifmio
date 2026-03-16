@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PropertyScopeService } from '../common/services/property-scope.service';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
-import type { PropertyType, OwnershipType } from '@prisma/client';
+import type { PropertyType, OwnershipType, PropertyLegalMode, AccountingSystem } from '@prisma/client';
 import type { AuthUser } from '@ifmio/shared-types';
 
 @Injectable()
@@ -23,6 +23,13 @@ export class PropertiesService {
         postalCode: dto.postalCode,
         type: dto.type as PropertyType,
         ownership: dto.ownership as OwnershipType,
+        ico: dto.ico,
+        dic: dto.dic,
+        isVatPayer: dto.isVatPayer,
+        legalMode: dto.legalMode as PropertyLegalMode | undefined,
+        accountingSystem: dto.accountingSystem as AccountingSystem | undefined,
+        managedFrom: dto.managedFrom ? new Date(dto.managedFrom) : undefined,
+        managedTo: dto.managedTo ? new Date(dto.managedTo) : undefined,
       },
       include: { units: true },
     });
@@ -67,6 +74,13 @@ export class PropertiesService {
         ...(dto.postalCode !== undefined && { postalCode: dto.postalCode }),
         ...(dto.type !== undefined && { type: dto.type as PropertyType }),
         ...(dto.ownership !== undefined && { ownership: dto.ownership as OwnershipType }),
+        ...(dto.ico !== undefined && { ico: dto.ico }),
+        ...(dto.dic !== undefined && { dic: dto.dic }),
+        ...(dto.isVatPayer !== undefined && { isVatPayer: dto.isVatPayer }),
+        ...(dto.legalMode !== undefined && { legalMode: dto.legalMode as PropertyLegalMode }),
+        ...(dto.accountingSystem !== undefined && { accountingSystem: dto.accountingSystem as AccountingSystem }),
+        ...(dto.managedFrom !== undefined && { managedFrom: dto.managedFrom ? new Date(dto.managedFrom) : null }),
+        ...(dto.managedTo !== undefined && { managedTo: dto.managedTo ? new Date(dto.managedTo) : null }),
       },
       include: { units: true },
     });
