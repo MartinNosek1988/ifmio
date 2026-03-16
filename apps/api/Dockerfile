@@ -10,7 +10,8 @@ COPY apps/api/ ./apps/api/
 RUN cd apps/api && npx prisma generate && npx tsc -p tsconfig.build.json --noEmit && npm run build
 
 FROM node:20-alpine
-RUN apk add --no-cache icu-libs
+RUN apk add --no-cache icu-libs icu-data-full
+ENV NODE_ICU_DATA=/usr/share/icu
 WORKDIR /app
 COPY package.json ./
 COPY apps/api/package.json ./apps/api/

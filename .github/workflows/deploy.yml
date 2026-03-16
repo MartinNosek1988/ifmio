@@ -61,18 +61,33 @@ jobs:
             git fetch origin main
             git checkout main
             git reset --hard origin/main
+
             echo "Build and restart"
             docker compose -f docker-compose.prod.yml build --no-cache
-            docker compose -f docker-compose.prod.yml up -d
-            echo "Wait for API health"
-            sleep 20
-            if docker exec ifmio-api-1 node -e "require('http').get('http://localhost:3000/api/v1/health', r => process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"; then
-              echo "API healthy"
-            else
-              echo "API health check failed"
-              docker compose -f docker-compose.prod.yml logs api --tail 30
-              exit 1
-            fi
+            docker compose -f docker-compose.prod.yml up -d || true
+
+            echo "Wait for API startup (30s initial)..."
+            sleep 30
+
+            echo "Check API health (5 attempts, 10s apart)..."
+            for i in 1 2 3 4 5; do
+              if docker exec ifmio-api-1 node -e "require('http').get('http://localhost:3000/api/v1/health', r => process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))" 2>/dev/null; then
+                echo "API healthy on attempt $i"
+                break
+              fi
+              echo "Attempt $i failed, waiting 10s..."
+              if [ "$i" = "5" ]; then
+                echo "=== API FAILED — CONTAINER LOGS ==="
+                docker compose -f docker-compose.prod.yml logs api --tail 80
+                echo "=== CONTAINER STATUS ==="
+                docker ps -a --filter name=ifmio
+                echo "=== CONTAINER INSPECT ==="
+                docker inspect ifmio-api-1 --format='{{.State.Status}} {{.State.Health.Status}} {{.State.ExitCode}}' 2>/dev/null || echo "Container not found"
+                exit 1
+              fi
+              sleep 10
+            done
+
             echo "Cleanup old images"
             docker image prune -f
             echo "Deploy done"
