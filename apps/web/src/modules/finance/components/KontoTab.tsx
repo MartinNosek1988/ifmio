@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Badge, Button, Modal, LoadingState, EmptyState } from '../../../shared/components';
+import { kontoApi } from '../api/konto.api';
+import type { OwnerAccountSummary as AccountForExport } from '../api/konto.api';
 import { useProperties } from '../../properties/use-properties';
 import { usePropertyAccounts, useAccountLedger, useManualAdjustment } from '../api/konto.queries';
 import type { OwnerAccountSummary, LedgerEntryRow } from '../api/konto.api';
@@ -124,6 +126,7 @@ function KontoDetailModal({ account, onClose }: { account: OwnerAccountSummary; 
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
           <Button size="sm" onClick={() => setShowAdjust(true)}>Ruční úprava</Button>
+          <Button size="sm" onClick={() => exportCsv(account, name)}>Export CSV</Button>
         </div>
       </div>
 
@@ -233,6 +236,38 @@ function AdjustmentForm({ accountId, onClose, onSuccess }: { accountId: string; 
       </div>
     </div>
   );
+}
+
+/* ─── CSV Export ─────────────────────────────────────────────── */
+
+async function exportCsv(account: AccountForExport, residentName: string) {
+  try {
+    const data = await kontoApi.getAccountLedger(account.id, 1, 10000)
+    const header = 'Datum;Typ;Popis;Má dáti;Dal;Zůstatek'
+    const rows = data.entries.map(e => {
+      const date = new Date(e.postingDate)
+      const d = `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}.${date.getFullYear()}`
+      const typ = SOURCE_LABELS[e.sourceType] ?? e.sourceType
+      const desc = e.description ? `"${e.description.replace(/"/g, '""')}"` : ''
+      const md = e.type === 'DEBIT' ? Number(e.amount).toFixed(2).replace('.', ',') : ''
+      const dal = e.type === 'CREDIT' ? Number(e.amount).toFixed(2).replace('.', ',') : ''
+      const bal = Number(e.balance).toFixed(2).replace('.', ',')
+      return `${d};${typ};${desc};${md};${dal};${bal}`
+    })
+
+    const csv = '\uFEFF' + header + '\n' + rows.join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    const safeName = residentName.replace(/[^a-zA-Z0-9áčďéěíňóřšťúůýžÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ]/g, '_')
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+    a.href = url
+    a.download = `konto_${safeName}_${account.unit.name}_${today}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch {
+    alert('Export se nezdařil')
+  }
 }
 
 /* ─── Styles ─────────────────────────────────────────────────── */

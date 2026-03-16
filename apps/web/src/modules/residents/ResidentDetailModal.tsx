@@ -333,7 +333,6 @@ function ResidentKontoCard({ residentId, unitId, unitName, onNavigate }: { resid
   );
 }
 
-
 function InfoField({ label, value, href }: { label: string; value?: string; href?: string }) {
   return (
     <div>
