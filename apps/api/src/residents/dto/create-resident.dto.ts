@@ -1,5 +1,5 @@
 import {
-  IsString, IsEmail, IsEnum, IsOptional,
+  IsString, IsEmail, IsEnum, IsOptional, IsBoolean, IsDateString,
   IsNotEmpty, MaxLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -40,4 +40,15 @@ export class CreateResidentDto {
   @ApiPropertyOptional()
   @IsOptional() @IsString() @MaxLength(36)
   unitId?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() isLegalEntity?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20) ico?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20) dic?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) companyName?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500) correspondenceAddress?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) correspondenceCity?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(10) correspondencePostalCode?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(50) dataBoxId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsDateString() birthDate?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() note?: string;
 }
