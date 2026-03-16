@@ -51,7 +51,7 @@ export interface ApiUnit {
   validFrom?: string | null;
   validTo?: string | null;
   extAllocatorRef?: string | null;
-  occupancies?: { resident: { firstName: string; lastName: string } }[];
+  occupancies?: { resident: { firstName: string; lastName: string; companyName?: string | null; isLegalEntity?: boolean } }[];
   createdAt: string;
   updatedAt: string;
 }
@@ -98,6 +98,42 @@ export interface UpdateUnitPayload extends Partial<CreateUnitPayload> {
   isOccupied?: boolean;
 }
 
+export interface ApiOccupancy {
+  id: string;
+  unitId: string;
+  residentId: string;
+  role: string;
+  resident?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    companyName?: string | null;
+    isLegalEntity?: boolean;
+    email?: string | null;
+  };
+  startDate: string;
+  endDate: string | null;
+  isActive: boolean;
+  ownershipShare: number | null;
+  personCount: number | null;
+  isPrimaryPayer: boolean;
+  variableSymbol: string | null;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface CreateOccupancyPayload {
+  residentId: string;
+  role: 'owner' | 'tenant' | 'member';
+  startDate: string;
+  endDate?: string | null;
+  ownershipShare?: number | null;
+  personCount?: number | null;
+  isPrimaryPayer?: boolean;
+  variableSymbol?: string | null;
+  note?: string | null;
+}
+
 export const propertiesApi = {
   list: () =>
     apiClient.get<ApiProperty[]>('/properties').then((r) => r.data),
@@ -123,4 +159,14 @@ export const propertiesApi = {
 
   deleteUnit: (propertyId: string, unitId: string) =>
     apiClient.delete(`/properties/${propertyId}/units/${unitId}`),
+
+  // ── Occupancies ──
+  getUnit: (propertyId: string, unitId: string) =>
+    apiClient.get<ApiUnit & { occupancies: ApiOccupancy[] }>(`/properties/${propertyId}/units/${unitId}`).then((r) => r.data),
+
+  createOccupancy: (propertyId: string, unitId: string, data: CreateOccupancyPayload) =>
+    apiClient.post<ApiOccupancy>(`/properties/${propertyId}/units/${unitId}/occupancies`, data).then((r) => r.data),
+
+  endOccupancy: (propertyId: string, unitId: string, occupancyId: string) =>
+    apiClient.patch<ApiOccupancy>(`/properties/${propertyId}/units/${unitId}/occupancies/${occupancyId}/end`).then((r) => r.data),
 };

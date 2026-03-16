@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Plus, Pencil, Layers, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Layers, Trash2, UserPlus } from 'lucide-react';
 import { KpiCard, Table, Badge, Button, Modal, EmptyState, LoadingState, ErrorState } from '../../shared/components';
 import type { Column } from '../../shared/components';
 import { useProperty } from './use-properties';
@@ -10,6 +10,7 @@ import type { ApiUnit } from './properties-api';
 import PropertyForm, { LEGAL_MODE_LABEL } from './PropertyForm';
 import UnitForm, { SPACE_TYPES } from './UnitForm';
 import BulkUnitForm from './BulkUnitForm';
+import OccupancyForm from './OccupancyForm';
 
 export default function PropertyDetailPage() {
   const { id } = useParams();
@@ -21,6 +22,7 @@ export default function PropertyDetailPage() {
   const [showBulk, setShowBulk] = useState(false);
   const [editUnit, setEditUnit] = useState<ApiUnit | null>(null);
   const [deleteUnit, setDeleteUnit] = useState<ApiUnit | null>(null);
+  const [occupancyUnit, setOccupancyUnit] = useState<ApiUnit | null>(null);
 
   const deleteMutation = useMutation({
     mutationFn: (unitId: string) => propertiesApi.deleteUnit(id!, unitId),
@@ -75,11 +77,23 @@ export default function PropertyDetailPage() {
       render: (u) => u.personCount != null ? String(u.personCount) : <span style={{ color: 'var(--text-muted)' }}>—</span>,
     },
     {
-      key: 'owner', label: 'Vlastník',
+      key: 'owner', label: 'Vlastník/Nájemce',
       render: (u) => {
-        // TODO: Backend includes occupancies with residents — display first active owner
         const occ = u.occupancies?.find((o: any) => o.resident);
-        return occ ? <span style={{ fontSize: '0.82rem' }}>{occ.resident.lastName} {occ.resident.firstName}</span> : <span style={{ color: 'var(--text-muted)' }}>—</span>;
+        if (occ) {
+          const r = occ.resident;
+          const name = r.isLegalEntity && r.companyName ? r.companyName : `${r.lastName} ${r.firstName}`;
+          return (
+            <button onClick={(e) => { e.stopPropagation(); setOccupancyUnit(u); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)', fontSize: '0.82rem', padding: 0, textDecoration: 'underline dotted', textUnderlineOffset: 2 }} title="Spravovat vlastníky/nájemce">
+              {name}
+            </button>
+          );
+        }
+        return (
+          <button onClick={(e) => { e.stopPropagation(); setOccupancyUnit(u); }} style={{ background: 'none', border: '1px solid var(--primary, #6366f1)', borderRadius: 4, cursor: 'pointer', color: 'var(--primary, #6366f1)', fontSize: '0.78rem', padding: '2px 8px', display: 'flex', alignItems: 'center', gap: 3 }}>
+            <UserPlus size={12} /> Přiřadit
+          </button>
+        );
       },
     },
     {
@@ -254,6 +268,18 @@ export default function PropertyDetailPage() {
             </div>
           )}
         </Modal>
+      )}
+
+      {/* Occupancy assignment */}
+      {occupancyUnit && (
+        <OccupancyForm
+          propertyId={property.id}
+          unitId={occupancyUnit.id}
+          unitName={occupancyUnit.name}
+          propertyLegalMode={property.legalMode}
+          onSuccess={() => { setOccupancyUnit(null); refetch(); }}
+          onClose={() => setOccupancyUnit(null)}
+        />
       )}
     </div>
   );
