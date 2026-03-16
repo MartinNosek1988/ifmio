@@ -10,6 +10,7 @@ COPY apps/api/ ./apps/api/
 RUN cd apps/api && npx prisma generate && npx tsc -p tsconfig.build.json --noEmit && npm run build
 
 FROM node:20-alpine
+RUN apk add --no-cache icu-libs
 WORKDIR /app
 COPY package.json ./
 COPY apps/api/package.json ./apps/api/
@@ -19,7 +20,8 @@ RUN npm install --workspace=@ifmio/api --include-workspace-root --omit=dev
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY apps/api/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 WORKDIR /app/apps/api
-RUN wget -q -O /usr/local/bin/wait-for-it https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh && chmod +x /usr/local/bin/wait-for-it
 EXPOSE 3000
-CMD sh -c "npx prisma migrate deploy --schema=prisma/schema.prisma && node /app/apps/api/dist/apps/api/src/main.js"
+CMD ["docker-entrypoint.sh"]
