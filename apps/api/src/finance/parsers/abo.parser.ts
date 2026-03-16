@@ -1,61 +1,89 @@
 import type { ParsedTransaction, ParseResult } from './csv.parser'
 
 /**
- * Parsuje ABO formát (MultiCash) — standard českých bank
+ * Parsuje GPC/ABO formát — standard českých bank (KB, ČSOB, Moneta, UniCredit)
+ *
+ * Formát: fixed-width řádky, 128 znaků
+ * Typ 074 = header (přeskočit)
+ * Typ 075 = transakce (parsovat fixed-width pozice)
+ *
+ * Pozice (0-indexed):
+ *   [0-2]   record type ("075")
+ *   [3-18]  číslo našeho účtu (16 zn.)
+ *   [19-34] číslo protiúčtu (16 zn.)
+ *   [35-47] číslo transakce (13 zn.)
+ *   [48-59] částka v haléřích (12 zn.)
+ *   [60]    účetní kód: 1=debit, 2=credit, 4=storno debit, 5=storno credit
+ *   [61-70] variabilní symbol (10 zn.)
+ *   [71-74] kód banky protistrany (4 zn.)
+ *   [75-84] konstantní symbol (10 zn.)
+ *   [85-90] specifický symbol (6 zn.)
+ *   [91-96] datum pohybu DDMMYY (6 zn.)
+ *   [97-116] jméno protistrany (20 zn.)
  */
 export function parseAbo(content: string): ParseResult {
-  const lines  = content.split('\n').map((l) => l.trimEnd())
+  const lines = content.split(/\r?\n/)
   const result: ParseResult = { transactions: [], errors: [] }
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
-    if (!line || line.length < 10) continue
+    if (!line || line.length < 60) continue
 
-    if (line.startsWith('074') || line.startsWith('075')) continue
-
-    if (!/^\d{3}/.test(line)) continue
+    const recordType = line.substring(0, 3)
+    if (recordType !== '075') continue
 
     try {
-      const parts = line.split(/\s+/).filter(Boolean)
-      if (parts.length < 5) continue
+      // Pad line to 128 chars if shorter (some exports trim trailing spaces)
+      const padded = line.padEnd(128)
 
-      let dateStr = parts.find((p) => /^\d{8}$/.test(p))
-      let date    = ''
-      if (dateStr) {
-        if (dateStr.startsWith('20') || dateStr.startsWith('19')) {
-          date = `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}`
-        } else {
-          date = `${dateStr.slice(4, 8)}-${dateStr.slice(2, 4)}-${dateStr.slice(0, 2)}`
-        }
-      }
-      if (!date) {
-        result.errors.push({ row: i, message: 'Nelze detekovat datum' })
+      const counterpartyAccount = padded.substring(19, 35).trim().replace(/^0+/, '') || null
+      const amountHalere = parseInt(padded.substring(48, 60).trim(), 10)
+      if (isNaN(amountHalere) || amountHalere === 0) {
+        result.errors.push({ row: i, message: 'Nulová nebo neplatná částka' })
         continue
       }
+      const amount = amountHalere / 100 // haléře → CZK
 
-      const amountStr = parts.find((p) => /^\d+[,.]?\d*$/.test(p) && parseFloat(p.replace(',', '.')) > 0)
-      if (!amountStr) {
-        result.errors.push({ row: i, message: 'Nelze detekovat částku' })
-        continue
+      const accountingCode = padded.substring(60, 61)
+      // 1=debit (výdaj), 2=credit (příjem), 4=storno debit, 5=storno credit
+      const isCredit = accountingCode === '2' || accountingCode === '5'
+      const type: 'credit' | 'debit' = isCredit ? 'credit' : 'debit'
+
+      const variableSymbol = padded.substring(61, 71).trim().replace(/^0+/, '') || null
+      const counterpartyBankCode = padded.substring(71, 75).trim().replace(/^0+/, '') || null
+      const constantSymbol = padded.substring(75, 85).trim().replace(/^0+/, '') || null
+      const specificSymbol = padded.substring(85, 91).trim().replace(/^0+/, '') || null
+
+      // Parse date: DDMMYY
+      const valueDateRaw = padded.substring(91, 97).trim()
+      let date: string
+      if (valueDateRaw.length === 6) {
+        const day = parseInt(valueDateRaw.substring(0, 2), 10)
+        const month = parseInt(valueDateRaw.substring(2, 4), 10)
+        const yearShort = parseInt(valueDateRaw.substring(4, 6), 10)
+        const fullYear = yearShort < 50 ? 2000 + yearShort : 1900 + yearShort
+        date = `${fullYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+      } else {
+        date = new Date().toISOString().split('T')[0]
       }
-      const amount = parseFloat(amountStr.replace(',', '.'))
 
-      const vs = parts.find((p) => /^\d{6,10}$/.test(p) && p !== dateStr)
-
-      const type: 'credit' | 'debit' =
-        line.includes('+') || parts.some(p => p === 'C') ? 'credit' : 'debit'
+      const counterpartyName = padded.substring(97, 117).trim() || null
 
       result.transactions.push({
         date,
         amount,
         type,
-        counterparty:   '',
-        variableSymbol: vs,
-        description:    parts.slice(-2).join(' '),
-        rawRow:         line,
+        counterparty: counterpartyName ?? '',
+        variableSymbol,
+        constantSymbol,
+        specificSymbol,
+        counterpartyAccount,
+        counterpartyBankCode,
+        description: counterpartyName ?? undefined,
+        rawRow: line,
       })
     } catch (err) {
-      result.errors.push({ row: i, message: `Chyba: ${err}` })
+      result.errors.push({ row: i, message: `Chyba parsování řádku: ${err}` })
     }
   }
 

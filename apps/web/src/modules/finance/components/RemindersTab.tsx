@@ -302,6 +302,7 @@ export default function RemindersTab() {
                               onClick={() =>
                                 cancelMut.mutate(r.id, {
                                   onSuccess: () => toast.success('Zrušeno'),
+                                  onError: () => toast.error('Nepodařilo se zrušit upomínku'),
                                 })
                               }
                               style={linkBtnStyle}
@@ -315,6 +316,7 @@ export default function RemindersTab() {
                             onClick={() =>
                               resolveMut.mutate(r.id, {
                                 onSuccess: () => toast.success('Vyřešeno'),
+                                onError: () => toast.error('Nepodařilo se označit upomínku jako vyřešenou'),
                               })
                             }
                             style={linkBtnStyle}

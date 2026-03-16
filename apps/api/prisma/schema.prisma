@@ -546,17 +546,19 @@ enum InvoiceApprovalStatus {
 // ─── FINANCE ROZŠÍŘENÍ ────────────────────────────────────────────
 
 model BankAccount {
-  id            String   @id @default(uuid())
+  id            String           @id @default(uuid())
   tenantId      String
   propertyId    String?
   name          String
   accountNumber String
   iban          String?
   bankCode      String?
-  currency      String   @default("CZK")
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  currency      String           @default("CZK")
+  isActive      Boolean          @default(true)
+  isDefault     Boolean          @default(false)
+  accountType   BankAccountType?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 
   tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   property     Property?         @relation(fields: [propertyId], references: [id], onDelete: Restrict)
@@ -567,24 +569,38 @@ model BankAccount {
   @@map("bank_accounts")
 }
 
+enum BankAccountType {
+  OPERATING
+  REPAIR_FUND
+  SAVINGS
+  OTHER
+}
+
 model BankTransaction {
-  id               String                @id @default(uuid())
-  tenantId         String
-  bankAccountId    String
-  amount           Decimal               @db.Decimal(12, 2)
-  type             BankTransactionType
-  status           BankTransactionStatus @default(unmatched)
-  date             DateTime
-  counterparty     String?
-  counterpartyIban String?
-  variableSymbol   String?
-  specificSymbol   String?
-  constantSymbol   String?
-  description      String?
-  prescriptionId   String?
-  residentId       String?
-  createdAt        DateTime              @default(now())
-  updatedAt        DateTime              @updatedAt
+  id                   String                @id @default(uuid())
+  tenantId             String
+  bankAccountId        String
+  amount               Decimal               @db.Decimal(12, 2)
+  type                 BankTransactionType
+  status               BankTransactionStatus @default(unmatched)
+  date                 DateTime
+  bookingDate          DateTime?             // datum zaúčtování (pokud se liší od data pohybu)
+  counterparty         String?
+  counterpartyIban     String?
+  counterpartyAccount  String?               // číslo účtu protistrany (CZ formát)
+  counterpartyBankCode String?               // kód banky protistrany
+  variableSymbol       String?
+  specificSymbol       String?
+  constantSymbol       String?
+  description          String?
+  messageForRecipient  String?               // zpráva pro příjemce
+  prescriptionId       String?
+  residentId           String?
+  externalId           String?               // ID z bankovního API pro deduplikaci
+  importSource         String?               // 'csv', 'abo', 'fio_api' — odkud transakce přišla
+  rawData              Json?                 // surová data z API/importu
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   bankAccount  BankAccount   @relation(fields: [bankAccountId], references: [id], onDelete: Restrict)
@@ -593,6 +609,7 @@ model BankTransaction {
   invoices      Invoice[]
   ledgerEntryId String?          @unique // link to auto-posted LedgerEntry
 
+  @@unique([bankAccountId, externalId])
   @@index([tenantId])
   @@index([tenantId, date])
   @@index([tenantId, status])
@@ -612,6 +629,7 @@ enum BankTransactionStatus {
   unmatched
   matched
   partially_matched
+  ignored
 }
 
 model BillingPeriod {
