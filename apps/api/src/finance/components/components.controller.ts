@@ -4,6 +4,7 @@ import { Roles } from '../../common/decorators/roles.decorator'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
 import { ROLES_FINANCE, ROLES_MANAGE } from '../../common/constants/roles.constants'
 import { ComponentsService } from './components.service'
+import { ComponentGeneratorService } from './component-generator.service'
 import { CreateComponentDto, UpdateComponentDto, AssignUnitsDto, UpdateAssignmentDto } from './dto/component.dto'
 import type { AuthUser } from '@ifmio/shared-types'
 
@@ -11,7 +12,10 @@ import type { AuthUser } from '@ifmio/shared-types'
 @ApiBearerAuth()
 @Controller('properties/:propertyId/components')
 export class ComponentsController {
-  constructor(private service: ComponentsService) {}
+  constructor(
+    private service: ComponentsService,
+    private generator: ComponentGeneratorService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Seznam složek předpisu nemovitosti' })
@@ -140,6 +144,20 @@ export class ComponentsController {
       propertyId,
       month ? parseInt(month) : new Date().getMonth() + 1,
       year ? parseInt(year) : new Date().getFullYear(),
+    )
+  }
+
+  @Post('generate-prescriptions')
+  @Roles(...ROLES_FINANCE)
+  @ApiOperation({ summary: 'Generovat předpisy ze složek předpisu' })
+  generateFromComponents(
+    @CurrentUser() user: AuthUser,
+    @Param('propertyId') propertyId: string,
+    @Body() body: { month: number; year: number; dueDay?: number; dryRun?: boolean },
+  ) {
+    return this.generator.generateFromComponents(
+      user.tenantId, propertyId, body.month, body.year,
+      { dueDay: body.dueDay, dryRun: body.dryRun },
     )
   }
 }

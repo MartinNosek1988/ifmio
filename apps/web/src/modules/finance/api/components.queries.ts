@@ -81,3 +81,16 @@ export function usePropertyPrescriptionPreview(propertyId: string | undefined) {
     enabled: !!propertyId,
   })
 }
+
+export function useGenerateFromComponents(propertyId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { month: number; year: number; dueDay?: number; dryRun?: boolean }) =>
+      componentsApi.generateFromComponents(propertyId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['prescriptions'] })
+      qc.invalidateQueries({ queryKey: ['konto'] })
+      qc.invalidateQueries({ queryKey: ['components'] })
+    },
+  })
+}

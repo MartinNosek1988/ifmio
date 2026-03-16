@@ -675,6 +675,7 @@ model Prescription {
   dueDay          Int                @default(15)
   variableSymbol  String?
   description     String
+  source          String?            // 'COMPONENTS' | 'MANUAL' | 'CALC' — jak předpis vznikl
   validFrom       DateTime
   validTo         DateTime?
   createdAt       DateTime           @default(now())
