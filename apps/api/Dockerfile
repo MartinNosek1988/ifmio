@@ -17,7 +17,7 @@ COPY package.json ./
 COPY apps/api/package.json ./apps/api/
 COPY packages/shared-types/package.json ./packages/shared-types/
 COPY packages/validation/package.json ./packages/validation/
-RUN npm install --workspace=@ifmio/api --include-workspace-root --omit=dev
+RUN npm install --workspace=@ifmio/api --include-workspace-root --omit=dev --ignore-scripts
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
