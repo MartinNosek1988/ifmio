@@ -228,8 +228,9 @@ model Property {
   revisionEvents        RevisionEvent[]
   reportSubscriptions   ScheduledReportSubscription[]
   recurringPlans        RecurringActivityPlan[]
-  ownerAccounts         OwnerAccount[]
-  kontoReminders        KontoReminder[]
+  ownerAccounts              OwnerAccount[]
+  kontoReminders             KontoReminder[]
+  prescriptionComponents     PrescriptionComponent[]
 
   @@index([tenantId])
   @@map("properties")
@@ -323,8 +324,9 @@ model Unit {
   workOrders      WorkOrder[]
   meters          Meter[]
   assets          Asset[]
-  ownerAccounts   OwnerAccount[]
-  kontoReminders  KontoReminder[]
+  ownerAccounts        OwnerAccount[]
+  kontoReminders       KontoReminder[]
+  componentAssignments ComponentAssignment[]
 
   @@index([propertyId])
   @@map("units")
@@ -711,6 +713,7 @@ enum PrescriptionStatus {
 model PrescriptionItem {
   id             String   @id @default(uuid())
   prescriptionId String
+  componentId    String?                // FK zpět na složku, ze které řádek vznikl
   name           String
   amount         Decimal  @db.Decimal(12, 2)
   vatRate        Int      @default(0)
@@ -718,10 +721,82 @@ model PrescriptionItem {
   quantity       Decimal  @default(1) @db.Decimal(10, 3)
   createdAt      DateTime @default(now())
 
-  prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  prescription Prescription            @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  component    PrescriptionComponent?  @relation(fields: [componentId], references: [id])
 
   @@index([prescriptionId])
   @@map("prescription_items")
+}
+
+// ─── PRESCRIPTION COMPONENTS (Složky předpisu) ───────────────────
+
+enum ComponentType {
+  ADVANCE       // záloha — vyúčtovatelná
+  FLAT_FEE      // paušál — bez vyúčtování
+  FUND          // fond oprav — kumulativní
+  RENT          // nájem
+  DEPOSIT       // kauce
+  ANNUITY       // anuita / splátka úvěru
+  OTHER         // ostatní
+}
+
+enum CalculationMethod {
+  FIXED            // pevná částka per jednotka
+  PER_AREA         // sazba × podlahová plocha m²
+  PER_HEATING_AREA // sazba × vytápěná plocha m²
+  PER_PERSON       // sazba × počet osob
+  PER_SHARE        // sazba × podíl na společných částech
+  MANUAL           // ruční nastavení per jednotka
+}
+
+model PrescriptionComponent {
+  id                String              @id @default(cuid())
+  tenantId          String
+  propertyId        String
+  name              String
+  code              String?
+  componentType     ComponentType
+  calculationMethod CalculationMethod
+  defaultAmount     Decimal             @db.Decimal(12, 2)
+  vatRate           Int                 @default(0)
+  description       String?
+  accountingCode    String?
+  sortOrder         Int                 @default(0)
+  isActive          Boolean             @default(true)
+  effectiveFrom     DateTime
+  effectiveTo       DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  property          Property            @relation(fields: [propertyId], references: [id])
+  assignments       ComponentAssignment[]
+  prescriptionItems PrescriptionItem[]
+
+  @@index([tenantId, propertyId])
+  @@index([tenantId, propertyId, isActive])
+  @@map("prescription_components")
+}
+
+model ComponentAssignment {
+  id              String                @id @default(cuid())
+  tenantId        String
+  componentId     String
+  unitId          String
+  overrideAmount  Decimal?              @db.Decimal(12, 2)
+  effectiveFrom   DateTime
+  effectiveTo     DateTime?
+  isActive        Boolean               @default(true)
+  note            String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  component       PrescriptionComponent @relation(fields: [componentId], references: [id])
+  unit            Unit                  @relation(fields: [unitId], references: [id])
+
+  @@unique([componentId, unitId, effectiveFrom])
+  @@index([tenantId, componentId])
+  @@index([unitId])
+  @@map("component_assignments")
 }
 
 // ─── KONTO (Owner Account / Ledger) ──────────────────────────────
