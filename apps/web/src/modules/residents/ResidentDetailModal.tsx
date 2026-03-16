@@ -34,11 +34,12 @@ export default function ResidentDetailModal({ resident, onClose, onUpdated, onDe
   const navigate = useNavigate();
   const { data: invoices = [] } = useResidentInvoices(resident.id);
 
-  const fullName = `${resident.firstName} ${resident.lastName}`;
-  const initials = [resident.firstName, resident.lastName]
-    .map(w => w?.[0] ?? '')
-    .join('')
-    .toUpperCase();
+  const isLegal = resident.isLegalEntity;
+  const displayName = isLegal && resident.companyName ? resident.companyName : `${resident.firstName} ${resident.lastName}`;
+  const fullName = displayName;
+  const initials = isLegal && resident.companyName
+    ? resident.companyName.slice(0, 2).toUpperCase()
+    : [resident.firstName, resident.lastName].map(w => w?.[0] ?? '').join('').toUpperCase();
 
   return (
     <>
@@ -82,6 +83,7 @@ export default function ResidentDetailModal({ resident, onClose, onUpdated, onDe
               {resident.isActive ? 'Aktivní' : 'Neaktivní'}
             </Badge>
             <Badge variant="blue">{ROLE_LABELS[resident.role] || resident.role}</Badge>
+            {isLegal && <Badge variant="purple">PO</Badge>}
             {resident.hasDebt && <Badge variant="red">Dluh</Badge>}
           </div>
 
@@ -105,11 +107,34 @@ export default function ResidentDetailModal({ resident, onClose, onUpdated, onDe
         {tab === 'prehled' && (
           <div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
-              <InfoField label="Jméno" value={fullName} />
+              {isLegal && resident.companyName && <InfoField label="Firma" value={resident.companyName} />}
+              {isLegal && resident.ico && <InfoField label="IČ / DIČ" value={`${resident.ico}${resident.dic ? ` / ${resident.dic}` : ''}`} />}
+              <InfoField label={isLegal ? 'Kontaktní osoba' : 'Jméno'} value={`${resident.firstName} ${resident.lastName}`} />
               <InfoField label="Email" value={resident.email} href={resident.email ? `mailto:${resident.email}` : undefined} />
               <InfoField label="Telefon" value={resident.phone} />
               <InfoField label="Role" value={ROLE_LABELS[resident.role] || resident.role} />
+              {resident.birthDate && <InfoField label="Datum narození" value={new Date(resident.birthDate).toLocaleDateString('cs-CZ')} />}
+              {resident.dataBoxId && <InfoField label="Datová schránka" value={resident.dataBoxId} />}
             </div>
+
+            {/* Korespondenční adresa */}
+            {resident.correspondenceAddress && (
+              <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 16, fontSize: '0.85rem' }}>
+                <div style={{ fontWeight: 600, marginBottom: 6, fontSize: '0.85rem' }}>Korespondenční adresa</div>
+                <div>{resident.correspondenceAddress}</div>
+                {(resident.correspondenceCity || resident.correspondencePostalCode) && (
+                  <div>{[resident.correspondenceCity, resident.correspondencePostalCode].filter(Boolean).join(', ')}</div>
+                )}
+              </div>
+            )}
+
+            {/* Poznámka */}
+            {resident.note && (
+              <div style={{ background: 'var(--surface-2, rgba(0,0,0,0.05))', borderRadius: 8, padding: 12, marginBottom: 16, fontSize: '0.85rem' }}>
+                <div style={{ fontWeight: 600, marginBottom: 4, fontSize: '0.82rem', color: 'var(--text-muted)' }}>Poznámka</div>
+                <div>{resident.note}</div>
+              </div>
+            )}
 
             <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 16, marginBottom: 16 }}>
               <div style={{ fontWeight: 600, marginBottom: 10, fontSize: '0.9rem' }}>Bydliště</div>

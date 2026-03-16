@@ -12,6 +12,16 @@ export interface ApiResident {
   role: string;
   isActive: boolean;
   hasDebt: boolean;
+  isLegalEntity?: boolean;
+  ico?: string | null;
+  dic?: string | null;
+  companyName?: string | null;
+  correspondenceAddress?: string | null;
+  correspondenceCity?: string | null;
+  correspondencePostalCode?: string | null;
+  dataBoxId?: string | null;
+  birthDate?: string | null;
+  note?: string | null;
   createdAt: string;
   updatedAt: string;
   property?: { id: string; name: string };
@@ -34,6 +44,16 @@ export interface CreateResidentPayload {
   phone?: string;
   propertyId?: string;
   unitId?: string;
+  isLegalEntity?: boolean;
+  ico?: string | null;
+  dic?: string | null;
+  companyName?: string | null;
+  correspondenceAddress?: string | null;
+  correspondenceCity?: string | null;
+  correspondencePostalCode?: string | null;
+  dataBoxId?: string | null;
+  birthDate?: string | null;
+  note?: string | null;
 }
 
 export const residentsApi = {
@@ -57,6 +77,11 @@ export const residentsApi = {
 
   invoices: (id: string) =>
     apiClient.get<any[]>(`/residents/${id}/invoices`).then((r) => r.data),
+
+  aresLookup: (ico: string) =>
+    apiClient.get<{ ico: string; nazev: string; dic?: string; adresa: { ulice: string; obec: string; psc: string } } | null>(
+      `/integrations/ares/ico`, { params: { ico } }
+    ).then((r) => r.data),
 
   bulkDeactivate: (ids: string[]) =>
     apiClient.post<{ affected: number }>('/residents/bulk/deactivate', { ids }).then((r) => r.data),

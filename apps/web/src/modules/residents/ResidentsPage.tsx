@@ -49,7 +49,17 @@ export default function ResidentsPage() {
   const columns: Column<ApiResident>[] = [
     {
       key: 'name', label: 'Jméno', render: (r) => (
-        <span style={{ fontWeight: 600 }}>{r.firstName} {r.lastName}</span>
+        <div>
+          <span style={{ fontWeight: 600 }}>
+            {r.isLegalEntity && r.companyName ? r.companyName : `${r.firstName} ${r.lastName}`}
+          </span>
+          {r.isLegalEntity && (
+            <span style={{ marginLeft: 6, fontSize: '0.7rem', padding: '1px 5px', borderRadius: 8, background: 'rgba(139,92,246,0.15)', color: '#8b5cf6', fontWeight: 600 }}>PO</span>
+          )}
+          {r.isLegalEntity && r.companyName && (
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{r.firstName} {r.lastName}</div>
+          )}
+        </div>
       ),
     },
     {

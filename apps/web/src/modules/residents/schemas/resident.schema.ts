@@ -1,9 +1,9 @@
 // TODO: Switch back to 'zod' once @hookform/resolvers fixes Zod 4 classic compat
-// Issue: zod@4 classic wrapper has _zod.version.minor:3, which matches neither
-// the resolver's Zod 3 overload (_def.typeName) nor Zod 4 core (_zod.version.minor:0)
 import { z } from 'zod/v3'
 
 export const residentSchema = z.object({
+  isLegalEntity: z.boolean(),
+
   firstName: z
     .string()
     .min(1, 'Jmeno je povinne')
@@ -42,16 +42,21 @@ export const residentSchema = z.object({
     .optional()
     .or(z.literal('')),
 
-  note: z
-    .string()
-    .max(500, 'Poznamka je prilis dlouha')
-    .optional()
-    .or(z.literal('')),
+  ico: z.string().max(8, 'Max 8 cislic').optional().or(z.literal('')),
+  dic: z.string().max(12, 'Max 12 znaku').optional().or(z.literal('')),
+  companyName: z.string().max(200).optional().or(z.literal('')),
+  correspondenceAddress: z.string().max(500).optional().or(z.literal('')),
+  correspondenceCity: z.string().max(100).optional().or(z.literal('')),
+  correspondencePostalCode: z.string().max(10).optional().or(z.literal('')),
+  dataBoxId: z.string().max(50).optional().or(z.literal('')),
+  birthDate: z.string().optional().or(z.literal('')),
+  note: z.string().max(500, 'Poznamka je prilis dlouha').optional().or(z.literal('')),
 })
 
 export type ResidentFormValues = z.infer<typeof residentSchema>
 
 export const residentDefaultValues: ResidentFormValues = {
+  isLegalEntity: false,
   firstName:  '',
   lastName:   '',
   email:      '',
@@ -59,5 +64,13 @@ export const residentDefaultValues: ResidentFormValues = {
   role:       'tenant',
   propertyId: '',
   unitId:     '',
+  ico:        '',
+  dic:        '',
+  companyName: '',
+  correspondenceAddress: '',
+  correspondenceCity: '',
+  correspondencePostalCode: '',
+  dataBoxId:  '',
+  birthDate:  '',
   note:       '',
 }
