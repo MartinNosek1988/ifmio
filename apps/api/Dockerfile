@@ -22,4 +22,4 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 WORKDIR /app/apps/api
 RUN wget -q -O /usr/local/bin/wait-for-it https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh && chmod +x /usr/local/bin/wait-for-it
 EXPOSE 3000
-CMD ["node", "/app/apps/api/dist/apps/api/src/main.js"]
+CMD sh -c "npx prisma migrate deploy --schema=prisma/schema.prisma && node /app/apps/api/dist/apps/api/src/main.js"
