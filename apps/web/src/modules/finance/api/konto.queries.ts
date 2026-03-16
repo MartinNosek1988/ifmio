@@ -41,3 +41,15 @@ export function useManualAdjustment() {
     },
   })
 }
+
+export function useApplyOffset() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { sourceAccountId: string; targetAccountId: string; amount: number; description?: string }) =>
+      kontoApi.applyOffset(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['konto'] })
+      qc.invalidateQueries({ queryKey: ['debtors'] })
+    },
+  })
+}

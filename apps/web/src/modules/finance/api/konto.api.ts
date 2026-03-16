@@ -56,4 +56,7 @@ export const kontoApi = {
 
   recalculateBalance: (accountId: string) =>
     apiClient.post(`/konto/recalculate/${accountId}`).then(r => r.data),
+
+  applyOffset: (data: { sourceAccountId: string; targetAccountId: string; amount: number; description?: string }) =>
+    apiClient.post(`/konto/offset`, data).then(r => r.data),
 }

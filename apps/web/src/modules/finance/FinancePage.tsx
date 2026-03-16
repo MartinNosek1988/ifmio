@@ -18,8 +18,9 @@ import { BankTab } from './components/BankTab';
 import { DokladyTab } from './components/DokladyTab';
 import { ParovaniTab } from './components/ParovaniTab';
 import { AccountsTab } from './components/AccountsTab';
-import { DebtorsTab } from './components/DebtorsTab';
+import DebtorsTabV2 from './components/DebtorsTabV2';
 import KontoTab from './components/KontoTab';
+import RemindersTab from './components/RemindersTab';
 
 // Modal components
 import { PredpisDetail } from './components/PredpisDetail';
@@ -32,8 +33,9 @@ const TABS = [
   { key: 'doklady', label: 'Doklady' },
   { key: 'parovani', label: 'Párování' },
   { key: 'konto', label: 'Konto' },
-  { key: 'accounts', label: 'Účty' },
   { key: 'debtors', label: 'Dlužníci' },
+  { key: 'reminders', label: 'Upomínky' },
+  { key: 'accounts', label: 'Účty' },
 ] as const;
 
 type TabKey = typeof TABS[number]['key'];
@@ -278,7 +280,10 @@ export default function FinancePage() {
       {tab === 'konto' && <KontoTab />}
 
       {/* ── TAB: DLUŽNÍCI ─────────────────────────────────────────── */}
-      {tab === 'debtors' && <DebtorsTab prescriptions={prescriptions} getPropName={getPropName} getTenantName={getTenantName} />}
+      {tab === 'debtors' && <DebtorsTabV2 />}
+
+      {/* ── TAB: UPOMÍNKY ─────────────────────────────────────────── */}
+      {tab === 'reminders' && <RemindersTab />}
 
       {/* ── MODAL: GENEROVAT ──────────────────────────────────────── */}
       <Modal open={showGen} onClose={() => { setShowGen(false); setGenResult(null); }} title="Generovat předpisy"

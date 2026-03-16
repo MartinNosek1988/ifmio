@@ -170,4 +170,45 @@ export class KontoService {
       return balance
     })
   }
+
+  async applyOverpaymentOffset(
+    tenantId: string,
+    sourceAccountId: string,
+    targetAccountId: string,
+    amount: Decimal | number,
+    description?: string,
+  ) {
+    const decAmount = new Decimal(amount)
+    if (decAmount.lte(0)) throw new BadRequestException('Částka musí být kladná')
+
+    const [source, target] = await Promise.all([
+      this.verifyAccountTenant(tenantId, sourceAccountId),
+      this.verifyAccountTenant(tenantId, targetAccountId),
+    ])
+
+    const sourceBalance = new Decimal(source.currentBalance)
+    const targetBalance = new Decimal(target.currentBalance)
+
+    if (sourceBalance.gte(0)) throw new BadRequestException('Zdrojové konto nemá přeplatek')
+    if (targetBalance.lte(0)) throw new BadRequestException('Cílové konto nemá dluh')
+    if (decAmount.gt(sourceBalance.abs())) throw new BadRequestException('Částka převyšuje přeplatek')
+    if (decAmount.gt(targetBalance)) throw new BadRequestException('Částka převyšuje dluh')
+
+    // Get unit names for descriptions
+    const [sourceDetail, targetDetail] = await Promise.all([
+      this.prisma.ownerAccount.findUnique({ where: { id: sourceAccountId }, include: { unit: { select: { name: true } } } }),
+      this.prisma.ownerAccount.findUnique({ where: { id: targetAccountId }, include: { unit: { select: { name: true } } } }),
+    ])
+
+    const offsetId = `offset-${Date.now()}`
+    const srcDesc = description || `Zápočet přeplatku → ${targetDetail?.unit.name ?? targetAccountId}`
+    const tgtDesc = description || `Zápočet přeplatku z ${sourceDetail?.unit.name ?? sourceAccountId}`
+
+    // Post DEBIT on source (reduces overpayment = increases balance toward 0)
+    const sourceEntry = await this.postDebit(sourceAccountId, decAmount, 'CREDIT_APPLICATION', offsetId, srcDesc)
+    // Post CREDIT on target (reduces debt = decreases balance toward 0)
+    const targetEntry = await this.postCredit(targetAccountId, decAmount, 'CREDIT_APPLICATION', offsetId, tgtDesc)
+
+    return { sourceEntry, targetEntry }
+  }
 }
