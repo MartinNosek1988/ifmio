@@ -6,9 +6,10 @@ import { PrescriptionCalcService } from './calc/prescription-calc.service';
 import { PrescriptionCalcController } from './calc/prescription-calc.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PropertyScopeModule } from '../common/services/property-scope.module';
+import { KontoModule } from '../konto/konto.module';
 
 @Module({
-  imports: [PrismaModule, PropertyScopeModule],
+  imports: [PrismaModule, PropertyScopeModule, KontoModule],
   providers: [FinanceService, InvoicesService, PrescriptionCalcService],
   controllers: [FinanceController, PrescriptionCalcController],
   exports: [FinanceService, InvoicesService],

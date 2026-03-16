@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PropertyScopeService } from '../common/services/property-scope.service';
+import { KontoService } from '../konto/konto.service';
 import type { Prisma } from '@prisma/client';
 import { parseCsv } from './parsers/csv.parser';
 import { parseAbo } from './parsers/abo.parser';
@@ -8,9 +9,12 @@ import type { AuthUser } from '@ifmio/shared-types';
 
 @Injectable()
 export class FinanceService {
+  private readonly logger = new Logger(FinanceService.name)
+
   constructor(
     private prisma: PrismaService,
     private scope: PropertyScopeService,
+    private konto: KontoService,
   ) {}
 
   // ─── BANK ACCOUNTS ────────────────────────────────────────────
@@ -221,7 +225,7 @@ export class FinanceService {
   }) {
     await this.scope.verifyPropertyAccess(user, dto.propertyId);
     const { items, ...data } = dto;
-    return this.prisma.prescription.create({
+    const prescription = await this.prisma.prescription.create({
       data: {
         tenantId: user.tenantId,
         propertyId: data.propertyId,
@@ -249,6 +253,22 @@ export class FinanceService {
       },
       include: { items: true },
     });
+
+    // Auto-post to konto: DEBIT (increases owed)
+    if (data.unitId && data.residentId) {
+      try {
+        const account = await this.konto.getOrCreateAccount(user.tenantId, data.propertyId, data.unitId, data.residentId)
+        const entry = await this.konto.postDebit(
+          account.id, data.amount, 'PRESCRIPTION', prescription.id,
+          `Předpis: ${data.description}`, new Date(data.validFrom),
+        )
+        await this.prisma.prescription.update({ where: { id: prescription.id }, data: { ledgerEntryId: entry.id } })
+      } catch (err) {
+        this.logger.error(`Auto-posting prescription ${prescription.id} to konto failed: ${err}`)
+      }
+    }
+
+    return prescription;
   }
 
   // ─── BILLING PERIODS ──────────────────────────────────────────
@@ -643,13 +663,31 @@ export class FinanceService {
       throw new BadRequestException('Transakce je již spárována')
     }
 
-    return this.prisma.bankTransaction.update({
+    const updated = await this.prisma.bankTransaction.update({
       where: { id: transactionId },
       data: {
         status:         'matched',
         prescriptionId: prescriptionId,
       },
     })
+
+    // Auto-post to konto: CREDIT (decreases owed)
+    if (prescription.unitId && prescription.residentId) {
+      try {
+        const account = await this.konto.getOrCreateAccount(
+          user.tenantId, prescription.propertyId, prescription.unitId, prescription.residentId,
+        )
+        const entry = await this.konto.postCredit(
+          account.id, Number(tx.amount), 'BANK_TRANSACTION', tx.id,
+          `Platba ${tx.variableSymbol ?? 'bez VS'}`, tx.date,
+        )
+        await this.prisma.bankTransaction.update({ where: { id: tx.id }, data: { ledgerEntryId: entry.id } })
+      } catch (err) {
+        this.logger.error(`Auto-posting payment ${tx.id} to konto failed: ${err}`)
+      }
+    }
+
+    return updated
   }
 
   // ─── DELETE ──────────────────────────────────────────────────
