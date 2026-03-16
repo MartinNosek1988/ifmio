@@ -5,6 +5,7 @@ import type { ApiResident } from './api/residents.api';
 import { useResidentInvoices } from './api/residents.queries';
 import ResidentForm from './ResidentForm';
 import { formatKc, formatCzDate } from '../../shared/utils/format';
+import { useAccountByResident, useAccountLedger } from '../finance/api/konto.queries';
 
 interface Props {
   resident: ApiResident;
@@ -13,12 +14,13 @@ interface Props {
   onDelete?: () => void;
 }
 
-type DetailTab = 'prehled' | 'komunikace' | 'faktury';
+type DetailTab = 'prehled' | 'komunikace' | 'faktury' | 'konto';
 
 const TABS: { key: DetailTab; label: string }[] = [
   { key: 'prehled', label: 'Přehled' },
   { key: 'komunikace', label: 'Komunikace' },
   { key: 'faktury', label: 'Faktury' },
+  { key: 'konto', label: 'Konto' },
 ];
 
 const ROLE_LABELS: Record<string, string> = {
@@ -199,6 +201,9 @@ export default function ResidentDetailModal({ resident, onClose, onUpdated, onDe
             )}
           </div>
         )}
+
+        {/* TAB: KONTO */}
+        {tab === 'konto' && <ResidentKontoTab resident={resident} />}
       </Modal>
 
       {showEdit && (
@@ -212,6 +217,87 @@ export default function ResidentDetailModal({ resident, onClose, onUpdated, onDe
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const SOURCE_LABELS: Record<string, string> = {
+  PRESCRIPTION: 'Předpis', BANK_TRANSACTION: 'Platba', CREDIT_APPLICATION: 'Zápočet',
+  LATE_FEE: 'Úrok', MANUAL_ADJUSTMENT: 'Ruční',
+};
+
+function ResidentKontoTab({ resident }: { resident: ApiResident }) {
+  // Resident detail API includes occupancies with unit info
+  const occupancies = (resident as any).occupancies ?? [];
+  const activeOccs = occupancies.filter((o: any) => o.isActive !== false);
+
+  if (activeOccs.length === 0) {
+    return <EmptyTab text="Žádné aktivní přiřazení" sub="Přiřaďte rezidenta k jednotce v detailu nemovitosti." />;
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {activeOccs.map((occ: any) => (
+        <ResidentKontoCard key={occ.id} residentId={resident.id} unitId={occ.unitId ?? occ.unit?.id} unitName={occ.unit?.name ?? '—'} />
+      ))}
+    </div>
+  );
+}
+
+function ResidentKontoCard({ residentId, unitId, unitName }: { residentId: string; unitId?: string; unitName: string }) {
+  const { data: account, isLoading } = useAccountByResident(residentId, unitId);
+  const { data: ledger } = useAccountLedger(account?.id, 1, 10);
+
+  if (!unitId) return null;
+  if (isLoading) return <div className="text-muted" style={{ fontSize: '.85rem' }}>Načítání...</div>;
+
+  if (!account) {
+    return (
+      <div style={{ padding: 14, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)' }}>
+        <div style={{ fontWeight: 600, fontSize: '.85rem', marginBottom: 4 }}>Jednotka: {unitName}</div>
+        <div className="text-muted" style={{ fontSize: '.82rem' }}>Konto bude vytvořeno automaticky při prvním předpisu nebo platbě.</div>
+      </div>
+    );
+  }
+
+  const bal = Number(account.currentBalance);
+  const balColor = bal > 0.005 ? '#ef4444' : bal < -0.005 ? '#10b981' : 'var(--text-muted)';
+
+  return (
+    <div style={{ padding: 14, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <div style={{ fontWeight: 600, fontSize: '.85rem' }}>Jednotka: {unitName}</div>
+        <div style={{ fontSize: '1.1rem', fontWeight: 700, fontFamily: 'monospace', color: balColor }}>
+          {new Intl.NumberFormat('cs-CZ', { style: 'currency', currency: 'CZK' }).format(bal)}
+        </div>
+      </div>
+
+      {ledger?.entries && ledger.entries.length > 0 ? (
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.78rem' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid var(--border)', textAlign: 'left' }}>
+              <th style={{ padding: '4px 6px', color: 'var(--text-muted)' }}>Datum</th>
+              <th style={{ padding: '4px 6px', color: 'var(--text-muted)' }}>Popis</th>
+              <th style={{ padding: '4px 6px', textAlign: 'right', color: '#ef4444' }}>MD</th>
+              <th style={{ padding: '4px 6px', textAlign: 'right', color: '#10b981' }}>Dal</th>
+              <th style={{ padding: '4px 6px', textAlign: 'right', color: 'var(--text-muted)' }}>Zůstatek</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ledger.entries.map((e: any) => (
+              <tr key={e.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                <td style={{ padding: '4px 6px' }}>{new Date(e.postingDate).toLocaleDateString('cs-CZ')}</td>
+                <td style={{ padding: '4px 6px' }}>{e.description ?? SOURCE_LABELS[e.sourceType] ?? '—'}</td>
+                <td style={{ padding: '4px 6px', textAlign: 'right', color: '#ef4444', fontFamily: 'monospace' }}>{e.type === 'DEBIT' ? Number(e.amount).toFixed(2) : ''}</td>
+                <td style={{ padding: '4px 6px', textAlign: 'right', color: '#10b981', fontFamily: 'monospace' }}>{e.type === 'CREDIT' ? Number(e.amount).toFixed(2) : ''}</td>
+                <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'monospace', color: Number(e.balance) > 0.005 ? '#ef4444' : Number(e.balance) < -0.005 ? '#10b981' : 'var(--text-muted)' }}>{Number(e.balance).toFixed(2)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <div className="text-muted" style={{ fontSize: '.82rem' }}>Zatím žádné pohyby</div>
+      )}
+    </div>
+  );
+}
 
 function InfoField({ label, value, href }: { label: string; value?: string; href?: string }) {
   return (

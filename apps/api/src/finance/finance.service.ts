@@ -739,6 +739,35 @@ export class FinanceService {
     await this.prisma.prescription.delete({ where: { id } })
   }
 
+  async unmatchTransaction(user: AuthUser, transactionId: string) {
+    const tx = await this.prisma.bankTransaction.findFirst({
+      where: { id: transactionId, tenantId: user.tenantId, status: 'matched' },
+      include: { bankAccount: { select: { propertyId: true } } },
+    })
+    if (!tx) throw new NotFoundException('Spárovaná transakce nenalezena')
+    await this.scope.verifyEntityAccess(user, tx.bankAccount?.propertyId ?? null)
+
+    // Revert match
+    await this.prisma.bankTransaction.update({
+      where: { id: transactionId },
+      data: { status: 'unmatched', prescriptionId: null, ledgerEntryId: null },
+    })
+
+    // Reversal: post DEBIT to cancel the CREDIT
+    if (tx.ledgerEntryId) {
+      try {
+        const entry = await this.prisma.ledgerEntry.findUnique({ where: { id: tx.ledgerEntryId } })
+        if (entry) {
+          await this.konto.postDebit(entry.accountId, Number(entry.amount), 'MANUAL_ADJUSTMENT', transactionId, `Storno platby ${tx.variableSymbol ?? transactionId}`)
+        }
+      } catch (err) {
+        this.logger.error(`Reversal for unmatch ${transactionId} failed: ${err}`)
+      }
+    }
+
+    return { unmatched: true, transactionId }
+  }
+
   async deleteTransaction(user: AuthUser, id: string) {
     const tx = await this.prisma.bankTransaction.findFirst({
       where: { id, tenantId: user.tenantId },
