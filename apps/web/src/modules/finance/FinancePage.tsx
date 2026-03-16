@@ -21,6 +21,7 @@ import { AccountsTab } from './components/AccountsTab';
 import DebtorsTabV2 from './components/DebtorsTabV2';
 import KontoTab from './components/KontoTab';
 import RemindersTab from './components/RemindersTab';
+import ComponentsTab from './components/ComponentsTab';
 
 // Modal components
 import { PredpisDetail } from './components/PredpisDetail';
@@ -28,6 +29,7 @@ import { ParovaniPicker } from './components/ParovaniTab';
 import { PrescriptionForm } from './components/PrescriptionForm';
 
 const TABS = [
+  { key: 'components', label: 'Složky předpisu' },
   { key: 'prescriptions', label: 'Předpisy' },
   { key: 'bank', label: 'Banka' },
   { key: 'doklady', label: 'Doklady' },
@@ -219,6 +221,9 @@ export default function FinancePage() {
           </button>
         ))}
       </div>
+
+      {/* ── TAB: SLOŽKY PŘEDPISU ──────────────────────────────────── */}
+      {tab === 'components' && <ComponentsTab />}
 
       {/* ── TAB: PŘEDPISY ─────────────────────────────────────────── */}
       {tab === 'prescriptions' && (
