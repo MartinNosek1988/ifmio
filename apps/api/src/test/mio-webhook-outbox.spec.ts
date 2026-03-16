@@ -35,12 +35,14 @@ describe('Mio Webhook Outbox (e2e)', () => {
     expect(typeof summary.body.pending).toBe('number')
   })
 
-  it('GET /webhooks/:id/outbox returns outbox items', async () => {
+  it('GET /webhooks/:id/outbox returns paginated outbox items', async () => {
     const api = authRequest(testApp.server, testApp.token)
     const res = await api.get(`/api/v1/mio/webhooks/${webhookId}/outbox`).expect(200)
 
-    expect(Array.isArray(res.body)).toBe(true)
-    for (const item of res.body) {
+    expect(res.body).toHaveProperty('items')
+    expect(res.body).toHaveProperty('total')
+    expect(Array.isArray(res.body.items)).toBe(true)
+    for (const item of res.body.items) {
       expect(item).toHaveProperty('id')
       expect(item).toHaveProperty('eventType')
       expect(item).toHaveProperty('status')
@@ -53,8 +55,8 @@ describe('Mio Webhook Outbox (e2e)', () => {
     const api = authRequest(testApp.server, testApp.token)
     const res = await api.get(`/api/v1/mio/webhooks/${webhookId}/outbox?status=pending`).expect(200)
 
-    expect(Array.isArray(res.body)).toBe(true)
-    for (const item of res.body) {
+    expect(Array.isArray(res.body.items)).toBe(true)
+    for (const item of res.body.items) {
       expect(item.status).toBe('pending')
     }
   })
