@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common'
+import { randomUUID } from 'crypto'
 import { PrismaService } from '../prisma/prisma.service'
 import { Decimal } from '@prisma/client/runtime/library'
 
@@ -181,6 +182,7 @@ export class KontoService {
     const decAmount = new Decimal(amount)
     if (decAmount.lte(0)) throw new BadRequestException('Částka musí být kladná')
 
+    // Pre-validate tenant ownership and balances
     const [source, target] = await Promise.all([
       this.verifyAccountTenant(tenantId, sourceAccountId),
       this.verifyAccountTenant(tenantId, targetAccountId),
@@ -200,15 +202,64 @@ export class KontoService {
       this.prisma.ownerAccount.findUnique({ where: { id: targetAccountId }, include: { unit: { select: { name: true } } } }),
     ])
 
-    const offsetId = `offset-${Date.now()}`
+    const offsetId = `offset-${randomUUID()}`
     const srcDesc = description || `Zápočet přeplatku → ${targetDetail?.unit.name ?? targetAccountId}`
     const tgtDesc = description || `Zápočet přeplatku z ${sourceDetail?.unit.name ?? sourceAccountId}`
+    const now = new Date()
 
-    // Post DEBIT on source (reduces overpayment = increases balance toward 0)
-    const sourceEntry = await this.postDebit(sourceAccountId, decAmount, 'CREDIT_APPLICATION', offsetId, srcDesc)
-    // Post CREDIT on target (reduces debt = decreases balance toward 0)
-    const targetEntry = await this.postCredit(targetAccountId, decAmount, 'CREDIT_APPLICATION', offsetId, tgtDesc)
+    // Both postings in a SINGLE transaction with row-level locks
+    return this.prisma.$transaction(async (tx) => {
+      // --- Source: DEBIT (reduces overpayment toward 0) ---
+      const [srcRow] = await tx.$queryRaw<{ id: string; currentBalance: any }[]>`
+        SELECT id, "currentBalance" FROM "owner_accounts" WHERE id = ${sourceAccountId} FOR UPDATE
+      `
+      if (!srcRow) throw new NotFoundException('Zdrojové konto nenalezeno')
+      const currentSrc = new Decimal(srcRow.currentBalance.toString())
+      const newSrcBalance = currentSrc.add(decAmount)
 
-    return { sourceEntry, targetEntry }
+      const sourceEntry = await tx.ledgerEntry.create({
+        data: {
+          accountId: sourceAccountId,
+          type: 'DEBIT' as any,
+          amount: decAmount,
+          balance: newSrcBalance,
+          sourceType: 'CREDIT_APPLICATION' as any,
+          sourceId: offsetId,
+          description: srcDesc,
+          postingDate: now,
+        },
+      })
+      await tx.ownerAccount.update({
+        where: { id: sourceAccountId },
+        data: { currentBalance: newSrcBalance, lastPostingAt: now },
+      })
+
+      // --- Target: CREDIT (reduces debt toward 0) ---
+      const [tgtRow] = await tx.$queryRaw<{ id: string; currentBalance: any }[]>`
+        SELECT id, "currentBalance" FROM "owner_accounts" WHERE id = ${targetAccountId} FOR UPDATE
+      `
+      if (!tgtRow) throw new NotFoundException('Cílové konto nenalezeno')
+      const currentTgt = new Decimal(tgtRow.currentBalance.toString())
+      const newTgtBalance = currentTgt.sub(decAmount)
+
+      const targetEntry = await tx.ledgerEntry.create({
+        data: {
+          accountId: targetAccountId,
+          type: 'CREDIT' as any,
+          amount: decAmount,
+          balance: newTgtBalance,
+          sourceType: 'CREDIT_APPLICATION' as any,
+          sourceId: offsetId,
+          description: tgtDesc,
+          postingDate: now,
+        },
+      })
+      await tx.ownerAccount.update({
+        where: { id: targetAccountId },
+        data: { currentBalance: newTgtBalance, lastPostingAt: now },
+      })
+
+      return { sourceEntry, targetEntry }
+    })
   }
 }

@@ -136,6 +136,9 @@ export class KontoRemindersService {
       where: { id: reminderId, tenantId },
     })
     if (!reminder) throw new NotFoundException('Upomínka nenalezena')
+    if (!['DRAFT', 'SENT', 'ACKNOWLEDGED'].includes(reminder.status)) {
+      throw new BadRequestException(`Upomínku ve stavu "${reminder.status}" nelze označit jako vyřešenou`)
+    }
     return this.prisma.kontoReminder.update({
       where: { id: reminderId },
       data: { status: 'RESOLVED' },
@@ -147,6 +150,9 @@ export class KontoRemindersService {
       where: { id: reminderId, tenantId },
     })
     if (!reminder) throw new NotFoundException('Upomínka nenalezena')
+    if (!['DRAFT', 'SENT'].includes(reminder.status)) {
+      throw new BadRequestException(`Upomínku ve stavu "${reminder.status}" nelze zrušit`)
+    }
     return this.prisma.kontoReminder.update({
       where: { id: reminderId },
       data: { status: 'CANCELLED' },
