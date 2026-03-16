@@ -43,6 +43,10 @@ export const adminApi = {
       apiClient.get(`/mio/webhooks/${id}/deliveries`, { params }).then((r) => r.data),
     test:          (id: string) => apiClient.post(`/mio/webhooks/${id}/test`).then((r) => r.data),
     rotateSecret:  (id: string) => apiClient.post(`/mio/webhooks/${id}/rotate-secret`).then((r) => r.data),
+    outbox:        (id: string, params?: { status?: string; eventType?: string; limit?: number; offset?: number }) =>
+      apiClient.get(`/mio/webhooks/${id}/outbox`, { params }).then((r) => r.data),
+    outboxSummary: (id: string) => apiClient.get(`/mio/webhooks/${id}/outbox-summary`).then((r) => r.data),
+    retryOutbox:   (deliveryId: string) => apiClient.post(`/mio/webhooks/outbox/${deliveryId}/retry`).then((r) => r.data),
     eventTypes:    () => apiClient.get('/mio/webhooks/event-types').then((r) => r.data),
   },
 
