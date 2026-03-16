@@ -73,4 +73,14 @@ export class KontoController {
   recalculate(@CurrentUser() user: AuthUser, @Param('accountId') accountId: string) {
     return this.service.recalculateBalance(user.tenantId, accountId)
   }
+
+  @Post('offset')
+  @Roles(...ROLES_FINANCE)
+  @ApiOperation({ summary: 'Zápočet přeplatku mezi konty' })
+  applyOffset(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: { sourceAccountId: string; targetAccountId: string; amount: number; description?: string },
+  ) {
+    return this.service.applyOverpaymentOffset(user.tenantId, dto.sourceAccountId, dto.targetAccountId, dto.amount, dto.description)
+  }
 }
