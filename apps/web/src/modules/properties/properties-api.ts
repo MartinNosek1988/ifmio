@@ -28,6 +28,8 @@ export interface ApiProperty {
   _count?: { residents: number };
 }
 
+export type SpaceTypeValue = 'RESIDENTIAL' | 'NON_RESIDENTIAL' | 'GARAGE' | 'PARKING' | 'CELLAR' | 'LAND';
+
 export interface ApiUnit {
   id: string;
   propertyId: string;
@@ -35,6 +37,21 @@ export interface ApiUnit {
   floor: number | null;
   area: number | null;
   isOccupied: boolean;
+  knDesignation?: string | null;
+  ownDesignation?: string | null;
+  spaceType?: SpaceTypeValue;
+  commonAreaShare?: number | null;
+  heatingArea?: number | null;
+  tuvArea?: number | null;
+  heatingCoefficient?: number | null;
+  personCount?: number | null;
+  disposition?: string | null;
+  hasElevator?: boolean | null;
+  heatingMethod?: string | null;
+  validFrom?: string | null;
+  validTo?: string | null;
+  extAllocatorRef?: string | null;
+  occupancies?: { resident: { firstName: string; lastName: string } }[];
   createdAt: string;
   updatedAt: string;
 }
@@ -61,12 +78,23 @@ export interface CreateUnitPayload {
   name: string;
   floor?: number;
   area?: number;
+  knDesignation?: string | null;
+  ownDesignation?: string | null;
+  spaceType?: SpaceTypeValue;
+  commonAreaShare?: number | null;
+  heatingArea?: number | null;
+  tuvArea?: number | null;
+  heatingCoefficient?: number | null;
+  personCount?: number | null;
+  disposition?: string | null;
+  hasElevator?: boolean | null;
+  heatingMethod?: string | null;
+  validFrom?: string | null;
+  validTo?: string | null;
+  extAllocatorRef?: string | null;
 }
 
-export interface UpdateUnitPayload {
-  name?: string;
-  floor?: number | null;
-  area?: number | null;
+export interface UpdateUnitPayload extends Partial<CreateUnitPayload> {
   isOccupied?: boolean;
 }
 

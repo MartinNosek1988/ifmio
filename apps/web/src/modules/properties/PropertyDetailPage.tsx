@@ -8,7 +8,7 @@ import { useProperty } from './use-properties';
 import { propertiesApi } from './properties-api';
 import type { ApiUnit } from './properties-api';
 import PropertyForm, { LEGAL_MODE_LABEL } from './PropertyForm';
-import UnitForm from './UnitForm';
+import UnitForm, { SPACE_TYPES } from './UnitForm';
 import BulkUnitForm from './BulkUnitForm';
 
 export default function PropertyDetailPage() {
@@ -50,10 +50,37 @@ export default function PropertyDetailPage() {
     { key: 'name', label: 'Název', render: (u) => <span style={{ fontWeight: 600 }}>{u.name}</span> },
     { key: 'floor', label: 'Patro', render: (u) => u.floor != null ? String(u.floor) : '—' },
     {
-      key: 'area', label: 'Plocha (m²)', align: 'right',
+      key: 'area', label: 'Plocha', align: 'right',
       render: (u) => u.area != null
-        ? <span style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{u.area.toFixed(2)}</span>
+        ? <span style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{u.area.toFixed(1)}</span>
         : <span style={{ color: 'var(--text-muted)' }}>—</span>,
+    },
+    {
+      key: 'spaceType', label: 'Typ',
+      render: (u) => {
+        const st = SPACE_TYPES.find(s => s.value === u.spaceType);
+        return st && st.value !== 'RESIDENTIAL'
+          ? <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{st.label}</span>
+          : <span style={{ color: 'var(--text-muted)' }}>—</span>;
+      },
+    },
+    {
+      key: 'commonAreaShare', label: 'Podíl %', align: 'right',
+      render: (u) => u.commonAreaShare != null
+        ? <span style={{ fontFamily: 'monospace', fontSize: '0.82rem' }}>{(Number(u.commonAreaShare) * 100).toFixed(4)}</span>
+        : <span style={{ color: 'var(--text-muted)' }}>—</span>,
+    },
+    {
+      key: 'personCount', label: 'Osoby', align: 'right',
+      render: (u) => u.personCount != null ? String(u.personCount) : <span style={{ color: 'var(--text-muted)' }}>—</span>,
+    },
+    {
+      key: 'owner', label: 'Vlastník',
+      render: (u) => {
+        // TODO: Backend includes occupancies with residents — display first active owner
+        const occ = u.occupancies?.find((o: any) => o.resident);
+        return occ ? <span style={{ fontSize: '0.82rem' }}>{occ.resident.lastName} {occ.resident.firstName}</span> : <span style={{ color: 'var(--text-muted)' }}>—</span>;
+      },
     },
     {
       key: 'isOccupied', label: 'Status',

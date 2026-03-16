@@ -2,6 +2,8 @@ import { useState, useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Modal, Button, Badge } from '../../shared/components';
 import { propertiesApi } from './properties-api';
+import { SPACE_TYPES } from './UnitForm';
+import type { SpaceTypeValue } from './properties-api';
 
 interface Props {
   propertyId: string;
@@ -18,6 +20,8 @@ export default function BulkUnitForm({ propertyId, propertyName, onClose, onSucc
   const [to, setTo] = useState(10);
   const [floor, setFloor] = useState('');
   const [area, setArea] = useState('');
+  const [spaceType, setSpaceType] = useState<SpaceTypeValue>('RESIDENTIAL');
+  const [disposition, setDisposition] = useState('');
 
   const count = Math.max(0, to - from + 1);
   const isValid = count > 0 && count <= 100;
@@ -44,6 +48,8 @@ export default function BulkUnitForm({ propertyId, propertyName, onClose, onSucc
           name,
           floor: floor ? parseInt(floor) : undefined,
           area: area ? parseFloat(area) : undefined,
+          spaceType,
+          disposition: disposition || undefined,
         });
         results.push(name);
       }
@@ -161,27 +167,26 @@ export default function BulkUnitForm({ propertyId, propertyName, onClose, onSucc
         <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>
           Společné hodnoty (volitelné)
         </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 10 }}>
+          <div>
+            <label className="form-label">Typ prostoru</label>
+            <select value={spaceType} onChange={(e) => setSpaceType(e.target.value as SpaceTypeValue)} style={inputStyle}>
+              {SPACE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Dispozice</label>
+            <input value={disposition} onChange={(e) => setDisposition(e.target.value)} placeholder="2+kk" style={inputStyle} />
+          </div>
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
             <label className="form-label">Patro</label>
-            <input
-              type="number"
-              value={floor}
-              onChange={(e) => setFloor(e.target.value)}
-              placeholder="1"
-              style={inputStyle}
-            />
+            <input type="number" value={floor} onChange={(e) => setFloor(e.target.value)} placeholder="1" style={inputStyle} />
           </div>
           <div>
             <label className="form-label">Plocha (m²)</label>
-            <input
-              type="number"
-              step="0.01"
-              value={area}
-              onChange={(e) => setArea(e.target.value)}
-              placeholder="65"
-              style={inputStyle}
-            />
+            <input type="number" step="0.01" value={area} onChange={(e) => setArea(e.target.value)} placeholder="65" style={inputStyle} />
           </div>
         </div>
       </div>
