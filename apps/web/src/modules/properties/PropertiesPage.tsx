@@ -6,9 +6,8 @@ import type { Column } from '../../shared/components';
 import { PROPERTY_TYPE_LABELS, label } from '../../constants/labels';
 import { useProperties } from './use-properties';
 import type { ApiProperty } from './properties-api';
-import PropertyForm from './PropertyForm';
+import PropertyForm, { LEGAL_MODE_LABEL } from './PropertyForm';
 
-/** Map API ownership to CZ property type labels */
 const OWNERSHIP_LABELS: Record<string, string> = {
   vlastnictvi: 'Vlastnictví',
   druzstvo: 'Družstvo',
@@ -62,6 +61,18 @@ export default function PropertiesPage() {
     {
       key: 'ownership', label: 'Vlastnictví',
       render: (p) => OWNERSHIP_LABELS[p.ownership] || p.ownership,
+    },
+    {
+      key: 'legalMode', label: 'Režim',
+      render: (p) => p.legalMode ? (
+        <Badge variant={p.legalMode === 'SVJ' ? 'purple' : p.legalMode === 'BD' ? 'blue' : 'muted'}>
+          {LEGAL_MODE_LABEL[p.legalMode] ?? p.legalMode}
+        </Badge>
+      ) : '—',
+    },
+    {
+      key: 'ico', label: 'IČ',
+      render: (p) => p.ico ? <span style={{ fontFamily: 'monospace', fontSize: '0.82rem' }}>{p.ico}</span> : <span style={{ color: 'var(--text-muted)' }}>—</span>,
     },
     {
       key: 'units', label: 'Jednotek',

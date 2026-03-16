@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Plus, Pencil, Layers, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Layers, Trash2, UserPlus } from 'lucide-react';
 import { KpiCard, Table, Badge, Button, Modal, EmptyState, LoadingState, ErrorState } from '../../shared/components';
 import type { Column } from '../../shared/components';
 import { useProperty } from './use-properties';
 import { propertiesApi } from './properties-api';
 import type { ApiUnit } from './properties-api';
-import PropertyForm from './PropertyForm';
-import UnitForm from './UnitForm';
+import PropertyForm, { LEGAL_MODE_LABEL } from './PropertyForm';
+import UnitForm, { SPACE_TYPES } from './UnitForm';
 import BulkUnitForm from './BulkUnitForm';
+import OccupancyForm from './OccupancyForm';
 
 export default function PropertyDetailPage() {
   const { id } = useParams();
@@ -21,6 +22,7 @@ export default function PropertyDetailPage() {
   const [showBulk, setShowBulk] = useState(false);
   const [editUnit, setEditUnit] = useState<ApiUnit | null>(null);
   const [deleteUnit, setDeleteUnit] = useState<ApiUnit | null>(null);
+  const [occupancyUnit, setOccupancyUnit] = useState<ApiUnit | null>(null);
 
   const deleteMutation = useMutation({
     mutationFn: (unitId: string) => propertiesApi.deleteUnit(id!, unitId),
@@ -50,10 +52,49 @@ export default function PropertyDetailPage() {
     { key: 'name', label: 'Název', render: (u) => <span style={{ fontWeight: 600 }}>{u.name}</span> },
     { key: 'floor', label: 'Patro', render: (u) => u.floor != null ? String(u.floor) : '—' },
     {
-      key: 'area', label: 'Plocha (m²)', align: 'right',
+      key: 'area', label: 'Plocha', align: 'right',
       render: (u) => u.area != null
-        ? <span style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{u.area.toFixed(2)}</span>
+        ? <span style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{u.area.toFixed(1)}</span>
         : <span style={{ color: 'var(--text-muted)' }}>—</span>,
+    },
+    {
+      key: 'spaceType', label: 'Typ',
+      render: (u) => {
+        const st = SPACE_TYPES.find(s => s.value === u.spaceType);
+        return st && st.value !== 'RESIDENTIAL'
+          ? <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{st.label}</span>
+          : <span style={{ color: 'var(--text-muted)' }}>—</span>;
+      },
+    },
+    {
+      key: 'commonAreaShare', label: 'Podíl %', align: 'right',
+      render: (u) => u.commonAreaShare != null
+        ? <span style={{ fontFamily: 'monospace', fontSize: '0.82rem' }}>{(Number(u.commonAreaShare) * 100).toFixed(4)}</span>
+        : <span style={{ color: 'var(--text-muted)' }}>—</span>,
+    },
+    {
+      key: 'personCount', label: 'Osoby', align: 'right',
+      render: (u) => u.personCount != null ? String(u.personCount) : <span style={{ color: 'var(--text-muted)' }}>—</span>,
+    },
+    {
+      key: 'owner', label: 'Vlastník/Nájemce',
+      render: (u) => {
+        const occ = u.occupancies?.find((o: any) => o.resident);
+        if (occ) {
+          const r = occ.resident;
+          const name = r.isLegalEntity && r.companyName ? r.companyName : `${r.lastName} ${r.firstName}`;
+          return (
+            <button onClick={(e) => { e.stopPropagation(); setOccupancyUnit(u); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)', fontSize: '0.82rem', padding: 0, textDecoration: 'underline dotted', textUnderlineOffset: 2 }} title="Spravovat vlastníky/nájemce">
+              {name}
+            </button>
+          );
+        }
+        return (
+          <button onClick={(e) => { e.stopPropagation(); setOccupancyUnit(u); }} style={{ background: 'none', border: '1px solid var(--primary, #6366f1)', borderRadius: 4, cursor: 'pointer', color: 'var(--primary, #6366f1)', fontSize: '0.78rem', padding: '2px 8px', display: 'flex', alignItems: 'center', gap: 3 }}>
+            <UserPlus size={12} /> Přiřadit
+          </button>
+        );
+      },
     },
     {
       key: 'isOccupied', label: 'Status',
@@ -97,6 +138,22 @@ export default function PropertyDetailPage() {
           <p className="page-subtitle">
             {[property.address, property.city].filter(Boolean).join(', ')}
           </p>
+          {/* P0 info strip */}
+          <div style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap', fontSize: '0.82rem' }}>
+            {property.legalMode && property.legalMode !== 'OWNERSHIP' && (
+              <Badge variant={property.legalMode === 'SVJ' ? 'purple' : property.legalMode === 'BD' ? 'blue' : 'muted'}>
+                {LEGAL_MODE_LABEL[property.legalMode] ?? property.legalMode}
+              </Badge>
+            )}
+            {property.ico && <span style={{ color: 'var(--text-muted)' }}>IČ: <strong>{property.ico}</strong>{property.dic ? ` / DIČ: ${property.dic}` : ''}</span>}
+            {property.isVatPayer && <Badge variant="yellow">DPH</Badge>}
+            {property.managedFrom && (
+              <span style={{ color: 'var(--text-muted)' }}>
+                Správa: {new Date(property.managedFrom).toLocaleDateString('cs-CZ')}
+                {property.managedTo ? ` – ${new Date(property.managedTo).toLocaleDateString('cs-CZ')}` : ''}
+              </span>
+            )}
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <Button icon={<Pencil size={15} />} onClick={() => setShowEditProp(true)}>Upravit</Button>
@@ -211,6 +268,18 @@ export default function PropertyDetailPage() {
             </div>
           )}
         </Modal>
+      )}
+
+      {/* Occupancy assignment */}
+      {occupancyUnit && (
+        <OccupancyForm
+          propertyId={property.id}
+          unitId={occupancyUnit.id}
+          unitName={occupancyUnit.name}
+          propertyLegalMode={property.legalMode}
+          onSuccess={() => { setOccupancyUnit(null); refetch(); }}
+          onClose={() => setOccupancyUnit(null)}
+        />
       )}
     </div>
   );
