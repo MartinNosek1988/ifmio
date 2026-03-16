@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Put, Delete, Body, Query, Param, Req, HttpCode, HttpStatus,
+  Controller, Get, Post, Put, Patch, Delete, Body, Query, Param, Req, HttpCode, HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { FinanceService } from './finance.service';
@@ -183,6 +183,17 @@ export class FinanceController {
       body.transactionId,
       body.prescriptionId,
     )
+  }
+
+  @Patch('transactions/:transactionId/unmatch')
+  @Roles(...ROLES_FINANCE)
+  @AuditAction('BankTransaction', 'UNMATCH')
+  @ApiOperation({ summary: 'Odpárovat transakci' })
+  unmatchTransaction(
+    @CurrentUser() user: AuthUser,
+    @Param('transactionId') transactionId: string,
+  ) {
+    return this.service.unmatchTransaction(user, transactionId)
   }
 
   // ─── DELETE ───────────────────────────────────────────────────
