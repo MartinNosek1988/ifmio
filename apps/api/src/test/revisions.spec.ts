@@ -58,17 +58,19 @@ describe('Revisions & Compliance (e2e)', () => {
 
   let typeId: string
 
+  const typeCode = `EL-${Date.now()}`
+
   it('creates a revision type', async () => {
     const res = await api
       .post('/api/v1/revisions/types', {
-        code: 'ELEKTRO',
+        code: typeCode,
         name: 'Elektro revize',
         defaultIntervalDays: 365,
         defaultReminderDaysBefore: 30,
       })
       .expect(201)
 
-    expect(res.body.code).toBe('ELEKTRO')
+    expect(res.body.code).toBe(typeCode)
     expect(res.body.name).toBe('Elektro revize')
     expect(res.body.defaultIntervalDays).toBe(365)
     expect(res.body.isActive).toBe(true)
@@ -78,7 +80,7 @@ describe('Revisions & Compliance (e2e)', () => {
   it('rejects duplicate type code within tenant', async () => {
     await api
       .post('/api/v1/revisions/types', {
-        code: 'ELEKTRO',
+        code: typeCode,
         name: 'Duplicitní',
       })
       .expect(409)
@@ -90,7 +92,7 @@ describe('Revisions & Compliance (e2e)', () => {
       .expect(200)
 
     expect(Array.isArray(res.body)).toBe(true)
-    expect(res.body.some((t: any) => t.code === 'ELEKTRO')).toBe(true)
+    expect(res.body.some((t: any) => t.code === typeCode)).toBe(true)
   })
 
   // ─── PLANS CRUD ─────────────────────────────────────────────
