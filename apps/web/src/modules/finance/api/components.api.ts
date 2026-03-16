@@ -57,6 +57,23 @@ export interface PropertyPrescriptionPreview {
   items: Array<{ componentName: string; amount: number }>
 }
 
+export interface GenerationDetail {
+  unitId: string
+  unitName: string
+  residentName: string | null
+  amount: number
+  items: Array<{ name: string; amount: number }>
+  status: 'created' | 'skipped_duplicate' | 'skipped_no_components' | 'skipped_unoccupied' | 'error'
+  error?: string
+}
+
+export interface GenerationResult {
+  generated: number
+  skipped: number
+  totalAmount: number
+  details: GenerationDetail[]
+}
+
 export const componentsApi = {
   list: (propertyId: string, activeOnly = true) =>
     apiClient.get<PrescriptionComponentSummary[]>(`/properties/${propertyId}/components`, { params: { activeOnly } }).then(r => r.data),
@@ -90,4 +107,7 @@ export const componentsApi = {
 
   propertyPreview: (propertyId: string, month?: number, year?: number) =>
     apiClient.get<PropertyPrescriptionPreview[]>(`/properties/${propertyId}/components/prescription-preview`, { params: { month, year } }).then(r => r.data),
+
+  generateFromComponents: (propertyId: string, data: { month: number; year: number; dueDay?: number; dryRun?: boolean }) =>
+    apiClient.post<GenerationResult>(`/properties/${propertyId}/components/generate-prescriptions`, data).then(r => r.data),
 }

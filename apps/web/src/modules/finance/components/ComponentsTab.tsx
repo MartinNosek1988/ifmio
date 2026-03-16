@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Badge, Button, Modal, LoadingState, EmptyState } from '../../../shared/components';
 import { useToast } from '../../../shared/components/toast/Toast';
 import { useProperties, useProperty } from '../../properties/use-properties';
+import GenerateFromComponentsWizard from './GenerateFromComponentsWizard';
 import {
   usePropertyComponents,
   useCreateComponent,
@@ -72,6 +73,7 @@ export default function ComponentsTab() {
   const { data: components = [], isLoading } = usePropertyComponents(propertyId || undefined, !showAll);
   const [editComponent, setEditComponent] = useState<PrescriptionComponentSummary | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [showGenerate, setShowGenerate] = useState(false);
   const [detailComponentId, setDetailComponentId] = useState<string | null>(null);
   const [assignComponentId, setAssignComponentId] = useState<string | null>(null);
   const [actionMenuId, setActionMenuId] = useState<string | null>(null);
@@ -111,6 +113,11 @@ export default function ComponentsTab() {
         <Button variant="primary" size="sm" onClick={() => { setEditComponent(null); setShowCreate(true); }}>
           Přidat složku
         </Button>
+        {components.length > 0 && (
+          <Button size="sm" onClick={() => setShowGenerate(true)}>
+            Generovat předpisy
+          </Button>
+        )}
         <label style={{ fontSize: '.82rem', display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
           <input type="checkbox" checked={showAll} onChange={e => setShowAll(e.target.checked)} />
           Zobrazit archivované
@@ -234,6 +241,13 @@ export default function ComponentsTab() {
           componentId={assignComponentId}
           onClose={() => setAssignComponentId(null)}
           onSuccess={() => setAssignComponentId(null)}
+        />
+      )}
+
+      {showGenerate && propertyId && (
+        <GenerateFromComponentsWizard
+          propertyId={propertyId}
+          onClose={() => setShowGenerate(false)}
         />
       )}
     </div>
