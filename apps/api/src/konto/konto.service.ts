@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { Decimal } from '@prisma/client/runtime/library'
 
@@ -7,6 +7,12 @@ export class KontoService {
   private readonly logger = new Logger(KontoService.name)
 
   constructor(private prisma: PrismaService) {}
+
+  async verifyAccountTenant(tenantId: string, accountId: string) {
+    const account = await this.prisma.ownerAccount.findFirst({ where: { id: accountId, tenantId } })
+    if (!account) throw new NotFoundException('Konto nenalezeno')
+    return account
+  }
 
   async getOrCreateAccount(tenantId: string, propertyId: string, unitId: string, residentId: string) {
     return this.prisma.ownerAccount.upsert({
@@ -21,7 +27,9 @@ export class KontoService {
     sourceType: 'PRESCRIPTION' | 'BANK_TRANSACTION' | 'CREDIT_APPLICATION' | 'LATE_FEE' | 'MANUAL_ADJUSTMENT',
     sourceId: string, description: string, date?: Date,
   ) {
-    return this.appendEntry(accountId, 'DEBIT', new Decimal(amount), sourceType, sourceId, description, date ?? new Date())
+    const decAmount = new Decimal(amount)
+    if (decAmount.lte(0)) throw new BadRequestException('Částka musí být kladná')
+    return this.appendEntry(accountId, 'DEBIT', decAmount, sourceType, sourceId, description, date ?? new Date())
   }
 
   async postCredit(
@@ -29,7 +37,9 @@ export class KontoService {
     sourceType: 'PRESCRIPTION' | 'BANK_TRANSACTION' | 'CREDIT_APPLICATION' | 'LATE_FEE' | 'MANUAL_ADJUSTMENT',
     sourceId: string, description: string, date?: Date,
   ) {
-    return this.appendEntry(accountId, 'CREDIT', new Decimal(amount), sourceType, sourceId, description, date ?? new Date())
+    const decAmount = new Decimal(amount)
+    if (decAmount.lte(0)) throw new BadRequestException('Částka musí být kladná')
+    return this.appendEntry(accountId, 'CREDIT', decAmount, sourceType, sourceId, description, date ?? new Date())
   }
 
   private async appendEntry(
@@ -42,15 +52,16 @@ export class KontoService {
     date: Date,
   ) {
     return this.prisma.$transaction(async (tx) => {
-      const account = await tx.ownerAccount.findUniqueOrThrow({ where: { id: accountId } })
-      const current = new Decimal(account.currentBalance)
+      // Row-level lock to prevent concurrent reads of stale balance
+      const rows = await tx.$queryRaw<{ id: string; currentBalance: any }[]>`
+        SELECT id, "currentBalance" FROM "owner_accounts" WHERE id = ${accountId} FOR UPDATE
+      `
+      if (!rows.length) throw new NotFoundException('Konto nenalezeno')
+      const current = new Decimal(rows[0].currentBalance.toString())
 
-      let newBalance: Decimal
-      if (type === 'DEBIT') {
-        newBalance = current.add(amount) // owed increases
-      } else {
-        newBalance = current.sub(amount) // owed decreases
-      }
+      const newBalance = type === 'DEBIT'
+        ? current.add(amount)
+        : current.sub(amount)
 
       const entry = await tx.ledgerEntry.create({
         data: {
@@ -74,10 +85,15 @@ export class KontoService {
     })
   }
 
-  async getAccountLedger(accountId: string, page = 1, pageSize = 20) {
-    const skip = (page - 1) * pageSize
+  async getAccountLedger(tenantId: string, accountId: string, page = 1, pageSize = 20) {
+    const account = await this.prisma.ownerAccount.findFirst({
+      where: { id: accountId, tenantId },
+      select: { currentBalance: true },
+    })
+    if (!account) throw new NotFoundException('Konto nenalezeno')
 
-    const [entries, total, account] = await Promise.all([
+    const skip = (page - 1) * pageSize
+    const [entries, total] = await Promise.all([
       this.prisma.ledgerEntry.findMany({
         where: { accountId },
         orderBy: { postingDate: 'desc' },
@@ -85,16 +101,12 @@ export class KontoService {
         skip,
       }),
       this.prisma.ledgerEntry.count({ where: { accountId } }),
-      this.prisma.ownerAccount.findUnique({
-        where: { id: accountId },
-        select: { currentBalance: true },
-      }),
     ])
 
     return {
       entries,
       total,
-      currentBalance: account?.currentBalance ?? new Decimal(0),
+      currentBalance: account.currentBalance,
     }
   }
 
@@ -116,18 +128,23 @@ export class KontoService {
     })
   }
 
-  async getAccountDetail(accountId: string) {
-    return this.prisma.ownerAccount.findUnique({
-      where: { id: accountId },
+  async getAccountDetail(tenantId: string, accountId: string) {
+    const account = await this.prisma.ownerAccount.findFirst({
+      where: { id: accountId, tenantId },
       include: {
         resident: { select: { id: true, firstName: true, lastName: true, companyName: true, isLegalEntity: true } },
         unit: { select: { id: true, name: true, knDesignation: true } },
         property: { select: { id: true, name: true } },
       },
     })
+    if (!account) throw new NotFoundException('Konto nenalezeno')
+    return account
   }
 
-  async recalculateBalance(accountId: string) {
+  async recalculateBalance(tenantId: string, accountId: string) {
+    const account = await this.prisma.ownerAccount.findFirst({ where: { id: accountId, tenantId } })
+    if (!account) throw new NotFoundException('Konto nenalezeno')
+
     return this.prisma.$transaction(async (tx) => {
       const entries = await tx.ledgerEntry.findMany({
         where: { accountId },

@@ -21,18 +21,20 @@ export class KontoController {
 
   @Get('account/:accountId')
   @ApiOperation({ summary: 'Detail konta' })
-  getAccountDetail(@Param('accountId') accountId: string) {
-    return this.service.getAccountDetail(accountId)
+  getAccountDetail(@CurrentUser() user: AuthUser, @Param('accountId') accountId: string) {
+    return this.service.getAccountDetail(user.tenantId, accountId)
   }
 
   @Get('account/:accountId/entries')
   @ApiOperation({ summary: 'Historie konta (stránkování)' })
   getAccountLedger(
+    @CurrentUser() user: AuthUser,
     @Param('accountId') accountId: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
   ) {
     return this.service.getAccountLedger(
+      user.tenantId,
       accountId,
       page ? parseInt(page, 10) : 1,
       pageSize ? parseInt(pageSize, 10) : 20,
@@ -52,10 +54,12 @@ export class KontoController {
   @Post('account/:accountId/adjust')
   @Roles(...ROLES_FINANCE)
   @ApiOperation({ summary: 'Ruční úprava konta' })
-  manualAdjustment(
+  async manualAdjustment(
+    @CurrentUser() user: AuthUser,
     @Param('accountId') accountId: string,
     @Body() dto: ManualAdjustmentDto,
   ) {
+    await this.service.verifyAccountTenant(user.tenantId, accountId)
     const date = dto.date ? new Date(dto.date) : new Date()
     if (dto.type === 'DEBIT') {
       return this.service.postDebit(accountId, dto.amount, 'MANUAL_ADJUSTMENT', accountId, dto.description, date)
@@ -66,7 +70,7 @@ export class KontoController {
   @Post('recalculate/:accountId')
   @Roles(...ROLES_MANAGE)
   @ApiOperation({ summary: 'Přepočítat zůstatek konta' })
-  recalculate(@Param('accountId') accountId: string) {
-    return this.service.recalculateBalance(accountId)
+  recalculate(@CurrentUser() user: AuthUser, @Param('accountId') accountId: string) {
+    return this.service.recalculateBalance(user.tenantId, accountId)
   }
 }
