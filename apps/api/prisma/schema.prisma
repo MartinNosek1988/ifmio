@@ -588,11 +588,11 @@ model BankAccount {
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
-  financialContextId String?
+  financialContextId String
 
-  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  property         Property?         @relation(fields: [propertyId], references: [id], onDelete: Restrict)
-  financialContext FinancialContext?  @relation(fields: [financialContextId], references: [id], onDelete: SetNull)
+  tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property         Property?        @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  financialContext FinancialContext  @relation(fields: [financialContextId], references: [id], onDelete: Restrict)
   transactions     BankTransaction[]
   importLogs       ImportLog[]
 
