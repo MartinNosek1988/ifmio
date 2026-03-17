@@ -38,10 +38,45 @@ export class FinanceService {
     bankCode?: string;
     currency?: string;
     propertyId?: string;
+    financialContextId?: string;
   }) {
     if (dto.propertyId) {
       await this.scope.verifyPropertyAccess(user, dto.propertyId);
     }
+
+    // Resolve financialContextId — required since M3
+    let financialContextId = dto.financialContextId;
+    if (!financialContextId) {
+      // Find existing FC for property or tenant
+      const fc = await this.prisma.financialContext.findFirst({
+        where: {
+          tenantId: user.tenantId,
+          ...(dto.propertyId ? { propertyId: dto.propertyId } : {}),
+          isActive: true,
+        },
+        select: { id: true },
+        orderBy: { createdAt: 'asc' },
+      });
+      if (fc) {
+        financialContextId = fc.id;
+      } else {
+        // Auto-create or find default FC for this tenant (covers new tenants / test environments)
+        const defaultFc = await this.prisma.financialContext.upsert({
+          where: { tenantId_code: { tenantId: user.tenantId, code: 'DEFAULT' } },
+          create: {
+            tenantId: user.tenantId,
+            scopeType: 'manager',
+            code: 'DEFAULT',
+            displayName: 'Výchozí finanční kontext',
+            currency: 'CZK',
+            isActive: true,
+          },
+          update: {},
+        });
+        financialContextId = defaultFc.id;
+      }
+    }
+
     return this.prisma.bankAccount.create({
       data: {
         tenantId: user.tenantId,
@@ -51,6 +86,7 @@ export class FinanceService {
         bankCode: dto.bankCode,
         currency: dto.currency ?? 'CZK',
         propertyId: dto.propertyId,
+        financialContextId,
       },
     });
   }
