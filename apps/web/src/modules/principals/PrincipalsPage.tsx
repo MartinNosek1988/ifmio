@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Badge, Button, LoadingState, EmptyState } from '../../shared/components'
+import { Badge, LoadingState, EmptyState } from '../../shared/components'
 import { usePrincipals } from './api/principals.queries'
 
 const TYPE_LABELS: Record<string, { label: string; color: string }> = {
