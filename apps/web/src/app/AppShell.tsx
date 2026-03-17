@@ -75,6 +75,7 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/finance?tab=konto', label: 'Konto vlastníků', icon: <Wallet size={17} /> },
       { to: '/finance?tab=debtors', label: 'Dlužníci', icon: <AlertTriangle size={17} /> },
       { to: '/finance?tab=revenues', label: 'Výnosy SVJ', icon: <TrendingUp size={17} /> },
+      { to: '/settlements', label: 'Vyúčtování', icon: <BarChart3 size={17} /> },
     ],
   },
   {
@@ -106,6 +107,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/properties': 'Nemovitosti',
   '/contacts': 'Adresář',
   '/parties': 'Adresář',
+  '/settlements': 'Roční vyúčtování',
   '/contracts': 'Nájemní smlouvy',
   '/documents': 'Dokumenty',
   '/calendar': 'Kalendář',
