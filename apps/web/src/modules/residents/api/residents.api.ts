@@ -26,6 +26,7 @@ export interface ApiResident {
   updatedAt: string;
   property?: { id: string; name: string };
   unit?: { id: string; name: string };
+  party?: { id: string; displayName: string; type: string; ic: string | null; email: string | null; phone: string | null } | null;
 }
 
 export interface PaginatedResidents {

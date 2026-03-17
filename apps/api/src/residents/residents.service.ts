@@ -44,6 +44,7 @@ export class ResidentsService {
         include: {
           property: { select: { id: true, name: true } },
           unit: { select: { id: true, name: true } },
+          party: { select: { id: true, displayName: true, type: true, ic: true, email: true, phone: true } },
           occupancies: {
             where: { isActive: true },
             orderBy: { startDate: 'desc' },
@@ -69,6 +70,7 @@ export class ResidentsService {
       include: {
         property: { select: { id: true, name: true } },
         unit: { select: { id: true, name: true } },
+        party: { select: { id: true, displayName: true, type: true, ic: true, email: true, phone: true } },
         occupancies: {
           include: { unit: { select: { id: true, name: true } } },
           orderBy: { startDate: 'desc' },
@@ -84,6 +86,10 @@ export class ResidentsService {
     if (dto.propertyId) {
       await this.scope.verifyPropertyAccess(user, dto.propertyId);
     }
+
+    // Auto-create or link Party
+    const partyId = await this.findOrCreateParty(user.tenantId, dto);
+
     return this.prisma.resident.create({
       data: {
         tenantId: user.tenantId,
@@ -104,8 +110,56 @@ export class ResidentsService {
         dataBoxId: dto.dataBoxId,
         birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
         note: dto.note,
+        partyId,
+      },
+      include: {
+        party: { select: { id: true, displayName: true, type: true } },
       },
     });
+  }
+
+  private async findOrCreateParty(tenantId: string, dto: CreateResidentDto): Promise<string> {
+    const displayName = dto.isLegalEntity && dto.companyName
+      ? dto.companyName
+      : [dto.lastName, dto.firstName].filter(Boolean).join(' ')
+    const type = dto.isLegalEntity ? 'company' : 'person'
+
+    // Try match by IČ
+    if (dto.ico) {
+      const existing = await this.prisma.party.findFirst({
+        where: { tenantId, ic: dto.ico, isActive: true },
+      })
+      if (existing) return existing.id
+    }
+
+    // Try match by email
+    if (dto.email) {
+      const existing = await this.prisma.party.findFirst({
+        where: { tenantId, email: dto.email, isActive: true },
+      })
+      if (existing) return existing.id
+    }
+
+    // Create new Party
+    const party = await this.prisma.party.create({
+      data: {
+        tenantId,
+        type: type as any,
+        displayName,
+        firstName: dto.firstName || undefined,
+        lastName: dto.lastName || undefined,
+        companyName: dto.companyName || undefined,
+        ic: dto.ico || undefined,
+        dic: dto.dic || undefined,
+        email: dto.email || undefined,
+        phone: dto.phone || undefined,
+        street: dto.correspondenceAddress || undefined,
+        city: dto.correspondenceCity || undefined,
+        postalCode: dto.correspondencePostalCode || undefined,
+        dataBoxId: dto.dataBoxId || undefined,
+      },
+    })
+    return party.id
   }
 
   async update(user: AuthUser, id: string, dto: UpdateResidentDto) {

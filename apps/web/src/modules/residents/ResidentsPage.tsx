@@ -84,6 +84,13 @@ export default function ResidentsPage() {
           : <span className="text-muted">—</span>
       ),
     },
+    {
+      key: 'party', label: 'Adresář', render: (r) => (
+        r.party
+          ? <span className="text-muted text-sm" title={`Party: ${r.party.displayName}`}>→ {r.party.displayName}</span>
+          : <span className="text-muted">—</span>
+      ),
+    },
   ];
 
   if (isLoading) return <LoadingState />;
