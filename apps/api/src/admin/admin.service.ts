@@ -3,7 +3,7 @@ import {
 } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { EmailService }  from '../email/email.service'
-import * as bcrypt       from 'bcrypt'
+import * as bcrypt       from 'bcryptjs'
 import type { AuthUser } from '@ifmio/shared-types'
 
 @Injectable()
