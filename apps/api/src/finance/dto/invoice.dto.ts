@@ -197,6 +197,9 @@ export class InvoiceListQueryDto {
   @IsOptional() @IsString()
   search?: string;
 
+  @IsOptional() @IsString()
+  financialContextId?: string;
+
   @IsOptional() @Type(() => Number) @IsNumber()
   page?: number;
 

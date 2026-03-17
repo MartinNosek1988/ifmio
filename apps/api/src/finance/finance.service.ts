@@ -20,10 +20,15 @@ export class FinanceService {
 
   // ─── BANK ACCOUNTS ────────────────────────────────────────────
 
-  async listBankAccounts(user: AuthUser) {
+  async listBankAccounts(user: AuthUser, financialContextId?: string) {
     const scopeWhere = await this.scope.scopeByPropertyId(user);
     return this.prisma.bankAccount.findMany({
-      where: { tenantId: user.tenantId, isActive: true, ...scopeWhere },
+      where: {
+        tenantId: user.tenantId,
+        isActive: true,
+        ...scopeWhere,
+        ...(financialContextId ? { financialContextId } : {}),
+      },
       orderBy: { name: 'asc' },
       include: {
         _count: { select: { transactions: true } },
@@ -101,11 +106,12 @@ export class FinanceService {
       type?: string;
       dateFrom?: string;
       dateTo?: string;
+      financialContextId?: string;
       page?: number;
       limit?: number;
     },
   ) {
-    const { bankAccountId, status, type, dateFrom, dateTo } = query;
+    const { bankAccountId, status, type, dateFrom, dateTo, financialContextId } = query;
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 50));
     const skip = (page - 1) * limit;
@@ -116,6 +122,7 @@ export class FinanceService {
       tenantId: user.tenantId,
       ...scopeWhere,
       ...(bankAccountId ? { bankAccountId } : {}),
+      ...(financialContextId ? { bankAccount: { financialContextId } } : {}),
       ...(status ? { status: status as Prisma.EnumBankTransactionStatusFilter } : {}),
       ...(type ? { type: type as Prisma.EnumBankTransactionTypeFilter } : {}),
       ...(dateFrom || dateTo ? {
@@ -196,10 +203,11 @@ export class FinanceService {
     residentId?: string;
     status?: string;
     type?: string;
+    financialContextId?: string;
     page?: number;
     limit?: number;
   }) {
-    const { propertyId, residentId, status = 'active', type } = query;
+    const { propertyId, residentId, status = 'active', type, financialContextId } = query;
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
     const skip = (page - 1) * limit;
@@ -212,6 +220,7 @@ export class FinanceService {
       ...(type ? { type: type as Prisma.EnumPrescriptionTypeFilter } : {}),
       ...(propertyId ? { propertyId } : {}),
       ...(residentId ? { residentId } : {}),
+      ...(financialContextId ? { financialContextId } : {}),
     };
 
     const [items, total] = await Promise.all([
