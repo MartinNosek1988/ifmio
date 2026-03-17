@@ -43,6 +43,8 @@ import { PartyModule } from './party/party.module';
 import { PrincipalModule } from './principal/principal.module';
 import { ManagementContractModule } from './management-contract/management-contract.module';
 import { FinancialContextModule } from './financial-context/financial-context.module';
+import { OwnershipModule } from './ownership/ownership.module';
+import { TenancyModule } from './tenancy/tenancy.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
@@ -112,6 +114,8 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
     PrincipalModule,
     ManagementContractModule,
     FinancialContextModule,
+    OwnershipModule,
+    TenancyModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerBehindProxyGuard },
