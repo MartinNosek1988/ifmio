@@ -32,8 +32,11 @@ export class FinanceController {
 
   @Get('bank-accounts')
   @ApiOperation({ summary: 'Bankovní účty' })
-  listBankAccounts(@CurrentUser() user: AuthUser) {
-    return this.service.listBankAccounts(user);
+  listBankAccounts(
+    @CurrentUser() user: AuthUser,
+    @Query('financialContextId') financialContextId?: string,
+  ) {
+    return this.service.listBankAccounts(user, financialContextId);
   }
 
   @Post('bank-accounts')
@@ -52,6 +55,7 @@ export class FinanceController {
   listTransactions(@CurrentUser() user: AuthUser, @Query() query: {
     bankAccountId?: string; status?: string; type?: string;
     dateFrom?: string; dateTo?: string;
+    financialContextId?: string;
     page?: number; limit?: number;
   }) {
     return this.service.listTransactions(user, query);
@@ -73,7 +77,9 @@ export class FinanceController {
   @Get('prescriptions')
   @ApiOperation({ summary: 'Předpisy' })
   listPrescriptions(@CurrentUser() user: AuthUser, @Query() query: {
-    propertyId?: string; residentId?: string; status?: string; type?: string; page?: number; limit?: number;
+    propertyId?: string; residentId?: string; status?: string; type?: string;
+    financialContextId?: string;
+    page?: number; limit?: number;
   }) {
     return this.service.listPrescriptions(user, query);
   }

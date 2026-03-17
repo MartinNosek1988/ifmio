@@ -15,7 +15,7 @@ export class InvoicesService {
   ) {}
 
   async list(user: AuthUser, query: InvoiceListQueryDto) {
-    const { type, isPaid, search, approvalStatus } = query;
+    const { type, isPaid, search, approvalStatus, financialContextId } = query;
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 50));
     const skip = (page - 1) * limit;
@@ -28,6 +28,7 @@ export class InvoicesService {
       ...(type ? { type } : {}),
       ...(isPaid !== undefined ? { isPaid: isPaid === 'true' } : {}),
       ...(approvalStatus ? { approvalStatus } : {}),
+      ...(financialContextId ? { financialContextId } : {}),
       ...(search ? {
         OR: [
           { number: { contains: search, mode: 'insensitive' } },

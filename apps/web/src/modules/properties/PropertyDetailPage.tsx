@@ -522,6 +522,10 @@ function FinancialContextsSection({
           );
         })}
       </div>
+      {/* Active context indicator */}
+      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 8 }}>
+        Zobrazeno pro: <strong>{activeId ? contexts.find(fc => fc.id === activeId)?.displayName ?? '—' : 'Vše'}</strong>
+      </div>
       {/* Detail of selected context */}
       {activeId && <FinancialContextDetail context={contexts.find(fc => fc.id === activeId)!} />}
     </div>

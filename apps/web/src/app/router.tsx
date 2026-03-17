@@ -49,6 +49,7 @@ const SuperAdminPage = lazy(() => import('../modules/super-admin/SuperAdminPage'
 const QrResolvePage = lazy(() => import('../modules/asset-qr/QrResolvePage'));
 const PrincipalsPage = lazy(() => import('../modules/principals/PrincipalsPage'));
 const PrincipalDetailPage = lazy(() => import('../modules/principals/PrincipalDetailPage'));
+const PartiesPage = lazy(() => import('../modules/parties/PartiesPage'));
 
 function withBoundary(name: string, Component: React.ComponentType) {
   return (
@@ -87,6 +88,7 @@ export const router = createBrowserRouter([
       { path: 'contracts', element: withBoundary('Smlouvy', ContractsPage) },
       { path: 'residents', element: withBoundary('Bydlící', ResidentsPage) },
       { path: 'documents', element: withBoundary('Dokumenty', DocumentsPage) },
+      { path: 'parties', element: withBoundary('Adresář', PartiesPage) },
       { path: 'contacts', element: withBoundary('Adresář', DirectoryPage) },
       { path: 'calendar', element: withBoundary('Kalendář', CalendarPage) },
       { path: 'communication', element: withBoundary('Komunikace', CommunicationPage) },

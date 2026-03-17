@@ -60,7 +60,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { to: '/properties', label: 'Nemovitosti', icon: <Building2 size={17} /> },
       { to: '/principals', label: 'Klienti', icon: <UsersRound size={17} /> },
-      { to: '/contacts', label: 'Adresář', icon: <Users size={17} /> },
+      { to: '/parties', label: 'Adresář', icon: <Users size={17} /> },
       { to: '/contracts', label: 'Nájemní smlouvy', icon: <FileText size={17} /> },
       { to: '/residents', label: 'Bydlící', icon: <UserCheck size={17} /> },
       { to: '/meters', label: 'Měřidla & Energie', icon: <Gauge size={17} /> },
@@ -105,6 +105,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/properties': 'Nemovitosti',
   '/contacts': 'Adresář',
+  '/parties': 'Adresář',
   '/contracts': 'Nájemní smlouvy',
   '/documents': 'Dokumenty',
   '/calendar': 'Kalendář',

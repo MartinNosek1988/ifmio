@@ -390,9 +390,12 @@ model Resident {
   createdAt                DateTime     @default(now())
   updatedAt                DateTime     @updatedAt
 
+  partyId          String?
+
   tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   property         Property?         @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   unit             Unit?             @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  party            Party?            @relation(fields: [partyId], references: [id], onDelete: SetNull)
   occupancies      Occupancy[]
   prescriptions    Prescription[]
   bankTransactions BankTransaction[]
@@ -408,6 +411,7 @@ model Resident {
   @@index([tenantId, isActive])
   @@index([propertyId, isActive])
   @@index([tenantId, hasDebt])
+  @@index([partyId])
   @@map("residents")
 }
 
@@ -587,6 +591,17 @@ model BankAccount {
   accountType   BankAccountType?
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
+
+  // Banking API sync fields
+  bankProvider      String?          @db.VarChar(20)   // "fio", "kb", "csob", "manual"
+  apiToken          String?          @db.Text           // API token (Fio: read-only token)
+  apiTokenLastFour  String?          @db.VarChar(4)     // For display: "****3456"
+  syncEnabled       Boolean          @default(false)
+  syncIntervalMin   Int              @default(60)       // Polling interval in minutes
+  lastSyncAt        DateTime?
+  lastSyncCursor    String?                              // Last transaction ID for incremental fetch
+  syncStatus        String?          @db.VarChar(20)    // "active", "error", "disabled"
+  syncStatusMessage String?                              // Error detail if syncStatus = "error"
 
   financialContextId String
 
@@ -2491,6 +2506,7 @@ model Party {
   propertyOwnerships    PropertyOwnership[]
   unitOwnerships        UnitOwnership[]
   tenancies             Tenancy[]
+  residents             Resident[]
 
   @@index([tenantId, displayName])
   @@index([tenantId, ic])

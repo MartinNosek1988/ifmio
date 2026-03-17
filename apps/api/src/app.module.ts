@@ -45,6 +45,7 @@ import { ManagementContractModule } from './management-contract/management-contr
 import { FinancialContextModule } from './financial-context/financial-context.module';
 import { OwnershipModule } from './ownership/ownership.module';
 import { TenancyModule } from './tenancy/tenancy.module';
+import { BankingModule } from './banking/banking.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
@@ -116,6 +117,7 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
     FinancialContextModule,
     OwnershipModule,
     TenancyModule,
+    BankingModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerBehindProxyGuard },
