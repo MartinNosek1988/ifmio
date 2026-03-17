@@ -146,6 +146,9 @@ export class HelpdeskService {
     if (dto.dispatcherUserId) {
       await this.verifyUserAccess(user, dto.dispatcherUserId)
     }
+    if (dto.assigneeId) {
+      await this.verifyUserAccess(user, dto.assigneeId)
+    }
     const number = await this.nextTicketNumber(user.tenantId)
     const priority = dto.priority ?? 'medium'
     const now = new Date()
@@ -166,6 +169,7 @@ export class HelpdeskService {
         assetId:          dto.assetId ?? null,
         requesterUserId:  dto.requesterUserId ?? user.id,
         dispatcherUserId: dto.dispatcherUserId ?? null,
+        assigneeId:       dto.assigneeId ?? null,
         responseDueAt:    sla.responseDueAt,
         resolutionDueAt:  sla.resolutionDueAt,
       },

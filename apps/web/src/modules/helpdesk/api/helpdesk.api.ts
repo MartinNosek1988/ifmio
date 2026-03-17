@@ -90,6 +90,7 @@ export interface CreateTicketPayload {
   assetId?: string
   requesterUserId?: string
   dispatcherUserId?: string
+  assigneeId?: string
 }
 
 export interface UpdateTicketPayload {
