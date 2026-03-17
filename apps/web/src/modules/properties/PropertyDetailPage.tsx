@@ -11,18 +11,38 @@ import PropertyForm, { LEGAL_MODE_LABEL } from './PropertyForm';
 import UnitForm, { SPACE_TYPES } from './UnitForm';
 import BulkUnitForm from './BulkUnitForm';
 import OccupancyForm from './OccupancyForm';
+import { usePropertyContracts, type ApiManagementContract } from './management-contracts-api';
+import { usePropertyFinancialContexts, type ApiFinancialContext } from './financial-contexts-api';
+
+const MGMT_TYPE_BADGE: Record<string, { label: string; variant: string }> = {
+  hoa_management: { label: 'SVJ', variant: 'blue' },
+  rental_management: { label: 'Pronájem', variant: 'red' },
+  technical_management: { label: 'Technická', variant: 'muted' },
+  accounting_management: { label: 'Účetní', variant: 'yellow' },
+  admin_management: { label: 'Administrativní', variant: 'purple' },
+};
+
+const SCOPE_LABELS: Record<string, string> = {
+  property: 'Nemovitost',
+  principal: 'Principál',
+  manager: 'Správce',
+  manual: 'Ruční',
+};
 
 export default function PropertyDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: property, isLoading, error, refetch } = useProperty(id!);
+  const { data: contracts = [] } = usePropertyContracts(id!);
+  const { data: finContexts = [] } = usePropertyFinancialContexts(id!);
   const [showEditProp, setShowEditProp] = useState(false);
   const [showAddUnit, setShowAddUnit] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
   const [editUnit, setEditUnit] = useState<ApiUnit | null>(null);
   const [deleteUnit, setDeleteUnit] = useState<ApiUnit | null>(null);
   const [occupancyUnit, setOccupancyUnit] = useState<ApiUnit | null>(null);
+  const [activeFinContextId, setActiveFinContextId] = useState<string | null>(null);
 
   const deleteMutation = useMutation({
     mutationFn: (unitId: string) => propertiesApi.deleteUnit(id!, unitId),
@@ -48,8 +68,42 @@ export default function PropertyDetailPage() {
   const occupiedUnits = units.filter((u) => u.isOccupied).length;
   const totalArea = units.reduce((s, u) => s + (u.area ?? 0), 0);
 
+  // Build a map: unitId → list of contracts covering it
+  // whole_property contracts cover all units
+  const wholePropertyContracts = contracts.filter(c => c.scope === 'whole_property');
+
+  function getUnitContractBadges(_unit: ApiUnit) {
+    // whole_property contracts always apply; selected_units would need unit-level data from API
+    return wholePropertyContracts;
+  }
+
   const unitColumns: Column<ApiUnit>[] = [
-    { key: 'name', label: 'Název', render: (u) => <span style={{ fontWeight: 600 }}>{u.name}</span> },
+    {
+      key: 'name', label: 'Název',
+      render: (u) => {
+        const badges = getUnitContractBadges(u);
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontWeight: 600 }}>{u.name}</span>
+            {badges.map(c => {
+              const b = MGMT_TYPE_BADGE[c.type] ?? { label: c.type, variant: 'muted' };
+              return (
+                <span
+                  key={c.id}
+                  className={`badge badge--${b.variant}`}
+                  style={{ fontSize: '0.65rem', padding: '1px 5px', lineHeight: 1.3 }}
+                  title={`${b.label} — ${c.principal.displayName}`}
+                >
+                  {c.principal.displayName.length > 12
+                    ? c.principal.displayName.slice(0, 12) + '…'
+                    : c.principal.displayName}
+                </span>
+              );
+            })}
+          </div>
+        );
+      },
+    },
     { key: 'floor', label: 'Patro', render: (u) => u.floor != null ? String(u.floor) : '—' },
     {
       key: 'area', label: 'Plocha', align: 'right',
@@ -153,6 +207,11 @@ export default function PropertyDetailPage() {
                 {property.managedTo ? ` – ${new Date(property.managedTo).toLocaleDateString('cs-CZ')}` : ''}
               </span>
             )}
+            {contracts.length > 0 && (
+              <span style={{ color: 'var(--text-muted)' }}>
+                Kontexty správy: <strong>{contracts.length}</strong>
+              </span>
+            )}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -174,6 +233,18 @@ export default function PropertyDetailPage() {
           color="var(--accent-purple)"
         />
       </div>
+
+      {/* ── Kontexty správy ────────────────────────────────────────── */}
+      <ContractsSection contracts={contracts} navigate={navigate} />
+
+      {/* ── Finanční kontexty ──────────────────────────────────────── */}
+      {finContexts.length > 0 && (
+        <FinancialContextsSection
+          contexts={finContexts}
+          activeId={activeFinContextId}
+          onSelect={setActiveFinContextId}
+        />
+      )}
 
       <h2 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: 12 }}>
         Jednotky
@@ -281,6 +352,134 @@ export default function PropertyDetailPage() {
           onClose={() => setOccupancyUnit(null)}
         />
       )}
+    </div>
+  );
+}
+
+// ─── Contracts Section ──────────────────────────────────────────────────
+
+function ContractsSection({ contracts, navigate }: { contracts: ApiManagementContract[]; navigate: (path: string) => void }) {
+  if (contracts.length === 0) return null;
+
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <h2 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: 12 }}>
+        Kontexty správy
+        <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8, fontSize: '0.85rem' }}>
+          {contracts.length}
+        </span>
+      </h2>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+        {contracts.map((c, i) => {
+          const b = MGMT_TYPE_BADGE[c.type] ?? { label: c.type, variant: 'muted' };
+          const scopeLabel = c.scope === 'whole_property'
+            ? 'celý dům'
+            : `${c._count.units} ${c._count.units === 1 ? 'jednotka' : c._count.units < 5 ? 'jednotky' : 'jednotek'}`;
+          return (
+            <div
+              key={c.id}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px',
+                borderBottom: i < contracts.length - 1 ? '1px solid var(--border)' : undefined,
+                fontSize: '0.85rem',
+              }}
+            >
+              <Badge variant={b.variant as any}>{b.label}</Badge>
+              <button
+                onClick={() => navigate(`/principals/${c.principalId}`)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)', fontWeight: 500, padding: 0, textDecoration: 'underline dotted', textUnderlineOffset: 2, fontSize: '0.85rem' }}
+              >
+                {c.principal.displayName}
+              </button>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{scopeLabel}</span>
+              {c.contractNo && <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginLeft: 'auto' }}>č. {c.contractNo}</span>}
+              <span style={{ color: 'var(--accent-green, #22c55e)', fontSize: '0.78rem', marginLeft: c.contractNo ? 0 : 'auto' }}>&#10003;</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Financial Contexts Section ─────────────────────────────────────────
+
+function FinancialContextsSection({
+  contexts,
+  activeId,
+  onSelect,
+}: {
+  contexts: ApiFinancialContext[];
+  activeId: string | null;
+  onSelect: (id: string | null) => void;
+}) {
+  const showAll = contexts.length > 1;
+
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <h2 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: 12 }}>
+        Finanční kontexty
+        <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8, fontSize: '0.85rem' }}>
+          {contexts.length}
+        </span>
+      </h2>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+        {showAll && (
+          <button
+            onClick={() => onSelect(null)}
+            style={{
+              padding: '6px 14px', borderRadius: 8, fontSize: '0.82rem', fontWeight: 500, cursor: 'pointer',
+              border: '1px solid var(--border)',
+              background: activeId === null ? 'var(--primary, #6366f1)' : 'var(--surface)',
+              color: activeId === null ? '#fff' : 'var(--text)',
+            }}
+          >
+            Vše
+          </button>
+        )}
+        {contexts.map(fc => {
+          const isActive = activeId === fc.id;
+          return (
+            <button
+              key={fc.id}
+              onClick={() => onSelect(isActive && showAll ? null : fc.id)}
+              style={{
+                padding: '6px 14px', borderRadius: 8, fontSize: '0.82rem', fontWeight: 500, cursor: 'pointer',
+                border: '1px solid var(--border)',
+                background: isActive ? 'var(--primary, #6366f1)' : 'var(--surface)',
+                color: isActive ? '#fff' : 'var(--text)',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}
+              title={fc.code ? `Kód: ${fc.code}` : undefined}
+            >
+              {fc.displayName}
+              {fc.vatPayer && <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>DPH</span>}
+            </button>
+          );
+        })}
+      </div>
+      {/* Detail of selected context */}
+      {activeId && <FinancialContextDetail context={contexts.find(fc => fc.id === activeId)!} />}
+    </div>
+  );
+}
+
+function FinancialContextDetail({ context }: { context: ApiFinancialContext }) {
+  if (!context) return null;
+  return (
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16, fontSize: '0.85rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+        <div><span className="text-muted">Název:</span> {context.displayName}</div>
+        <div><span className="text-muted">Typ:</span> {SCOPE_LABELS[context.scopeType] ?? context.scopeType}</div>
+        <div><span className="text-muted">Měna:</span> {context.currency}</div>
+        {context.code && <div><span className="text-muted">Kód:</span> {context.code}</div>}
+        <div><span className="text-muted">DPH:</span> {context.vatPayer ? 'Plátce' : 'Neplátce'}</div>
+        <div><span className="text-muted">Bankovní účty:</span> {context._count.bankAccounts}</div>
+        {context.principal && (
+          <div><span className="text-muted">Principál:</span> {context.principal.displayName}</div>
+        )}
+        {context.invoicePrefix && <div><span className="text-muted">Prefix faktur:</span> {context.invoicePrefix}</div>}
+      </div>
     </div>
   );
 }
