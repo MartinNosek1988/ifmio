@@ -58,6 +58,7 @@ const NAV_SECTIONS: NavSection[] = [
     roles: ['fm', 'owner'],
     items: [
       { to: '/properties', label: 'Nemovitosti', icon: <Building2 size={17} /> },
+      { to: '/principals', label: 'Klienti', icon: <UsersRound size={17} /> },
       { to: '/contacts', label: 'Adresář', icon: <Users size={17} /> },
       { to: '/contracts', label: 'Nájemní smlouvy', icon: <FileText size={17} /> },
       { to: '/residents', label: 'Bydlící', icon: <UserCheck size={17} /> },

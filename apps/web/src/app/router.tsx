@@ -47,6 +47,8 @@ const AssetTypesPage = lazy(() => import('../modules/asset-types/AssetTypesPage'
 const AssetPassportPage = lazy(() => import('../modules/assets/AssetPassportPage'));
 const SuperAdminPage = lazy(() => import('../modules/super-admin/SuperAdminPage'));
 const QrResolvePage = lazy(() => import('../modules/asset-qr/QrResolvePage'));
+const PrincipalsPage = lazy(() => import('../modules/principals/PrincipalsPage'));
+const PrincipalDetailPage = lazy(() => import('../modules/principals/PrincipalDetailPage'));
 
 function withBoundary(name: string, Component: React.ComponentType) {
   return (
@@ -69,6 +71,8 @@ export const router = createBrowserRouter([
       { path: 'dashboard', element: withBoundary('Dashboard', DashboardPage) },
       { path: 'properties', element: withBoundary('Nemovitosti', PropertiesPage) },
       { path: 'properties/:id', element: withBoundary('Detail nemovitosti', PropertyDetailPage) },
+      { path: 'principals', element: withBoundary('Klienti', PrincipalsPage) },
+      { path: 'principals/:principalId', element: withBoundary('Detail klienta', PrincipalDetailPage) },
       { path: 'finance', element: withBoundary('Finance', FinancePage) },
       { path: 'workorders', element: withBoundary('Pracovní úkoly', WorkOrdersPage) },
       { path: 'my-agenda', element: withBoundary('Moje agenda', TechnicianAgendaPage) },
