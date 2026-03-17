@@ -7,10 +7,11 @@ import {
   Wallet, AlertTriangle, TrendingUp,
   MessageSquare, Mail, Settings, BarChart3,
   ClipboardList, ClipboardCheck, ScrollText, UsersRound, FileCheck2,
-  User as UserIcon, LogOut, Shield, Menu, X,
+  User as UserIcon, LogOut, Shield, Menu, X, ChevronDown,
 } from 'lucide-react';
 import { LoadingSpinner } from '../shared/components';
 import { GlobalSearch } from '../modules/search/GlobalSearch';
+import { PropertyPicker } from '../core/components/PropertyPicker';
 import { MioPanel } from '../modules/ai/MioPanel';
 import { NotificationCenter } from '../modules/notifications/NotificationCenter';
 import { OnboardingWizard } from '../modules/onboarding/OnboardingWizard';
@@ -142,6 +143,19 @@ export default function AppShell() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showPropertyPicker, setShowPropertyPicker] = useState(false);
+
+  // Detect active property from URL
+  const propertyMatch = location.pathname.match(/^\/properties\/([^/]+)/);
+  const activePropertyId = propertyMatch?.[1] ?? null;
+
+  // Fetch active property name for topbar breadcrumb
+  const { data: activePropertyData } = useQuery({
+    queryKey: ['properties', activePropertyId],
+    queryFn: () => apiClient.get(`/properties/${activePropertyId}`).then(r => r.data),
+    enabled: !!activePropertyId,
+    staleTime: 60_000,
+  });
 
   // Close mobile sidebar on navigation
   useEffect(() => { setSidebarOpen(false); }, [location.pathname]);
@@ -286,7 +300,27 @@ export default function AppShell() {
         <button className="mobile-menu-btn" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Menu">
           {sidebarOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
-        <div className="topbar__title">{pageTitle}</div>
+        <div className="topbar__title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {pageTitle}
+          {activePropertyData?.name && (
+            <>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem', fontWeight: 400 }}>›</span>
+              <button
+                onClick={() => setShowPropertyPicker(true)}
+                style={{
+                  background: 'none', border: '1px solid var(--border, #e5e7eb)', borderRadius: 6,
+                  padding: '2px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                  fontSize: '0.82rem', fontWeight: 500, color: 'var(--text)',
+                  maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}
+                title="Přepnout nemovitost"
+              >
+                {activePropertyData.name}
+                <ChevronDown size={12} color="var(--text-muted)" />
+              </button>
+            </>
+          )}
+        </div>
         <GlobalSearch />
         <div className="topbar__actions">
           {trialDays !== null && (
@@ -354,6 +388,8 @@ export default function AppShell() {
       {showOnboarding && (
         <OnboardingWizard onComplete={() => setShowOnboarding(false)} />
       )}
+
+      <PropertyPicker open={showPropertyPicker} onClose={() => setShowPropertyPicker(false)} />
     </div>
   );
 }
