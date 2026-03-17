@@ -13,6 +13,8 @@ import BulkUnitForm from './BulkUnitForm';
 import OccupancyForm from './OccupancyForm';
 import { usePropertyContracts, type ApiManagementContract } from './management-contracts-api';
 import { usePropertyFinancialContexts, type ApiFinancialContext } from './financial-contexts-api';
+import { usePropertyOwnerships, useUnitOwnershipsByProperty, type ApiOwnership } from './ownerships-api';
+import { usePropertyTenancies, type ApiTenancy } from './tenancies-api';
 
 const MGMT_TYPE_BADGE: Record<string, { label: string; variant: string }> = {
   hoa_management: { label: 'SVJ', variant: 'blue' },
@@ -36,6 +38,9 @@ export default function PropertyDetailPage() {
   const { data: property, isLoading, error, refetch } = useProperty(id!);
   const { data: contracts = [] } = usePropertyContracts(id!);
   const { data: finContexts = [] } = usePropertyFinancialContexts(id!);
+  const { data: propOwnerships = [] } = usePropertyOwnerships(id!);
+  const { data: unitOwnerships = [] } = useUnitOwnershipsByProperty(id!);
+  const { data: propTenancies = [] } = usePropertyTenancies(id!);
   const [showEditProp, setShowEditProp] = useState(false);
   const [showAddUnit, setShowAddUnit] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
@@ -76,6 +81,24 @@ export default function PropertyDetailPage() {
     // whole_property contracts always apply; selected_units would need unit-level data from API
     return wholePropertyContracts;
   }
+
+  // Build maps: unitId → ownerships and unitId → tenancies
+  const unitOwnershipMap: Record<string, ApiOwnership[]> = {};
+  for (const o of unitOwnerships) {
+    const uid = o.unit?.id ?? '';
+    if (!unitOwnershipMap[uid]) unitOwnershipMap[uid] = [];
+    unitOwnershipMap[uid].push(o);
+  }
+
+  const unitTenancyMap: Record<string, ApiTenancy[]> = {};
+  for (const t of propTenancies) {
+    const uid = t.unit?.id ?? t.unitId;
+    if (!unitTenancyMap[uid]) unitTenancyMap[uid] = [];
+    unitTenancyMap[uid].push(t);
+  }
+
+  // Check if property has SVJ-style contracts (show ownership share column)
+  const hasSvjContract = contracts.some(c => c.type === 'hoa_management');
 
   const unitColumns: Column<ApiUnit>[] = [
     {
@@ -130,9 +153,47 @@ export default function PropertyDetailPage() {
       key: 'personCount', label: 'Osoby', align: 'right',
       render: (u) => u.personCount != null ? String(u.personCount) : <span style={{ color: 'var(--text-muted)' }}>—</span>,
     },
+    ...(hasSvjContract ? [{
+      key: 'ownerShare', label: 'Podíl',
+      render: (u: ApiUnit) => {
+        const owners = unitOwnershipMap[u.id] ?? [];
+        if (owners.length === 0) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
+        const o = owners[0];
+        if (o.shareNumerator != null && o.shareDenominator != null) {
+          return <span style={{ fontFamily: 'monospace', fontSize: '0.82rem' }}>{o.shareNumerator}/{o.shareDenominator}</span>;
+        }
+        if (o.sharePercent != null) {
+          return <span style={{ fontFamily: 'monospace', fontSize: '0.82rem' }}>{Number(o.sharePercent).toFixed(2)}%</span>;
+        }
+        return <span style={{ color: 'var(--text-muted)' }}>—</span>;
+      },
+    }] as Column<ApiUnit>[] : []),
     {
       key: 'owner', label: 'Vlastník/Nájemce',
       render: (u) => {
+        // Show Party-based ownership/tenancy if available
+        const owners = unitOwnershipMap[u.id] ?? [];
+        const tenancies = unitTenancyMap[u.id]?.filter(t => t.isActive) ?? [];
+
+        if (owners.length > 0 || tenancies.length > 0) {
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }} onClick={(e) => e.stopPropagation()}>
+              {owners.map(o => (
+                <span key={o.id} style={{ fontSize: '0.82rem', fontWeight: 500 }}>{o.party.displayName}</span>
+              ))}
+              {tenancies.map(t => (
+                <span key={t.id} style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  {t.party.displayName}
+                  <span className={`badge badge--${t.type === 'lease' ? 'blue' : 'muted'}`} style={{ fontSize: '0.6rem', padding: '0 4px', marginLeft: 4 }}>
+                    {t.type === 'lease' ? 'nájem' : t.type === 'sublease' ? 'podnájem' : t.type}
+                  </span>
+                </span>
+              ))}
+            </div>
+          );
+        }
+
+        // Fallback to legacy occupancy data
         const occ = u.occupancies?.find((o: any) => o.resident);
         if (occ) {
           const r = occ.resident;
@@ -245,6 +306,9 @@ export default function PropertyDetailPage() {
           onSelect={setActiveFinContextId}
         />
       )}
+
+      {/* ── Vlastníci nemovitosti ─────────────────────────────────── */}
+      <PropertyOwnershipsSection ownerships={propOwnerships} />
 
       <h2 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: 12 }}>
         Jednotky
@@ -479,6 +543,62 @@ function FinancialContextDetail({ context }: { context: ApiFinancialContext }) {
           <div><span className="text-muted">Principál:</span> {context.principal.displayName}</div>
         )}
         {context.invoicePrefix && <div><span className="text-muted">Prefix faktur:</span> {context.invoicePrefix}</div>}
+      </div>
+    </div>
+  );
+}
+
+// ─── Property Ownerships Section ────────────────────────────────────────
+
+const OWNERSHIP_ROLE_LABELS: Record<string, string> = {
+  legal_owner: 'vlastník',
+  beneficial_owner: 'spoluvlastník',
+  managing_owner: 'správce',
+  silent_coowner: 'tichý',
+};
+
+function PropertyOwnershipsSection({ ownerships }: { ownerships: ApiOwnership[] }) {
+  if (ownerships.length === 0) return null;
+
+  const thStyle: React.CSSProperties = { padding: '8px 12px', fontWeight: 600, fontSize: '.8rem', color: 'var(--text-muted)', textAlign: 'left', borderBottom: '1px solid var(--border)' };
+  const tdStyle: React.CSSProperties = { padding: '8px 12px', borderBottom: '1px solid var(--border)' };
+
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <h2 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: 12 }}>
+        Vlastníci nemovitosti
+        <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8, fontSize: '0.85rem' }}>
+          {ownerships.length}
+        </span>
+      </h2>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem' }}>
+          <thead>
+            <tr>
+              <th style={thStyle}>Subjekt</th>
+              <th style={{ ...thStyle, textAlign: 'right' }}>Podíl</th>
+              <th style={thStyle}>Role</th>
+              <th style={thStyle}>Od</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ownerships.map(o => (
+              <tr key={o.id}>
+                <td style={tdStyle}>
+                  <span style={{ fontWeight: 500 }}>{o.party.displayName}</span>
+                  {o.party.ic && <span className="text-muted text-sm" style={{ marginLeft: 8 }}>IČ: {o.party.ic}</span>}
+                </td>
+                <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'monospace' }}>
+                  {o.sharePercent != null ? `${Number(o.sharePercent).toFixed(1)}%` : '—'}
+                </td>
+                <td style={tdStyle} className="text-muted">{OWNERSHIP_ROLE_LABELS[o.role] ?? o.role}</td>
+                <td style={tdStyle} className="text-muted">
+                  {o.validFrom ? new Date(o.validFrom).toLocaleDateString('cs-CZ') : '—'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
