@@ -9,11 +9,14 @@ import { MioFindingsService } from '../mio/mio-findings.service';
 import { MioDigestService } from '../mio/mio-digest.service';
 import { MioObservabilityService } from '../mio/mio-observability.service';
 import { MioWebhookService } from '../mio/mio-webhook.service';
+import { BankingService } from '../banking/banking.service';
 
 const ONE_HOUR = 60 * 60 * 1000;
+const FIFTEEN_MIN = 15 * 60 * 1000;
 const SIX_HOURS = 6 * ONE_HOUR;
 const TWENTY_FOUR_HOURS = 24 * ONE_HOUR;
 const BATCH_SIZE = 1000;
+const FIO_RATE_LIMIT_MS = 31_000; // Fio API: 1 req per 30s
 
 @Injectable()
 export class CronService implements OnModuleInit, OnModuleDestroy {
@@ -25,6 +28,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
   private dailyDigestInterval: ReturnType<typeof setInterval> | null = null;
   private scheduledReportsInterval: ReturnType<typeof setInterval> | null = null;
   private recurringGenInterval: ReturnType<typeof setInterval> | null = null;
+  private bankingSyncInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private readonly config: ConfigService,
@@ -37,6 +41,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     private readonly mioDigest: MioDigestService,
     private readonly mioObs: MioObservabilityService,
     private readonly mioWebhooks: MioWebhookService,
+    private readonly banking: BankingService,
   ) {}
 
   onModuleInit() {
@@ -50,6 +55,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     this.initMioDetection();
     this.initMioDigest();
     this.initWebhookOutbox();
+    this.initBankingSync();
   }
 
   onModuleDestroy() {
@@ -80,6 +86,10 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     if (this.recurringGenInterval) {
       clearInterval(this.recurringGenInterval);
       this.recurringGenInterval = null;
+    }
+    if (this.bankingSyncInterval) {
+      clearInterval(this.bankingSyncInterval);
+      this.bankingSyncInterval = null;
     }
     this.logger.log('Cron intervals cleared');
   }
@@ -423,6 +433,36 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
       }
     } catch (err) {
       this.logger.error('Webhook outbox processing FAILED', (err as Error).stack);
+    }
+  }
+
+  // ─── Banking API Sync ────────────────────────────────────────
+
+  private initBankingSync() {
+    this.logger.log('Banking sync enabled — polling every 15min');
+    setTimeout(() => this.runBankingSync(), 120_000); // 2min after startup
+    this.bankingSyncInterval = setInterval(() => this.runBankingSync(), FIFTEEN_MIN);
+  }
+
+  private async runBankingSync() {
+    try {
+      const accountIds = await this.banking.getAccountsDueForSync();
+      if (accountIds.length === 0) return;
+
+      this.logger.log(`Banking sync: ${accountIds.length} accounts due`);
+
+      for (const id of accountIds) {
+        const result = await this.banking.syncAccount(id);
+        if (result.imported > 0) {
+          this.logger.log(`Banking sync ${id}: imported=${result.imported}, skipped=${result.skipped}`);
+        }
+        // Fio API rate limit: wait 31s between requests
+        if (accountIds.indexOf(id) < accountIds.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, FIO_RATE_LIMIT_MS));
+        }
+      }
+    } catch (err) {
+      this.logger.error('Banking sync FAILED', (err as Error).stack);
     }
   }
 }

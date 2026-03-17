@@ -588,6 +588,17 @@ model BankAccount {
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
+  // Banking API sync fields
+  bankProvider      String?          @db.VarChar(20)   // "fio", "kb", "csob", "manual"
+  apiToken          String?          @db.Text           // API token (Fio: read-only token)
+  apiTokenLastFour  String?          @db.VarChar(4)     // For display: "****3456"
+  syncEnabled       Boolean          @default(false)
+  syncIntervalMin   Int              @default(60)       // Polling interval in minutes
+  lastSyncAt        DateTime?
+  lastSyncCursor    String?                              // Last transaction ID for incremental fetch
+  syncStatus        String?          @db.VarChar(20)    // "active", "error", "disabled"
+  syncStatusMessage String?                              // Error detail if syncStatus = "error"
+
   financialContextId String
 
   tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)

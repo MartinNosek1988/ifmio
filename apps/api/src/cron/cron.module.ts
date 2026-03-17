@@ -5,9 +5,10 @@ import { RevisionsModule } from '../revisions/revisions.module';
 import { ReportsModule } from '../reports/reports.module';
 import { RecurringPlansModule } from '../recurring-plans/recurring-plans.module';
 import { MioModule } from '../mio/mio.module';
+import { BankingModule } from '../banking/banking.module';
 
 @Module({
-  imports: [HelpdeskModule, RevisionsModule, ReportsModule, RecurringPlansModule, MioModule],
+  imports: [HelpdeskModule, RevisionsModule, ReportsModule, RecurringPlansModule, MioModule, BankingModule],
   providers: [CronService],
   exports: [CronService],
 })
