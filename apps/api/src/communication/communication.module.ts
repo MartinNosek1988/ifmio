@@ -11,6 +11,6 @@ import { PrismaModule } from '../prisma/prisma.module'
   imports: [PrismaModule],
   controllers: [CommunicationController],
   providers: [CommunicationService, GoSmsProvider, WhatsAppProvider, DopisOnlineProvider, IsdsProvider],
-  exports: [CommunicationService],
+  exports: [CommunicationService, WhatsAppProvider],
 })
 export class CommunicationModule {}
