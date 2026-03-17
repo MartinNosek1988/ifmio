@@ -44,6 +44,7 @@ export interface ApiPrescription {
   dueDay: number;
   variableSymbol?: string;
   description: string;
+  source?: string | null;
   validFrom: string;
   validTo?: string;
   createdAt: string;
@@ -51,7 +52,7 @@ export interface ApiPrescription {
   property?: { id: string; name: string };
   unit?: { id: string; name: string };
   resident?: { id: string; firstName: string; lastName: string };
-  items: { id: string; name: string; amount: number; vatRate: number; unit?: string; quantity: number }[];
+  items: { id: string; name: string; amount: number; vatRate: number; unit?: string; quantity: number; componentId?: string | null }[];
 }
 
 export interface ApiBillingPeriod {

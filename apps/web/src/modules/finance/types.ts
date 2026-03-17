@@ -40,6 +40,8 @@ export interface FinPrescription {
   popis: string;
   typ: string;
   vs?: string;
+  source?: string | null;
+  items?: { id: string; name: string; amount: number; unit?: string; componentId?: string | null }[];
 
   // P0-4: unified naming
   lessee_person_id?: string;

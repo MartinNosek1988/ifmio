@@ -220,6 +220,7 @@ export class FinanceService {
     dueDay?: number;
     variableSymbol?: string;
     description: string;
+    source?: string;
     validFrom: string;
     validTo?: string;
     items?: { name: string; amount: number; vatRate?: number; unit?: string; quantity?: number }[];
@@ -240,6 +241,7 @@ export class FinanceService {
         dueDay: data.dueDay ?? 15,
         variableSymbol: data.variableSymbol,
         description: data.description,
+        source: data.source ?? 'MANUAL',
         validFrom: new Date(data.validFrom),
         validTo: data.validTo ? new Date(data.validTo) : null,
         items: items?.length

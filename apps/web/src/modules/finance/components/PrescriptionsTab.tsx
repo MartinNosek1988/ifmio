@@ -46,7 +46,14 @@ export function PrescriptionsTab({ prescriptions, search, onSearch, onSelect, ge
   const columns: Column<FinPrescription>[] = [
     { key: 'datum', label: 'Datum', render: (p) => <span className="text-muted text-sm">{formatCzDate(p.datum)}</span> },
     { key: 'popis', label: 'Popis', render: (p) => <span style={{ fontWeight: 500 }}>{p.popis}</span> },
-    { key: 'typ', label: 'Typ', render: (p) => <Badge variant="blue">{PRES_TYPE_LABELS[p.typ] || p.typ}</Badge> },
+    { key: 'typ', label: 'Typ', render: (p) => (
+      <span style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+        <Badge variant="blue">{PRES_TYPE_LABELS[p.typ] || p.typ}</Badge>
+        {p.source === 'COMPONENTS' && <Badge variant="green">Ze složek</Badge>}
+        {p.source === 'MANUAL' && <Badge variant="muted">Ruční</Badge>}
+        {p.source === 'CALC' && <Badge variant="blue">Kalkulačka</Badge>}
+      </span>
+    )},
     { key: 'propId', label: 'Nemovitost', render: (p) => <span className="text-sm">{getPropName(p.propId)}</span> },
     { key: 'status', label: 'Status', render: (p) => <Badge variant={statusColor[p.status] || 'muted'}>{label(FIN_STATUS_LABELS, p.status)}</Badge> },
     { key: 'castka', label: 'Částka', align: 'right', render: (p) => <span className="font-semibold">{formatKc(p.castka)}</span> },
