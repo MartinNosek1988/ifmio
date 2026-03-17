@@ -502,10 +502,7 @@ export class HelpdeskService {
     const number = `PROT-${String(ticket!.number).padStart(4, '0')}`
 
     const data: Record<string, unknown> = { ...dto }
-    // TODO: When protocol PDF is generated (via PdfService), create DocumentLink
-    // with entityType: 'ticket' and entityId: ticketId so the PDF appears in
-    // the ticket's "spis" (document collection). Currently, protocol PDF
-    // generation happens in PdfController and does not create DocumentLinks.
+    // Protocol PDF linked to ticket via DocumentLink — handled in ProtocolsService.generatePdf()
     return this.prisma.helpdeskProtocol.upsert({
       where:  { ticketId },
       create: { ticketId, number, ...data } as any,
