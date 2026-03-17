@@ -203,6 +203,7 @@ model Property {
   managedFrom      DateTime?          // ve správě od
   managedTo        DateTime?          // ve správě do
   accountingSystem AccountingSystem?
+  cutoverDate      DateTime?          // datum přechodu na ifmio
   country          String             @default("CZ")
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
@@ -808,10 +809,12 @@ model OwnerAccount {
   propertyId     String
   unitId         String
   residentId     String
-  currentBalance Decimal      @default(0) @db.Decimal(12, 2)
-  lastPostingAt  DateTime?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  currentBalance     Decimal      @default(0) @db.Decimal(12, 2)
+  lastPostingAt      DateTime?
+  openingBalanceSet  Boolean      @default(false)
+  openingBalanceDate DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
 
   property Property @relation(fields: [propertyId], references: [id])
   unit     Unit     @relation(fields: [unitId], references: [id])
@@ -855,6 +858,7 @@ enum LedgerSourceType {
   CREDIT_APPLICATION
   LATE_FEE
   MANUAL_ADJUSTMENT
+  OPENING_BALANCE
 }
 
 // ─── KONTO REMINDERS (Wave 2) ─────────────────────────────────────
@@ -1993,6 +1997,7 @@ model MeterReading {
   value       Float
   consumption Float?
   source      String   @default("manual")
+  isInitial   Boolean  @default(false)
   readBy      String?
   note        String?
   createdAt   DateTime @default(now())

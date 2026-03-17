@@ -25,7 +25,7 @@ export class KontoService {
 
   async postDebit(
     accountId: string, amount: Decimal | number,
-    sourceType: 'PRESCRIPTION' | 'BANK_TRANSACTION' | 'CREDIT_APPLICATION' | 'LATE_FEE' | 'MANUAL_ADJUSTMENT',
+    sourceType: 'PRESCRIPTION' | 'BANK_TRANSACTION' | 'CREDIT_APPLICATION' | 'LATE_FEE' | 'MANUAL_ADJUSTMENT' | 'OPENING_BALANCE',
     sourceId: string, description: string, date?: Date,
   ) {
     const decAmount = new Decimal(amount)
@@ -35,7 +35,7 @@ export class KontoService {
 
   async postCredit(
     accountId: string, amount: Decimal | number,
-    sourceType: 'PRESCRIPTION' | 'BANK_TRANSACTION' | 'CREDIT_APPLICATION' | 'LATE_FEE' | 'MANUAL_ADJUSTMENT',
+    sourceType: 'PRESCRIPTION' | 'BANK_TRANSACTION' | 'CREDIT_APPLICATION' | 'LATE_FEE' | 'MANUAL_ADJUSTMENT' | 'OPENING_BALANCE',
     sourceId: string, description: string, date?: Date,
   ) {
     const decAmount = new Decimal(amount)
@@ -47,7 +47,7 @@ export class KontoService {
     accountId: string,
     type: 'DEBIT' | 'CREDIT' | 'ADJUSTMENT',
     amount: Decimal,
-    sourceType: 'PRESCRIPTION' | 'BANK_TRANSACTION' | 'CREDIT_APPLICATION' | 'LATE_FEE' | 'MANUAL_ADJUSTMENT',
+    sourceType: 'PRESCRIPTION' | 'BANK_TRANSACTION' | 'CREDIT_APPLICATION' | 'LATE_FEE' | 'MANUAL_ADJUSTMENT' | 'OPENING_BALANCE',
     sourceId: string,
     description: string,
     date: Date,
@@ -261,5 +261,95 @@ export class KontoService {
 
       return { sourceEntry, targetEntry }
     })
+  }
+
+  // ─── OPENING BALANCES ──────────────────────────────────────────
+
+  async setOpeningBalance(
+    tenantId: string,
+    propertyId: string,
+    unitId: string,
+    residentId: string,
+    amount: number,
+    cutoverDate: Date,
+    note?: string,
+  ) {
+    const account = await this.getOrCreateAccount(tenantId, propertyId, unitId, residentId)
+
+    if (account.openingBalanceSet) {
+      throw new BadRequestException('Počáteční stav pro toto konto již byl nastaven. Použijte ruční úpravu pro korekce.')
+    }
+
+    let entry = null
+    const decAmount = new Decimal(amount)
+    const sourceId = `opening-${account.id}`
+
+    if (decAmount.gt(0)) {
+      // Dluh — owner owes money
+      entry = await this.postDebit(account.id, decAmount, 'OPENING_BALANCE', sourceId,
+        note || 'Počáteční stav — dluh z předchozího systému', cutoverDate)
+    } else if (decAmount.lt(0)) {
+      // Přeplatek — owner has credit
+      entry = await this.postCredit(account.id, decAmount.abs(), 'OPENING_BALANCE', sourceId,
+        note || 'Počáteční stav — přeplatek z předchozího systému', cutoverDate)
+    }
+
+    const updated = await this.prisma.ownerAccount.update({
+      where: { id: account.id },
+      data: { openingBalanceSet: true, openingBalanceDate: cutoverDate },
+    })
+
+    return { account: updated, entry }
+  }
+
+  async setBulkOpeningBalances(
+    tenantId: string,
+    propertyId: string,
+    cutoverDate: Date,
+    balances: Array<{ unitId: string; residentId: string; amount: number; note?: string }>,
+  ) {
+    let set = 0, skipped = 0, errors = 0
+    const details: Array<{ unitId: string; residentId: string; amount: number; status: string; error?: string }> = []
+
+    for (const b of balances) {
+      try {
+        await this.setOpeningBalance(tenantId, propertyId, b.unitId, b.residentId, b.amount, cutoverDate, b.note)
+        set++
+        details.push({ unitId: b.unitId, residentId: b.residentId, amount: b.amount, status: 'set' })
+      } catch (err: any) {
+        if (err.message?.includes('již byl nastaven')) {
+          skipped++
+          details.push({ unitId: b.unitId, residentId: b.residentId, amount: b.amount, status: 'skipped' })
+        } else {
+          errors++
+          details.push({ unitId: b.unitId, residentId: b.residentId, amount: b.amount, status: 'error', error: err.message })
+        }
+      }
+    }
+
+    return { set, skipped, errors, details }
+  }
+
+  async getOpeningBalanceStatus(tenantId: string, propertyId: string) {
+    const accounts = await this.prisma.ownerAccount.findMany({
+      where: { tenantId, propertyId },
+      include: {
+        unit: { select: { id: true, name: true } },
+        resident: { select: { id: true, firstName: true, lastName: true, companyName: true, isLegalEntity: true } },
+      },
+      orderBy: { unit: { name: 'asc' } },
+    })
+
+    return accounts.map(a => ({
+      unitId: a.unit.id,
+      unitName: a.unit.name,
+      residentId: a.resident.id,
+      residentName: a.resident.isLegalEntity && a.resident.companyName
+        ? a.resident.companyName
+        : `${a.resident.lastName} ${a.resident.firstName}`,
+      hasOpeningBalance: a.openingBalanceSet,
+      openingBalanceDate: a.openingBalanceDate?.toISOString() ?? null,
+      currentBalance: Number(a.currentBalance),
+    }))
   }
 }
