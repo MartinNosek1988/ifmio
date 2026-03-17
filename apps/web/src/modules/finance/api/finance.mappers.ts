@@ -34,6 +34,8 @@ export function mapPrescription(p: ApiPrescription): FinPrescription {
     typ: p.type,
     vs: p.variableSymbol,
     tenantId: p.resident?.id,
+    source: p.source,
+    items: p.items?.map(i => ({ id: i.id, name: i.name, amount: i.amount, unit: i.unit, componentId: i.componentId })),
   };
 }
 

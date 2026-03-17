@@ -42,6 +42,33 @@ export function PredpisDetail({ predpis, transactions, getTenantName }: {
           <div>{formatCzDate(predpis.splatnost)}</div>
         </div>
       </div>
+      {/* Component breakdown for prescriptions generated from složky */}
+      {predpis.source === 'COMPONENTS' && predpis.items && predpis.items.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontWeight: 600, marginBottom: 8, fontSize: '0.875rem' }}>Složky předpisu</div>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+              <thead>
+                <tr style={{ background: 'var(--surface-2)' }}>
+                  <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)', fontSize: '.8rem' }}>Složka</th>
+                  <th style={{ padding: '6px 12px', textAlign: 'right', fontWeight: 600, color: 'var(--text-muted)', fontSize: '.8rem' }}>Částka</th>
+                  <th style={{ padding: '6px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)', fontSize: '.8rem' }}>Výpočet</th>
+                </tr>
+              </thead>
+              <tbody>
+                {predpis.items.map(item => (
+                  <tr key={item.id} style={{ borderTop: '1px solid var(--border)' }}>
+                    <td style={{ padding: '6px 12px', fontWeight: 500 }}>{item.name}</td>
+                    <td style={{ padding: '6px 12px', textAlign: 'right', fontFamily: 'monospace' }}>{formatKc(item.amount)}</td>
+                    <td style={{ padding: '6px 12px', color: 'var(--text-muted)', fontSize: '.82rem' }}>{item.unit || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {matched.length > 0 && (
         <div>
           <div style={{ fontWeight: 600, marginBottom: 8, fontSize: '0.875rem' }}>Spárované platby</div>

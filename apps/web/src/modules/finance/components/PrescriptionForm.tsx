@@ -47,6 +47,7 @@ export function PrescriptionForm({ properties, onClose }: {
         dueDay: Number(form.dueDay) || 15,
         variableSymbol: form.variableSymbol || undefined,
         description: form.description.trim(),
+        source: 'MANUAL',
         validFrom: form.validFrom,
         validTo: form.validTo || undefined,
       },
