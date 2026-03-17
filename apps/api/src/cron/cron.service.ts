@@ -10,6 +10,7 @@ import { MioDigestService } from '../mio/mio-digest.service';
 import { MioObservabilityService } from '../mio/mio-observability.service';
 import { MioWebhookService } from '../mio/mio-webhook.service';
 import { BankingService } from '../banking/banking.service';
+import { WhatsAppAutomationService } from '../whatsapp/whatsapp-automation.service';
 
 const ONE_HOUR = 60 * 60 * 1000;
 const FIFTEEN_MIN = 15 * 60 * 1000;
@@ -42,6 +43,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     private readonly mioObs: MioObservabilityService,
     private readonly mioWebhooks: MioWebhookService,
     private readonly banking: BankingService,
+    private readonly waAutomation: WhatsAppAutomationService,
   ) {}
 
   onModuleInit() {
@@ -56,6 +58,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     this.initMioDigest();
     this.initWebhookOutbox();
     this.initBankingSync();
+    this.initWhatsAppAutomation();
   }
 
   onModuleDestroy() {
@@ -463,6 +466,26 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
       }
     } catch (err) {
       this.logger.error('Banking sync FAILED', (err as Error).stack);
+    }
+  }
+
+  // ─── WhatsApp Automation ─────────────────────────────────────
+
+  private initWhatsAppAutomation() {
+    this.logger.log('WhatsApp automation enabled — daily tasks at 7:00/8:00/9:00');
+    // Check every hour; run at specific hours
+    setInterval(() => this.runWhatsAppAutomation(), ONE_HOUR);
+  }
+
+  private async runWhatsAppAutomation() {
+    const hour = new Date().getHours();
+    try {
+      if (hour === 7) await this.waAutomation.sendDailyDigest();
+      if (hour === 8) await this.waAutomation.sendPaymentReminders();
+      if (hour === 9 && new Date().getDay() === 1) await this.waAutomation.sendLeaseExpirationWarnings();
+      if (hour === 10) await this.waAutomation.sendOverdueAlerts();
+    } catch (err) {
+      this.logger.error('WhatsApp automation FAILED', (err as Error).stack);
     }
   }
 }

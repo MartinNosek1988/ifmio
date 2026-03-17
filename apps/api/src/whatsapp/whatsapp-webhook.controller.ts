@@ -34,20 +34,23 @@ export class WhatsAppWebhookController {
     const change = entry?.changes?.[0]
     const value = change?.value
 
-    // Skip non-message events (status updates, etc.)
     if (!value?.messages?.[0]) return 'OK'
 
     const message = value.messages[0]
     const senderPhone: string = message.from
-    const messageText: string = message.text?.body || ''
     const messageId: string = message.id || ''
 
-    if (!messageText) return 'OK'
-
-    // Process async — Meta needs 200 within 5s
-    this.bot
-      .processIncomingMessage(senderPhone, messageText, messageId)
-      .catch(err => this.logger.error(`WhatsApp processing failed: ${err.message}`, err.stack))
+    if (message.type === 'image' && message.image?.id) {
+      // Image message
+      this.bot
+        .processIncomingImage(senderPhone, message.image.id, message.image.caption || '', messageId)
+        .catch(err => this.logger.error(`WhatsApp image processing failed: ${err.message}`, err.stack))
+    } else if (message.text?.body) {
+      // Text message
+      this.bot
+        .processIncomingMessage(senderPhone, message.text.body, messageId)
+        .catch(err => this.logger.error(`WhatsApp text processing failed: ${err.message}`, err.stack))
+    }
 
     return 'OK'
   }
