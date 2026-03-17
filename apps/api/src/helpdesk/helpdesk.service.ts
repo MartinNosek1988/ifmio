@@ -502,6 +502,7 @@ export class HelpdeskService {
     const number = `PROT-${String(ticket!.number).padStart(4, '0')}`
 
     const data: Record<string, unknown> = { ...dto }
+    // Protocol PDF linked to ticket via DocumentLink — handled in ProtocolsService.generatePdf()
     return this.prisma.helpdeskProtocol.upsert({
       where:  { ticketId },
       create: { ticketId, number, ...data } as any,

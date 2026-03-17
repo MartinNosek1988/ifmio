@@ -491,6 +491,13 @@ export class ProtocolsService {
       data: { generatedPdfDocumentId: document.id },
     })
 
+    // Link PDF to the source ticket so it appears in the ticket's document spis
+    if (protocol.sourceType === 'helpdesk' && protocol.sourceId) {
+      await this.prisma.documentLink.create({
+        data: { documentId: document.id, entityType: 'ticket', entityId: protocol.sourceId },
+      })
+    }
+
     return { documentId: document.id, url: document.url }
   }
 
@@ -529,6 +536,13 @@ export class ProtocolsService {
       where: { id },
       data: { signedDocumentId: document.id },
     })
+
+    // Link signed PDF to the source ticket
+    if (protocol.sourceType === 'helpdesk' && protocol.sourceId) {
+      await this.prisma.documentLink.create({
+        data: { documentId: document.id, entityType: 'ticket', entityId: protocol.sourceId },
+      })
+    }
 
     return { documentId: document.id, url: document.url }
   }
