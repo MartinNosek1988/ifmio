@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Badge, Button, Modal, LoadingState, EmptyState } from '../../../shared/components';
+import OpeningBalanceWizard from './OpeningBalanceWizard';
 import { kontoApi } from '../api/konto.api';
 import type { OwnerAccountSummary as AccountForExport } from '../api/konto.api';
 import { useProperties } from '../../properties/use-properties';
@@ -30,6 +31,7 @@ export default function KontoTab() {
   const [propertyId, setPropertyId] = useState<string>('');
   const { data: accounts = [], isLoading } = usePropertyAccounts(propertyId || undefined);
   const [selectedAccount, setSelectedAccount] = useState<OwnerAccountSummary | null>(null);
+  const [showOpeningBalance, setShowOpeningBalance] = useState(false);
 
   // Auto-select first property
   if (!propertyId && properties.length > 0) setPropertyId(properties[0].id);
@@ -51,6 +53,10 @@ export default function KontoTab() {
           {properties.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
       )}
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <Button size="sm" onClick={() => setShowOpeningBalance(true)}>Počáteční stavy</Button>
+      </div>
 
       {accounts.length === 0 ? <EmptyState title="Žádná konta" description="Konta se vytvoří automaticky při generování předpisů." /> : null}
       {accounts.length === 0 ? null : <>
@@ -99,6 +105,10 @@ export default function KontoTab() {
       {/* Detail modal */}
       {selectedAccount && (
         <KontoDetailModal account={selectedAccount} onClose={() => setSelectedAccount(null)} />
+      )}
+
+      {showOpeningBalance && (
+        <OpeningBalanceWizard propertyId={propertyId} onClose={() => setShowOpeningBalance(false)} />
       )}
     </div>
   );

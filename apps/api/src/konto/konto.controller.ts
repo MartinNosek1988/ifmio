@@ -83,4 +83,35 @@ export class KontoController {
   ) {
     return this.service.applyOverpaymentOffset(user.tenantId, dto.sourceAccountId, dto.targetAccountId, dto.amount, dto.description)
   }
+
+  // ─── OPENING BALANCES ──────────────────────────────────────────
+
+  @Post('opening-balance')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Nastavit počáteční stav konta' })
+  setOpeningBalance(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: { propertyId: string; unitId: string; residentId: string; amount: number; cutoverDate: string; note?: string },
+  ) {
+    return this.service.setOpeningBalance(user.tenantId, dto.propertyId, dto.unitId, dto.residentId, dto.amount, new Date(dto.cutoverDate), dto.note)
+  }
+
+  @Post('opening-balance/bulk')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Hromadné nastavení počátečních stavů' })
+  setBulkOpeningBalances(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: { propertyId: string; cutoverDate: string; balances: Array<{ unitId: string; residentId: string; amount: number; note?: string }> },
+  ) {
+    return this.service.setBulkOpeningBalances(user.tenantId, dto.propertyId, new Date(dto.cutoverDate), dto.balances)
+  }
+
+  @Get('opening-balance/status/:propertyId')
+  @ApiOperation({ summary: 'Stav počátečních stavů nemovitosti' })
+  getOpeningBalanceStatus(
+    @CurrentUser() user: AuthUser,
+    @Param('propertyId') propertyId: string,
+  ) {
+    return this.service.getOpeningBalanceStatus(user.tenantId, propertyId)
+  }
 }

@@ -259,4 +259,75 @@ export class MetersService {
 
     return { success: true }
   }
+
+  // ─── INITIAL READINGS ──────────────────────────────────────────
+
+  async setInitialReading(user: AuthUser, meterId: string, dto: {
+    value: number
+    readingDate: string
+    note?: string
+  }) {
+    await this.getById(user, meterId)
+
+    // Check if initial reading already exists — update instead of duplicate
+    const existing = await this.prisma.meterReading.findFirst({
+      where: { meterId, isInitial: true },
+    })
+
+    if (existing) {
+      const updated = await this.prisma.meterReading.update({
+        where: { id: existing.id },
+        data: {
+          value: dto.value,
+          readingDate: new Date(dto.readingDate),
+          note: dto.note,
+        },
+      })
+      await this.prisma.meter.update({
+        where: { id: meterId },
+        data: { lastReading: dto.value, lastReadingDate: new Date(dto.readingDate) },
+      })
+      return serializeReading(updated)
+    }
+
+    const reading = await this.prisma.meterReading.create({
+      data: {
+        meterId,
+        readingDate: new Date(dto.readingDate),
+        value: dto.value,
+        consumption: 0,
+        source: 'initial',
+        isInitial: true,
+        readBy: 'System',
+        note: dto.note,
+      },
+    })
+
+    await this.prisma.meter.update({
+      where: { id: meterId },
+      data: { lastReading: dto.value, lastReadingDate: new Date(dto.readingDate) },
+    })
+
+    return serializeReading(reading)
+  }
+
+  async setBulkInitialReadings(user: AuthUser, propertyId: string, readings: Array<{
+    meterId: string; value: number; readingDate: string; note?: string
+  }>) {
+    let set = 0, updated = 0, errors = 0
+
+    for (const r of readings) {
+      try {
+        const existing = await this.prisma.meterReading.findFirst({
+          where: { meterId: r.meterId, isInitial: true },
+        })
+        await this.setInitialReading(user, r.meterId, r)
+        if (existing) updated++; else set++
+      } catch {
+        errors++
+      }
+    }
+
+    return { set, updated, errors }
+  }
 }

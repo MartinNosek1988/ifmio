@@ -123,4 +123,27 @@ export class MetersController {
   ) {
     return this.service.deleteReading(user, meterId, readingId)
   }
+
+  // ─── INITIAL READINGS ──────────────────────────────────────────
+
+  @Post(':id/initial-reading')
+  @Roles(...ROLES_OPS)
+  @ApiOperation({ summary: 'Nastavit počáteční odečet měřidla' })
+  setInitialReading(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: { value: number; readingDate: string; note?: string },
+  ) {
+    return this.service.setInitialReading(user, id, dto)
+  }
+
+  @Post('bulk-initial-readings')
+  @Roles(...ROLES_OPS)
+  @ApiOperation({ summary: 'Hromadné počáteční odečty' })
+  setBulkInitialReadings(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: { propertyId: string; readings: Array<{ meterId: string; value: number; readingDate: string; note?: string }> },
+  ) {
+    return this.service.setBulkInitialReadings(user, dto.propertyId, dto.readings)
+  }
 }
