@@ -66,6 +66,9 @@ export class CreateTicketDto {
 
   @IsOptional() @IsString()
   dispatcherUserId?: string;
+
+  @IsOptional() @IsString()
+  assigneeId?: string;
 }
 
 export class UpdateTicketDto {

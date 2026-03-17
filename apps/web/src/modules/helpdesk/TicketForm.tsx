@@ -5,6 +5,7 @@ import { useCreateTicket } from './api/helpdesk.queries';
 import { useProperties } from '../properties/use-properties';
 import { apiClient } from '../../core/api/client';
 import { useAuthStore } from '../../core/auth/auth.store';
+import { documentsApi } from '../documents/api/documents.api';
 import type { ApiProperty } from '../properties/properties-api';
 
 const CATEGORIES = [
@@ -59,8 +60,11 @@ export default function TicketForm({ onClose }: Props) {
     assetId: '',
     requesterUserId: currentUser?.id ?? '',
     dispatcherUserId: '',
+    assigneeId: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploadWarning, setUploadWarning] = useState('');
 
   const set = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -87,8 +91,29 @@ export default function TicketForm({ onClose }: Props) {
         assetId: form.assetId || undefined,
         requesterUserId: form.requesterUserId || undefined,
         dispatcherUserId: form.dispatcherUserId || undefined,
+        assigneeId: form.assigneeId || undefined,
       },
-      { onSuccess: () => onClose() },
+      {
+        onSuccess: async (ticket: any) => {
+          // Upload files after ticket creation (two-step)
+          if (files.length > 0 && ticket?.id) {
+            try {
+              for (const file of files) {
+                await documentsApi.upload(file, {
+                  name: file.name,
+                  category: file.type.startsWith('image/') ? 'photo' : 'other',
+                  entityType: 'ticket',
+                  entityId: ticket.id,
+                });
+              }
+            } catch {
+              setUploadWarning('Požadavek byl vytvořen, ale některé přílohy se nepodařilo nahrát.');
+              return; // Don't close — show warning
+            }
+          }
+          onClose();
+        },
+      },
     );
   };
 
@@ -205,6 +230,17 @@ export default function TicketForm({ onClose }: Props) {
         </div>
       </div>
 
+      {/* Assignee picker */}
+      <div style={{ marginBottom: 14 }}>
+        <label className="form-label">Řešitel</label>
+        <select value={form.assigneeId} onChange={(e) => set('assigneeId', e.target.value)} style={inputStyle()}>
+          <option value="">— nevybráno —</option>
+          {activeUsers.map((u: TenantUser) => (
+            <option key={u.id} value={u.id}>{u.name}</option>
+          ))}
+        </select>
+      </div>
+
       <div style={{ marginBottom: 14 }}>
         <label className="form-label">Popis</label>
         <textarea
@@ -216,10 +252,37 @@ export default function TicketForm({ onClose }: Props) {
         />
       </div>
 
+      {/* File upload */}
+      <div style={{ marginBottom: 14 }}>
+        <label className="form-label">Přílohy</label>
+        <input
+          type="file"
+          multiple
+          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+          onChange={(e) => {
+            if (e.target.files) setFiles(Array.from(e.target.files));
+          }}
+          style={inputStyle()}
+        />
+        {files.length > 0 && (
+          <div style={{ marginTop: 6, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            {files.map((f, i) => (
+              <div key={i}>{f.name} ({(f.size / 1024).toFixed(0)} KB)</div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="text-muted" style={{ fontSize: '0.78rem', marginTop: 8 }}>
         Datum a čas zadání se nastavují automaticky při založení požadavku.
         Termín „Vyřešit do" se určuje podle priority požadavku.
       </div>
+
+      {uploadWarning && (
+        <div style={{ color: 'var(--accent-orange, #f59e0b)', fontSize: '0.85rem', marginTop: 12 }}>
+          {uploadWarning}
+        </div>
+      )}
 
       {createMutation.isError && (
         <div style={{ color: 'var(--danger)', fontSize: '0.85rem', marginTop: 12 }}>
