@@ -75,6 +75,7 @@ model Tenant {
   tenancies                   Tenancy[]
   financialContexts           FinancialContext[]
   settlements                 Settlement[]
+  outboxLogs                  OutboxLog[]
 
   @@map("tenants")
 }
@@ -2915,4 +2916,28 @@ model SettlementItem {
   @@unique([settlementId, unitId])
   @@index([settlementId])
   @@map("settlement_items")
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// COMMUNICATION OUTBOX
+// ═══════════════════════════════════════════════════════════════════
+
+model OutboxLog {
+  id              String    @id @default(cuid())
+  tenantId        String
+  channel         String    @db.VarChar(20)   // email, sms, letter, isds, whatsapp
+  recipient       String                       // email, phone, dataBoxId, or "address"
+  subject         String?
+  status          String    @db.VarChar(20)   // sent, failed, pending
+  externalId      String?                      // Provider's message ID
+  error           String?   @db.Text
+  cost            Decimal?  @db.Decimal(8, 2)
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, channel])
+  @@index([tenantId, createdAt])
+  @@map("outbox_logs")
 }
