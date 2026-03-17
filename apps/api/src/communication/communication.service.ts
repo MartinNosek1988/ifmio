@@ -5,6 +5,7 @@ import { GoSmsProvider } from './channels/gosms.provider'
 import { WhatsAppProvider } from './channels/whatsapp.provider'
 import { DopisOnlineProvider } from './channels/dopisonline.provider'
 import { IsdsProvider } from './channels/isds.provider'
+import { TeamsChannelProvider } from './channels/teams.provider'
 import type { ChannelProvider, ChannelMessage, ChannelResult } from './channels/channel.interface'
 
 export interface OutboxResult extends ChannelResult {
@@ -23,12 +24,14 @@ export class CommunicationService {
     private whatsApp: WhatsAppProvider,
     private dopisOnline: DopisOnlineProvider,
     private isds: IsdsProvider,
+    private teamsChannel: TeamsChannelProvider,
   ) {
     this.providers = new Map()
     this.providers.set('sms', goSms)
     this.providers.set('whatsapp', whatsApp)
     this.providers.set('letter', dopisOnline)
     this.providers.set('isds', isds)
+    this.providers.set('teams', teamsChannel)
   }
 
   async sendMessage(
@@ -82,6 +85,7 @@ export class CommunicationService {
       { channel: 'whatsapp', label: 'WhatsApp', configured: this.whatsApp.isConfigured() },
       { channel: 'letter', label: 'DopisOnline', configured: this.dopisOnline.isConfigured() },
       { channel: 'isds', label: 'Datové schránky', configured: this.isds.isConfigured() },
+      { channel: 'teams', label: 'Microsoft Teams', configured: this.teamsChannel.isConfigured() },
     ]
   }
 
