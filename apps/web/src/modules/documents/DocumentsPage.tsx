@@ -22,12 +22,22 @@ export default function DocumentsPage() {
   const [selected, setSelected] = useState<ApiDocument | null>(null);
   const [showForm, setShowForm] = useState(false);
 
+  // Support ?entityType=ticket&entityId=xxx from "Otevřít spis" link
+  const urlParams = new URLSearchParams(window.location.search);
+  const entityTypeParam = urlParams.get('entityType');
+  const entityIdParam = urlParams.get('entityId');
+
   const params = useMemo(() => {
     const p: Record<string, string> = {};
-    if (filterCategory !== 'all') p.category = filterCategory;
+    if (entityTypeParam && entityIdParam) {
+      p.entityType = entityTypeParam;
+      p.entityId = entityIdParam;
+    } else if (filterCategory !== 'all' && filterCategory !== 'helpdesk') {
+      p.category = filterCategory;
+    }
     if (search) p.search = search;
     return p;
-  }, [filterCategory, search]);
+  }, [filterCategory, search, entityTypeParam, entityIdParam]);
 
   const { data: listData, isLoading, isError, refetch } = useDocuments(params);
   const { data: stats } = useDocStats();
@@ -35,7 +45,9 @@ export default function DocumentsPage() {
   if (isLoading) return <LoadingState text="Nacitani dokumentu..." />;
   if (isError) return <ErrorState onRetry={refetch} />;
 
-  const items = listData?.data ?? [];
+  // Client-side filter for "helpdesk" pill — show only HD- prefixed documents
+  const allItems = listData?.data ?? [];
+  const items = filterCategory === 'helpdesk' ? allItems.filter(d => d.name.startsWith('HD-')) : allItems;
 
   const columns: Column<ApiDocument>[] = [
     { key: 'name', label: 'Nazev', render: d => <span style={{ fontWeight: 600 }}>{d.name}</span> },
@@ -74,7 +86,8 @@ export default function DocumentsPage() {
       <div className="flex-bar" style={{ marginBottom: 16 }}>
         <SearchBar placeholder="Hledat dokumenty..." onSearch={setSearch} />
         <select className="btn" value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
-          <option value="all">Vse</option>
+          <option value="all">Vše</option>
+          <option value="helpdesk">Helpdesk</option>
           {Object.entries(DOC_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
       </div>

@@ -170,7 +170,7 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
     try {
       for (const file of Array.from(files)) {
         await documentsApi.upload(file, {
-          name: file.name,
+          name: `${ticketNum} — ${file.name}`,
           category: file.type.startsWith('image/') ? 'photo' : 'other',
           entityType: 'ticket',
           entityId: ticket.id,
@@ -213,12 +213,22 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
         </div>
       }
     >
-      <div className="tabs" style={{ marginBottom: 16 }}>
-        {tabItems.map((t) => (
-          <button key={t.key} className={`tab-btn${tab === t.key ? ' active' : ''}`} onClick={() => setTab(t.key)}>
-            {t.label}
-          </button>
-        ))}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+        <div className="tabs" style={{ flex: 1, marginBottom: 0 }}>
+          {tabItems.map((t) => (
+            <button key={t.key} className={`tab-btn${tab === t.key ? ' active' : ''}`} onClick={() => setTab(t.key)}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <a
+          href={`/documents?entityType=ticket&entityId=${ticket.id}`}
+          onClick={(e) => { e.preventDefault(); window.open(`/documents?entityType=ticket&entityId=${ticket.id}`, '_blank'); }}
+          style={{ fontSize: '0.78rem', color: 'var(--primary, #6366f1)', textDecoration: 'none', whiteSpace: 'nowrap' }}
+          title="Otevřít spis v dokumentech"
+        >
+          📁 Otevřít spis
+        </a>
       </div>
 
       {/* ── DETAIL TAB ───────────────────────────────────────────── */}

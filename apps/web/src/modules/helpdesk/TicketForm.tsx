@@ -97,10 +97,11 @@ export default function TicketForm({ onClose }: Props) {
         onSuccess: async (ticket: any) => {
           // Upload files after ticket creation (two-step)
           if (files.length > 0 && ticket?.id) {
+            const prefix = `HD-${String(ticket.number).padStart(4, '0')}`;
             try {
               for (const file of files) {
                 await documentsApi.upload(file, {
-                  name: file.name,
+                  name: `${prefix} — ${file.name}`,
                   category: file.type.startsWith('image/') ? 'photo' : 'other',
                   entityType: 'ticket',
                   entityId: ticket.id,
