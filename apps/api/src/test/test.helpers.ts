@@ -15,6 +15,9 @@ export interface TestApp {
 }
 
 export async function createTestApp(): Promise<TestApp> {
+  // Prevent JWT expiry during long-running test suites
+  if (!process.env.JWT_EXPIRES_IN) process.env.JWT_EXPIRES_IN = '24h'
+  if (!process.env.JWT_REFRESH_EXPIRES_IN) process.env.JWT_REFRESH_EXPIRES_IN = '30d'
   const moduleFixture: TestingModule = await Test.createTestingModule({
     imports: [AppModule],
   }).compile()

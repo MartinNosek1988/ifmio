@@ -8,7 +8,7 @@ describe('Asset Passport — GET /assets/:id/passport (e2e)', () => {
   beforeAll(async () => {
     testApp = await createTestApp()
     api = authRequest(testApp.server, testApp.token)
-  }, 30_000)
+  }, 60_000)
 
   afterAll(async () => {
     await closeTestApp(testApp)
