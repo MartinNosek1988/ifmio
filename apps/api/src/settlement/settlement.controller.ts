@@ -20,6 +20,7 @@ export class SettlementController {
   }
 
   @Get()
+  @Roles('tenant_owner', 'tenant_admin', 'finance_manager')
   @ApiOperation({ summary: 'Seznam vyúčtování' })
   findAll(
     @CurrentUser() user: AuthUser,
@@ -31,6 +32,7 @@ export class SettlementController {
   }
 
   @Get(':id')
+  @Roles('tenant_owner', 'tenant_admin', 'finance_manager')
   @ApiOperation({ summary: 'Detail vyúčtování' })
   findOne(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.service.findOne(user.tenantId, id)
@@ -66,6 +68,7 @@ export class SettlementController {
   }
 
   @Get(':id/units/:unitId')
+  @Roles('tenant_owner', 'tenant_admin', 'finance_manager')
   @ApiOperation({ summary: 'Detail vyúčtování pro jednotku' })
   getUnitDetail(@CurrentUser() user: AuthUser, @Param('id') id: string, @Param('unitId') unitId: string) {
     return this.service.getUnitDetail(user.tenantId, id, unitId)

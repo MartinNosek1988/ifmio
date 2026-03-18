@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Query, Body, HttpCode, ForbiddenException, Logger } from '@nestjs/common'
 import { ApiTags, ApiOperation } from '@nestjs/swagger'
+import { Throttle } from '@nestjs/throttler'
 import { Public } from '../common/decorators/public.decorator'
 import { WhatsAppBotService } from './whatsapp-bot.service'
 
@@ -27,6 +28,7 @@ export class WhatsAppWebhookController {
 
   @Post('webhook')
   @Public()
+  @Throttle({ default: { limit: 30, ttl: 60000 } }) // 30 requests per minute per IP
   @HttpCode(200)
   @ApiOperation({ summary: 'Incoming WhatsApp messages' })
   handleIncoming(@Body() body: any): string {
