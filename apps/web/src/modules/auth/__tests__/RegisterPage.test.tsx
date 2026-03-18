@@ -18,21 +18,21 @@ describe('RegisterPage', () => {
     expect(screen.getByText('ifmio')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Jan Novak')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('jan@firma.cz')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('Min. 8 znaku')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/min\. 8/i)).toBeInTheDocument()
   })
 
   it('has a link to the login page', () => {
     renderRegister()
 
-    const link = screen.getByRole('link', { name: /prihlaste se/i })
+    const link = screen.getByRole('link', { name: /přihlaste se/i })
     expect(link).toHaveAttribute('href', '/login')
   })
 
   it('shows step progress indicators', () => {
     renderRegister()
 
-    expect(screen.getByText('Osobni udaje')).toBeInTheDocument()
-    expect(screen.getByText('Organizace')).toBeInTheDocument()
-    expect(screen.getByText('Plan')).toBeInTheDocument()
+    expect(screen.getByText(/osobní údaje/i)).toBeInTheDocument()
+    expect(screen.getByText(/organizace/i)).toBeInTheDocument()
+    expect(screen.getByText(/plán/i)).toBeInTheDocument()
   })
 })

@@ -268,9 +268,18 @@ function PreferencesTab({ profile, onSave, saving }: {
       <div className="profile-grid" style={{ maxWidth: 420 }}>
         <div className="profile-field">
           <label>Jazyk</label>
-          <select value={lang} onChange={(e) => setLang(e.target.value)} className="profile-select">
+          <select value={lang} onChange={(e) => {
+            setLang(e.target.value);
+            import('../../core/i18n').then(({ default: i18n }) => {
+              i18n.changeLanguage(e.target.value);
+              localStorage.setItem('ifmio_lang', e.target.value);
+            });
+          }} className="profile-select">
             <option value="cs">Čeština</option>
             <option value="en">English</option>
+            <option value="sk">Slovenčina</option>
+            <option value="de">Deutsch</option>
+            <option value="uk">Українська</option>
           </select>
         </div>
         <div className="profile-field">

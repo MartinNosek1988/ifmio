@@ -5,6 +5,7 @@ export interface AuthUser {
   role: 'tenant_owner' | 'tenant_admin' | 'property_manager' | 'finance_manager' | 'operations' | 'viewer' | 'unit_owner' | 'unit_tenant';
   tenantId: string;
   partyId?: string | null;
+  language?: string;
 }
 
 export interface LoginRequest {

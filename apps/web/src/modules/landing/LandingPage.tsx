@@ -806,9 +806,9 @@ export default function LandingPage() {
           </div>
           <div className="footer-col">
             <h4>{t('footer.legal')}</h4>
-            <a href="#">{t('footer.privacy')}</a>
-            <a href="#">{t('footer.terms')}</a>
-            <a href="#">{t('footer.gdpr')}</a>
+            <a href="/privacy">{t('footer.privacy')}</a>
+            <a href="/terms">{t('footer.terms')}</a>
+            <a href="/gdpr">{t('footer.gdpr')}</a>
           </div>
         </div>
         <div className="footer-bottom">
