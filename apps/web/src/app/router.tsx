@@ -1,5 +1,5 @@
 ﻿import { lazy } from 'react';
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import AppShell from './AppShell';
 import LoginPage from '../modules/auth/LoginPage';
 import RegisterPage from '../modules/auth/RegisterPage';
@@ -35,7 +35,7 @@ const MioInsightsPage = lazy(() => import('../modules/mio-insights/MioInsightsPa
 const MioAdminPage = lazy(() => import('../modules/mio/MioAdminPage'));
 const MioWebhooksPage = lazy(() => import('../modules/mio/MioWebhooksPage'));
 const TeamPage = lazy(() => import('../modules/team/TeamPage'));
-const AdminPage = lazy(() => import('../modules/admin/AdminPage'));
+// AdminPage removed — was localStorage placeholder; /admin redirects to /team
 const SettingsPage = lazy(() => import('../modules/settings/SettingsPage'));
 const NotificationsPage = lazy(() => import('../modules/notifications/NotificationsPage'));
 const ProfilePage = lazy(() => import('../modules/profile/ProfilePage'));
@@ -107,7 +107,7 @@ export const router = createBrowserRouter([
       { path: 'revisions/settings', element: withBoundary('Revize Katalog', RevisionSettingsPage) },
       { path: 'asset-types', element: withBoundary('Typy zařízení', AssetTypesPage) },
       { path: 'audit', element: withBoundary('Audit log', AuditPage) },
-      { path: 'admin', element: withBoundary('Admin', AdminPage) },
+      { path: 'admin', element: <Navigate to="/team" replace /> },
       { path: 'settings', element: withBoundary('Nastaveni', SettingsPage) },
       { path: 'notifications', element: withBoundary('Notifikace', NotificationsPage) },
       { path: 'profile', element: withBoundary('Profil', ProfilePage) },

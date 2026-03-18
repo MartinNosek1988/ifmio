@@ -18,7 +18,7 @@ export class IsdsProvider implements ChannelProvider {
 
     return {
       success: false,
-      error: 'ISDS integrace bude implementována v další verzi',
+      error: 'ISDS: integrace není implementována — vyžaduje SOAP připojení k datovým schránkám',
     }
   }
 

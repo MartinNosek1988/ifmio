@@ -96,7 +96,6 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/asset-types', label: 'Typy zařízení', icon: <ClipboardList size={17} /> },
       { to: '/mio/insights', label: 'Mio Insights', icon: <AlertTriangle size={17} />, roles: ['fm', 'owner'] },
       { to: '/audit', label: 'Audit log', icon: <ScrollText size={17} /> },
-      { to: '/admin', label: 'Admin', icon: <Settings size={17} /> },
       { to: '/settings', label: 'Nastavení', icon: <Settings size={17} /> },
     ],
   },
@@ -126,7 +125,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/reports': 'Výkazy',
   '/team': 'Uživatelé & Tým',
   '/audit': 'Audit log',
-  '/admin': 'Administrace',
+  // /admin redirects to /team
   '/settings': 'Nastavení organizace',
   '/notifications': 'Notifikace',
   '/profile': 'Můj profil',
