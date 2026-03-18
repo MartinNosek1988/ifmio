@@ -9,6 +9,7 @@
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "type-check": "tsc --noEmit",
     "test": "jest",
+    "test:critical": "jest auth.spec auth-throttle.spec domain-scope.spec scope-gaps-pr3.spec scope-gaps-pr4.spec finance.spec channels-smoke.spec --runInBand --forceExit --bail",
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
