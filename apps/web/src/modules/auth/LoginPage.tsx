@@ -46,7 +46,12 @@ export default function LoginPage() {
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required style={{ width: '100%', padding: '10px 12px', background: '#0f1117', border: '1px solid #2a2d3a', borderRadius: '8px', color: '#fff', fontSize: '0.95rem', boxSizing: 'border-box' }} />
           </div>
           <div style={{ textAlign: 'right', marginBottom: '16px' }}>
-            <Link to="/forgot-password" style={{ color: '#6b7280', fontSize: '0.78rem', textDecoration: 'none' }}>
+            <Link
+              to="/forgot-password"
+              style={{ fontSize: '13px', color: '#94a3b8', textDecoration: 'none' }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#cbd5e1')}
+              onMouseLeave={e => (e.currentTarget.style.color = '#94a3b8')}
+            >
               Zapomněli jste heslo?
             </Link>
           </div>
