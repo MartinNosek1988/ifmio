@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common'
+import { Injectable, NotFoundException, BadRequestException, ConflictException, Logger } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { PropertyScopeService } from '../common/services/property-scope.service'
 import { NotificationsService } from '../notifications/notifications.service'
@@ -15,6 +15,15 @@ const STATUS_LABELS: Record<string, string> = {
 const PRIORITY_LABELS: Record<string, string> = {
   low: 'Nízká', medium: 'Normální', high: 'Vysoká', urgent: 'Urgentní',
 }
+
+const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+  open: ['in_progress', 'resolved', 'closed'],
+  in_progress: ['resolved', 'open', 'closed'],
+  resolved: ['closed', 'open'],
+  closed: [],
+}
+
+const NOT_DELETED = { deletedAt: null }
 
 @Injectable()
 export class HelpdeskService {
@@ -76,6 +85,7 @@ export class HelpdeskService {
     const now = new Date()
     const where: Record<string, unknown> = {
       tenantId: user.tenantId,
+      ...NOT_DELETED,
       ...scopeWhere,
       ...(status     ? { status }     : {}),
       ...(priority   ? { priority }   : {}),
@@ -117,7 +127,7 @@ export class HelpdeskService {
 
   async findOne(user: AuthUser, id: string) {
     const ticket = await this.prisma.helpdeskTicket.findFirst({
-      where:   { id, tenantId: user.tenantId },
+      where:   { id, tenantId: user.tenantId, ...NOT_DELETED },
       include: this.ticketDetailInclude,
     })
     if (!ticket) throw new NotFoundException(`Ticket ${id} nenalezen`)
@@ -149,32 +159,42 @@ export class HelpdeskService {
     if (dto.assigneeId) {
       await this.verifyUserAccess(user, dto.assigneeId)
     }
-    const number = await this.nextTicketNumber(user.tenantId)
     const priority = dto.priority ?? 'medium'
     const now = new Date()
     const effectiveSla = await this.slaPolicy.getEffectiveSla(user.tenantId, priority, dto.propertyId)
     const sla = this.slaPolicy.calculateSlaDates(effectiveSla, now)
 
-    const ticket = await this.prisma.helpdeskTicket.create({
-      data: {
-        tenantId:         user.tenantId,
-        number,
-        title:            dto.title,
-        description:      dto.description,
-        category:         (dto.category ?? 'general') as any,
-        priority:         priority as any,
-        propertyId:       dto.propertyId ?? null,
-        unitId:           dto.unitId    ?? null,
-        residentId:       dto.residentId ?? null,
-        assetId:          dto.assetId ?? null,
-        requesterUserId:  dto.requesterUserId ?? user.id,
-        dispatcherUserId: dto.dispatcherUserId ?? null,
-        assigneeId:       dto.assigneeId ?? null,
-        responseDueAt:    sla.responseDueAt,
-        resolutionDueAt:  sla.resolutionDueAt,
-      },
-      include: this.ticketDetailInclude,
-    })
+    let ticket: any
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const number = await this.nextTicketNumber(user.tenantId)
+      try {
+        ticket = await this.prisma.helpdeskTicket.create({
+          data: {
+            tenantId:         user.tenantId,
+            number,
+            title:            dto.title,
+            description:      dto.description,
+            category:         (dto.category ?? 'general') as any,
+            priority:         priority as any,
+            propertyId:       dto.propertyId ?? null,
+            unitId:           dto.unitId    ?? null,
+            residentId:       dto.residentId ?? null,
+            assetId:          dto.assetId ?? null,
+            requesterUserId:  dto.requesterUserId ?? user.id,
+            dispatcherUserId: dto.dispatcherUserId ?? null,
+            assigneeId:       dto.assigneeId ?? null,
+            responseDueAt:    sla.responseDueAt,
+            resolutionDueAt:  sla.resolutionDueAt,
+          },
+          include: this.ticketDetailInclude,
+        })
+        break
+      } catch (e: any) {
+        if (e?.code === 'P2002' && attempt < 2) continue
+        throw e
+      }
+    }
+    if (!ticket) throw new ConflictException('Nepodařilo se vygenerovat unikátní číslo ticketu')
 
     const serialized = this.serializeTicket(ticket)
 
@@ -229,8 +249,12 @@ export class HelpdeskService {
       changes.push({ field: 'Řešitel požadavku', oldValue: existing.assignee?.name ?? '—', newValue: newName })
     }
 
-    // Status
+    // Status — validate transition
     if (dto.status && dto.status !== existing.status) {
+      const allowed = ALLOWED_TRANSITIONS[existing.status] ?? []
+      if (!allowed.includes(dto.status)) {
+        throw new BadRequestException(`Přechod ze stavu '${existing.status}' na '${dto.status}' není povolený`)
+      }
       data.status = dto.status
       changes.push({
         field: 'Stav',
@@ -313,7 +337,7 @@ export class HelpdeskService {
 
   async deleteTicket(user: AuthUser, id: string) {
     await this.findOne(user, id)
-    await this.prisma.helpdeskTicket.delete({ where: { id } })
+    await this.prisma.helpdeskTicket.update({ where: { id }, data: { deletedAt: new Date() } })
   }
 
   // ─── Ownership actions ──────────────────────────────────────
@@ -529,6 +553,7 @@ export class HelpdeskService {
     const baseWhere = {
       tenantId: user.tenantId,
       status: { in: ['open', 'in_progress'] } as any,
+      ...NOT_DELETED,
       ...scopeWhere,
     }
 
@@ -560,7 +585,7 @@ export class HelpdeskService {
     const since = new Date(now)
     since.setDate(since.getDate() - days)
 
-    const tenantWhere = { tenantId: user.tenantId, ...scopeWhere }
+    const tenantWhere = { tenantId: user.tenantId, ...NOT_DELETED, ...scopeWhere }
     const activeWhere = { ...tenantWhere, status: { in: ['open', 'in_progress'] } as any }
 
     // ── KPI counts ──────────────────────────────────────────────
@@ -790,7 +815,7 @@ export class HelpdeskService {
 
     const num = this.fmtTicketNum(ticket.number)
     const frontendUrl = process.env.FRONTEND_URL || (process.env.DOMAIN ? `https://${process.env.DOMAIN}` : '')
-    const ticketUrl = frontendUrl ? `${frontendUrl}/helpdesk` : ''
+    const ticketUrl = frontendUrl ? `${frontendUrl}/helpdesk?ticket=${ticket.id}` : ''
 
     let subject: string
     if (event === 'create') {
