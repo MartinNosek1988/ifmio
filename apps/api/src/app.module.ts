@@ -53,6 +53,7 @@ import { Microsoft365Module } from './microsoft365/microsoft365.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
+import { CryptoService } from './common/crypto.service';
 
 @Module({
   imports: [
@@ -132,6 +133,8 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
+    CryptoService,
   ],
+  exports: [CryptoService],
 })
 export class AppModule {}

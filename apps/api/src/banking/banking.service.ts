@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { FioProvider } from './fio.provider'
+import { CryptoService } from '../common/crypto.service'
 
 @Injectable()
 export class BankingService {
@@ -9,6 +10,7 @@ export class BankingService {
   constructor(
     private prisma: PrismaService,
     private fio: FioProvider,
+    private crypto: CryptoService,
   ) {}
 
   async syncAccount(bankAccountId: string): Promise<{ imported: number; skipped: number; error?: string }> {
@@ -22,7 +24,9 @@ export class BankingService {
     }
 
     try {
-      const transactions = await this.fio.fetchNewTransactions(account.apiToken)
+      // SECURITY: decrypt token before use (Wave 3)
+      const decryptedToken = this.crypto.decrypt(account.apiToken)
+      const transactions = await this.fio.fetchNewTransactions(decryptedToken)
       let imported = 0
       let skipped = 0
 
@@ -98,12 +102,14 @@ export class BankingService {
     }
 
     const lastFour = dto.apiToken.slice(-4)
+    // SECURITY: encrypt token before storing (Wave 3)
+    const encryptedToken = this.crypto.encrypt(dto.apiToken)
 
     const updated = await this.prisma.bankAccount.update({
       where: { id: bankAccountId },
       data: {
         bankProvider: dto.provider,
-        apiToken: dto.apiToken,
+        apiToken: encryptedToken,
         apiTokenLastFour: lastFour,
         syncEnabled: true,
         syncIntervalMin: dto.syncIntervalMin ?? 60,
@@ -159,17 +165,22 @@ export class BankingService {
       this.logger.warn(`Initial sync failed for ${bankAccountId}: ${err.message}`)
     }
 
-    return updated
+    // SECURITY: strip apiToken from response (Wave 3)
+    const { apiToken: _t, ...safeResponse } = updated
+    return safeResponse
   }
 
   async disableSync(tenantId: string, bankAccountId: string) {
     const account = await this.prisma.bankAccount.findFirst({ where: { id: bankAccountId, tenantId } })
     if (!account) throw new NotFoundException('Bankovní účet nenalezen')
 
-    return this.prisma.bankAccount.update({
+    const result = await this.prisma.bankAccount.update({
       where: { id: bankAccountId },
       data: { syncEnabled: false, syncStatus: 'disabled' },
     })
+    // SECURITY: strip apiToken from response (Wave 3)
+    const { apiToken: _t, ...safe } = result
+    return safe
   }
 
   async triggerSync(tenantId: string, bankAccountId: string) {

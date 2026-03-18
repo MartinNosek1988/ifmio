@@ -126,8 +126,9 @@ export class ManagementContractService {
       }
     }
 
+    // SECURITY: tenantId in WHERE prevents cross-tenant writes (Wave 2)
     return this.prisma.managementContract.update({
-      where: { id },
+      where: { id, tenantId },
       data,
       include: {
         principal: { select: { id: true, displayName: true } },
@@ -148,7 +149,8 @@ export class ManagementContractService {
       throw new ConflictException('Nelze deaktivovat smlouvu s aktivními finančními kontexty')
     }
 
-    await this.prisma.managementContract.update({ where: { id }, data: { isActive: false } })
+    // SECURITY: tenantId in WHERE prevents cross-tenant writes (Wave 2)
+    await this.prisma.managementContract.update({ where: { id, tenantId }, data: { isActive: false } })
   }
 
   async getByProperty(tenantId: string, propertyId: string) {

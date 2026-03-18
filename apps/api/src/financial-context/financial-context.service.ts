@@ -151,8 +151,9 @@ export class FinancialContextService {
     if (dto.isActive !== undefined) data.isActive = dto.isActive
     if (dto.note !== undefined) data.note = dto.note
 
+    // SECURITY: tenantId in WHERE prevents cross-tenant writes (Wave 2)
     return this.prisma.financialContext.update({
-      where: { id },
+      where: { id, tenantId },
       data,
       include: {
         principal: { select: { id: true, displayName: true } },
@@ -172,7 +173,8 @@ export class FinancialContextService {
       throw new ConflictException('Nelze deaktivovat finanční kontext s přiřazenými bankovními účty')
     }
 
-    await this.prisma.financialContext.update({ where: { id }, data: { isActive: false } })
+    // SECURITY: tenantId in WHERE prevents cross-tenant writes (Wave 2)
+    await this.prisma.financialContext.update({ where: { id, tenantId }, data: { isActive: false } })
   }
 
   async getByProperty(tenantId: string, propertyId: string) {

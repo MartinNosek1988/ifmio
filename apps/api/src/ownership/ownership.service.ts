@@ -81,8 +81,9 @@ export class OwnershipService {
       }
     }
 
+    // SECURITY: tenantId in WHERE prevents cross-tenant writes (Wave 2)
     return this.prisma.propertyOwnership.update({
-      where: { id },
+      where: { id, tenantId },
       data,
       include: { party: { select: PARTY_SELECT } },
     })
@@ -91,7 +92,8 @@ export class OwnershipService {
   async removePropertyOwnership(tenantId: string, id: string) {
     const existing = await this.prisma.propertyOwnership.findFirst({ where: { id, tenantId } })
     if (!existing) throw new NotFoundException('Vlastnictví nemovitosti nenalezeno')
-    await this.prisma.propertyOwnership.update({ where: { id }, data: { isActive: false } })
+    // SECURITY: tenantId in WHERE prevents cross-tenant writes (Wave 2)
+    await this.prisma.propertyOwnership.update({ where: { id, tenantId }, data: { isActive: false } })
   }
 
   // ─── Unit Ownership ─────────────────────────────────────────────
@@ -176,8 +178,9 @@ export class OwnershipService {
       }
     }
 
+    // SECURITY: tenantId in WHERE prevents cross-tenant writes (Wave 2)
     return this.prisma.unitOwnership.update({
-      where: { id },
+      where: { id, tenantId },
       data,
       include: { party: { select: PARTY_SELECT } },
     })
@@ -186,6 +189,7 @@ export class OwnershipService {
   async removeUnitOwnership(tenantId: string, id: string) {
     const existing = await this.prisma.unitOwnership.findFirst({ where: { id, tenantId } })
     if (!existing) throw new NotFoundException('Vlastnictví jednotky nenalezeno')
-    await this.prisma.unitOwnership.update({ where: { id }, data: { isActive: false } })
+    // SECURITY: tenantId in WHERE prevents cross-tenant writes (Wave 2)
+    await this.prisma.unitOwnership.update({ where: { id, tenantId }, data: { isActive: false } })
   }
 }

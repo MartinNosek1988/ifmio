@@ -22,7 +22,7 @@ export class FinanceService {
 
   async listBankAccounts(user: AuthUser, financialContextId?: string) {
     const scopeWhere = await this.scope.scopeByPropertyId(user);
-    return this.prisma.bankAccount.findMany({
+    const accounts = await this.prisma.bankAccount.findMany({
       where: {
         tenantId: user.tenantId,
         isActive: true,
@@ -34,6 +34,8 @@ export class FinanceService {
         _count: { select: { transactions: true } },
       },
     });
+    // SECURITY: strip apiToken from response — never expose to frontend (Wave 3)
+    return accounts.map(({ apiToken: _, ...safe }) => safe);
   }
 
   async createBankAccount(user: AuthUser, dto: {
@@ -819,8 +821,8 @@ export class FinanceService {
       }
     }
 
-    await this.prisma.prescriptionItem.deleteMany({ where: { prescriptionId: id } })
-    await this.prisma.prescription.delete({ where: { id } })
+    // AUDIT: soft delete — set status to cancelled, items preserved for audit trail (Wave 2)
+    await this.prisma.prescription.update({ where: { id }, data: { status: 'cancelled' } })
   }
 
   async unmatchTransaction(user: AuthUser, transactionId: string) {
@@ -860,6 +862,7 @@ export class FinanceService {
     if (!tx) throw new NotFoundException('Transakce nenalezena')
     await this.scope.verifyEntityAccess(user, tx.bankAccount?.propertyId ?? null)
 
-    await this.prisma.bankTransaction.delete({ where: { id } })
+    // AUDIT: soft delete — set status to ignored, preserved for audit trail (Wave 2)
+    await this.prisma.bankTransaction.update({ where: { id }, data: { status: 'ignored' } })
   }
 }

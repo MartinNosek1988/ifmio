@@ -110,12 +110,14 @@ export class RecurringPlansService {
     }
     if (data.nextPlannedAt && typeof data.nextPlannedAt === 'string') data.nextPlannedAt = new Date(data.nextPlannedAt)
 
-    return this.prisma.recurringActivityPlan.update({ where: { id }, data })
+    // SECURITY: tenantId in WHERE prevents cross-tenant writes (Wave 2)
+    return this.prisma.recurringActivityPlan.update({ where: { id, tenantId: user.tenantId }, data })
   }
 
   async remove(user: AuthUser, id: string) {
     await this.getById(user, id)
-    await this.prisma.recurringActivityPlan.delete({ where: { id } })
+    // SECURITY: tenantId in WHERE prevents cross-tenant writes (Wave 2)
+    await this.prisma.recurringActivityPlan.delete({ where: { id, tenantId: user.tenantId } })
   }
 
   // ─── GENERATION ─────────────────────────────────────────────

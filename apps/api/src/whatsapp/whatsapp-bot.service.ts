@@ -294,7 +294,8 @@ JSON: {"action":"...","data":{...},"confidence":0.0-1.0,"directResponse":"..."}`
 
   private async createTicket(sender: SenderContext, data: any): Promise<any> {
     try {
-      const user: AuthUser = { id: 'whatsapp-bot', tenantId: sender.tenantId, role: 'tenant_owner', email: 'whatsapp-bot@ifmio.cz', name: 'WhatsApp Bot' }
+      // Use minimal role needed for ticket creation — NOT tenant_owner to prevent privilege escalation
+      const user: AuthUser = { id: 'whatsapp-bot', tenantId: sender.tenantId, role: 'operations', email: 'whatsapp-bot@ifmio.cz', name: 'WhatsApp Bot' }
       return await this.helpdesk.createTicket(user, {
         title: data.title || 'Požadavek z WhatsApp',
         description: data.description || `[Zdroj: WhatsApp — ${sender.party.displayName}]`,
