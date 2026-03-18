@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Download, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Plus, Download, AlertTriangle } from 'lucide-react';
 import { KpiCard, Table, Badge, SearchBar, Button } from '../../shared/components';
 import type { Column, BadgeVariant } from '../../shared/components';
 import { apiClient } from '../../core/api/client';
-import AssetDetailModal from './AssetDetailModal';
 import AssetForm from './AssetForm';
 
 /* ─── types ──────────────────────────────────────────────────────── */
@@ -60,7 +59,6 @@ export default function AssetListPage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('');
-  const [selected, setSelected] = useState<Asset | null>(null);
   const [showForm, setShowForm] = useState(false);
 
   const { data: assets = [], refetch } = useQuery<Asset[]>({
@@ -128,15 +126,6 @@ export default function AssetListPage() {
         </span>
       );
     } },
-    { key: 'passport', label: '', render: (a) => (
-      <button
-        onClick={(e) => { e.stopPropagation(); navigate(`/assets/${a.id}`); }}
-        title="Otevřít passport"
-        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, display: 'flex', alignItems: 'center' }}
-      >
-        <ExternalLink size={14} />
-      </button>
-    ) },
   ];
 
   return (
@@ -178,15 +167,7 @@ export default function AssetListPage() {
         </select>
       </div>
 
-      <Table data={filtered} columns={columns} rowKey={(a) => a.id} onRowClick={(a) => setSelected(a)} emptyText="Žádná zařízení" />
-
-      {selected && (
-        <AssetDetailModal
-          asset={selected}
-          onClose={() => setSelected(null)}
-          onUpdated={() => { refetch(); setSelected(null); }}
-        />
-      )}
+      <Table data={filtered} columns={columns} rowKey={(a) => a.id} onRowClick={(a) => navigate(`/assets/${a.id}`)} emptyText="Žádná zařízení" />
 
       {showForm && (
         <AssetForm onClose={() => { setShowForm(false); refetch(); }} />
