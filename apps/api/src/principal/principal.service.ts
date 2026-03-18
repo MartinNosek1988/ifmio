@@ -111,8 +111,9 @@ export class PrincipalService {
     if (dto.validTo !== undefined) data.validTo = dto.validTo ? new Date(dto.validTo) : null
     if (dto.note !== undefined) data.note = dto.note
 
+    // SECURITY: tenantId in WHERE prevents cross-tenant writes (Wave 2)
     return this.prisma.principal.update({
-      where: { id },
+      where: { id, tenantId },
       data,
       include: { party: { select: { id: true, displayName: true, type: true, ic: true } } },
     })
@@ -129,7 +130,8 @@ export class PrincipalService {
       throw new ConflictException('Nelze deaktivovat principála s aktivními smlouvami')
     }
 
-    await this.prisma.principal.update({ where: { id }, data: { isActive: false } })
+    // SECURITY: tenantId in WHERE prevents cross-tenant writes (Wave 2)
+    await this.prisma.principal.update({ where: { id, tenantId }, data: { isActive: false } })
   }
 
   async getProperties(tenantId: string, principalId: string) {

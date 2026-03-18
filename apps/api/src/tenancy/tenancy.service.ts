@@ -117,8 +117,9 @@ export class TenancyService {
       }
     }
 
+    // SECURITY: tenantId in WHERE prevents cross-tenant writes (Wave 2)
     return this.prisma.tenancy.update({
-      where: { id },
+      where: { id, tenantId },
       data,
       include: {
         party: { select: PARTY_SELECT },
@@ -132,8 +133,9 @@ export class TenancyService {
     if (!existing) throw new NotFoundException('Nájem nenalezen')
     if (!existing.isActive) throw new ConflictException('Nájem je již ukončen')
 
+    // SECURITY: tenantId in WHERE prevents cross-tenant writes (Wave 2)
     return this.prisma.tenancy.update({
-      where: { id },
+      where: { id, tenantId },
       data: { isActive: false, validTo: moveOutDate, moveOutDate },
       include: {
         party: { select: PARTY_SELECT },
@@ -145,6 +147,7 @@ export class TenancyService {
   async remove(tenantId: string, id: string) {
     const existing = await this.prisma.tenancy.findFirst({ where: { id, tenantId } })
     if (!existing) throw new NotFoundException('Nájem nenalezen')
-    await this.prisma.tenancy.update({ where: { id }, data: { isActive: false } })
+    // SECURITY: tenantId in WHERE prevents cross-tenant writes (Wave 2)
+    await this.prisma.tenancy.update({ where: { id, tenantId }, data: { isActive: false } })
   }
 }

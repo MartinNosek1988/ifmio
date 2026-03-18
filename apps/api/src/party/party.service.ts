@@ -106,7 +106,8 @@ export class PartyService {
       if (val !== undefined) data[key] = val
     }
 
-    return this.prisma.party.update({ where: { id }, data })
+    // SECURITY: tenantId in WHERE prevents cross-tenant writes (Wave 2)
+    return this.prisma.party.update({ where: { id, tenantId }, data })
   }
 
   async remove(tenantId: string, id: string) {
@@ -120,7 +121,8 @@ export class PartyService {
       throw new ConflictException('Nelze deaktivovat subjekt s aktivními principály')
     }
 
-    await this.prisma.party.update({ where: { id }, data: { isActive: false } })
+    // SECURITY: tenantId in WHERE prevents cross-tenant writes (Wave 2)
+    await this.prisma.party.update({ where: { id, tenantId }, data: { isActive: false } })
   }
 
   async search(tenantId: string, term: string) {

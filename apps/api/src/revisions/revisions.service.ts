@@ -81,12 +81,14 @@ export class RevisionsService {
 
   async updateSubject(user: AuthUser, id: string, dto: UpdateRevisionSubjectDto) {
     await this.getSubject(user, id)
-    return this.prisma.revisionSubject.update({ where: { id }, data: dto })
+    // SECURITY: tenantId in WHERE prevents cross-tenant writes (Wave 2)
+    return this.prisma.revisionSubject.update({ where: { id, tenantId: user.tenantId }, data: dto })
   }
 
   async deleteSubject(user: AuthUser, id: string) {
     await this.getSubject(user, id)
-    await this.prisma.revisionSubject.delete({ where: { id } })
+    // AUDIT: soft delete — set isActive=false, preserved for audit trail (Wave 2)
+    await this.prisma.revisionSubject.update({ where: { id }, data: { isActive: false } })
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -131,7 +133,8 @@ export class RevisionsService {
       where: { id, tenantId: user.tenantId },
     })
     if (!type) throw new NotFoundException('Typ revize nenalezen')
-    return this.prisma.revisionType.update({ where: { id }, data: dto })
+    // SECURITY: tenantId in WHERE prevents cross-tenant writes (Wave 2)
+    return this.prisma.revisionType.update({ where: { id, tenantId: user.tenantId }, data: dto })
   }
 
   async deleteType(user: AuthUser, id: string) {
@@ -139,7 +142,8 @@ export class RevisionsService {
       where: { id, tenantId: user.tenantId },
     })
     if (!type) throw new NotFoundException('Typ revize nenalezen')
-    await this.prisma.revisionType.delete({ where: { id } })
+    // SECURITY: tenantId in WHERE prevents cross-tenant writes (Wave 2)
+    await this.prisma.revisionType.delete({ where: { id, tenantId: user.tenantId } })
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -355,7 +359,8 @@ export class RevisionsService {
       }
     }
 
-    const updated = await this.prisma.revisionPlan.update({ where: { id }, data })
+    // SECURITY: tenantId in WHERE prevents cross-tenant writes (Wave 2)
+    const updated = await this.prisma.revisionPlan.update({ where: { id, tenantId: user.tenantId }, data })
 
     // Write asset-level audit entry when a plan is marked customized
     if (markedCustomized && (existing as any).assetId) {
@@ -382,7 +387,8 @@ export class RevisionsService {
 
   async deletePlan(user: AuthUser, id: string) {
     await this.getPlan(user, id)
-    await this.prisma.revisionPlan.delete({ where: { id } })
+    // SECURITY: tenantId in WHERE prevents cross-tenant writes (Wave 2)
+    await this.prisma.revisionPlan.delete({ where: { id, tenantId: user.tenantId } })
   }
 
   async getPlanHistory(user: AuthUser, id: string) {

@@ -179,7 +179,8 @@ export class MetersService {
 
   async remove(user: AuthUser, id: string) {
     await this.getById(user, id)
-    await this.prisma.meter.delete({ where: { id } })
+    // AUDIT: soft delete — set isActive=false, preserved for audit trail (Wave 2)
+    await this.prisma.meter.update({ where: { id }, data: { isActive: false } })
     return { success: true }
   }
 
