@@ -7,6 +7,7 @@ import LandingPage from '../modules/landing/LandingPage';
 
 const VerifyEmailPage = lazy(() => import('../modules/auth/VerifyEmailPage'));
 const ForgotPasswordPage = lazy(() => import('../modules/auth/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('../modules/auth/ResetPasswordPage'));
 import { ErrorBoundary } from '../shared/components';
 
 const DashboardPage = lazy(() => import('../modules/dashboard/DashboardPage'));
@@ -65,6 +66,7 @@ export const router = createBrowserRouter([
   { path: '/register', element: <RegisterPage /> },
   { path: '/verify-email', element: withBoundary('VerifyEmail', VerifyEmailPage) },
   { path: '/forgot-password', element: withBoundary('Obnova hesla', ForgotPasswordPage) },
+  { path: '/reset-password', element: withBoundary('Nové heslo', ResetPasswordPage) },
   { path: '/q/:token', element: withBoundary('QR Scan', QrResolvePage) },
   {
     path: '/',

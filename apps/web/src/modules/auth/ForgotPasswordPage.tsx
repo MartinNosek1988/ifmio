@@ -1,14 +1,23 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { apiClient } from '../../core/api/client'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Security: always show success — never reveal if email exists
-    setSubmitted(true)
+    setLoading(true)
+    try {
+      await apiClient.post('/auth/forgot-password', { email })
+    } catch {
+      // Security: always show success — never reveal if email exists
+    } finally {
+      setLoading(false)
+      setSubmitted(true)
+    }
   }
 
   return (
@@ -48,9 +57,10 @@ export default function ForgotPasswordPage() {
             </div>
             <button
               type="submit"
-              style={{ width: '100%', padding: '12px', background: '#6366f1', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '1rem', fontWeight: 600, cursor: 'pointer' }}
+              disabled={loading}
+              style={{ width: '100%', padding: '12px', background: loading ? '#4338ca' : '#6366f1', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '1rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer' }}
             >
-              Odeslat odkaz
+              {loading ? 'Odesílám...' : 'Odeslat odkaz'}
             </button>
             <div style={{ textAlign: 'center', marginTop: '16px' }}>
               <Link to="/login" style={{ color: '#6b7280', fontSize: '0.82rem', textDecoration: 'none' }}>
