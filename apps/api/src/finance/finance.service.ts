@@ -22,7 +22,7 @@ export class FinanceService {
 
   async listBankAccounts(user: AuthUser, financialContextId?: string) {
     const scopeWhere = await this.scope.scopeByPropertyId(user);
-    return this.prisma.bankAccount.findMany({
+    const accounts = await this.prisma.bankAccount.findMany({
       where: {
         tenantId: user.tenantId,
         isActive: true,
@@ -34,6 +34,8 @@ export class FinanceService {
         _count: { select: { transactions: true } },
       },
     });
+    // SECURITY: strip apiToken from response — never expose to frontend (Wave 3)
+    return accounts.map(({ apiToken: _, ...safe }) => safe);
   }
 
   async createBankAccount(user: AuthUser, dto: {
