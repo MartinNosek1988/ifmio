@@ -6,6 +6,7 @@ import RegisterPage from '../modules/auth/RegisterPage';
 import LandingPage from '../modules/landing/LandingPage';
 
 const VerifyEmailPage = lazy(() => import('../modules/auth/VerifyEmailPage'));
+const ForgotPasswordPage = lazy(() => import('../modules/auth/ForgotPasswordPage'));
 import { ErrorBoundary } from '../shared/components';
 
 const DashboardPage = lazy(() => import('../modules/dashboard/DashboardPage'));
@@ -63,6 +64,7 @@ export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <RegisterPage /> },
   { path: '/verify-email', element: withBoundary('VerifyEmail', VerifyEmailPage) },
+  { path: '/forgot-password', element: withBoundary('Obnova hesla', ForgotPasswordPage) },
   { path: '/q/:token', element: withBoundary('QR Scan', QrResolvePage) },
   {
     path: '/',
