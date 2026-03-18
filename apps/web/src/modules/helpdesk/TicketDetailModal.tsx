@@ -61,6 +61,8 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
   const [tab, setTab] = useState<TabKey>('detail');
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({
+    title: '',
+    description: '',
     priority: '',
     assigneeId: '',
     dispatcherUserId: '',
@@ -122,6 +124,8 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
 
   const startEdit = () => {
     setEditForm({
+      title: ticket.title,
+      description: ticket.description ?? '',
       priority: ticket.priority,
       assigneeId: ticket.assigneeId ?? '',
       dispatcherUserId: ticket.dispatcherUserId ?? '',
@@ -132,6 +136,8 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
 
   const handleSaveEdit = () => {
     const dto: Record<string, string | undefined> = {};
+    if (editForm.title !== ticket.title) dto.title = editForm.title;
+    if (editForm.description !== (ticket.description ?? '')) dto.description = editForm.description || undefined;
     if (editForm.priority !== ticket.priority) dto.priority = editForm.priority;
     if (editForm.assigneeId !== (ticket.assigneeId ?? '')) dto.assigneeId = editForm.assigneeId || undefined;
     if (editForm.dispatcherUserId !== (ticket.dispatcherUserId ?? '')) dto.dispatcherUserId = editForm.dispatcherUserId || undefined;
@@ -421,6 +427,14 @@ export default function TicketDetailModal({ ticketId, onClose, onDelete }: Props
           <div style={{ marginBottom: 16 }}>
             {editing ? (
               <div>
+                <div style={{ marginBottom: 12 }}>
+                  <label className="form-label">Název</label>
+                  <input value={editForm.title} onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))} style={inputStyle} />
+                </div>
+                <div style={{ marginBottom: 12 }}>
+                  <label className="form-label">Popis</label>
+                  <textarea value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} rows={3} style={{ ...inputStyle, resize: 'vertical' as const }} />
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                   <div>
                     <label className="form-label">Priorita</label>

@@ -1099,6 +1099,7 @@ model HelpdeskTicket {
   plannedForDate     DateTime?
   requestOrigin      String?   // 'manual' | 'recurring_plan' | 'revision'
   recurringCompletionAppliedAt DateTime?  // idempotence: set once when plan is advanced
+  deletedAt   DateTime?
 
   tenant    Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   property  Property?         @relation(fields: [propertyId], references: [id], onDelete: SetNull)
@@ -1120,6 +1121,7 @@ model HelpdeskTicket {
   @@index([tenantId, resolutionDueAt])
   @@index([assetId])
   @@index([recurringPlanId])
+  @@unique([tenantId, number])
   @@map("helpdesk_tickets")
 }
 

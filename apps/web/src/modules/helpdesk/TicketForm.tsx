@@ -31,6 +31,7 @@ interface Props {
 
 interface TenantUser { id: string; name: string; email: string; role: string; isActive: boolean }
 interface AssetOption { id: string; name: string; location: string | null; property?: { name: string } | null }
+interface ResidentOption { id: string; firstName: string; lastName: string }
 
 export default function TicketForm({ onClose }: Props) {
   const createMutation = useCreateTicket();
@@ -55,6 +56,7 @@ export default function TicketForm({ onClose }: Props) {
     description: '',
     propertyId: '',
     unitId: '',
+    residentId: '',
     priority: 'medium',
     category: 'general',
     assetId: '',
@@ -62,6 +64,13 @@ export default function TicketForm({ onClose }: Props) {
     dispatcherUserId: '',
     assigneeId: '',
   });
+
+  const { data: residentsData } = useQuery<{ data: ResidentOption[] }>({
+    queryKey: ['residents', 'picker', form.propertyId],
+    queryFn: () => apiClient.get('/residents', { params: { propertyId: form.propertyId, limit: 200 } }).then((r) => r.data),
+    enabled: !!form.propertyId,
+  });
+  const residents = residentsData?.data ?? [];
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [files, setFiles] = useState<File[]>([]);
   const [uploadWarning, setUploadWarning] = useState('');
@@ -88,6 +97,7 @@ export default function TicketForm({ onClose }: Props) {
         priority: form.priority,
         propertyId: form.propertyId || undefined,
         unitId: form.unitId || undefined,
+        residentId: form.residentId || undefined,
         assetId: form.assetId || undefined,
         requesterUserId: form.requesterUserId || undefined,
         dispatcherUserId: form.dispatcherUserId || undefined,
@@ -159,7 +169,7 @@ export default function TicketForm({ onClose }: Props) {
           <label className="form-label">Nemovitost</label>
           <select
             value={form.propertyId}
-            onChange={(e) => { set('propertyId', e.target.value); set('unitId', ''); }}
+            onChange={(e) => { set('propertyId', e.target.value); set('unitId', ''); set('residentId', ''); }}
             style={inputStyle()}
           >
             <option value="">— vyberte —</option>
@@ -180,6 +190,19 @@ export default function TicketForm({ onClose }: Props) {
           </div>
         )}
       </div>
+
+      {/* Resident picker */}
+      {form.propertyId && residents.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <label className="form-label">Nájemník / obyvatel</label>
+          <select value={form.residentId} onChange={(e) => set('residentId', e.target.value)} style={inputStyle()}>
+            <option value="">— nevybráno —</option>
+            {residents.map((r) => (
+              <option key={r.id} value={r.id}>{r.firstName} {r.lastName}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div>

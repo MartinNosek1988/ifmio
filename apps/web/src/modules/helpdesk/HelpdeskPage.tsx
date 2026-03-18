@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useMemo, useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, BarChart3, Settings } from 'lucide-react';
 import { KpiCard, Table, Badge, SearchBar, Button, EmptyState, Modal, LoadingState, ErrorState } from '../../shared/components';
 import type { Column, BadgeVariant } from '../../shared/components';
@@ -54,24 +54,41 @@ function getSlaStatus(ticket: ApiTicket): { label: string; variant: BadgeVariant
 
 export default function HelpdeskPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterPriority, setFilterPriority] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
   const [filterOverdue, setFilterOverdue] = useState(false);
   const [filterEscalated, setFilterEscalated] = useState(false);
   const [filterOrigin, setFilterOrigin] = useState('');
   const [selectedTicket, setSelectedTicket] = useState<ApiTicket | null>(null);
   const [deleteTicket, setDeleteTicket] = useState<ApiTicket | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 25;
+
+  // Deep-link: ?ticket=<id> from email
+  const deepLinkTicketId = searchParams.get('ticket');
+  useEffect(() => {
+    if (deepLinkTicketId) {
+      setSelectedTicket({ id: deepLinkTicketId } as ApiTicket);
+    }
+  }, [deepLinkTicketId]);
+
+  // Reset page on filter change
+  useEffect(() => { setPage(1); }, [search, filterStatus, filterPriority, filterCategory, filterOverdue, filterEscalated, filterOrigin]);
 
   const { data: paginated, isLoading, error } = useTickets({
     ...(search ? { search } : {}),
     ...(filterStatus ? { status: filterStatus } : {}),
     ...(filterPriority ? { priority: filterPriority } : {}),
+    ...(filterCategory ? { category: filterCategory } : {}),
     ...(filterOverdue ? { overdue: 'true' } : {}),
     ...(filterEscalated ? { escalated: 'true' } : {}),
     ...(filterOrigin ? { requestOrigin: filterOrigin } : {}),
-    limit: 100,
+    page,
+    limit: PAGE_SIZE,
   });
 
   const { data: slaStats } = useSlaStats();
@@ -225,6 +242,10 @@ export default function HelpdeskPage() {
         >
           Eskalované
         </Button>
+        <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={selectStyle}>
+          <option value="">Všechny kategorie</option>
+          {Object.entries(CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
         <select value={filterOrigin} onChange={(e) => setFilterOrigin(e.target.value)} style={selectStyle}>
           <option value="">Všechny zdroje</option>
           <option value="manual">Manuální</option>
@@ -238,10 +259,19 @@ export default function HelpdeskPage() {
         <Table data={tickets} columns={columns} rowKey={(t) => t.id} onRowClick={(t) => setSelectedTicket(t)} />
       )}
 
+      {/* Pagination */}
+      {paginated && paginated.totalPages > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 16 }}>
+          <Button size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>Předchozí</Button>
+          <span className="text-muted text-sm">Strana {page} z {paginated.totalPages}</span>
+          <Button size="sm" onClick={() => setPage(p => Math.min(paginated.totalPages, p + 1))} disabled={page >= paginated.totalPages}>Další</Button>
+        </div>
+      )}
+
       {selectedTicket && (
         <TicketDetailModal
           ticketId={selectedTicket.id}
-          onClose={() => setSelectedTicket(null)}
+          onClose={() => { setSelectedTicket(null); if (deepLinkTicketId) setSearchParams({}, { replace: true }); }}
           onDelete={() => {
             setDeleteTicket(selectedTicket);
             setSelectedTicket(null);

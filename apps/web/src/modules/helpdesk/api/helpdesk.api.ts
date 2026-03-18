@@ -87,6 +87,7 @@ export interface CreateTicketPayload {
   priority?: string
   propertyId?: string
   unitId?: string
+  residentId?: string
   assetId?: string
   requesterUserId?: string
   dispatcherUserId?: string
