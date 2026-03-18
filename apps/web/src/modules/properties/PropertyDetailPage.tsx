@@ -11,13 +11,14 @@ import PropertyForm, { LEGAL_MODE_LABEL } from './PropertyForm';
 import UnitForm, { SPACE_TYPES } from './UnitForm';
 import BulkUnitForm from './BulkUnitForm';
 import OccupancyForm from './OccupancyForm';
-import { usePropertyContracts, type ApiManagementContract } from './management-contracts-api';
+import { usePropertyContracts, type ApiManagementContract, managementContractsApi } from './management-contracts-api';
 import { usePropertyFinancialContexts, type ApiFinancialContext } from './financial-contexts-api';
 import { usePropertyOwnerships, useUnitOwnershipsByProperty, type ApiOwnership, ownershipsApi } from './ownerships-api';
 import { usePropertyTenancies, type ApiTenancy } from './tenancies-api';
 import OwnershipFormModal from './OwnershipFormModal';
 import TenancyFormModal from './TenancyFormModal';
 import TenancyTerminateModal from './TenancyTerminateModal';
+import ManagementContractFormModal from './ManagementContractFormModal';
 
 const MGMT_TYPE_BADGE: Record<string, { label: string; variant: string }> = {
   hoa_management: { label: 'SVJ', variant: 'blue' },
@@ -54,6 +55,15 @@ export default function PropertyDetailPage() {
   const [ownershipModal, setOwnershipModal] = useState<{ type: 'property' | 'unit'; unitId?: string; ownership?: ApiOwnership } | null>(null);
   const [tenancyModal, setTenancyModal] = useState<{ unitId: string; tenancy?: ApiTenancy } | null>(null);
   const [terminateModal, setTerminateModal] = useState<ApiTenancy | null>(null);
+  const [contractModal, setContractModal] = useState<{ contract?: ApiManagementContract } | null>(null);
+
+  const handleDeleteContract = async (contractId: string) => {
+    if (!window.confirm('Deaktivovat smlouvu správy?')) return;
+    try {
+      await managementContractsApi.remove(contractId);
+      queryClient.invalidateQueries({ queryKey: ['management-contracts'] });
+    } catch { /* ignore */ }
+  };
 
   const refetchOwnerships = () => {
     queryClient.invalidateQueries({ queryKey: ['ownerships'] });
@@ -322,7 +332,13 @@ export default function PropertyDetailPage() {
       </div>
 
       {/* ── Kontexty správy ────────────────────────────────────────── */}
-      <ContractsSection contracts={contracts} navigate={navigate} />
+      <ContractsSection
+        contracts={contracts}
+        navigate={navigate}
+        onAdd={() => setContractModal({})}
+        onEdit={(c) => setContractModal({ contract: c })}
+        onDelete={(c) => handleDeleteContract(c.id)}
+      />
 
       {/* ── Finanční kontexty ──────────────────────────────────────── */}
       {finContexts.length > 0 && (
@@ -476,52 +492,75 @@ export default function PropertyDetailPage() {
           onTerminated={() => { setTerminateModal(null); refetch(); }}
         />
       )}
+
+      {contractModal !== null && (
+        <ManagementContractFormModal
+          propertyId={id}
+          contract={contractModal.contract}
+          onClose={() => setContractModal(null)}
+          onSaved={() => { setContractModal(null); queryClient.invalidateQueries({ queryKey: ['management-contracts'] }); }}
+        />
+      )}
     </div>
   );
 }
 
 // ─── Contracts Section ──────────────────────────────────────────────────
 
-function ContractsSection({ contracts, navigate }: { contracts: ApiManagementContract[]; navigate: (path: string) => void }) {
-  if (contracts.length === 0) return null;
-
+function ContractsSection({ contracts, navigate, onAdd, onEdit, onDelete }: {
+  contracts: ApiManagementContract[];
+  navigate: (path: string) => void;
+  onAdd: () => void;
+  onEdit: (c: ApiManagementContract) => void;
+  onDelete: (c: ApiManagementContract) => void;
+}) {
   return (
     <div style={{ marginBottom: 24 }}>
-      <h2 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: 12 }}>
-        Kontexty správy
-        <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8, fontSize: '0.85rem' }}>
-          {contracts.length}
-        </span>
-      </h2>
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-        {contracts.map((c, i) => {
-          const b = MGMT_TYPE_BADGE[c.type] ?? { label: c.type, variant: 'muted' };
-          const scopeLabel = c.scope === 'whole_property'
-            ? 'celý dům'
-            : `${c._count.units} ${c._count.units === 1 ? 'jednotka' : c._count.units < 5 ? 'jednotky' : 'jednotek'}`;
-          return (
-            <div
-              key={c.id}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px',
-                borderBottom: i < contracts.length - 1 ? '1px solid var(--border)' : undefined,
-                fontSize: '0.85rem',
-              }}
-            >
-              <Badge variant={b.variant as any}>{b.label}</Badge>
-              <button
-                onClick={() => navigate(`/principals/${c.principalId}`)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)', fontWeight: 500, padding: 0, textDecoration: 'underline dotted', textUnderlineOffset: 2, fontSize: '0.85rem' }}
-              >
-                {c.principal.displayName}
-              </button>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{scopeLabel}</span>
-              {c.contractNo && <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginLeft: 'auto' }}>č. {c.contractNo}</span>}
-              <span style={{ color: 'var(--accent-green, #22c55e)', fontSize: '0.78rem', marginLeft: c.contractNo ? 0 : 'auto' }}>&#10003;</span>
-            </div>
-          );
-        })}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <h2 style={{ fontSize: '0.95rem', fontWeight: 600, margin: 0 }}>
+          Kontexty správy
+          <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8, fontSize: '0.85rem' }}>
+            {contracts.length}
+          </span>
+        </h2>
+        <Button size="sm" onClick={onAdd}>+ Přidat smlouvu správy</Button>
       </div>
+      {contracts.length === 0 ? (
+        <div className="text-muted" style={{ fontSize: '.85rem' }}>Nemovitost nemá přiřazené kontexty správy.</div>
+      ) : (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+          {contracts.map((c, i) => {
+            const b = MGMT_TYPE_BADGE[c.type] ?? { label: c.type, variant: 'muted' };
+            const scopeLabel = c.scope === 'whole_property'
+              ? 'celý dům'
+              : `${c._count.units} ${c._count.units === 1 ? 'jednotka' : c._count.units < 5 ? 'jednotky' : 'jednotek'}`;
+            return (
+              <div
+                key={c.id}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px',
+                  borderBottom: i < contracts.length - 1 ? '1px solid var(--border)' : undefined,
+                  fontSize: '0.85rem',
+                }}
+              >
+                <Badge variant={b.variant as any}>{b.label}</Badge>
+                <button
+                  onClick={() => navigate(`/principals/${c.principalId}`)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)', fontWeight: 500, padding: 0, textDecoration: 'underline dotted', textUnderlineOffset: 2, fontSize: '0.85rem' }}
+                >
+                  {c.principal.displayName}
+                </button>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{scopeLabel}</span>
+                {c.contractNo && <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>č. {c.contractNo}</span>}
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+                  <button onClick={() => onEdit(c)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', color: 'var(--text-muted)' }} title="Upravit"><Pencil size={13} /></button>
+                  <button onClick={() => onDelete(c)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', color: 'var(--danger)' }} title="Deaktivovat"><Trash2 size={13} /></button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
