@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Modal, Button } from '../../shared/components';
 import { useCreateRecurringPlan, useUpdateRecurringPlan } from './api/recurring-plans.queries';
 import type { RecurringPlan } from './api/recurring-plans.api';
@@ -36,6 +36,7 @@ interface Props {
 export default function RecurringPlanForm({ assetId, propertyId, existing, onClose }: Props) {
   const createMutation = useCreateRecurringPlan();
   const updateMutation = useUpdateRecurringPlan();
+  const qc = useQueryClient();
   const isEdit = !!existing;
 
   const { data: users = [] } = useQuery<TenantUser[]>({
@@ -95,7 +96,22 @@ export default function RecurringPlanForm({ assetId, propertyId, existing, onClo
     if (isEdit) {
       updateMutation.mutate({ id: existing!.id, dto }, { onSuccess: () => onClose() });
     } else {
-      createMutation.mutate(dto, { onSuccess: () => onClose() });
+      createMutation.mutate(dto, {
+        onSuccess: async () => {
+          // Dismiss any active Mio insight for this asset (asset_no_recurring_plan)
+          try {
+            const res = await apiClient.get('/mio/insights', { params: { entityId: assetId, status: 'active' } });
+            const insights = (res.data as any[]) ?? [];
+            for (const insight of insights) {
+              if (insight.code === 'asset_no_recurring_plan') {
+                await apiClient.post(`/mio/insights/${insight.id}/dismiss`);
+              }
+            }
+            qc.invalidateQueries({ queryKey: ['mio'] });
+          } catch { /* best-effort — don't block close */ }
+          onClose();
+        },
+      });
     }
   };
 
