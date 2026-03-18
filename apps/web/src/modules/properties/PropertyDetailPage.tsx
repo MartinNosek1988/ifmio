@@ -16,6 +16,8 @@ import { usePropertyFinancialContexts, type ApiFinancialContext } from './financ
 import { usePropertyOwnerships, useUnitOwnershipsByProperty, type ApiOwnership, ownershipsApi } from './ownerships-api';
 import { usePropertyTenancies, type ApiTenancy } from './tenancies-api';
 import OwnershipFormModal from './OwnershipFormModal';
+import TenancyFormModal from './TenancyFormModal';
+import TenancyTerminateModal from './TenancyTerminateModal';
 
 const MGMT_TYPE_BADGE: Record<string, { label: string; variant: string }> = {
   hoa_management: { label: 'SVJ', variant: 'blue' },
@@ -50,6 +52,8 @@ export default function PropertyDetailPage() {
   const [occupancyUnit, setOccupancyUnit] = useState<ApiUnit | null>(null);
   const [activeFinContextId, setActiveFinContextId] = useState<string | null>(null);
   const [ownershipModal, setOwnershipModal] = useState<{ type: 'property' | 'unit'; unitId?: string; ownership?: ApiOwnership } | null>(null);
+  const [tenancyModal, setTenancyModal] = useState<{ unitId: string; tenancy?: ApiTenancy } | null>(null);
+  const [terminateModal, setTerminateModal] = useState<ApiTenancy | null>(null);
 
   const refetchOwnerships = () => {
     queryClient.invalidateQueries({ queryKey: ['ownerships'] });
@@ -197,13 +201,20 @@ export default function PropertyDetailPage() {
                 <span key={o.id} style={{ fontSize: '0.82rem', fontWeight: 500 }}>{o.party.displayName}</span>
               ))}
               {tenancies.map(t => (
-                <span key={t.id} style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                  {t.party.displayName}
-                  <span className={`badge badge--${t.type === 'lease' ? 'blue' : 'muted'}`} style={{ fontSize: '0.6rem', padding: '0 4px', marginLeft: 4 }}>
-                    {t.type === 'lease' ? 'nájem' : t.type === 'sublease' ? 'podnájem' : t.type}
+                <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.78rem' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    {t.party.displayName}
+                    <span className={`badge badge--${t.type === 'lease' ? 'blue' : 'muted'}`} style={{ fontSize: '0.6rem', padding: '0 4px', marginLeft: 4 }}>
+                      {t.type === 'lease' ? 'nájem' : t.type === 'sublease' ? 'podnájem' : t.type}
+                    </span>
                   </span>
-                </span>
+                  <button onClick={() => setTenancyModal({ unitId: u.id, tenancy: t })} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--text-muted)' }} title="Upravit"><Pencil size={11} /></button>
+                  <button onClick={() => setTerminateModal(t)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--danger)' }} title="Ukončit"><Trash2 size={11} /></button>
+                </div>
               ))}
+              {tenancies.length === 0 && (
+                <button onClick={() => setTenancyModal({ unitId: u.id })} style={{ background: 'none', border: '1px solid var(--primary, #6366f1)', borderRadius: 4, cursor: 'pointer', color: 'var(--primary, #6366f1)', fontSize: '0.7rem', padding: '1px 6px' }}>+ nájemce</button>
+              )}
             </div>
           );
         }
@@ -445,6 +456,24 @@ export default function PropertyDetailPage() {
           ownership={ownershipModal.ownership}
           onClose={() => setOwnershipModal(null)}
           onSaved={() => { setOwnershipModal(null); refetchOwnerships(); }}
+        />
+      )}
+
+      {tenancyModal && (
+        <TenancyFormModal
+          unitId={tenancyModal.unitId}
+          propertyId={id!}
+          tenancy={tenancyModal.tenancy}
+          onClose={() => setTenancyModal(null)}
+          onSaved={() => { setTenancyModal(null); refetch(); queryClient.invalidateQueries({ queryKey: ['tenancies'] }); }}
+        />
+      )}
+
+      {terminateModal && (
+        <TenancyTerminateModal
+          tenancy={terminateModal}
+          onClose={() => setTerminateModal(null)}
+          onTerminated={() => { setTerminateModal(null); refetch(); }}
         />
       )}
     </div>
