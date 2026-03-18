@@ -1,29 +1,86 @@
+import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../core/auth/auth.store'
+import { useMyUnits, useMyPrescriptions, useMyTickets, useMyKonto } from './api/portal.queries'
+import { Building2, FileText, Headphones, Wallet, Plus, Gauge, FolderOpen } from 'lucide-react'
+import { LoadingSpinner } from '../../shared/components'
 
 export default function PortalPage() {
   const user = useAuthStore(s => s.user)
+  const navigate = useNavigate()
+  const { data: units, isLoading: unitsLoading } = useMyUnits()
+  const { data: prescriptions } = useMyPrescriptions()
+  const { data: tickets } = useMyTickets()
+  const { data: konto } = useMyKonto()
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('ifmio:access_token')
-    sessionStorage.removeItem('ifmio:refresh_token')
-    sessionStorage.removeItem('ifmio:user')
-    window.location.href = '/login'
+  const totalMonthly = (prescriptions ?? []).reduce((s: number, p: any) => s + Number(p.amount ?? 0), 0)
+  const openTickets = (tickets ?? []).filter((t: any) => t.status === 'open' || t.status === 'in_progress').length
+  const balance = konto?.totalBalance ?? 0
+  const propertyNames = [...new Set((units ?? []).map((u: any) => u.property?.name).filter(Boolean))].join(', ')
+
+  if (unitsLoading) return <LoadingSpinner />
+
+  const cardStyle: React.CSSProperties = {
+    background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10,
+    padding: '20px', cursor: 'pointer', transition: 'box-shadow 0.15s',
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f1117' }}>
-      <div style={{ background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: '12px', padding: '48px', width: '100%', maxWidth: '500px', textAlign: 'center' }}>
-        <h1 style={{ color: '#6366f1', fontSize: '2rem', fontWeight: 700, margin: 0 }}>ifmio</h1>
-        <h2 style={{ color: '#f3f4f6', marginTop: '16px', fontSize: '1.2rem' }}>Klientský portál</h2>
-        <p style={{ color: '#9ca3af', marginTop: '12px', lineHeight: 1.6 }}>
-          Vítejte{user?.name ? `, ${user.name}` : ''}. Váš přístup do klientského portálu je připraven.
-          Plná verze portálu bude brzy k dispozici.
-        </p>
-        <button
-          onClick={handleLogout}
-          style={{ marginTop: '24px', padding: '10px 24px', background: '#374151', border: 'none', borderRadius: '8px', color: '#f3f4f6', fontSize: '0.9rem', cursor: 'pointer' }}
-        >
-          Odhlásit se
+    <div>
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0 }}>
+          Dobrý den{user?.name ? `, ${user.name}` : ''}
+        </h1>
+        <p className="text-muted" style={{ marginTop: 4, fontSize: '.9rem' }}>Vítejte v klientském portálu</p>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16, marginBottom: 32 }}>
+        <div style={cardStyle} onClick={() => navigate('/portal/units')}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <Building2 size={20} style={{ color: 'var(--primary, #6366f1)' }} />
+            <span style={{ fontSize: '.82rem', color: 'var(--text-muted)' }}>Moje jednotky</span>
+          </div>
+          <div style={{ fontSize: '1.6rem', fontWeight: 700 }}>{(units ?? []).length}</div>
+          {propertyNames && <div className="text-muted" style={{ fontSize: '.78rem', marginTop: 4 }}>{propertyNames}</div>}
+        </div>
+
+        <div style={cardStyle} onClick={() => navigate('/portal/prescriptions')}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <FileText size={20} style={{ color: 'var(--accent-blue, #3b82f6)' }} />
+            <span style={{ fontSize: '.82rem', color: 'var(--text-muted)' }}>Předpisy plateb</span>
+          </div>
+          <div style={{ fontSize: '1.6rem', fontWeight: 700 }}>{totalMonthly.toLocaleString('cs-CZ')} Kč</div>
+          <div className="text-muted" style={{ fontSize: '.78rem', marginTop: 4 }}>měsíčně</div>
+        </div>
+
+        <div style={cardStyle} onClick={() => navigate('/portal/tickets')}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <Headphones size={20} style={{ color: 'var(--accent-orange, #f59e0b)' }} />
+            <span style={{ fontSize: '.82rem', color: 'var(--text-muted)' }}>Otevřené požadavky</span>
+          </div>
+          <div style={{ fontSize: '1.6rem', fontWeight: 700 }}>{openTickets}</div>
+        </div>
+
+        <div style={cardStyle} onClick={() => navigate('/portal/konto')}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <Wallet size={20} style={{ color: balance >= 0 ? 'var(--success, #22c55e)' : 'var(--danger, #ef4444)' }} />
+            <span style={{ fontSize: '.82rem', color: 'var(--text-muted)' }}>Konto</span>
+          </div>
+          <div style={{ fontSize: '1.6rem', fontWeight: 700, color: balance >= 0 ? 'var(--success, #22c55e)' : 'var(--danger, #ef4444)' }}>
+            {balance >= 0 ? '+' : ''}{balance.toLocaleString('cs-CZ')} Kč
+          </div>
+          <div className="text-muted" style={{ fontSize: '.78rem', marginTop: 4 }}>{balance >= 0 ? 'Přeplatek' : 'Nedoplatek'}</div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <button className="btn btn--primary" onClick={() => navigate('/portal/tickets')} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Plus size={15} /> Nový požadavek
+        </button>
+        <button className="btn" onClick={() => navigate('/portal/meters')} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Gauge size={15} /> Zadat odečet
+        </button>
+        <button className="btn" onClick={() => navigate('/portal/documents')} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <FolderOpen size={15} /> Dokumenty
         </button>
       </div>
     </div>

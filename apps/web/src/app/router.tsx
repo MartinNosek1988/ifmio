@@ -53,6 +53,13 @@ const PrincipalsPage = lazy(() => import('../modules/principals/PrincipalsPage')
 const PrincipalDetailPage = lazy(() => import('../modules/principals/PrincipalDetailPage'));
 const PartiesPage = lazy(() => import('../modules/parties/PartiesPage'));
 const SettlementPage = lazy(() => import('../modules/settlement/SettlementPage'));
+const MyUnitsPage = lazy(() => import('../modules/portal/MyUnitsPage'));
+const MyPrescriptionsPage = lazy(() => import('../modules/portal/MyPrescriptionsPage'));
+const MySettlementsPage = lazy(() => import('../modules/portal/MySettlementsPage'));
+const MyTicketsPage = lazy(() => import('../modules/portal/MyTicketsPage'));
+const MyMetersPage = lazy(() => import('../modules/portal/MyMetersPage'));
+const MyDocumentsPage = lazy(() => import('../modules/portal/MyDocumentsPage'));
+const MyKontoPage = lazy(() => import('../modules/portal/MyKontoPage'));
 
 function withBoundary(name: string, Component: React.ComponentType) {
   return (
@@ -77,6 +84,13 @@ export const router = createBrowserRouter([
     children: [
       { path: 'dashboard', element: withBoundary('Dashboard', DashboardPage) },
       { path: 'portal', element: withBoundary('Klientský portál', PortalPage) },
+      { path: 'portal/units', element: withBoundary('Moje jednotky', MyUnitsPage) },
+      { path: 'portal/prescriptions', element: withBoundary('Předpisy plateb', MyPrescriptionsPage) },
+      { path: 'portal/settlements', element: withBoundary('Vyúčtování', MySettlementsPage) },
+      { path: 'portal/tickets', element: withBoundary('Požadavky', MyTicketsPage) },
+      { path: 'portal/meters', element: withBoundary('Měřiče', MyMetersPage) },
+      { path: 'portal/documents', element: withBoundary('Dokumenty', MyDocumentsPage) },
+      { path: 'portal/konto', element: withBoundary('Konto', MyKontoPage) },
       { path: 'properties', element: withBoundary('Nemovitosti', PropertiesPage) },
       { path: 'properties/:id', element: withBoundary('Detail nemovitosti', PropertyDetailPage) },
       { path: 'principals', element: withBoundary('Klienti', PrincipalsPage) },

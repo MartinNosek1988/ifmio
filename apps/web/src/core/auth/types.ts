@@ -2,8 +2,9 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string;
-  role: 'tenant_owner' | 'tenant_admin' | 'property_manager' | 'finance_manager' | 'operations' | 'viewer';
+  role: 'tenant_owner' | 'tenant_admin' | 'property_manager' | 'finance_manager' | 'operations' | 'viewer' | 'unit_owner' | 'unit_tenant';
   tenantId: string;
+  partyId?: string | null;
 }
 
 export interface LoginRequest {
