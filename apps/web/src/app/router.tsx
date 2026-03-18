@@ -20,11 +20,9 @@ const HelpdeskDashboardPage = lazy(() => import('../modules/helpdesk/HelpdeskDas
 const SlaConfigPage = lazy(() => import('../modules/helpdesk/SlaConfigPage'));
 const AssetListPage = lazy(() => import('../modules/assets/AssetListPage'));
 const MetersPage = lazy(() => import('../modules/meters/MetersPage'));
-const CompliancePage = lazy(() => import('../modules/compliance/CompliancePage'));
 const ContractsPage = lazy(() => import('../modules/contracts/ContractsPage'));
 const ResidentsPage = lazy(() => import('../modules/residents/ResidentsPage'));
 const DocumentsPage = lazy(() => import('../modules/documents/DocumentsPage'));
-const DirectoryPage = lazy(() => import('../modules/directory/DirectoryPage'));
 const CalendarPage = lazy(() => import('../modules/calendar/CalendarPage'));
 const CommunicationPage = lazy(() => import('../modules/communication/CommunicationPage'));
 const ReportingPage = lazy(() => import('../modules/reporting/ReportingPage'));
@@ -86,12 +84,10 @@ export const router = createBrowserRouter([
       { path: 'assets', element: withBoundary('Pasportizace', AssetListPage) },
       { path: 'assets/:id', element: withBoundary('Karta zařízení', AssetPassportPage) },
       { path: 'meters', element: withBoundary('Měřidla', MetersPage) },
-      { path: 'compliance', element: withBoundary('Compliance', CompliancePage) },
       { path: 'contracts', element: withBoundary('Smlouvy', ContractsPage) },
       { path: 'residents', element: withBoundary('Bydlící', ResidentsPage) },
       { path: 'documents', element: withBoundary('Dokumenty', DocumentsPage) },
       { path: 'parties', element: withBoundary('Adresář', PartiesPage) },
-      { path: 'contacts', element: withBoundary('Adresář', DirectoryPage) },
       { path: 'calendar', element: withBoundary('Kalendář', CalendarPage) },
       { path: 'communication', element: withBoundary('Komunikace', CommunicationPage) },
       { path: 'reporting', element: withBoundary('Reporting', ReportingPage) },

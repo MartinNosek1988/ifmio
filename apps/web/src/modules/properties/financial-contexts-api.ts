@@ -24,6 +24,12 @@ export interface ApiFinancialContext {
 export const financialContextsApi = {
   getByProperty: (propertyId: string) =>
     apiClient.get<ApiFinancialContext[]>(`/financial-contexts/by-property/${propertyId}`).then(r => r.data),
+  create: (data: Record<string, unknown>) =>
+    apiClient.post<ApiFinancialContext>('/financial-contexts', data).then(r => r.data),
+  update: (id: string, data: Record<string, unknown>) =>
+    apiClient.patch<ApiFinancialContext>(`/financial-contexts/${id}`, data).then(r => r.data),
+  remove: (id: string) =>
+    apiClient.delete(`/financial-contexts/${id}`),
 }
 
 export function usePropertyFinancialContexts(propertyId: string) {

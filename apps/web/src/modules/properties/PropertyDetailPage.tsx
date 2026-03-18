@@ -12,13 +12,14 @@ import UnitForm, { SPACE_TYPES } from './UnitForm';
 import BulkUnitForm from './BulkUnitForm';
 import OccupancyForm from './OccupancyForm';
 import { usePropertyContracts, type ApiManagementContract, managementContractsApi } from './management-contracts-api';
-import { usePropertyFinancialContexts, type ApiFinancialContext } from './financial-contexts-api';
+import { usePropertyFinancialContexts, type ApiFinancialContext, financialContextsApi } from './financial-contexts-api';
 import { usePropertyOwnerships, useUnitOwnershipsByProperty, type ApiOwnership, ownershipsApi } from './ownerships-api';
 import { usePropertyTenancies, type ApiTenancy } from './tenancies-api';
 import OwnershipFormModal from './OwnershipFormModal';
 import TenancyFormModal from './TenancyFormModal';
 import TenancyTerminateModal from './TenancyTerminateModal';
 import ManagementContractFormModal from './ManagementContractFormModal';
+import FinancialContextFormModal from './FinancialContextFormModal';
 
 const MGMT_TYPE_BADGE: Record<string, { label: string; variant: string }> = {
   hoa_management: { label: 'SVJ', variant: 'blue' },
@@ -56,6 +57,15 @@ export default function PropertyDetailPage() {
   const [tenancyModal, setTenancyModal] = useState<{ unitId: string; tenancy?: ApiTenancy } | null>(null);
   const [terminateModal, setTerminateModal] = useState<ApiTenancy | null>(null);
   const [contractModal, setContractModal] = useState<{ contract?: ApiManagementContract } | null>(null);
+  const [fcModal, setFcModal] = useState<{ context?: ApiFinancialContext } | null>(null);
+
+  const handleDeleteFc = async (fcId: string) => {
+    if (!window.confirm('Deaktivovat finanční kontext?')) return;
+    try {
+      await financialContextsApi.remove(fcId);
+      queryClient.invalidateQueries({ queryKey: ['financial-contexts'] });
+    } catch { /* ignore */ }
+  };
 
   const handleDeleteContract = async (contractId: string) => {
     if (!window.confirm('Deaktivovat smlouvu správy?')) return;
@@ -341,13 +351,14 @@ export default function PropertyDetailPage() {
       />
 
       {/* ── Finanční kontexty ──────────────────────────────────────── */}
-      {finContexts.length > 0 && (
-        <FinancialContextsSection
-          contexts={finContexts}
-          activeId={activeFinContextId}
-          onSelect={setActiveFinContextId}
-        />
-      )}
+      <FinancialContextsSection
+        contexts={finContexts}
+        activeId={activeFinContextId}
+        onSelect={setActiveFinContextId}
+        onAdd={() => setFcModal({})}
+        onEdit={(fc) => setFcModal({ context: fc })}
+        onDelete={(fc) => handleDeleteFc(fc.id)}
+      />
 
       {/* ── Vlastníci nemovitosti ─────────────────────────────────── */}
       <PropertyOwnershipsSection
@@ -501,6 +512,15 @@ export default function PropertyDetailPage() {
           onSaved={() => { setContractModal(null); queryClient.invalidateQueries({ queryKey: ['management-contracts'] }); }}
         />
       )}
+
+      {fcModal !== null && (
+        <FinancialContextFormModal
+          propertyId={id}
+          context={fcModal.context}
+          onClose={() => setFcModal(null)}
+          onSaved={() => { setFcModal(null); queryClient.invalidateQueries({ queryKey: ['financial-contexts'] }); }}
+        />
+      )}
     </div>
   );
 }
@@ -568,24 +588,28 @@ function ContractsSection({ contracts, navigate, onAdd, onEdit, onDelete }: {
 // ─── Financial Contexts Section ─────────────────────────────────────────
 
 function FinancialContextsSection({
-  contexts,
-  activeId,
-  onSelect,
+  contexts, activeId, onSelect, onAdd, onEdit, onDelete,
 }: {
   contexts: ApiFinancialContext[];
   activeId: string | null;
   onSelect: (id: string | null) => void;
+  onAdd: () => void;
+  onEdit: (fc: ApiFinancialContext) => void;
+  onDelete: (fc: ApiFinancialContext) => void;
 }) {
   const showAll = contexts.length > 1;
 
   return (
     <div style={{ marginBottom: 24 }}>
-      <h2 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: 12 }}>
-        Finanční kontexty
-        <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8, fontSize: '0.85rem' }}>
-          {contexts.length}
-        </span>
-      </h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <h2 style={{ fontSize: '0.95rem', fontWeight: 600, margin: 0 }}>
+          Finanční kontexty
+          <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8, fontSize: '0.85rem' }}>
+            {contexts.length}
+          </span>
+        </h2>
+        <Button size="sm" onClick={onAdd}>+ Přidat finanční kontext</Button>
+      </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
         {showAll && (
           <button
@@ -626,7 +650,15 @@ function FinancialContextsSection({
         Zobrazeno pro: <strong>{activeId ? contexts.find(fc => fc.id === activeId)?.displayName ?? '—' : 'Vše'}</strong>
       </div>
       {/* Detail of selected context */}
-      {activeId && <FinancialContextDetail context={contexts.find(fc => fc.id === activeId)!} />}
+      {activeId && (
+        <div>
+          <FinancialContextDetail context={contexts.find(fc => fc.id === activeId)!} />
+          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+            <Button size="sm" onClick={() => onEdit(contexts.find(fc => fc.id === activeId)!)}>Upravit</Button>
+            <Button size="sm" variant="danger" onClick={() => onDelete(contexts.find(fc => fc.id === activeId)!)}>Deaktivovat</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
