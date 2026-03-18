@@ -197,6 +197,7 @@ export class AuthService {
       where: { id: user.id },
       select: {
         id: true, email: true, name: true, role: true, tenantId: true,
+        partyId: true,
         phone: true, position: true, avatarBase64: true,
         language: true, timezone: true, dateFormat: true, notifEmail: true,
         createdAt: true, lastLoginAt: true,
@@ -485,6 +486,11 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(password, 12)
 
+    // Try to find a matching Party by email to link user
+    const matchingParty = await this.prisma.party.findFirst({
+      where: { tenantId: inv.tenantId, email: inv.email, isActive: true },
+    })
+
     await this.prisma.user.create({
       data: {
         tenantId: inv.tenantId,
@@ -493,6 +499,7 @@ export class AuthService {
         passwordHash,
         role: inv.role,
         isActive: true,
+        partyId: matchingParty?.id ?? undefined,
       },
     })
 

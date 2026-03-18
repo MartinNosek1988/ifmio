@@ -7,6 +7,8 @@ export const ROLE_HIERARCHY: Record<UserRole, number> = {
   property_manager: 30,
   operations: 20,
   viewer: 10,
+  unit_owner: 5,
+  unit_tenant: 4,
 };
 
 /** Roles that can write (create/update) general entities */
