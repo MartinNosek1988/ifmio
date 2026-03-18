@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { apiClient } from '../api/client';
+import i18n from '../i18n';
 import type { AuthUser, LoginRequest, RegisterRequest, AuthResponse } from './types';
 
 interface AuthState {
@@ -54,6 +55,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
     try {
       const res = await apiClient.get<AuthUser>('/auth/me');
+      // Sync i18n language from user profile
+      if (res.data.language && res.data.language !== i18n.language) {
+        i18n.changeLanguage(res.data.language);
+      }
       set({ user: res.data, isLoggedIn: true, isLoading: false });
     } catch {
       sessionStorage.removeItem('ifmio:access_token');
