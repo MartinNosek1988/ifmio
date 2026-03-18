@@ -53,3 +53,20 @@ export class InviteUserDto {
   @IsString()
   password!: string;
 }
+
+export class SendInvitationDto {
+  @IsEmail()
+  email!: string;
+
+  @IsString()
+  name!: string;
+
+  @IsEnum(['tenant_owner', 'tenant_admin', 'property_manager', 'finance_manager', 'operations', 'viewer', 'unit_owner', 'unit_tenant'])
+  role!: string;
+
+  @IsOptional() @IsString()
+  propertyId?: string;
+
+  @IsOptional() @IsString()
+  unitId?: string;
+}

@@ -1,6 +1,7 @@
 import {
   Injectable,
   UnauthorizedException,
+  BadRequestException,
   ConflictException,
   NotFoundException,
   Logger,
@@ -133,7 +134,7 @@ export class AuthService {
     const user = await this.prisma.user.findFirst({
       where: { email: dto.email, isActive: true },
     });
-    if (!user || !(await bcrypt.compare(dto.password, user.passwordHash))) {
+    if (!user || !user.passwordHash || !(await bcrypt.compare(dto.password, user.passwordHash))) {
       // Audit failed login — with or without known user
       this.prisma.auditLog.create({
         data: {
@@ -242,6 +243,7 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Uživatel nenalezen');
 
+    if (!user.passwordHash) throw new UnauthorizedException('Účet nemá nastavené heslo');
     const valid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
     if (!valid) throw new UnauthorizedException('Nesprávné aktuální heslo');
 
@@ -457,6 +459,50 @@ export class AuthService {
     })
 
     this.logger.log(`Password reset completed for user ${user.id}`)
+  }
+
+  // ─── Invitation Acceptance ──────────────────────────────────
+
+  async getInvitationInfo(token: string) {
+    const inv = await this.prisma.tenantInvitation.findUnique({
+      where: { token },
+      include: { tenant: { select: { name: true } } },
+    })
+    if (!inv || inv.acceptedAt || inv.expiresAt < new Date()) {
+      throw new BadRequestException('Neplatná nebo expirovaná pozvánka')
+    }
+    return { name: inv.name, email: inv.email, tenantName: inv.tenant.name, role: inv.role, expiresAt: inv.expiresAt }
+  }
+
+  async acceptInvitation(token: string, password: string, name?: string) {
+    const inv = await this.prisma.tenantInvitation.findUnique({ where: { token }, include: { tenant: true } })
+    if (!inv) throw new BadRequestException('Neplatná pozvánka')
+    if (inv.acceptedAt) throw new BadRequestException('Pozvánka již byla použita')
+    if (inv.expiresAt < new Date()) throw new BadRequestException('Platnost pozvánky vypršela')
+
+    const existing = await this.prisma.user.findFirst({ where: { tenantId: inv.tenantId, email: inv.email } })
+    if (existing) throw new ConflictException('Uživatel s tímto e-mailem již existuje')
+
+    const passwordHash = await bcrypt.hash(password, 12)
+
+    await this.prisma.user.create({
+      data: {
+        tenantId: inv.tenantId,
+        email: inv.email,
+        name: name ?? inv.name,
+        passwordHash,
+        role: inv.role,
+        isActive: true,
+      },
+    })
+
+    await this.prisma.tenantInvitation.update({
+      where: { token },
+      data: { acceptedAt: new Date() },
+    })
+
+    this.logger.log(`Invitation accepted: ${inv.email} joined tenant ${inv.tenantId}`)
+    return { success: true }
   }
 
   private maskEmail(email: string): string {

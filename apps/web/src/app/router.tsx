@@ -8,6 +8,8 @@ import LandingPage from '../modules/landing/LandingPage';
 const VerifyEmailPage = lazy(() => import('../modules/auth/VerifyEmailPage'));
 const ForgotPasswordPage = lazy(() => import('../modules/auth/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('../modules/auth/ResetPasswordPage'));
+const AcceptInvitationPage = lazy(() => import('../modules/auth/AcceptInvitationPage'));
+const PortalPage = lazy(() => import('../modules/portal/PortalPage'));
 import { ErrorBoundary } from '../shared/components';
 
 const DashboardPage = lazy(() => import('../modules/dashboard/DashboardPage'));
@@ -67,12 +69,14 @@ export const router = createBrowserRouter([
   { path: '/verify-email', element: withBoundary('VerifyEmail', VerifyEmailPage) },
   { path: '/forgot-password', element: withBoundary('Obnova hesla', ForgotPasswordPage) },
   { path: '/reset-password', element: withBoundary('Nové heslo', ResetPasswordPage) },
+  { path: '/accept-invitation', element: withBoundary('Přijetí pozvánky', AcceptInvitationPage) },
   { path: '/q/:token', element: withBoundary('QR Scan', QrResolvePage) },
   {
     path: '/',
     element: <AppShell />,
     children: [
       { path: 'dashboard', element: withBoundary('Dashboard', DashboardPage) },
+      { path: 'portal', element: withBoundary('Klientský portál', PortalPage) },
       { path: 'properties', element: withBoundary('Nemovitosti', PropertiesPage) },
       { path: 'properties/:id', element: withBoundary('Detail nemovitosti', PropertyDetailPage) },
       { path: 'principals', element: withBoundary('Klienti', PrincipalsPage) },

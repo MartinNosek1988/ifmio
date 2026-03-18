@@ -4,6 +4,7 @@ import {
   Get,
   Patch,
   Body,
+  Param,
   Req,
   HttpCode,
   HttpStatus,
@@ -113,5 +114,21 @@ export class AuthController {
   async resetPassword(@Body() body: { token: string; password: string }) {
     await this.auth.resetPassword(body.token, body.password);
     return { message: 'ok' };
+  }
+
+  @Public()
+  @Get('invitation-info/:token')
+  @ApiOperation({ summary: 'Informace o pozvánce (pro předvyplnění formuláře)' })
+  getInvitationInfo(@Param('token') token: string) {
+    return this.auth.getInvitationInfo(token);
+  }
+
+  @Public()
+  @Post('accept-invitation')
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Přijmout pozvánku a vytvořit účet' })
+  acceptInvitation(@Body() body: { token: string; password: string; name?: string }) {
+    return this.auth.acceptInvitation(body.token, body.password, body.name);
   }
 }
