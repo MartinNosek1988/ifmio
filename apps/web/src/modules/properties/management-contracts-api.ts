@@ -26,6 +26,12 @@ export const managementContractsApi = {
     apiClient.get<ApiManagementContract[]>('/management-contracts', { params }).then(r => r.data),
   getByProperty: (propertyId: string) =>
     apiClient.get<ApiManagementContract[]>(`/management-contracts/by-property/${propertyId}`).then(r => r.data),
+  create: (data: Record<string, unknown>) =>
+    apiClient.post<ApiManagementContract>('/management-contracts', data).then(r => r.data),
+  update: (id: string, data: Record<string, unknown>) =>
+    apiClient.patch<ApiManagementContract>(`/management-contracts/${id}`, data).then(r => r.data),
+  remove: (id: string) =>
+    apiClient.delete(`/management-contracts/${id}`),
 }
 
 export function useManagementContracts(params?: Record<string, unknown>) {

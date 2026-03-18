@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Building2, Users, UserCheck } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+import { ArrowLeft, Building2, Users, UserCheck, Pencil, Trash2 } from 'lucide-react'
 import { Badge, Button, LoadingState, EmptyState, ErrorState } from '../../shared/components'
 import { usePrincipal, usePrincipalProperties, usePrincipalUnits, usePrincipalTenants } from './api/principals.queries'
+import ManagementContractFormModal from '../properties/ManagementContractFormModal'
+import { managementContractsApi } from '../properties/management-contracts-api'
 
 const TYPE_LABELS: Record<string, { label: string; color: string }> = {
   hoa: { label: 'SVJ', color: 'blue' },
@@ -45,6 +48,17 @@ export default function PrincipalDetailPage() {
 
   const party = principal.party
   const t = TYPE_LABELS[principal.type] ?? { label: principal.type, color: 'muted' }
+  const qc = useQueryClient()
+  const [contractModal, setContractModal] = useState<{ contract?: any } | null>(null)
+
+  const handleDeleteContract = async (contractId: string) => {
+    if (!window.confirm('Deaktivovat smlouvu správy?')) return
+    try {
+      await managementContractsApi.remove(contractId)
+      qc.invalidateQueries({ queryKey: ['principals'] })
+      qc.invalidateQueries({ queryKey: ['management-contracts'] })
+    } catch { /* ignore */ }
+  }
 
   return (
     <div>
@@ -74,17 +88,38 @@ export default function PrincipalDetailPage() {
       </div>
 
       {/* Tab content */}
-      {tab === 'overview' && <OverviewTab principal={principal} />}
+      {tab === 'overview' && (
+        <OverviewTab
+          principal={principal}
+          onAddContract={() => setContractModal({})}
+          onEditContract={(c: any) => setContractModal({ contract: c })}
+          onDeleteContract={(c: any) => handleDeleteContract(c.id)}
+        />
+      )}
       {tab === 'properties' && <PropertiesTab principalId={principalId!} />}
       {tab === 'units' && <UnitsTab principalId={principalId!} />}
       {tab === 'tenants' && <TenantsTab principalId={principalId!} />}
+
+      {contractModal !== null && (
+        <ManagementContractFormModal
+          principalId={principalId}
+          contract={contractModal.contract}
+          onClose={() => setContractModal(null)}
+          onSaved={() => { setContractModal(null); qc.invalidateQueries({ queryKey: ['principals'] }); qc.invalidateQueries({ queryKey: ['management-contracts'] }); }}
+        />
+      )}
     </div>
   )
 }
 
 // ─── Overview Tab ────────────────────────────────────────────────────
 
-function OverviewTab({ principal }: { principal: any }) {
+function OverviewTab({ principal, onAddContract, onEditContract, onDeleteContract }: {
+  principal: any;
+  onAddContract: () => void;
+  onEditContract: (c: any) => void;
+  onDeleteContract: (c: any) => void;
+}) {
   const party = principal.party
   const contracts = principal.managementContracts ?? []
   const fcs = principal.financialContexts ?? []
@@ -107,20 +142,27 @@ function OverviewTab({ principal }: { principal: any }) {
       )}
 
       {/* Management contracts */}
-      {contracts.length > 0 && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 }}>
-          <div style={{ fontWeight: 600, marginBottom: 10, fontSize: '.9rem' }}>Smlouvy o správě ({contracts.length})</div>
-          {contracts.map((c: any) => (
-            <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: '.85rem' }}>
-              <div>
-                <span style={{ fontWeight: 500 }}>{c.property?.name ?? '—'}</span>
-                <span className="text-muted" style={{ marginLeft: 8 }}>{c.property?.address}</span>
-              </div>
-              <Badge variant={c.isActive ? 'green' : 'muted'}>{MGMT_TYPE_LABELS[c.type] ?? c.type}</Badge>
-            </div>
-          ))}
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <div style={{ fontWeight: 600, fontSize: '.9rem' }}>Smlouvy o správě ({contracts.length})</div>
+          <Button size="sm" onClick={onAddContract}>+ Přidat smlouvu</Button>
         </div>
-      )}
+        {contracts.length === 0 ? (
+          <div className="text-muted" style={{ fontSize: '.85rem' }}>Žádné smlouvy o správě.</div>
+        ) : contracts.map((c: any) => (
+          <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: '.85rem' }}>
+            <div>
+              <span style={{ fontWeight: 500 }}>{c.property?.name ?? '—'}</span>
+              <span className="text-muted" style={{ marginLeft: 8 }}>{c.property?.address}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Badge variant={c.isActive ? 'green' : 'muted'}>{MGMT_TYPE_LABELS[c.type] ?? c.type}</Badge>
+              <button onClick={() => onEditContract(c)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-muted)' }} title="Upravit"><Pencil size={13} /></button>
+              <button onClick={() => onDeleteContract(c)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--danger)' }} title="Deaktivovat"><Trash2 size={13} /></button>
+            </div>
+          </div>
+        ))}
+      </div>
 
       {/* Financial contexts */}
       {fcs.length > 0 && (
