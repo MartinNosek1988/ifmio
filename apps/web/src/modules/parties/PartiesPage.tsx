@@ -110,6 +110,7 @@ export default function PartiesPage() {
                     <td style={tdStyle}>
                       <span style={{ fontWeight: 600 }}>{p.displayName}</span>
                       {!p.isActive && <Badge variant="muted">neaktivní</Badge>}
+                      {p.datumZaniku && <Badge variant="red">zaniklý</Badge>}
                     </td>
                     <td style={tdStyle}><Badge variant={t.color as any}>{t.label}</Badge></td>
                     <td style={tdStyle} className="text-muted">{p.ic ?? '—'}</td>
@@ -220,6 +221,11 @@ function PartyDetailModal({
         </div>
       }
     >
+      {party.datumZaniku && (
+        <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid var(--danger, #ef4444)', borderRadius: 6, padding: '8px 12px', color: 'var(--danger, #ef4444)', fontSize: '.85rem', marginBottom: 12, fontWeight: 600 }}>
+          Zaniklý subjekt dle ARES ({party.datumZaniku.slice(0, 10)})
+        </div>
+      )}
       <div style={infoStyle}>
         <div style={fieldStyle}><span className="text-muted">Typ:</span> <Badge variant={t.color as any}>{t.label}</Badge></div>
         <div style={fieldStyle}><span className="text-muted">Stav:</span> <Badge variant={party.isActive ? 'green' : 'muted'}>{party.isActive ? 'Aktivní' : 'Neaktivní'}</Badge></div>
@@ -230,6 +236,8 @@ function PartyDetailModal({
         {party.street && <div style={{ ...fieldStyle, gridColumn: '1 / -1' }}><span className="text-muted">Adresa:</span> {[party.street, party.city, party.postalCode].filter(Boolean).join(', ')}</div>}
         {party.bankAccount && <div style={fieldStyle}><span className="text-muted">Účet:</span> {party.bankAccount}{party.bankCode ? `/${party.bankCode}` : ''}</div>}
         {party.dataBoxId && <div style={fieldStyle}><span className="text-muted">Dat. schránka:</span> {party.dataBoxId}</div>}
+        {party.pravniForma && <div style={fieldStyle}><span className="text-muted">Právní forma:</span> {party.pravniForma}</div>}
+        {party.datumVzniku && <div style={fieldStyle}><span className="text-muted">Datum vzniku:</span> {party.datumVzniku.slice(0, 10)}</div>}
         {party.note && <div style={{ ...fieldStyle, gridColumn: '1 / -1' }}><span className="text-muted">Poznámka:</span> {party.note}</div>}
       </div>
 

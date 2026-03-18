@@ -16,6 +16,8 @@ model Tenant {
   slug          String     @unique
   plan          TenantPlan @default(free)
   isActive      Boolean    @default(true)
+  ico           String?    // IČO správcovské firmy
+  dic           String?    // DIČ správcovské firmy
   maxUsers      Int        @default(5)
   maxProperties Int        @default(3)
   trialEndsAt   DateTime?
@@ -76,6 +78,7 @@ model Tenant {
   financialContexts           FinancialContext[]
   settlements                 Settlement[]
   outboxLogs                  OutboxLog[]
+  invitations                 TenantInvitation[]
 
   @@map("tenants")
 }
@@ -93,10 +96,11 @@ model User {
   id           String    @id @default(uuid())
   tenantId     String
   email        String
-  passwordHash String
+  passwordHash String?
   name         String
   role         UserRole  @default(viewer)
   isActive     Boolean   @default(true)
+  partyId      String?
   phone        String?
   position     String?
   avatarBase64 String?
@@ -104,13 +108,17 @@ model User {
   timezone     String    @default("Europe/Prague")
   dateFormat   String    @default("DD.MM.YYYY")
   notifEmail   Boolean   @default(true)
+  passwordResetToken   String?   @unique
+  passwordResetExpiry  DateTime?
   lastLoginAt  DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
   tenant                  Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  party                   Party?                   @relation("UserParty", fields: [partyId], references: [id], onDelete: SetNull)
   refreshTokens           RefreshToken[]
   emailVerificationTokens EmailVerificationToken[]
+  sentInvitations         TenantInvitation[]       @relation("InvitedBy")
   auditLogs               AuditLog[]
   assignedTickets         HelpdeskTicket[]  @relation("TicketAssignee")
   requestedTickets        HelpdeskTicket[]  @relation("TicketRequester")
@@ -143,6 +151,32 @@ enum UserRole {
   finance_manager
   operations
   viewer
+  unit_owner
+  unit_tenant
+}
+
+model TenantInvitation {
+  id          String    @id @default(uuid())
+  tenantId    String
+  email       String
+  name        String
+  role        UserRole
+  token       String    @unique
+  propertyId  String?
+  unitId      String?
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  invitedById String
+  createdAt   DateTime  @default(now())
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invitedBy User      @relation("InvitedBy", fields: [invitedById], references: [id])
+  property  Property? @relation(fields: [propertyId], references: [id])
+  unit      Unit?     @relation(fields: [unitId], references: [id])
+
+  @@index([tenantId])
+  @@index([token])
+  @@map("tenant_invitations")
 }
 
 model RefreshToken {
@@ -212,6 +246,7 @@ model Property {
   ico              String?            // IČ subjektu (SVJ/BD)
   dic              String?            // DIČ
   isVatPayer       Boolean            @default(false)
+  dataBoxId        String?            // ID datové schránky SVJ/BD z ARES
   legalMode        PropertyLegalMode  @default(OWNERSHIP)
   managedFrom      DateTime?          // ve správě od
   managedTo        DateTime?          // ve správě do
@@ -251,6 +286,7 @@ model Property {
   propertyOwnerships         PropertyOwnership[]
   financialContexts          FinancialContext[]
   settlements                Settlement[]
+  invitations                TenantInvitation[]
 
   @@index([tenantId])
   @@map("properties")
@@ -353,6 +389,7 @@ model Unit {
   unitOwnerships           UnitOwnership[]
   tenancies                Tenancy[]
   settlementItems          SettlementItem[]
+  invitations              TenantInvitation[]
 
   @@index([propertyId])
   @@map("units")
@@ -2503,6 +2540,14 @@ model Party {
   isActive              Boolean   @default(true)
   note                  String?   @db.Text
 
+  // ARES-sourced fields
+  pravniForma           String?            // název právní formy z ARES (např. "Společenství vlastníků")
+  pravniFormaKod        String?            // kód právní formy (např. "961")
+  datumVzniku           DateTime?          // datum vzniku subjektu dle ARES
+  datumZaniku           DateTime?          // datum zániku — pokud vyplněno, subjekt je zaniklý
+  czNace                Json?              // pole NACE kódů z ARES
+  zastupci              Json?              // statutární zástupci z ARES [{jmeno, prijmeni, funkce}]
+
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
@@ -2514,6 +2559,7 @@ model Party {
   unitOwnerships        UnitOwnership[]
   tenancies             Tenancy[]
   residents             Resident[]
+  users                 User[]             @relation("UserParty")
 
   @@index([tenantId, displayName])
   @@index([tenantId, ic])

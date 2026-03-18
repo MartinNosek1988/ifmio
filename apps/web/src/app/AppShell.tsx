@@ -96,8 +96,21 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/asset-types', label: 'Typy zařízení', icon: <ClipboardList size={17} /> },
       { to: '/mio/insights', label: 'Mio Insights', icon: <AlertTriangle size={17} />, roles: ['fm', 'owner'] },
       { to: '/audit', label: 'Audit log', icon: <ScrollText size={17} /> },
-      { to: '/admin', label: 'Admin', icon: <Settings size={17} /> },
       { to: '/settings', label: 'Nastavení', icon: <Settings size={17} /> },
+    ],
+  },
+  {
+    title: 'Portál',
+    roles: ['client'],
+    items: [
+      { to: '/portal', label: 'Přehled', icon: <LayoutDashboard size={17} /> },
+      { to: '/portal/units', label: 'Moje jednotky', icon: <Building2 size={17} /> },
+      { to: '/portal/prescriptions', label: 'Předpisy plateb', icon: <FileText size={17} /> },
+      { to: '/portal/settlements', label: 'Vyúčtování', icon: <BarChart3 size={17} /> },
+      { to: '/portal/tickets', label: 'Požadavky', icon: <Headphones size={17} /> },
+      { to: '/portal/meters', label: 'Měřiče', icon: <Gauge size={17} /> },
+      { to: '/portal/documents', label: 'Dokumenty', icon: <FolderOpen size={17} /> },
+      { to: '/portal/konto', label: 'Konto', icon: <Wallet size={17} /> },
     ],
   },
 ];
@@ -126,11 +139,19 @@ const PAGE_TITLES: Record<string, string> = {
   '/reports': 'Výkazy',
   '/team': 'Uživatelé & Tým',
   '/audit': 'Audit log',
-  '/admin': 'Administrace',
+  // /admin redirects to /team
   '/settings': 'Nastavení organizace',
   '/notifications': 'Notifikace',
   '/profile': 'Můj profil',
   '/super-admin': 'Super Admin',
+  '/portal': 'Klientský portál',
+  '/portal/units': 'Moje jednotky',
+  '/portal/prescriptions': 'Předpisy plateb',
+  '/portal/settlements': 'Vyúčtování',
+  '/portal/tickets': 'Požadavky',
+  '/portal/meters': 'Měřiče',
+  '/portal/documents': 'Dokumenty',
+  '/portal/konto': 'Konto',
 };
 
 function getPageTitle(pathname: string): string {
@@ -240,6 +261,14 @@ export default function AppShell() {
   }, [onboardingData]);
 
   const uxRole = useRoleUX();
+
+  // Redirect client users to portal if they land on dashboard or root
+  useEffect(() => {
+    if (uxRole === 'client' && (location.pathname === '/dashboard' || location.pathname === '/')) {
+      navigate('/portal', { replace: true });
+    }
+  }, [uxRole, location.pathname, navigate]);
+
   const visibleSections = NAV_SECTIONS
     .filter((sec) => !sec.roles || sec.roles.includes(uxRole))
     .map((sec) => ({

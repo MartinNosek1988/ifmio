@@ -8,8 +8,9 @@ import { adminApi } from '../admin/api/admin.api';
 import { LoadingState, ErrorState, Button } from '../../shared/components';
 import {
   Building2, Mail, FileText, Bell, Palette, Download, Bot,
-  Save, Upload, X, Check, RotateCcw,
+  Save, Upload, X, Check, RotateCcw, Search,
 } from 'lucide-react';
+import { integrationsApi } from '../integrations/api/integrations.api';
 
 type TabKey = 'firma' | 'email' | 'fakturace' | 'upominky' | 'vzhled' | 'mio' | 'export';
 
@@ -94,9 +95,33 @@ function FirmaTab({ settings, onSave, saving }: TabProps) {
   });
   const [logo, setLogo] = useState<string | null>(s.logoBase64 ?? null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [aresLoading, setAresLoading] = useState(false);
+  const [aresError, setAresError] = useState('');
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((p) => ({ ...p, [k]: e.target.value }));
+
+  const handleAres = async () => {
+    const ico = form.companyNumber;
+    if (!ico || ico.length < 8) { setAresError('Zadejte platné IČ (8 číslic)'); return; }
+    setAresLoading(true); setAresError('');
+    try {
+      const data = await integrationsApi.ares.lookupByIco(ico);
+      if (data) {
+        setForm((f) => ({
+          ...f,
+          orgName: data.nazev || f.orgName,
+          vatNumber: data.dic || f.vatNumber,
+          orgStreet: data.textovaAdresa || f.orgStreet,
+          orgCity: data.adresa.obec || f.orgCity,
+          orgZip: data.adresa.psc || f.orgZip,
+        }));
+      } else {
+        setAresError('IČ nenalezeno v ARES');
+      }
+    } catch { setAresError('Chyba při ověřování v ARES'); }
+    finally { setAresLoading(false); }
+  };
 
   const handleLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -114,7 +139,17 @@ function FirmaTab({ settings, onSave, saving }: TabProps) {
       <SectionCard title="Firemni udaje">
         <div className="settings-grid">
           <FormField label="Nazev organizace *" value={form.orgName} onChange={set('orgName')} />
-          <FormField label="ICO" value={form.companyNumber} onChange={set('companyNumber')} />
+          <div>
+            <label className="settings-label">ICO</label>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <input className="settings-input" value={form.companyNumber} onChange={set('companyNumber')} style={{ flex: 1 }} />
+              <button type="button" onClick={handleAres} disabled={aresLoading}
+                style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                <Search size={13} /> {aresLoading ? '...' : 'ARES'}
+              </button>
+            </div>
+            {aresError && <div style={{ color: 'var(--danger, #ef4444)', fontSize: '0.78rem', marginTop: 2 }}>{aresError}</div>}
+          </div>
           <FormField label="DIC" value={form.vatNumber} onChange={set('vatNumber')} />
           <FormField label="Email" value={form.orgEmail} onChange={set('orgEmail')} type="email" />
           <FormField label="Telefon" value={form.orgPhone} onChange={set('orgPhone')} />

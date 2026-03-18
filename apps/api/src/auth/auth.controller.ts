@@ -4,6 +4,7 @@ import {
   Get,
   Patch,
   Body,
+  Param,
   Req,
   HttpCode,
   HttpStatus,
@@ -93,5 +94,41 @@ export class AuthController {
   @ApiOperation({ summary: 'Ověření emailu pomocí tokenu' })
   verifyEmail(@Body() body: { token: string }) {
     return this.auth.verifyEmail(body.token);
+  }
+
+  @Public()
+  @Post('forgot-password')
+  @Throttle({ default: { ttl: 60_000, limit: 3 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Žádost o obnovu hesla' })
+  async forgotPassword(@Body() body: { email: string }) {
+    await this.auth.forgotPassword(body.email);
+    return { message: 'ok' };
+  }
+
+  @Public()
+  @Post('reset-password')
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Nastavení nového hesla pomocí reset tokenu' })
+  async resetPassword(@Body() body: { token: string; password: string }) {
+    await this.auth.resetPassword(body.token, body.password);
+    return { message: 'ok' };
+  }
+
+  @Public()
+  @Get('invitation-info/:token')
+  @ApiOperation({ summary: 'Informace o pozvánce (pro předvyplnění formuláře)' })
+  getInvitationInfo(@Param('token') token: string) {
+    return this.auth.getInvitationInfo(token);
+  }
+
+  @Public()
+  @Post('accept-invitation')
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Přijmout pozvánku a vytvořit účet' })
+  acceptInvitation(@Body() body: { token: string; password: string; name?: string }) {
+    return this.auth.acceptInvitation(body.token, body.password, body.name);
   }
 }

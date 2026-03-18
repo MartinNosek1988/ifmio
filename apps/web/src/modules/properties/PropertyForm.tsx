@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Modal, Button } from '../../shared/components';
 import { useCreateProperty, useUpdateProperty } from './use-properties';
 import type { ApiProperty, PropertyLegalMode, AccountingSystemType } from './properties-api';
-import { ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { ChevronDown, ChevronUp, Info, Search } from 'lucide-react';
+import { integrationsApi } from '../integrations/api/integrations.api';
 
 interface Props {
   property?: ApiProperty;
@@ -69,9 +70,46 @@ export default function PropertyForm({ property, onClose }: Props) {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showSprava, setShowSprava] = useState(!!property?.managedFrom || !!property?.accountingSystem);
+  const [aresLoading, setAresLoading] = useState(false);
+  const [aresError, setAresError] = useState('');
 
   const set = (key: string, value: string | boolean) =>
     setForm((f) => ({ ...f, [key]: value }));
+
+  const [aresDefunct, setAresDefunct] = useState('');
+
+  const handleAres = async () => {
+    if (!form.ico || form.ico.length < 8) { setAresError('Zadejte platné IČ (8 číslic)'); return; }
+    setAresLoading(true); setAresError(''); setAresDefunct('');
+    try {
+      const data = await integrationsApi.ares.lookupByIco(form.ico);
+      if (data) {
+        // Build address from ARES parts
+        let addr = '';
+        if (data.adresa.ulice) {
+          addr = data.adresa.ulice;
+          if (data.adresa.cisloPopisne) addr += ` ${data.adresa.cisloPopisne}`;
+          if (data.adresa.cisloOrientacni) addr += `/${data.adresa.cisloOrientacni}`;
+        } else if (data.textovaAdresa) {
+          addr = data.textovaAdresa;
+        }
+        setForm((f) => ({
+          ...f,
+          dic: data.dic ?? f.dic,
+          name: data.nazev && !f.name ? data.nazev : f.name,
+          address: addr || f.address,
+          city: data.adresa.obec || f.city,
+          postalCode: data.adresa.psc || f.postalCode,
+        }));
+        if (data.datumZaniku) {
+          setAresDefunct(data.datumZaniku);
+        }
+      } else {
+        setAresError('IČ nenalezeno v ARES');
+      }
+    } catch { setAresError('Chyba při ověřování v ARES'); }
+    finally { setAresLoading(false); }
+  };
 
   const showIcoFields = ['SVJ', 'BD', 'OTHER'].includes(form.legalMode);
   const showDicFields = showIcoFields && form.ico.length > 0;
@@ -203,13 +241,21 @@ export default function PropertyForm({ property, onClose }: Props) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
             <div>
               <label className="form-label">IČ</label>
-              <input
-                value={form.ico}
-                onChange={(e) => set('ico', e.target.value.replace(/\D/g, '').slice(0, 8))}
-                placeholder="např. 01234567"
-                maxLength={8}
-                style={inputStyle('ico')}
-              />
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  value={form.ico}
+                  onChange={(e) => set('ico', e.target.value.replace(/\D/g, '').slice(0, 8))}
+                  placeholder="např. 01234567"
+                  maxLength={8}
+                  style={{ ...inputStyle('ico'), flex: 1 }}
+                />
+                <button type="button" onClick={handleAres} disabled={aresLoading || isPending}
+                  style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                  <Search size={13} /> {aresLoading ? '...' : 'ARES'}
+                </button>
+              </div>
+              {aresError && <div style={{ color: 'var(--danger)', fontSize: '0.78rem', marginTop: 2 }}>{aresError}</div>}
+              {aresDefunct && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid var(--danger)', borderRadius: 4, padding: '4px 8px', color: 'var(--danger)', fontSize: '0.78rem', marginTop: 4 }}>Subjekt je zaniklý dle ARES ({aresDefunct})</div>}
               {errors.ico && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.ico}</div>}
             </div>
             {showDicFields && (

@@ -1,11 +1,12 @@
 import { useAuthStore } from '../../core/auth/auth.store';
 
 /** Simplified UX-level role categories */
-export type UXRole = 'fm' | 'tech' | 'owner' | 'resident';
+export type UXRole = 'fm' | 'tech' | 'owner' | 'client' | 'resident';
 
 const FM_ROLES = ['tenant_owner', 'tenant_admin', 'property_manager'];
 const TECH_ROLES = ['operations'];
 const OWNER_ROLES = ['viewer', 'finance_manager'];
+const CLIENT_ROLES = ['unit_owner', 'unit_tenant'];
 
 /**
  * Maps the concrete backend role to a UX role category that drives
@@ -21,6 +22,7 @@ export function useRoleUX(): UXRole {
   if (FM_ROLES.includes(role)) return 'fm';
   if (TECH_ROLES.includes(role)) return 'tech';
   if (OWNER_ROLES.includes(role)) return 'owner';
+  if (CLIENT_ROLES.includes(role)) return 'client';
   return 'resident';
 }
 
@@ -28,5 +30,6 @@ export const UX_ROLE_LABEL: Record<UXRole, string> = {
   fm: 'FM správce',
   tech: 'Technik',
   owner: 'Vlastník / klient',
+  client: 'Klient portálu',
   resident: 'Nájemce',
 };

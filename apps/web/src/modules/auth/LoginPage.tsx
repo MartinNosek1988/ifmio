@@ -1,4 +1,5 @@
-﻿import { useState } from 'react';
+﻿// portal v2
+import { useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { apiClient } from '../../core/api/client';
 
@@ -41,9 +42,19 @@ export default function LoginPage() {
             <label style={{ display: 'block', color: '#9ca3af', fontSize: '0.85rem', marginBottom: '6px' }}>Email</label>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ width: '100%', padding: '10px 12px', background: '#0f1117', border: '1px solid #2a2d3a', borderRadius: '8px', color: '#fff', fontSize: '0.95rem', boxSizing: 'border-box' }} />
           </div>
-          <div style={{ marginBottom: '24px' }}>
+          <div style={{ marginBottom: '8px' }}>
             <label style={{ display: 'block', color: '#9ca3af', fontSize: '0.85rem', marginBottom: '6px' }}>Heslo</label>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required style={{ width: '100%', padding: '10px 12px', background: '#0f1117', border: '1px solid #2a2d3a', borderRadius: '8px', color: '#fff', fontSize: '0.95rem', boxSizing: 'border-box' }} />
+          </div>
+          <div style={{ textAlign: 'right', marginBottom: '16px' }}>
+            <Link
+              to="/forgot-password"
+              style={{ fontSize: '13px', color: '#94a3b8', textDecoration: 'none' }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#cbd5e1')}
+              onMouseLeave={e => (e.currentTarget.style.color = '#94a3b8')}
+            >
+              Zapomněli jste heslo?
+            </Link>
           </div>
           {error && <div style={{ background: '#2d1b1b', border: '1px solid #ef4444', borderRadius: '8px', padding: '10px 12px', color: '#ef4444', fontSize: '0.85rem', marginBottom: '16px' }}>{error}</div>}
           <button type="submit" disabled={loading} style={{ width: '100%', padding: '12px', background: loading ? '#4338ca' : '#6366f1', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '1rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer' }}>

@@ -1,6 +1,7 @@
 import {
   Injectable,
   UnauthorizedException,
+  BadRequestException,
   ConflictException,
   NotFoundException,
   Logger,
@@ -133,7 +134,7 @@ export class AuthService {
     const user = await this.prisma.user.findFirst({
       where: { email: dto.email, isActive: true },
     });
-    if (!user || !(await bcrypt.compare(dto.password, user.passwordHash))) {
+    if (!user || !user.passwordHash || !(await bcrypt.compare(dto.password, user.passwordHash))) {
       // Audit failed login — with or without known user
       this.prisma.auditLog.create({
         data: {
@@ -196,6 +197,7 @@ export class AuthService {
       where: { id: user.id },
       select: {
         id: true, email: true, name: true, role: true, tenantId: true,
+        partyId: true,
         phone: true, position: true, avatarBase64: true,
         language: true, timezone: true, dateFormat: true, notifEmail: true,
         createdAt: true, lastLoginAt: true,
@@ -242,6 +244,7 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Uživatel nenalezen');
 
+    if (!user.passwordHash) throw new UnauthorizedException('Účet nemá nastavené heslo');
     const valid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
     if (!valid) throw new UnauthorizedException('Nesprávné aktuální heslo');
 
@@ -402,6 +405,113 @@ export class AuthService {
   }
 
   /** Mask email for audit: "jan@firma.cz" → "j**@f***a.cz" */
+  // ─── Password Reset ──────────────────────────────────────────
+
+  async forgotPassword(email: string): Promise<void> {
+    const user = await this.prisma.user.findFirst({ where: { email, isActive: true } })
+    if (!user) return // Security: never reveal if email exists
+
+    const token = crypto.randomBytes(32).toString('hex')
+    const expiry = new Date()
+    expiry.setHours(expiry.getHours() + 1)
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { passwordResetToken: token, passwordResetExpiry: expiry },
+    })
+
+    const frontendUrl = process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:5173'
+    const resetUrl = `${frontendUrl}/reset-password?token=${token}`
+
+    try {
+      await this.email.send({
+        to: email,
+        subject: 'Obnova hesla — ifmio',
+        html: `
+          <div style="font-family:system-ui,sans-serif;max-width:500px;margin:0 auto;padding:24px;">
+            <h2 style="color:#6366f1;">Obnova hesla</h2>
+            <p>Obdrželi jsme žádost o obnovu hesla pro váš účet v ifmio.</p>
+            <p>Klikněte na tlačítko níže pro nastavení nového hesla:</p>
+            <a href="${resetUrl}" style="display:inline-block;background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;margin:16px 0;">
+              Nastavit nové heslo
+            </a>
+            <p style="color:#6b7280;font-size:0.85rem;">Odkaz je platný 1 hodinu. Pokud jste o obnovu nežádali, tento email ignorujte.</p>
+          </div>`,
+      })
+    } catch (err) {
+      this.logger.error(`Failed to send password reset email: ${err}`)
+    }
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const user = await this.prisma.user.findFirst({
+      where: { passwordResetToken: token },
+    })
+    if (!user) throw new UnauthorizedException('Neplatný nebo expirovaný token')
+    if (!user.passwordResetExpiry || user.passwordResetExpiry < new Date()) {
+      throw new UnauthorizedException('Token expiroval — vyžádejte nový')
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12)
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash, passwordResetToken: null, passwordResetExpiry: null },
+    })
+
+    this.logger.log(`Password reset completed for user ${user.id}`)
+  }
+
+  // ─── Invitation Acceptance ──────────────────────────────────
+
+  async getInvitationInfo(token: string) {
+    const inv = await this.prisma.tenantInvitation.findUnique({
+      where: { token },
+      include: { tenant: { select: { name: true } } },
+    })
+    if (!inv || inv.acceptedAt || inv.expiresAt < new Date()) {
+      throw new BadRequestException('Neplatná nebo expirovaná pozvánka')
+    }
+    return { name: inv.name, email: inv.email, tenantName: inv.tenant.name, role: inv.role, expiresAt: inv.expiresAt }
+  }
+
+  async acceptInvitation(token: string, password: string, name?: string) {
+    const inv = await this.prisma.tenantInvitation.findUnique({ where: { token }, include: { tenant: true } })
+    if (!inv) throw new BadRequestException('Neplatná pozvánka')
+    if (inv.acceptedAt) throw new BadRequestException('Pozvánka již byla použita')
+    if (inv.expiresAt < new Date()) throw new BadRequestException('Platnost pozvánky vypršela')
+
+    const existing = await this.prisma.user.findFirst({ where: { tenantId: inv.tenantId, email: inv.email } })
+    if (existing) throw new ConflictException('Uživatel s tímto e-mailem již existuje')
+
+    const passwordHash = await bcrypt.hash(password, 12)
+
+    // Try to find a matching Party by email to link user
+    const matchingParty = await this.prisma.party.findFirst({
+      where: { tenantId: inv.tenantId, email: inv.email, isActive: true },
+    })
+
+    await this.prisma.user.create({
+      data: {
+        tenantId: inv.tenantId,
+        email: inv.email,
+        name: name ?? inv.name,
+        passwordHash,
+        role: inv.role,
+        isActive: true,
+        partyId: matchingParty?.id ?? undefined,
+      },
+    })
+
+    await this.prisma.tenantInvitation.update({
+      where: { token },
+      data: { acceptedAt: new Date() },
+    })
+
+    this.logger.log(`Invitation accepted: ${inv.email} joined tenant ${inv.tenantId}`)
+    return { success: true }
+  }
+
   private maskEmail(email: string): string {
     const [local, domain] = email.split('@');
     if (!domain) return '***';

@@ -10,7 +10,7 @@ import { Roles }         from '../common/decorators/roles.decorator'
 import { CurrentUser }   from '../common/decorators/current-user.decorator'
 import { AuditAction }   from '../common/decorators/audit.decorator'
 import { ROLES_MANAGE }  from '../common/constants/roles.constants'
-import { UpdateSettingsDto, InviteUserDto } from './dto/admin.dto'
+import { UpdateSettingsDto, InviteUserDto, SendInvitationDto } from './dto/admin.dto'
 import type { AuthUser } from '@ifmio/shared-types'
 
 @ApiTags('Admin')
@@ -180,5 +180,37 @@ export class AdminController {
     })
 
     return { success: sent, message: sent ? 'Email odeslan' : 'Odeslani selhalo' }
+  }
+
+  // ─── Invitation System ──────────────────────────────────────
+
+  @Post('invite')
+  @Roles(...ROLES_MANAGE)
+  @AuditAction('TenantInvitation', 'CREATE')
+  @ApiOperation({ summary: 'Odeslat pozvánku' })
+  sendInvitation(@CurrentUser() user: AuthUser, @Body() dto: SendInvitationDto) {
+    return this.service.sendInvitation(user.tenantId, user.id, dto)
+  }
+
+  @Get('invitations')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Seznam pozvánek' })
+  listInvitations(@CurrentUser() user: AuthUser) {
+    return this.service.listInvitations(user.tenantId)
+  }
+
+  @Post('invitations/:id/resend')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Znovu odeslat pozvánku' })
+  resendInvitation(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.service.resendInvitation(user.tenantId, id)
+  }
+
+  @Delete('invitations/:id')
+  @Roles(...ROLES_MANAGE)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Zrušit pozvánku' })
+  revokeInvitation(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.service.revokeInvitation(user.tenantId, id)
   }
 }

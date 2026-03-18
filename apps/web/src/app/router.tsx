@@ -1,11 +1,15 @@
 ﻿import { lazy } from 'react';
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import AppShell from './AppShell';
 import LoginPage from '../modules/auth/LoginPage';
 import RegisterPage from '../modules/auth/RegisterPage';
 import LandingPage from '../modules/landing/LandingPage';
 
 const VerifyEmailPage = lazy(() => import('../modules/auth/VerifyEmailPage'));
+const ForgotPasswordPage = lazy(() => import('../modules/auth/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('../modules/auth/ResetPasswordPage'));
+const AcceptInvitationPage = lazy(() => import('../modules/auth/AcceptInvitationPage'));
+const PortalPage = lazy(() => import('../modules/portal/PortalPage'));
 import { ErrorBoundary } from '../shared/components';
 
 const DashboardPage = lazy(() => import('../modules/dashboard/DashboardPage'));
@@ -33,7 +37,7 @@ const MioInsightsPage = lazy(() => import('../modules/mio-insights/MioInsightsPa
 const MioAdminPage = lazy(() => import('../modules/mio/MioAdminPage'));
 const MioWebhooksPage = lazy(() => import('../modules/mio/MioWebhooksPage'));
 const TeamPage = lazy(() => import('../modules/team/TeamPage'));
-const AdminPage = lazy(() => import('../modules/admin/AdminPage'));
+// AdminPage removed — was localStorage placeholder; /admin redirects to /team
 const SettingsPage = lazy(() => import('../modules/settings/SettingsPage'));
 const NotificationsPage = lazy(() => import('../modules/notifications/NotificationsPage'));
 const ProfilePage = lazy(() => import('../modules/profile/ProfilePage'));
@@ -49,6 +53,13 @@ const PrincipalsPage = lazy(() => import('../modules/principals/PrincipalsPage')
 const PrincipalDetailPage = lazy(() => import('../modules/principals/PrincipalDetailPage'));
 const PartiesPage = lazy(() => import('../modules/parties/PartiesPage'));
 const SettlementPage = lazy(() => import('../modules/settlement/SettlementPage'));
+const MyUnitsPage = lazy(() => import('../modules/portal/MyUnitsPage'));
+const MyPrescriptionsPage = lazy(() => import('../modules/portal/MyPrescriptionsPage'));
+const MySettlementsPage = lazy(() => import('../modules/portal/MySettlementsPage'));
+const MyTicketsPage = lazy(() => import('../modules/portal/MyTicketsPage'));
+const MyMetersPage = lazy(() => import('../modules/portal/MyMetersPage'));
+const MyDocumentsPage = lazy(() => import('../modules/portal/MyDocumentsPage'));
+const MyKontoPage = lazy(() => import('../modules/portal/MyKontoPage'));
 
 function withBoundary(name: string, Component: React.ComponentType) {
   return (
@@ -63,12 +74,23 @@ export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <RegisterPage /> },
   { path: '/verify-email', element: withBoundary('VerifyEmail', VerifyEmailPage) },
+  { path: '/forgot-password', element: withBoundary('Obnova hesla', ForgotPasswordPage) },
+  { path: '/reset-password', element: withBoundary('Nové heslo', ResetPasswordPage) },
+  { path: '/accept-invitation', element: withBoundary('Přijetí pozvánky', AcceptInvitationPage) },
   { path: '/q/:token', element: withBoundary('QR Scan', QrResolvePage) },
   {
     path: '/',
     element: <AppShell />,
     children: [
       { path: 'dashboard', element: withBoundary('Dashboard', DashboardPage) },
+      { path: 'portal', element: withBoundary('Klientský portál', PortalPage) },
+      { path: 'portal/units', element: withBoundary('Moje jednotky', MyUnitsPage) },
+      { path: 'portal/prescriptions', element: withBoundary('Předpisy plateb', MyPrescriptionsPage) },
+      { path: 'portal/settlements', element: withBoundary('Vyúčtování', MySettlementsPage) },
+      { path: 'portal/tickets', element: withBoundary('Požadavky', MyTicketsPage) },
+      { path: 'portal/meters', element: withBoundary('Měřiče', MyMetersPage) },
+      { path: 'portal/documents', element: withBoundary('Dokumenty', MyDocumentsPage) },
+      { path: 'portal/konto', element: withBoundary('Konto', MyKontoPage) },
       { path: 'properties', element: withBoundary('Nemovitosti', PropertiesPage) },
       { path: 'properties/:id', element: withBoundary('Detail nemovitosti', PropertyDetailPage) },
       { path: 'principals', element: withBoundary('Klienti', PrincipalsPage) },
@@ -103,7 +125,7 @@ export const router = createBrowserRouter([
       { path: 'revisions/settings', element: withBoundary('Revize Katalog', RevisionSettingsPage) },
       { path: 'asset-types', element: withBoundary('Typy zařízení', AssetTypesPage) },
       { path: 'audit', element: withBoundary('Audit log', AuditPage) },
-      { path: 'admin', element: withBoundary('Admin', AdminPage) },
+      { path: 'admin', element: <Navigate to="/team" replace /> },
       { path: 'settings', element: withBoundary('Nastaveni', SettingsPage) },
       { path: 'notifications', element: withBoundary('Notifikace', NotificationsPage) },
       { path: 'profile', element: withBoundary('Profil', ProfilePage) },

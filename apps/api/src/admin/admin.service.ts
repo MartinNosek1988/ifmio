@@ -1,16 +1,22 @@
 import {
-  Injectable, NotFoundException, ConflictException, ForbiddenException,
+  Injectable, NotFoundException, ConflictException, ForbiddenException, Logger,
 } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
 import { PrismaService } from '../prisma/prisma.service'
 import { EmailService }  from '../email/email.service'
 import * as bcrypt       from 'bcryptjs'
+import * as crypto       from 'crypto'
 import type { AuthUser } from '@ifmio/shared-types'
+import type { UserRole } from '@prisma/client'
 
 @Injectable()
 export class AdminService {
+  private readonly logger = new Logger(AdminService.name)
+
   constructor(
     private prisma: PrismaService,
     private email:  EmailService,
+    private config: ConfigService,
   ) {}
 
   // ─── TENANT SETTINGS ──────────────────────────────────────────
@@ -363,5 +369,109 @@ export class AdminService {
     await this.prisma.userPropertyAssignment.delete({
       where: { id: assignment.id },
     })
+  }
+
+  // ─── Invitation System ──────────────────────────────────────
+
+  async sendInvitation(tenantId: string, invitedById: string, dto: {
+    email: string; name: string; role: string; propertyId?: string; unitId?: string
+  }) {
+    const existing = await this.prisma.user.findFirst({ where: { tenantId, email: dto.email } })
+    if (existing) throw new ConflictException('Uživatel s tímto e-mailem již existuje')
+
+    const pending = await this.prisma.tenantInvitation.findFirst({
+      where: { tenantId, email: dto.email, acceptedAt: null, expiresAt: { gt: new Date() } },
+    })
+    if (pending) throw new ConflictException('Pozvánka pro tento e-mail již čeká na přijetí')
+
+    const token = crypto.randomBytes(32).toString('hex')
+    const invitation = await this.prisma.tenantInvitation.create({
+      data: {
+        tenantId,
+        email: dto.email,
+        name: dto.name,
+        role: dto.role as UserRole,
+        token,
+        propertyId: dto.propertyId,
+        unitId: dto.unitId,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        invitedById,
+      },
+      include: { tenant: { select: { name: true } } },
+    })
+
+    const frontendUrl = this.config.get('FRONTEND_URL') || this.config.get('CORS_ORIGIN') || 'http://localhost:5173'
+    const link = `${frontendUrl}/accept-invitation?token=${token}`
+
+    try {
+      await this.email.send({
+        to: dto.email,
+        subject: `Pozvánka do ${invitation.tenant.name} — ifmio`,
+        html: `<div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:24px">
+          <div style="background:#1e1b4b;padding:20px 24px;border-radius:8px 8px 0 0"><h1 style="color:#fff;margin:0;font-size:20px">ifmio</h1></div>
+          <div style="border:1px solid #e5e7eb;border-top:none;padding:32px;border-radius:0 0 8px 8px">
+            <h2>Byli jste pozváni do ${invitation.tenant.name}</h2>
+            <p>Dobrý den, ${dto.name},</p>
+            <p>správce nemovitosti vás zve do klientského portálu ifmio.</p>
+            <a href="${link}" style="display:inline-block;background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;margin:16px 0">Přijmout pozvánku a nastavit heslo</a>
+            <p style="color:#6b7280;font-size:12px">Odkaz je platný 7 dní. ${link}</p>
+          </div>
+        </div>`,
+      })
+    } catch (err) {
+      this.logger.error(`Failed to send invitation email to ${dto.email}: ${err}`)
+    }
+
+    return invitation
+  }
+
+  async listInvitations(tenantId: string) {
+    return this.prisma.tenantInvitation.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: 'desc' },
+      include: { invitedBy: { select: { name: true } }, property: { select: { name: true } }, unit: { select: { name: true } } },
+    })
+  }
+
+  async resendInvitation(tenantId: string, id: string) {
+    const inv = await this.prisma.tenantInvitation.findFirst({ where: { id, tenantId, acceptedAt: null } })
+    if (!inv) throw new NotFoundException('Pozvánka nenalezena')
+
+    const token = crypto.randomBytes(32).toString('hex')
+    const updated = await this.prisma.tenantInvitation.update({
+      where: { id },
+      data: { token, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) },
+      include: { tenant: { select: { name: true } } },
+    })
+
+    const frontendUrl = this.config.get('FRONTEND_URL') || this.config.get('CORS_ORIGIN') || 'http://localhost:5173'
+    const link = `${frontendUrl}/accept-invitation?token=${token}`
+
+    try {
+      await this.email.send({
+        to: inv.email,
+        subject: `Pozvánka do ${updated.tenant.name} — ifmio (opakované odeslání)`,
+        html: `<div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:24px">
+          <div style="background:#1e1b4b;padding:20px 24px;border-radius:8px 8px 0 0"><h1 style="color:#fff;margin:0;font-size:20px">ifmio</h1></div>
+          <div style="border:1px solid #e5e7eb;border-top:none;padding:32px;border-radius:0 0 8px 8px">
+            <h2>Pozvánka do ${updated.tenant.name}</h2>
+            <p>Dobrý den, ${inv.name},</p>
+            <p>připomínáme vám pozvánku do klientského portálu ifmio.</p>
+            <a href="${link}" style="display:inline-block;background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;margin:16px 0">Přijmout pozvánku</a>
+            <p style="color:#6b7280;font-size:12px">Odkaz je platný 7 dní. ${link}</p>
+          </div>
+        </div>`,
+      })
+    } catch (err) {
+      this.logger.error(`Failed to resend invitation email: ${err}`)
+    }
+
+    return updated
+  }
+
+  async revokeInvitation(tenantId: string, id: string) {
+    const inv = await this.prisma.tenantInvitation.findFirst({ where: { id, tenantId, acceptedAt: null } })
+    if (!inv) throw new NotFoundException('Pozvánka nenalezena')
+    await this.prisma.tenantInvitation.delete({ where: { id } })
   }
 }

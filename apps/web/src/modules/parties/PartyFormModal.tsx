@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import { Search } from 'lucide-react'
 import { Modal, Button } from '../../shared/components'
 import { useCreateParty, useUpdateParty } from './api/parties.queries'
 import type { ApiParty } from './api/parties.api'
+import { integrationsApi } from '../integrations/api/integrations.api'
 
 const TYPE_OPTIONS = [
   { value: 'person', label: 'Osoba' },
@@ -44,6 +46,49 @@ export default function PartyFormModal({ party, onClose, onSuccess }: Props) {
   const [iban, setIban] = useState(party?.iban ?? '')
   const [note, setNote] = useState(party?.note ?? '')
   const [error, setError] = useState<string | null>(null)
+  const [aresLoading, setAresLoading] = useState(false)
+  const [aresError, setAresError] = useState('')
+
+  // ARES-sourced fields (stored in DB via DTO)
+  const [pravniForma, setPravniForma] = useState(party?.pravniForma ?? '')
+  const [pravniFormaKod, setPravniFormaKod] = useState(party?.pravniFormaKod ?? '')
+  const [datumVzniku, setDatumVzniku] = useState(party?.datumVzniku ?? '')
+  const [datumZaniku, setDatumZaniku] = useState(party?.datumZaniku ?? '')
+  const [czNace, setCzNace] = useState<string[]>(party?.czNace ?? [])
+  const [zastupci, setZastupci] = useState<Array<{ jmeno?: string; prijmeni?: string; funkce?: string }>>(party?.zastupci ?? [])
+  const [aresInfoVisible, setAresInfoVisible] = useState(false)
+
+  const handleAres = async () => {
+    if (!ic || ic.length < 8) { setAresError('Zadejte platné IČ (8 číslic)'); return }
+    setAresLoading(true); setAresError('')
+    try {
+      const data = await integrationsApi.ares.lookupByIco(ic)
+      if (data) {
+        if (data.nazev) setCompanyName(data.nazev)
+        if (data.dic) setDic(data.dic)
+        if (data.adresa.ulice) {
+          let addr = data.adresa.ulice
+          if (data.adresa.cisloPopisne) addr += ` ${data.adresa.cisloPopisne}`
+          if (data.adresa.cisloOrientacni) addr += `/${data.adresa.cisloOrientacni}`
+          setStreet(addr)
+        }
+        if (data.adresa.obec) setCity(data.adresa.obec)
+        if (data.adresa.psc) setPostalCode(data.adresa.psc)
+        if (data.datoveSchranky?.length) setDataBoxId(data.datoveSchranky[0])
+        // ARES extended fields
+        if (data.pravniForma) setPravniForma(data.pravniForma)
+        if (data.pravniFormaKod != null) setPravniFormaKod(String(data.pravniFormaKod))
+        if (data.datumVzniku) setDatumVzniku(data.datumVzniku)
+        if (data.datumZaniku) setDatumZaniku(data.datumZaniku)
+        if (data.czNace?.length) setCzNace(data.czNace)
+        if (data.zastupci?.length) setZastupci(data.zastupci)
+        setAresInfoVisible(true)
+      } else {
+        setAresError('IČ nenalezeno v ARES')
+      }
+    } catch { setAresError('Chyba při ověřování v ARES') }
+    finally { setAresLoading(false) }
+  }
 
   // Auto-fill displayName
   useEffect(() => {
@@ -82,6 +127,12 @@ export default function PartyFormModal({ party, onClose, onSuccess }: Props) {
       bankCode: bankCode || undefined,
       iban: iban || undefined,
       note: note || undefined,
+      pravniForma: pravniForma || undefined,
+      pravniFormaKod: pravniFormaKod || undefined,
+      datumVzniku: datumVzniku || undefined,
+      datumZaniku: datumZaniku || undefined,
+      czNace: czNace.length ? czNace : undefined,
+      zastupci: zastupci.length ? zastupci : undefined,
     }
 
     if (isEdit) {
@@ -177,13 +228,39 @@ export default function PartyFormModal({ party, onClose, onSuccess }: Props) {
       <div style={rowStyle}>
         <div>
           <label style={labelStyle}>IČ</label>
-          <input value={ic} onChange={e => setIc(e.target.value)} style={inputStyle} maxLength={20} />
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input value={ic} onChange={e => setIc(e.target.value)} style={{ ...inputStyle, flex: 1 }} maxLength={20} />
+            <button type="button" onClick={handleAres} disabled={aresLoading || isPending}
+              style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: '.78rem', whiteSpace: 'nowrap' }}>
+              <Search size={13} /> {aresLoading ? '...' : 'ARES'}
+            </button>
+          </div>
+          {aresError && <div style={{ color: '#ef4444', fontSize: '.75rem', marginTop: 2 }}>{aresError}</div>}
         </div>
         <div>
           <label style={labelStyle}>DIČ</label>
           <input value={dic} onChange={e => setDic(e.target.value)} style={inputStyle} maxLength={20} />
         </div>
       </div>
+
+      {/* ARES info (read-only, shown after ARES lookup) */}
+      {aresInfoVisible && (pravniForma || datumZaniku || zastupci.length > 0 || czNace.length > 0) && (
+        <div style={{ background: 'var(--surface-2, var(--surface))', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px', marginBottom: 12, fontSize: '.78rem' }}>
+          {datumZaniku && (
+            <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid var(--danger, #ef4444)', borderRadius: 4, padding: '4px 8px', color: 'var(--danger, #ef4444)', marginBottom: 6, fontWeight: 600 }}>
+              Zaniklý subjekt: {datumZaniku.slice(0, 10)}
+            </div>
+          )}
+          {pravniForma && <div style={{ color: 'var(--text-muted)', marginBottom: 2 }}>Právní forma: <strong style={{ color: 'var(--text)' }}>{pravniForma}</strong></div>}
+          {datumVzniku && <div style={{ color: 'var(--text-muted)', marginBottom: 2 }}>Datum vzniku: {datumVzniku.slice(0, 10)}</div>}
+          {zastupci.length > 0 && (
+            <div style={{ color: 'var(--text-muted)', marginBottom: 2 }}>
+              Statutární zástupci: {zastupci.map(z => `${z.jmeno ?? ''} ${z.prijmeni ?? ''} (${z.funkce ?? ''})`).join(', ')}
+            </div>
+          )}
+          {czNace.length > 0 && <div style={{ color: 'var(--text-muted)' }}>NACE: {czNace.join(', ')}</div>}
+        </div>
+      )}
 
       {/* Address */}
       <div style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8, marginTop: 16 }}>Adresa</div>

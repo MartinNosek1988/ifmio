@@ -21,7 +21,7 @@ export class DopisOnlineProvider implements ChannelProvider {
 
     return {
       success: false,
-      error: 'DopisOnline integrace vyžaduje API přístupy od České pošty',
+      error: 'DopisOnline: integrace není implementována — vyžaduje přístup k API České pošty',
       cost: 30,
     }
   }

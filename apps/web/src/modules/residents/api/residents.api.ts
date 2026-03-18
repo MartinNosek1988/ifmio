@@ -80,7 +80,7 @@ export const residentsApi = {
     apiClient.get<any[]>(`/residents/${id}/invoices`).then((r) => r.data),
 
   aresLookup: (ico: string) =>
-    apiClient.get<{ ico: string; nazev: string; dic?: string; adresa: { ulice: string; obec: string; psc: string } } | null>(
+    apiClient.get<{ ico: string; nazev: string; dic?: string; adresa: { ulice: string; obec: string; psc: string }; datoveSchranky?: string[] } | null>(
       `/integrations/ares/ico`, { params: { ico } }
     ).then((r) => r.data),
 

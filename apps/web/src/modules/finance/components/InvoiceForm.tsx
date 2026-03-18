@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Users } from 'lucide-react';
+import { Users, Search } from 'lucide-react';
+import { integrationsApi } from '../../integrations/api/integrations.api';
 import { Modal, Button } from '../../../shared/components';
 import { formatKc, formatCzDate } from '../../../shared/utils/format';
 import type { ApiInvoice } from '../api/finance.api';
@@ -58,8 +59,31 @@ export function InvoiceForm({ invoice, transactions, onClose }: {
     isPaid: invoice?.isPaid || false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [aresLoading, setAresLoading] = useState<'supplier' | 'buyer' | null>(null);
+  const [aresError, setAresError] = useState<Record<string, string>>({});
+  const [aresDefunct, setAresDefunct] = useState<Record<string, string>>({});
 
   const set = (key: string, value: unknown) => setForm(f => ({ ...f, [key]: value }));
+
+  const handleAresLookup = async (prefix: 'supplier' | 'buyer') => {
+    const ico = form[`${prefix}Ico` as keyof typeof form] as string;
+    if (!ico || ico.length < 8) { setAresError(e => ({ ...e, [prefix]: 'Zadejte platné IČ (8 číslic)' })); return; }
+    setAresLoading(prefix); setAresError(e => ({ ...e, [prefix]: '' })); setAresDefunct(d => ({ ...d, [prefix]: '' }));
+    try {
+      const data = await integrationsApi.ares.lookupByIco(ico);
+      if (data) {
+        setForm(f => ({
+          ...f,
+          [`${prefix}Name`]: data.nazev || f[`${prefix}Name` as keyof typeof f],
+          [`${prefix}Dic`]: data.dic || f[`${prefix}Dic` as keyof typeof f],
+        }));
+        if (data.datumZaniku) setAresDefunct(d => ({ ...d, [prefix]: data.datumZaniku! }));
+      } else {
+        setAresError(e => ({ ...e, [prefix]: 'IČ nenalezeno v ARES' }));
+      }
+    } catch { setAresError(e => ({ ...e, [prefix]: 'Chyba při ověřování v ARES' })); }
+    finally { setAresLoading(null); }
+  };
 
   // When lines change, auto-sync totals
   const handleLinesChange = (newLines: LineItem[]) => {
@@ -183,7 +207,15 @@ export function InvoiceForm({ invoice, transactions, onClose }: {
         </div>
         <div>
           <label className="form-label">IČO</label>
-          <input value={form.supplierIco} onChange={e => set('supplierIco', e.target.value)} style={inputStyle()} />
+          <div style={{ display: 'flex', gap: 4 }}>
+            <input value={form.supplierIco} onChange={e => set('supplierIco', e.target.value)} style={{ ...inputStyle(), flex: 1 }} />
+            <button type="button" onClick={() => handleAresLookup('supplier')} disabled={aresLoading === 'supplier'}
+              style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+              <Search size={11} /> {aresLoading === 'supplier' ? '...' : 'ARES'}
+            </button>
+          </div>
+          {aresError.supplier && <div style={{ color: 'var(--danger)', fontSize: '0.75rem', marginTop: 2 }}>{aresError.supplier}</div>}
+          {aresDefunct.supplier && <div style={{ color: 'var(--danger)', fontSize: '0.75rem', marginTop: 2 }}>Zaniklý subjekt ({aresDefunct.supplier})</div>}
         </div>
         <div>
           <label className="form-label">DIČ</label>
@@ -206,7 +238,15 @@ export function InvoiceForm({ invoice, transactions, onClose }: {
         </div>
         <div>
           <label className="form-label">IČO</label>
-          <input value={form.buyerIco} onChange={e => set('buyerIco', e.target.value)} style={inputStyle()} />
+          <div style={{ display: 'flex', gap: 4 }}>
+            <input value={form.buyerIco} onChange={e => set('buyerIco', e.target.value)} style={{ ...inputStyle(), flex: 1 }} />
+            <button type="button" onClick={() => handleAresLookup('buyer')} disabled={aresLoading === 'buyer'}
+              style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+              <Search size={11} /> {aresLoading === 'buyer' ? '...' : 'ARES'}
+            </button>
+          </div>
+          {aresError.buyer && <div style={{ color: 'var(--danger)', fontSize: '0.75rem', marginTop: 2 }}>{aresError.buyer}</div>}
+          {aresDefunct.buyer && <div style={{ color: 'var(--danger)', fontSize: '0.75rem', marginTop: 2 }}>Zaniklý subjekt ({aresDefunct.buyer})</div>}
         </div>
         <div>
           <label className="form-label">DIČ</label>

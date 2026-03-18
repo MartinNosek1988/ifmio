@@ -78,6 +78,23 @@ export default function ResidentForm({ resident, onClose }: Props) {
       if (data) {
         setValue('companyName', data.nazev ?? '', { shouldDirty: true });
         if (data.dic) setValue('dic', data.dic, { shouldDirty: true });
+        // Fill address
+        if (data.adresa) {
+          let addr = data.adresa.ulice ?? '';
+          if (data.adresa.obec && !addr) addr = data.adresa.obec;
+          else if (data.adresa.ulice) {
+            // Build full street with house numbers from textovaAdresa if available
+          }
+          if (addr) setValue('correspondenceAddress', addr, { shouldDirty: true });
+          if (data.adresa.obec) setValue('correspondenceCity', data.adresa.obec, { shouldDirty: true });
+          if (data.adresa.psc) setValue('correspondencePostalCode', data.adresa.psc, { shouldDirty: true });
+          setShowAddress(true);
+        }
+        // Fill datová schránka
+        if (data.datoveSchranky?.length) {
+          setValue('dataBoxId', data.datoveSchranky[0], { shouldDirty: true });
+          setShowExtra(true);
+        }
         toast.success('Údaje načteny z ARES');
       } else {
         setAresError('IČ nenalezeno v ARES');

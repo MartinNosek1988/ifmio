@@ -41,6 +41,12 @@ export class PartyService {
         bankCode: dto.bankCode,
         iban: dto.iban,
         note: dto.note,
+        pravniForma: dto.pravniForma,
+        pravniFormaKod: dto.pravniFormaKod,
+        datumVzniku: dto.datumVzniku ? new Date(dto.datumVzniku) : undefined,
+        datumZaniku: dto.datumZaniku ? new Date(dto.datumZaniku) : undefined,
+        czNace: dto.czNace as any ?? undefined,
+        zastupci: dto.zastupci as any ?? undefined,
       },
     })
   }
@@ -87,7 +93,8 @@ export class PartyService {
       },
     })
     if (!party) throw new NotFoundException('Subjekt nenalezen')
-    return party
+    const isDefunct = party.datumZaniku ? party.datumZaniku < new Date() : false
+    return { ...party, isDefunct }
   }
 
   async update(tenantId: string, id: string, dto: UpdatePartyDto) {
@@ -103,7 +110,14 @@ export class PartyService {
 
     const data: Record<string, unknown> = {}
     for (const [key, val] of Object.entries(dto)) {
-      if (val !== undefined) data[key] = val
+      if (val !== undefined) {
+        // Convert ISO date strings to Date for ARES date fields
+        if ((key === 'datumVzniku' || key === 'datumZaniku') && typeof val === 'string') {
+          data[key] = new Date(val)
+        } else {
+          data[key] = val
+        }
+      }
     }
 
     // SECURITY: tenantId in WHERE prevents cross-tenant writes (Wave 2)
