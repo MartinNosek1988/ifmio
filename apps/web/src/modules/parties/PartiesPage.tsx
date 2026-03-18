@@ -110,7 +110,7 @@ export default function PartiesPage() {
                     <td style={tdStyle}>
                       <span style={{ fontWeight: 600 }}>{p.displayName}</span>
                       {!p.isActive && <Badge variant="muted">neaktivní</Badge>}
-                      {p.datumZaniku && <Badge variant="danger">zaniklý</Badge>}
+                      {p.datumZaniku && <Badge variant="red">zaniklý</Badge>}
                     </td>
                     <td style={tdStyle}><Badge variant={t.color as any}>{t.label}</Badge></td>
                     <td style={tdStyle} className="text-muted">{p.ic ?? '—'}</td>
