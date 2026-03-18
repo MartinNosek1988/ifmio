@@ -32,4 +32,12 @@ export class CreatePartyDto {
   @ApiPropertyOptional() @IsOptional() @IsString() iban?: string
 
   @ApiPropertyOptional() @IsOptional() @IsString() note?: string
+
+  // ARES-sourced fields
+  @ApiPropertyOptional() @IsOptional() @IsString() pravniForma?: string
+  @ApiPropertyOptional() @IsOptional() @IsString() pravniFormaKod?: string
+  @ApiPropertyOptional() @IsOptional() @IsString() datumVzniku?: string   // ISO date string
+  @ApiPropertyOptional() @IsOptional() @IsString() datumZaniku?: string   // ISO date string
+  @ApiPropertyOptional() @IsOptional() czNace?: unknown[]                 // JSON array
+  @ApiPropertyOptional() @IsOptional() zastupci?: unknown[]               // JSON array
 }

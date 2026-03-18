@@ -16,6 +16,8 @@ model Tenant {
   slug          String     @unique
   plan          TenantPlan @default(free)
   isActive      Boolean    @default(true)
+  ico           String?    // IČO správcovské firmy
+  dic           String?    // DIČ správcovské firmy
   maxUsers      Int        @default(5)
   maxProperties Int        @default(3)
   trialEndsAt   DateTime?
@@ -244,6 +246,7 @@ model Property {
   ico              String?            // IČ subjektu (SVJ/BD)
   dic              String?            // DIČ
   isVatPayer       Boolean            @default(false)
+  dataBoxId        String?            // ID datové schránky SVJ/BD z ARES
   legalMode        PropertyLegalMode  @default(OWNERSHIP)
   managedFrom      DateTime?          // ve správě od
   managedTo        DateTime?          // ve správě do
@@ -2536,6 +2539,14 @@ model Party {
 
   isActive              Boolean   @default(true)
   note                  String?   @db.Text
+
+  // ARES-sourced fields
+  pravniForma           String?            // název právní formy z ARES (např. "Společenství vlastníků")
+  pravniFormaKod        String?            // kód právní formy (např. "961")
+  datumVzniku           DateTime?          // datum vzniku subjektu dle ARES
+  datumZaniku           DateTime?          // datum zániku — pokud vyplněno, subjekt je zaniklý
+  czNace                Json?              // pole NACE kódů z ARES
+  zastupci              Json?              // statutární zástupci z ARES [{jmeno, prijmeni, funkce}]
 
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt

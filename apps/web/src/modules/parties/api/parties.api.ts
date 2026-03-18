@@ -25,6 +25,13 @@ export interface ApiParty {
   iban: string | null
   isActive: boolean
   note: string | null
+  pravniForma: string | null
+  pravniFormaKod: string | null
+  datumVzniku: string | null
+  datumZaniku: string | null
+  czNace: string[] | null
+  zastupci: Array<{ jmeno?: string; prijmeni?: string; funkce?: string }> | null
+  isDefunct?: boolean
   createdAt: string
   updatedAt: string
   principals?: Array<{ id: string; displayName: string; type: string; _count?: { managementContracts: number } }>

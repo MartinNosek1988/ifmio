@@ -4,15 +4,47 @@ export interface AresSubject {
   ico: string;
   nazev: string;
   pravniForma: string;
+  pravniFormaKod?: number;
   adresa: {
     ulice: string;
     cisloPopisne: string;
+    cisloOrientacni: string;
     obec: string;
+    castObce: string;
     psc: string;
     kraj: string;
   };
+  textovaAdresa?: string;
   dic?: string;
   datumVzniku?: string;
+  datumZaniku?: string;
+  czNace?: string[];
+  datoveSchranky?: string[];
+  zastupci?: AresZastupce[];
+  registrace?: AresRegistrace;
+}
+
+export interface AresZastupce {
+  jmeno: string;
+  prijmeni: string;
+  funkce: string;
+  datumNarozeni?: string;
+}
+
+export interface AresRegistrace {
+  stavZdrojeVr?: string;
+  stavZdrojeRes?: string;
+  stavZdrojeRzp?: string;
+  stavZdrojeNrpzs?: string;
+  stavZdrojeRpsh?: string;
+  stavZdrojeRcns?: string;
+  stavZdrojeSzr?: string;
+  stavZdrojeDph?: string;
+  stavZdrojeSd?: string;
+  stavZdrojeIr?: string;
+  stavZdrojeCeu?: string;
+  stavZdrojeRs?: string;
+  stavZdrojeRed?: string;
 }
 
 export interface AresSearchResult {
@@ -105,24 +137,92 @@ export class AresService {
   private mapSubject(data: Record<string, unknown>): AresSubject {
     const sidlo = (data.sidlo ?? {}) as Record<string, unknown>;
     const czNace = data.czNace as string[] | undefined;
+    const pravniFormaObj = data.pravniForma as Record<string, unknown> | string | undefined;
+    const datoveSchranky = data.datoveSchranky as Array<Record<string, unknown>> | undefined;
+    const zastupci = data.seznamRegistraci as Record<string, unknown> | undefined;
+    const statutarniOrgan = data.statutarniOrgan as Array<Record<string, unknown>> | undefined;
+    const registrace = data.registrace as Record<string, unknown> | undefined;
 
-    return {
+    const result: AresSubject = {
       ico: String(data.ico ?? ''),
       nazev: String(data.obchodniJmeno ?? ''),
       pravniForma: String(
-        (data.pravniForma as Record<string, unknown>)?.nazev ??
-          (data.pravniForma as string) ??
-          '',
+        typeof pravniFormaObj === 'object' ? pravniFormaObj?.nazev ?? '' : pravniFormaObj ?? '',
       ),
       adresa: {
         ulice: String(sidlo.nazevUlice ?? ''),
         cisloPopisne: String(sidlo.cisloDomovni ?? ''),
+        cisloOrientacni: String(sidlo.cisloOrientacni ?? ''),
         obec: String(sidlo.nazevObce ?? ''),
+        castObce: String(sidlo.nazevCastiObce ?? ''),
         psc: String(sidlo.psc ?? ''),
         kraj: String(sidlo.nazevKraje ?? ''),
       },
-      ...(data.dic ? { dic: String(data.dic) } : {}),
-      ...(data.datumVzniku ? { datumVzniku: String(data.datumVzniku) } : {}),
     };
+
+    // Text address
+    if (sidlo.textovaAdresa) {
+      result.textovaAdresa = String(sidlo.textovaAdresa);
+    } else {
+      // Build from parts
+      const parts: string[] = [];
+      if (sidlo.nazevUlice) {
+        let street = String(sidlo.nazevUlice);
+        if (sidlo.cisloDomovni) street += ` ${sidlo.cisloDomovni}`;
+        if (sidlo.cisloOrientacni) street += `/${sidlo.cisloOrientacni}`;
+        parts.push(street);
+      }
+      if (sidlo.nazevObce) parts.push(`${sidlo.psc ?? ''} ${sidlo.nazevObce}`.trim());
+      if (parts.length) result.textovaAdresa = parts.join(', ');
+    }
+
+    // Legal form code
+    if (typeof pravniFormaObj === 'object' && pravniFormaObj?.kod) {
+      result.pravniFormaKod = Number(pravniFormaObj.kod);
+    }
+
+    if (data.dic) result.dic = String(data.dic);
+    if (data.datumVzniku) result.datumVzniku = String(data.datumVzniku);
+    if (data.datumZaniku) result.datumZaniku = String(data.datumZaniku);
+    if (czNace?.length) result.czNace = czNace;
+
+    // Datové schránky
+    if (datoveSchranky?.length) {
+      result.datoveSchranky = datoveSchranky
+        .map((ds) => String(ds.idDs ?? ds.id ?? ''))
+        .filter(Boolean);
+    }
+
+    // Statutární orgán → zastupci
+    if (statutarniOrgan?.length) {
+      result.zastupci = statutarniOrgan
+        .filter((z) => z.jmeno || z.prijmeni)
+        .map((z) => ({
+          jmeno: String(z.jmeno ?? ''),
+          prijmeni: String(z.prijmeni ?? ''),
+          funkce: String(z.funkce ?? z.clenstvi ?? ''),
+          ...(z.datumNarozeni ? { datumNarozeni: String(z.datumNarozeni) } : {}),
+        }));
+    }
+
+    // Registrace
+    if (registrace && typeof registrace === 'object') {
+      const reg: AresRegistrace = {};
+      const regKeys: (keyof AresRegistrace)[] = [
+        'stavZdrojeVr', 'stavZdrojeRes', 'stavZdrojeRzp', 'stavZdrojeNrpzs',
+        'stavZdrojeRpsh', 'stavZdrojeRcns', 'stavZdrojeSzr', 'stavZdrojeDph',
+        'stavZdrojeSd', 'stavZdrojeIr', 'stavZdrojeCeu', 'stavZdrojeRs', 'stavZdrojeRed',
+      ];
+      let hasAny = false;
+      for (const key of regKeys) {
+        if (registrace[key] != null) {
+          reg[key] = String(registrace[key]);
+          hasAny = true;
+        }
+      }
+      if (hasAny) result.registrace = reg;
+    }
+
+    return result;
   }
 }

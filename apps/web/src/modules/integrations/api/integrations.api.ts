@@ -4,15 +4,31 @@ export interface AresSubject {
   ico: string;
   nazev: string;
   pravniForma: string;
+  pravniFormaKod?: number;
   adresa: {
     ulice: string;
     cisloPopisne: string;
+    cisloOrientacni: string;
     obec: string;
+    castObce: string;
     psc: string;
     kraj: string;
   };
+  textovaAdresa?: string;
   dic?: string;
   datumVzniku?: string;
+  datumZaniku?: string;
+  czNace?: string[];
+  datoveSchranky?: string[];
+  zastupci?: AresZastupce[];
+  registrace?: Record<string, string>;
+}
+
+export interface AresZastupce {
+  jmeno: string;
+  prijmeni: string;
+  funkce: string;
+  datumNarozeni?: string;
 }
 
 export interface AresSearchResult {
