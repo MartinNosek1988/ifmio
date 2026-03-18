@@ -29,10 +29,14 @@ export const ownershipsApi = {
     apiClient.get<ApiOwnership[]>(`/ownerships/units-by-property/${propertyId}`).then(r => r.data),
   createPropertyOwnership: (data: Record<string, unknown>) =>
     apiClient.post<ApiOwnership>('/ownerships/property', data).then(r => r.data),
-  createUnitOwnership: (data: Record<string, unknown>) =>
-    apiClient.post<ApiOwnership>('/ownerships/unit', data).then(r => r.data),
+  updatePropertyOwnership: (id: string, data: Record<string, unknown>) =>
+    apiClient.patch<ApiOwnership>(`/ownerships/property/${id}`, data).then(r => r.data),
   removePropertyOwnership: (id: string) =>
     apiClient.delete(`/ownerships/property/${id}`),
+  createUnitOwnership: (data: Record<string, unknown>) =>
+    apiClient.post<ApiOwnership>('/ownerships/unit', data).then(r => r.data),
+  updateUnitOwnership: (id: string, data: Record<string, unknown>) =>
+    apiClient.patch<ApiOwnership>(`/ownerships/unit/${id}`, data).then(r => r.data),
   removeUnitOwnership: (id: string) =>
     apiClient.delete(`/ownerships/unit/${id}`),
 }

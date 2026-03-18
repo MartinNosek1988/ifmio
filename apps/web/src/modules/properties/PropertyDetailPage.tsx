@@ -13,8 +13,9 @@ import BulkUnitForm from './BulkUnitForm';
 import OccupancyForm from './OccupancyForm';
 import { usePropertyContracts, type ApiManagementContract } from './management-contracts-api';
 import { usePropertyFinancialContexts, type ApiFinancialContext } from './financial-contexts-api';
-import { usePropertyOwnerships, useUnitOwnershipsByProperty, type ApiOwnership } from './ownerships-api';
+import { usePropertyOwnerships, useUnitOwnershipsByProperty, type ApiOwnership, ownershipsApi } from './ownerships-api';
 import { usePropertyTenancies, type ApiTenancy } from './tenancies-api';
+import OwnershipFormModal from './OwnershipFormModal';
 
 const MGMT_TYPE_BADGE: Record<string, { label: string; variant: string }> = {
   hoa_management: { label: 'SVJ', variant: 'blue' },
@@ -48,6 +49,20 @@ export default function PropertyDetailPage() {
   const [deleteUnit, setDeleteUnit] = useState<ApiUnit | null>(null);
   const [occupancyUnit, setOccupancyUnit] = useState<ApiUnit | null>(null);
   const [activeFinContextId, setActiveFinContextId] = useState<string | null>(null);
+  const [ownershipModal, setOwnershipModal] = useState<{ type: 'property' | 'unit'; unitId?: string; ownership?: ApiOwnership } | null>(null);
+
+  const refetchOwnerships = () => {
+    queryClient.invalidateQueries({ queryKey: ['ownerships'] });
+  };
+
+  const handleDeleteOwnership = async (ownerType: 'property' | 'unit', ownershipId: string) => {
+    if (!window.confirm('Odebrat vlastnictví?')) return;
+    try {
+      if (ownerType === 'property') await ownershipsApi.removePropertyOwnership(ownershipId);
+      else await ownershipsApi.removeUnitOwnership(ownershipId);
+      refetchOwnerships();
+    } catch { /* ignore */ }
+  };
 
   const deleteMutation = useMutation({
     mutationFn: (unitId: string) => propertiesApi.deleteUnit(id!, unitId),
@@ -308,7 +323,12 @@ export default function PropertyDetailPage() {
       )}
 
       {/* ── Vlastníci nemovitosti ─────────────────────────────────── */}
-      <PropertyOwnershipsSection ownerships={propOwnerships} />
+      <PropertyOwnershipsSection
+        ownerships={propOwnerships}
+        onAdd={() => setOwnershipModal({ type: 'property' })}
+        onEdit={(o) => setOwnershipModal({ type: 'property', ownership: o })}
+        onDelete={(o) => handleDeleteOwnership('property', o.id)}
+      />
 
       <h2 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: 12 }}>
         Jednotky
@@ -414,6 +434,17 @@ export default function PropertyDetailPage() {
           propertyLegalMode={property.legalMode}
           onSuccess={() => { setOccupancyUnit(null); refetch(); }}
           onClose={() => setOccupancyUnit(null)}
+        />
+      )}
+
+      {ownershipModal && (
+        <OwnershipFormModal
+          type={ownershipModal.type}
+          propertyId={id}
+          unitId={ownershipModal.unitId}
+          ownership={ownershipModal.ownership}
+          onClose={() => setOwnershipModal(null)}
+          onSaved={() => { setOwnershipModal(null); refetchOwnerships(); }}
         />
       )}
     </div>
@@ -561,49 +592,72 @@ const OWNERSHIP_ROLE_LABELS: Record<string, string> = {
   silent_coowner: 'tichý',
 };
 
-function PropertyOwnershipsSection({ ownerships }: { ownerships: ApiOwnership[] }) {
-  if (ownerships.length === 0) return null;
-
+function PropertyOwnershipsSection({ ownerships, onAdd, onEdit, onDelete }: {
+  ownerships: ApiOwnership[];
+  onAdd: () => void;
+  onEdit: (o: ApiOwnership) => void;
+  onDelete: (o: ApiOwnership) => void;
+}) {
   const thStyle: React.CSSProperties = { padding: '8px 12px', fontWeight: 600, fontSize: '.8rem', color: 'var(--text-muted)', textAlign: 'left', borderBottom: '1px solid var(--border)' };
   const tdStyle: React.CSSProperties = { padding: '8px 12px', borderBottom: '1px solid var(--border)' };
 
   return (
     <div style={{ marginBottom: 24 }}>
-      <h2 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: 12 }}>
-        Vlastníci nemovitosti
-        <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8, fontSize: '0.85rem' }}>
-          {ownerships.length}
-        </span>
-      </h2>
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem' }}>
-          <thead>
-            <tr>
-              <th style={thStyle}>Subjekt</th>
-              <th style={{ ...thStyle, textAlign: 'right' }}>Podíl</th>
-              <th style={thStyle}>Role</th>
-              <th style={thStyle}>Od</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ownerships.map(o => (
-              <tr key={o.id}>
-                <td style={tdStyle}>
-                  <span style={{ fontWeight: 500 }}>{o.party.displayName}</span>
-                  {o.party.ic && <span className="text-muted text-sm" style={{ marginLeft: 8 }}>IČ: {o.party.ic}</span>}
-                </td>
-                <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'monospace' }}>
-                  {o.sharePercent != null ? `${Number(o.sharePercent).toFixed(1)}%` : '—'}
-                </td>
-                <td style={tdStyle} className="text-muted">{OWNERSHIP_ROLE_LABELS[o.role] ?? o.role}</td>
-                <td style={tdStyle} className="text-muted">
-                  {o.validFrom ? new Date(o.validFrom).toLocaleDateString('cs-CZ') : '—'}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <h2 style={{ fontSize: '0.95rem', fontWeight: 600, margin: 0 }}>
+          Vlastníci nemovitosti
+          <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8, fontSize: '0.85rem' }}>
+            {ownerships.length}
+          </span>
+        </h2>
+        <Button size="sm" onClick={onAdd}>+ Přidat vlastníka</Button>
       </div>
+      {ownerships.length === 0 ? (
+        <div className="text-muted" style={{ fontSize: '.85rem' }}>Žádní vlastníci nemovitosti.</div>
+      ) : (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem' }}>
+            <thead>
+              <tr>
+                <th style={thStyle}>Subjekt</th>
+                <th style={{ ...thStyle, textAlign: 'right' }}>Podíl</th>
+                <th style={thStyle}>Role</th>
+                <th style={thStyle}>Od</th>
+                <th style={{ ...thStyle, width: 80 }} />
+              </tr>
+            </thead>
+            <tbody>
+              {ownerships.map(o => (
+                <tr key={o.id}>
+                  <td style={tdStyle}>
+                    <span style={{ fontWeight: 500 }}>{o.party.displayName}</span>
+                    {o.party.ic && <span className="text-muted text-sm" style={{ marginLeft: 8 }}>IČ: {o.party.ic}</span>}
+                  </td>
+                  <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'monospace' }}>
+                    {o.shareNumerator != null && o.shareDenominator != null
+                      ? `${o.shareNumerator}/${o.shareDenominator}`
+                      : o.sharePercent != null ? `${Number(o.sharePercent).toFixed(1)}%` : '—'}
+                  </td>
+                  <td style={tdStyle} className="text-muted">{OWNERSHIP_ROLE_LABELS[o.role] ?? o.role}</td>
+                  <td style={tdStyle} className="text-muted">
+                    {o.validFrom ? new Date(o.validFrom).toLocaleDateString('cs-CZ') : '—'}
+                  </td>
+                  <td style={tdStyle}>
+                    <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                      <button onClick={() => onEdit(o)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', color: 'var(--text-muted)' }} title="Upravit">
+                        <Pencil size={13} />
+                      </button>
+                      <button onClick={() => onDelete(o)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', color: 'var(--danger)' }} title="Odebrat">
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
