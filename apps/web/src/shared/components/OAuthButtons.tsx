@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { apiClient } from '../../core/api/client'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1'
 
@@ -56,7 +55,7 @@ interface Props {
   invitationToken?: string
 }
 
-export function OAuthButtons({ dividerText = 'nebo pokračujte přes', onSuccess, onError }: Props) {
+export function OAuthButtons({ dividerText = 'nebo pokračujte přes' }: Props) {
   const [loading, setLoading] = useState<string | null>(null)
 
   // Use redirect flow: redirect to backend OAuth initiation

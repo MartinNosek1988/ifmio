@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { apiClient } from '../../core/api/client'
 import { Button } from '../../shared/components'
-import { Upload, FileText, AlertTriangle, Check } from 'lucide-react'
+import { Upload, AlertTriangle, Check } from 'lucide-react'
 
 interface CuzkOwner { name: string; address: string; share: string | null; isSJM: boolean; isLegalEntity: boolean }
 interface CuzkParsedUnit {
