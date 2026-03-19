@@ -97,12 +97,17 @@ export class CuzkImportService {
   private parseUnitHtml(html: string, fallbackName: string): CuzkParsedUnit {
     const $ = cheerio.load(html)
 
-    // Parse unit attributes
+    // Parse unit attributes — replace <br> with space before extracting text
+    // (cheerio's .text() collapses <br> without adding whitespace)
+    $('td.nazev br').replaceWith(' ')
+
     const getAttr = (label: string): string => {
       let val = ''
-      $('table[summary="Atributy jednotky"] tr, table tr').each((_, tr) => {
+      const normalizedLabel = label.replace(/\s+/g, ' ').trim()
+      $('table.atributy tr, table[summary="Atributy jednotky"] tr').each((_, tr) => {
         const labelTd = $(tr).find('td').first()
-        if (labelTd.text().trim().startsWith(label)) {
+        const labelText = labelTd.text().replace(/\s+/g, ' ').trim()
+        if (labelText.startsWith(normalizedLabel)) {
           val = $(tr).find('td').last().text().trim()
         }
       })
@@ -155,8 +160,11 @@ export class CuzkImportService {
 
       // Check SJM
       if (firstTd.startsWith('SJM') || firstTd.startsWith('SJ ')) {
+        const sjmComma = firstTd.indexOf(',')
+        const sjmName = sjmComma > 0 ? firstTd.slice(0, sjmComma).trim() : firstTd
+        const sjmAddr = sjmComma > 0 ? firstTd.slice(sjmComma + 1).trim() : ''
         const sjmOwner: CuzkOwner = {
-          name: firstTd, address: '', share: tds.length > 1 ? $(tds[tds.length - 1]).text().trim() || null : null,
+          name: sjmName, address: sjmAddr, share: tds.length > 1 ? $(tds[tds.length - 1]).text().trim() || null : null,
           shareNumerator: null, shareDenominator: null,
           isSJM: true, sjmPartners: [], isLegalEntity: false,
         }
@@ -181,10 +189,10 @@ export class CuzkImportService {
         return
       }
 
-      // Regular owner
-      const lines = firstTd.split('\n').map(s => s.trim()).filter(Boolean)
-      const name = lines[0] ?? firstTd
-      const address = lines.slice(1).join(', ')
+      // Regular owner — name is before first comma, address is rest
+      const commaIdx = firstTd.indexOf(',')
+      const name = commaIdx > 0 ? firstTd.slice(0, commaIdx).trim() : firstTd
+      const address = commaIdx > 0 ? firstTd.slice(commaIdx + 1).trim() : ''
       const shareText = tds.length > 1 ? $(tds[tds.length - 1]).text().trim() || null : null
       let shareNum: number | null = null, shareDen: number | null = null
       if (shareText) {
@@ -234,9 +242,10 @@ export class CuzkImportService {
     const cadastralOffice = $('td:contains("Katastrální úřad")').parent().find('td').last().text().trim()
       || $('div:contains("katastrální úřad")').text().replace(/.*katastrální úřad/i, '').trim()
 
-    // Data validity
-    const dataValidAt = $('td:contains("Informace platné k")').parent().find('td').last().text().trim()
-      || $('div:contains("platné k")').text().replace(/.*platné k\s*/i, '').trim()
+    // Data validity — from footer paragraph "Platnost dat k DD.MM.YYYY HH:MM"
+    const footerText = $('#nemovitost-paticka').text() || $('p:contains("Platnost")').text() || ''
+    const validMatch = footerText.match(/[Pp]latnost\s+dat\s+k\s+(.+?)\.?\s*$/)
+    const dataValidAt = validMatch?.[1]?.trim() ?? ''
 
     return {
       unitNumber, unitType, usage,
