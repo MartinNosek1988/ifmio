@@ -7,6 +7,7 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AresService } from './ares/ares.service';
 import { CuzkService } from './cuzk/cuzk.service';
+import { RuianService } from './ruian/ruian.service';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '@ifmio/shared-types';
@@ -17,6 +18,7 @@ export class IntegrationsController {
   constructor(
     private readonly ares: AresService,
     private readonly cuzk: CuzkService,
+    private readonly ruian: RuianService,
   ) {}
 
   @Public()
@@ -49,5 +51,13 @@ export class IntegrationsController {
     if (!parcela) throw new BadRequestException('Query parameter "parcela" is required');
     if (!ku) throw new BadRequestException('Query parameter "ku" is required');
     return this.cuzk.findParcel(parcela, ku);
+  }
+
+  @Public()
+  @Get('ruian/address')
+  @ApiOperation({ summary: 'RÚIAN address autocomplete' })
+  async ruianAddress(@Query('q') q: string) {
+    if (!q || q.length < 3) return [];
+    return this.ruian.searchAddress(q);
   }
 }
