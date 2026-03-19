@@ -6,6 +6,11 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
     environment:
       # Databáze — Supabase nebo lokální PG
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
@@ -46,6 +51,9 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL:-/api/v1}
     restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
     depends_on:
       api:
         condition: service_healthy

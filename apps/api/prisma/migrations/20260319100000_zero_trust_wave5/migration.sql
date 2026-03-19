@@ -1,0 +1,10 @@
+-- ZT-W5-01: GDPR erasure flags on Party and Resident
+ALTER TABLE "parties"   ADD COLUMN IF NOT EXISTS "gdprErased" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "parties"   ADD COLUMN IF NOT EXISTS "gdprErasedAt" TIMESTAMP(3);
+ALTER TABLE "residents" ADD COLUMN IF NOT EXISTS "gdprErased" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "residents" ADD COLUMN IF NOT EXISTS "gdprErasedAt" TIMESTAMP(3);
+
+-- ZT-W5-02: Per-tenant retention policies
+ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "retentionAuditLogDays" INTEGER NOT NULL DEFAULT 365;
+ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "retentionBackupDays"   INTEGER NOT NULL DEFAULT 90;
+ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "retentionSessionDays"  INTEGER NOT NULL DEFAULT 30;

@@ -12,6 +12,7 @@ import helmet from '@fastify/helmet';
 import compress from '@fastify/compress';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { SanitizePipe } from './common/pipes/sanitize.pipe';
 import multipart from '@fastify/multipart';
 
 function validateEnv() {
@@ -80,6 +81,7 @@ async function bootstrap() {
   });
 
   app.useGlobalPipes(
+    new SanitizePipe(),
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
