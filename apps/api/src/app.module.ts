@@ -47,6 +47,7 @@ import { OwnershipModule } from './ownership/ownership.module';
 import { TenancyModule } from './tenancy/tenancy.module';
 import { BankingModule } from './banking/banking.module';
 import { SettlementModule } from './settlement/settlement.module';
+import { KanbanModule } from './kanban/kanban.module';
 import { PortalModule } from './portal/portal.module';
 import { CommunicationModule } from './communication/communication.module';
 import { WhatsAppModule } from './whatsapp/whatsapp.module';
@@ -126,6 +127,7 @@ import { CryptoService } from './common/crypto.service';
     BankingModule,
     SettlementModule,
     PortalModule,
+    KanbanModule,
     CommunicationModule,
     WhatsAppModule,
     Microsoft365Module,
