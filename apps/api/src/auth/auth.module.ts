@@ -7,6 +7,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { FacebookStrategy } from './strategies/facebook.strategy';
 import { MicrosoftStrategy } from './strategies/microsoft.strategy';
+import { CryptoService } from '../common/crypto.service';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { MicrosoftStrategy } from './strategies/microsoft.strategy';
     GoogleStrategy,
     FacebookStrategy,
     MicrosoftStrategy,
+    CryptoService,
   ],
   controllers: [AuthController],
   exports: [AuthService],
