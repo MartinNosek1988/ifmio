@@ -42,7 +42,7 @@ export default function CuzkImportTab({ onClose }: { onClose: () => void }) {
   })
 
   // Debounce address input
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null)
   const handleAddressChange = useCallback((value: string) => {
     setForm(f => ({ ...f, propertyAddress: value }))
     clearTimeout(debounceRef.current)
