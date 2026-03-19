@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { apiClient } from '../../core/api/client';
 import { OAuthButtons } from '../../shared/components/OAuthButtons';
+import { AuthLayout } from './AuthLayout';
 import i18n from '../../core/i18n';
 
 const LANGS = ['cs', 'en', 'sk', 'de', 'uk'] as const;
@@ -12,8 +14,10 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const returnUrl = searchParams.get('returnUrl') ?? '/dashboard';
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => localStorage.getItem('ifmio:remember_email') ?? '');
   const [password, setPassword] = useState('');
+  const [showPw, setShowPw] = useState(false);
+  const [remember, setRemember] = useState(!!localStorage.getItem('ifmio:remember_email'));
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -61,113 +65,141 @@ export default function LoginPage() {
     sessionStorage.setItem('ifmio:access_token', accessToken);
     sessionStorage.setItem('ifmio:refresh_token', refreshToken);
     sessionStorage.setItem('ifmio:user', JSON.stringify(user));
-    if (user.language && user.language !== i18n.language) {
-      i18n.changeLanguage(user.language);
-    }
-    if (passwordExpired) {
-      navigate('/profile?tab=security&expired=1', { replace: true });
-    } else {
-      navigate(returnUrl, { replace: true });
-    }
+    if (remember) localStorage.setItem('ifmio:remember_email', email);
+    else localStorage.removeItem('ifmio:remember_email');
+    if (user.language && user.language !== i18n.language) i18n.changeLanguage(user.language);
+    if (passwordExpired) navigate('/profile?tab=security&expired=1', { replace: true });
+    else navigate(returnUrl, { replace: true });
   };
 
-  const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', background: '#0f1117', border: '1px solid #2a2d3a', borderRadius: '8px', color: '#fff', fontSize: '0.95rem', boxSizing: 'border-box' };
+  const inputStyle = (hasError?: boolean): React.CSSProperties => ({
+    width: '100%', padding: '12px 14px', borderRadius: 10,
+    border: `1.5px solid ${hasError ? '#EF4444' : '#E5E7EB'}`,
+    background: '#fff', color: '#1A1A2E', fontSize: '.95rem',
+    fontFamily: "'DM Sans', sans-serif", boxSizing: 'border-box',
+    outline: 'none', transition: 'border-color 0.2s',
+  });
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f1117' }}>
-      <div style={{ background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: '12px', padding: '40px', width: '100%', maxWidth: '400px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <h1 style={{ color: '#6366f1', fontSize: '2rem', fontWeight: 700, margin: 0 }}>ifmio</h1>
-          <p style={{ color: '#6b7280', marginTop: '8px', fontSize: '0.9rem' }}>{t('auth.login.subtitle')}</p>
-        </div>
+    <AuthLayout
+      headline="Manage your buildings with confidence"
+      subtext="The smart facility management platform that helps you streamline operations, reduce costs, and make data-driven decisions."
+      features={[
+        { text: 'AI-powered insights with Mio' },
+        { text: 'ISO 41001 aligned compliance' },
+        { text: 'All-in-one property management' },
+      ]}
+    >
+      {loginStep === 'credentials' && (
+        <>
+          <h2 style={{ fontSize: '1.6rem', fontWeight: 700, color: '#1A1A2E', margin: '0 0 6px', fontFamily: "'DM Sans', sans-serif" }}>
+            {t('auth.login.noAccount') ? 'Welcome back' : 'Welcome back'}
+          </h2>
+          <p style={{ color: '#6B7280', fontSize: '.95rem', margin: '0 0 28px' }}>Sign in to your account</p>
 
-        {loginStep === 'credentials' && (
           <form onSubmit={handleSubmit}>
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', color: '#9ca3af', fontSize: '0.85rem', marginBottom: '6px' }}>{t('auth.login.email')}</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required style={inputStyle} />
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: '.85rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>{t('auth.login.email')}</label>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
+                placeholder="you@company.com"
+                style={inputStyle(!!error)}
+                onFocus={e => { e.currentTarget.style.borderColor = '#0D9488' }}
+                onBlur={e => { e.currentTarget.style.borderColor = error ? '#EF4444' : '#E5E7EB' }}
+              />
             </div>
-            <div style={{ marginBottom: '8px' }}>
-              <label style={{ display: 'block', color: '#9ca3af', fontSize: '0.85rem', marginBottom: '6px' }}>{t('auth.login.password')}</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required style={inputStyle} />
+
+            <div style={{ marginBottom: 8, position: 'relative' }}>
+              <label style={{ display: 'block', fontSize: '.85rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>{t('auth.login.password')}</label>
+              <input type={showPw ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} required
+                style={{ ...inputStyle(!!error), paddingRight: 44 }}
+                onFocus={e => { e.currentTarget.style.borderColor = '#0D9488' }}
+                onBlur={e => { e.currentTarget.style.borderColor = error ? '#EF4444' : '#E5E7EB' }}
+              />
+              <button type="button" onClick={() => setShowPw(!showPw)}
+                style={{ position: 'absolute', right: 12, top: 34, background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 4 }}>
+                {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
-            <div style={{ textAlign: 'right', marginBottom: '16px' }}>
-              <Link to="/forgot-password" style={{ fontSize: '13px', color: '#94a3b8', textDecoration: 'none' }}
-                onMouseEnter={e => (e.currentTarget.style.color = '#cbd5e1')}
-                onMouseLeave={e => (e.currentTarget.style.color = '#94a3b8')}>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '.82rem', color: '#6B7280', cursor: 'pointer' }}>
+                <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} style={{ accentColor: '#0D9488' }} />
+                Remember me
+              </label>
+              <Link to="/forgot-password" style={{ fontSize: '.82rem', color: '#0D9488', textDecoration: 'none', fontWeight: 500 }}>
                 {t('auth.login.forgotPassword')}
               </Link>
             </div>
-            {error && <div style={{ background: '#2d1b1b', border: '1px solid #ef4444', borderRadius: '8px', padding: '10px 12px', color: '#ef4444', fontSize: '0.85rem', marginBottom: '16px' }}>{error}</div>}
-            <button type="submit" disabled={loading} style={{ width: '100%', padding: '12px', background: loading ? '#4338ca' : '#6366f1', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '1rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer' }}>
-              {loading ? t('auth.login.submitting') : t('auth.login.submit')}
-            </button>
 
-            <OAuthButtons />
+            {error && <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', color: '#DC2626', fontSize: '.85rem', marginBottom: 16 }}>{error}</div>}
+
+            <button type="submit" disabled={loading}
+              style={{
+                width: '100%', padding: '13px', background: loading ? '#0F766E' : '#0D9488',
+                border: 'none', borderRadius: 10, color: '#fff', fontSize: '1rem', fontWeight: 600,
+                fontFamily: "'DM Sans', sans-serif", cursor: loading ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                transition: 'background 0.2s', boxShadow: '0 2px 8px rgba(13,148,136,0.3)',
+              }}
+            >
+              {loading ? 'Signing in...' : <>{t('auth.login.submit')} <ArrowRight size={16} /></>}
+            </button>
           </form>
-        )}
 
-        {loginStep === '2fa' && (
-          <form onSubmit={handle2faSubmit}>
-            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-              <div style={{ fontSize: '2rem', marginBottom: 8 }}>🔐</div>
-              <p style={{ color: '#9ca3af', fontSize: '0.9rem' }}>
-                {useBackupCode ? 'Zadejte záložní kód' : 'Zadejte kód z autentizační aplikace'}
-              </p>
-            </div>
-            <div style={{ marginBottom: '16px' }}>
-              <input
-                type="text"
-                value={totpCode}
-                onChange={(e) => setTotpCode(e.target.value)}
-                maxLength={useBackupCode ? 8 : 6}
-                placeholder={useBackupCode ? 'ABCD1234' : '123456'}
-                autoFocus
-                style={{ ...inputStyle, textAlign: 'center', fontSize: '1.4rem', letterSpacing: '4px', fontFamily: 'monospace' }}
-              />
-            </div>
-            {error && <div style={{ background: '#2d1b1b', border: '1px solid #ef4444', borderRadius: '8px', padding: '10px 12px', color: '#ef4444', fontSize: '0.85rem', marginBottom: '16px' }}>{error}</div>}
-            <button type="submit" disabled={loading || totpCode.length < (useBackupCode ? 6 : 6)} style={{ width: '100%', padding: '12px', background: loading ? '#4338ca' : '#6366f1', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '1rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer' }}>
-              {loading ? 'Ověřuji...' : 'Ověřit'}
-            </button>
-            <div style={{ textAlign: 'center', marginTop: '12px' }}>
-              <button type="button" onClick={() => { setUseBackupCode(!useBackupCode); setTotpCode(''); }}
-                style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '0.82rem', textDecoration: 'underline' }}>
-                {useBackupCode ? 'Použít kód z aplikace' : 'Použít záložní kód'}
-              </button>
-            </div>
-          </form>
-        )}
+          <OAuthButtons dividerText="or continue with" />
 
-        {/* Language switcher */}
-        <div style={{ textAlign: 'center', marginTop: '16px' }}>
-          {LANGS.map(lang => (
-            <button key={lang} onClick={() => i18n.changeLanguage(lang)}
-              style={{ background: 'none', border: 'none', color: i18n.language === lang ? '#6366f1' : '#6b7280', cursor: 'pointer', fontSize: '12px', padding: '0 6px', fontWeight: i18n.language === lang ? 600 : 400 }}>
-              {t(`language.${lang}`)}
-            </button>
-          ))}
-        </div>
-
-        {loginStep === 'credentials' && (
-          <div style={{ textAlign: 'center', marginTop: 12 }}>
-            <span style={{ color: '#6b7280', fontSize: '0.82rem' }}>
+          <div style={{ textAlign: 'center', marginTop: 20 }}>
+            <span style={{ color: '#6B7280', fontSize: '.85rem' }}>
               {t('auth.login.noAccount')}{' '}
-              <Link to="/register" style={{ color: '#6366f1', textDecoration: 'none', fontWeight: 600 }}>{t('auth.login.register')}</Link>
+              <Link to="/register" style={{ color: '#0D9488', textDecoration: 'none', fontWeight: 600 }}>{t('auth.login.register')}</Link>
             </span>
           </div>
-        )}
+        </>
+      )}
 
-        {/* Legal footer */}
-        <div style={{ textAlign: 'center', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #2a2d3a' }}>
-          <Link to="/terms" style={{ color: '#4b5563', fontSize: '11px', textDecoration: 'none', margin: '0 8px' }}>{t('legal.terms')}</Link>
-          <Link to="/privacy" style={{ color: '#4b5563', fontSize: '11px', textDecoration: 'none', margin: '0 8px' }}>{t('legal.privacy')}</Link>
-          <Link to="/gdpr" style={{ color: '#4b5563', fontSize: '11px', textDecoration: 'none', margin: '0 8px' }}>{t('legal.gdpr')}</Link>
-          <div style={{ color: '#374151', fontSize: '11px', marginTop: '8px' }}>
-            {t('legal.copyright', { year: new Date().getFullYear() })}
+      {loginStep === '2fa' && (
+        <form onSubmit={handle2faSubmit}>
+          <div style={{ textAlign: 'center', marginBottom: 24 }}>
+            <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>🔐</div>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#1A1A2E', margin: '0 0 6px' }}>Two-factor authentication</h2>
+            <p style={{ color: '#6B7280', fontSize: '.9rem' }}>
+              {useBackupCode ? 'Enter a backup code' : 'Enter the code from your authenticator app'}
+            </p>
           </div>
-        </div>
+          <div style={{ marginBottom: 20 }}>
+            <input type="text" value={totpCode} onChange={e => setTotpCode(e.target.value)}
+              maxLength={useBackupCode ? 8 : 6} placeholder={useBackupCode ? 'ABCD1234' : '123456'} autoFocus
+              style={{ ...inputStyle(), textAlign: 'center', fontSize: '1.5rem', letterSpacing: 6, fontFamily: "'Space Mono', monospace" }} />
+          </div>
+          {error && <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', color: '#DC2626', fontSize: '.85rem', marginBottom: 16 }}>{error}</div>}
+          <button type="submit" disabled={loading || totpCode.length < 6}
+            style={{ width: '100%', padding: '13px', background: '#0D9488', border: 'none', borderRadius: 10, color: '#fff', fontSize: '1rem', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+            {loading ? 'Verifying...' : 'Verify'}
+          </button>
+          <div style={{ textAlign: 'center', marginTop: 12 }}>
+            <button type="button" onClick={() => { setUseBackupCode(!useBackupCode); setTotpCode('') }}
+              style={{ background: 'none', border: 'none', color: '#0D9488', cursor: 'pointer', fontSize: '.82rem', textDecoration: 'underline' }}>
+              {useBackupCode ? 'Use authenticator code' : 'Use backup code'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Language switcher */}
+      <div style={{ textAlign: 'center', marginTop: 24, paddingTop: 16, borderTop: '1px solid #F3F4F6' }}>
+        {LANGS.map(lang => (
+          <button key={lang} onClick={() => i18n.changeLanguage(lang)}
+            style={{ background: 'none', border: 'none', color: i18n.language === lang ? '#0D9488' : '#9CA3AF', cursor: 'pointer', fontSize: '11px', padding: '0 5px', fontWeight: i18n.language === lang ? 600 : 400 }}>
+            {t(`language.${lang}`)}
+          </button>
+        ))}
       </div>
-    </div>
+
+      {/* Legal */}
+      <div style={{ textAlign: 'center', marginTop: 12 }}>
+        <Link to="/terms" style={{ color: '#9CA3AF', fontSize: '11px', textDecoration: 'none', margin: '0 6px' }}>{t('legal.terms')}</Link>
+        <Link to="/privacy" style={{ color: '#9CA3AF', fontSize: '11px', textDecoration: 'none', margin: '0 6px' }}>{t('legal.privacy')}</Link>
+      </div>
+    </AuthLayout>
   );
 }
