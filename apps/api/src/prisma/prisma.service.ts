@@ -15,6 +15,7 @@ const NO_TENANT_MODELS = new Set([
   'DocumentTag', 'DocumentLink', 'MioJobRunLog', 'MioWebhookDeliveryLog',
   'MioWebhookOutbox', 'WorkOrderComment', 'MeterReading',
   'AssetFieldCheckSignal', 'SettlementCost', 'SettlementItem', 'UserFeature',
+  'RevokedToken', 'LoginRiskLog',
 ]);
 
 const SLOW_QUERY_THRESHOLD_MS = 200;

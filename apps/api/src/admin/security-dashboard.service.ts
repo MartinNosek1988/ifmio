@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
+import { RiskScoringService } from '../auth/risk-scoring.service'
 import type { AuthUser } from '@ifmio/shared-types'
 
 @Injectable()
 export class SecurityDashboardService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private riskScoring: RiskScoringService,
+  ) {}
 
   async getOverview(user: AuthUser) {
     const tenantId = user.tenantId
@@ -28,12 +32,15 @@ export class SecurityDashboardService {
       this.prisma.user.count({ where: { tenantId, isActive: true } }),
     ])
 
+    const riskStats = await this.riskScoring.getRiskStats(tenantId)
+
     return {
       failedLogins: { last24h: failedLogins24h, last7d: failedLogins7d },
       suspiciousRefreshes,
       securityAlerts,
       activeUsers7d: activeUsersCount,
       mfaAdoption: { enabled: mfaEnabled, total: totalUsers, percentage: totalUsers > 0 ? Math.round((mfaEnabled / totalUsers) * 100) : 0 },
+      riskScoring: riskStats,
     }
   }
 

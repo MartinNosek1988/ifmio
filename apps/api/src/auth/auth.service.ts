@@ -19,6 +19,8 @@ import { RegisterDto } from './dto/register.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { validatePassword } from './password-policy';
+import { RiskScoringService } from './risk-scoring.service';
+import { SecurityAlertingService } from '../common/security/security-alerting.service';
 import type { AuthUser } from '@ifmio/shared-types';
 
 export interface RequestMeta {
@@ -56,6 +58,8 @@ export class AuthService {
     private jwt: JwtService,
     private email: EmailService,
     private cryptoSvc: CryptoService,
+    private riskScoring: RiskScoringService,
+    private alerting: SecurityAlertingService,
   ) {}
 
   async register(dto: RegisterDto, meta?: RequestMeta): Promise<AuthResponse> {
@@ -157,6 +161,11 @@ export class AuthService {
       where: { email: dto.email, isActive: true },
     });
     if (!user || !user.passwordHash || !(await bcrypt.compare(dto.password, user.passwordHash))) {
+      // Log risk for failed attempt (if user found)
+      if (user) {
+        const risk = await this.riskScoring.evaluateLogin(user.id, user.tenantId, meta);
+        this.riskScoring.logRisk(user.id, user.tenantId, meta, risk, false).catch(() => {});
+      }
       this.prisma.auditLog.create({
         data: {
           tenantId: user?.tenantId ?? null,
@@ -170,6 +179,56 @@ export class AuthService {
         },
       }).catch((err) => this.logger.error('Audit LOGIN_FAIL failed', err));
       throw new UnauthorizedException('Nesprávný email nebo heslo');
+    }
+
+    // ─── ZT-W4-03: Adaptive risk scoring ─────────────────────
+    const risk = await this.riskScoring.evaluateLogin(user.id, user.tenantId, meta);
+
+    if (risk.action === 'block') {
+      this.riskScoring.logRisk(user.id, user.tenantId, meta, risk, false).catch(() => {});
+      this.prisma.auditLog.create({
+        data: {
+          tenantId: user.tenantId, userId: user.id,
+          action: 'LOGIN_BLOCKED', entity: 'User', entityId: user.id,
+          newData: { riskScore: risk.score, factors: risk.factors.map(f => f.factor) },
+          ipAddress: meta?.ip, userAgent: meta?.userAgent,
+        },
+      }).catch(() => {});
+      // ZT-W5-03: Security alert for blocked login
+      this.alerting.alert({
+        tenantId: user.tenantId,
+        type: 'RISK_BLOCKED',
+        severity: 'critical',
+        details: {
+          userEmail: user.email, riskScore: risk.score,
+          factors: risk.factors.map(f => f.factor).join(', '),
+          ip: meta?.ip ?? 'unknown',
+        },
+        timestamp: new Date(),
+      }).catch(() => {});
+      // Alert for impossible travel if detected
+      const travelFactor = risk.factors.find(f => f.factor === 'impossible_travel');
+      if (travelFactor) {
+        this.alerting.alert({
+          tenantId: user.tenantId,
+          type: 'IMPOSSIBLE_TRAVEL',
+          severity: 'high',
+          details: { userEmail: user.email, detail: travelFactor.detail, ip: meta?.ip ?? 'unknown' },
+          timestamp: new Date(),
+        }).catch(() => {});
+      }
+      // Alert for brute force if detected
+      const bruteFactor = risk.factors.find(f => f.factor === 'brute_force');
+      if (bruteFactor) {
+        this.alerting.alert({
+          tenantId: user.tenantId,
+          type: 'BRUTE_FORCE',
+          severity: 'critical',
+          details: { userEmail: user.email, detail: bruteFactor.detail, ip: meta?.ip ?? 'unknown' },
+          timestamp: new Date(),
+        }).catch(() => {});
+      }
+      throw new UnauthorizedException('Přihlášení zablokováno z bezpečnostních důvodů. Kontaktujte administrátora.');
     }
 
     // Clean up expired tokens
@@ -189,14 +248,18 @@ export class AuthService {
           action: 'LOGIN',
           entity: 'User',
           entityId: user.id,
+          newData: risk.score > 0 ? { riskScore: risk.score, riskAction: risk.action } : undefined,
           ipAddress: meta?.ip,
           userAgent: meta?.userAgent,
         },
       }),
     ]);
 
-    // Check 2FA
-    if (user.totpEnabled) {
+    // Log successful risk assessment
+    this.riskScoring.logRisk(user.id, user.tenantId, meta, risk, true).catch(() => {});
+
+    // Check 2FA — also required when risk = 'challenge' (force 2FA even if not normally enabled)
+    if (user.totpEnabled || risk.action === 'challenge') {
       const tempToken = this.jwt.sign(
         { sub: user.id, type: '2fa_pending' },
         { secret: process.env.JWT_SECRET, expiresIn: '5m' } as Record<string, unknown>,
