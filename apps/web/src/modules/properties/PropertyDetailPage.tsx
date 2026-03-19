@@ -11,8 +11,8 @@ import PropertyForm, { LEGAL_MODE_LABEL } from './PropertyForm';
 import UnitForm, { SPACE_TYPES } from './UnitForm';
 import BulkUnitForm from './BulkUnitForm';
 import OccupancyForm from './OccupancyForm';
-import { usePropertyContracts } from './management-contracts-api';
-import { usePropertyFinancialContexts } from './financial-contexts-api';
+import { usePropertyContracts, type ApiManagementContract } from './management-contracts-api';
+import { usePropertyFinancialContexts, type ApiFinancialContext } from './financial-contexts-api';
 import { usePropertyOwnerships, useUnitOwnershipsByProperty, type ApiOwnership } from './ownerships-api';
 import { usePropertyTenancies, type ApiTenancy } from './tenancies-api';
 import OwnershipFormModal from './OwnershipFormModal';
@@ -27,13 +27,6 @@ const MGMT_TYPE_BADGE: Record<string, { label: string; variant: string }> = {
   technical_management: { label: 'Technická', variant: 'muted' },
   accounting_management: { label: 'Účetní', variant: 'yellow' },
   admin_management: { label: 'Administrativní', variant: 'purple' },
-};
-
-const SCOPE_LABELS: Record<string, string> = {
-  property: 'Nemovitost',
-  principal: 'Principál',
-  manager: 'Správce',
-  manual: 'Ruční',
 };
 
 export default function PropertyDetailPage() {
@@ -60,6 +53,8 @@ export default function PropertyDetailPage() {
 
   type DetailTab = 'overview' | 'units' | 'meters' | 'components' | 'representatives' | 'owners'
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
+
+  const refetchOwnerships = () => queryClient.invalidateQueries({ queryKey: ['ownerships'] });
 
   const deleteMutation = useMutation({
     mutationFn: (unitId: string) => propertiesApi.deleteUnit(id!, unitId),
