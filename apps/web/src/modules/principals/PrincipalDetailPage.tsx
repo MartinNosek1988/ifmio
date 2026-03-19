@@ -158,7 +158,7 @@ export default function PrincipalDetailPage() {
       {tab === 'persons' && <PersonsTab party={party} />}
 
       {/* ── UŽIVATELÉ TAB ───────────────────────────────── */}
-      {tab === 'users' && <EmptyState title="Uživatelé" description="Přehled obsazenosti jednotek — připravujeme." />}
+      {tab === 'users' && <UsersTimelineTab principalId={principalId!} />}
 
       {/* ── JEDNOTKY TAB ────────────────────────────────── */}
       {tab === 'units' && <UnitsTabEnhanced principalId={principalId!} />}
@@ -324,6 +324,86 @@ function UnitsTabEnhanced({ principalId }: { principalId: string }) {
           })}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+// ─── Users Timeline Tab (Uživatelé — časová osa obsazenosti) ────────
+
+function UsersTimelineTab({ principalId }: { principalId: string }) {
+  const { data: units = [], isLoading } = usePrincipalUnits(principalId)
+  const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null)
+  const [year, setYear] = useState(new Date().getFullYear())
+
+  if (isLoading) return <LoadingState text="Načítání jednotek..." />
+  if (units.length === 0) return <EmptyState title="Žádné jednotky" description="Tento klient nemá přiřazené jednotky." />
+
+  const selected = selectedUnitId ?? units[0]?.id
+  const selectedUnit = units.find((u: any) => u.id === selected) ?? units[0]
+  const months = Array.from({ length: 12 }, (_, i) => i + 1)
+
+  // TODO: fetch actual occupancy data from GET /units/:id/occupancy?year={year}
+  // For now, use placeholder zeros
+  const occupancyData: Record<number, number> = {}
+  months.forEach(m => { occupancyData[m] = 0 })
+
+  return (
+    <div style={{ display: 'flex', gap: 16 }}>
+      {/* Left — unit selector */}
+      <div style={{ flex: '0 0 180px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', maxHeight: 400, overflowY: 'auto' }}>
+        {units.map((u: any) => (
+          <button key={u.id} onClick={() => setSelectedUnitId(u.id)}
+            style={{
+              display: 'block', width: '100%', padding: '8px 14px', border: 'none',
+              borderBottom: '1px solid var(--border)', fontSize: '.85rem', cursor: 'pointer', textAlign: 'left',
+              background: (selected === u.id) ? 'var(--primary, #6366f1)' : 'var(--surface)',
+              color: (selected === u.id) ? '#fff' : 'var(--text)',
+              fontWeight: (selected === u.id) ? 600 : 400,
+            }}
+          >
+            {u.name}
+          </button>
+        ))}
+      </div>
+
+      {/* Right — timeline */}
+      <div style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ fontWeight: 600, fontSize: '.9rem' }}>I. Časová osa {selectedUnit?.name}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button onClick={() => setYear(y => y - 1)} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, padding: '2px 8px', cursor: 'pointer', color: 'var(--text)' }}>◄</button>
+            <span style={{ fontWeight: 600, fontSize: '.9rem', minWidth: 50, textAlign: 'center' }}>{year}</span>
+            <button onClick={() => setYear(y => y + 1)} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, padding: '2px 8px', cursor: 'pointer', color: 'var(--text)' }}>►</button>
+          </div>
+        </div>
+
+        <div style={{ overflow: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.82rem' }}>
+            <thead>
+              <tr>
+                <th style={{ padding: '6px 8px', fontWeight: 600, fontSize: '.75rem', color: 'var(--text-muted)', textAlign: 'left', borderBottom: '2px solid var(--border)' }}>Měsíc</th>
+                {months.map(m => (
+                  <th key={m} style={{ padding: '6px 6px', fontWeight: 600, fontSize: '.75rem', color: 'var(--text-muted)', textAlign: 'center', borderBottom: '2px solid var(--border)', minWidth: 32 }}>
+                    {String(m).padStart(2, '0')}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style={{ padding: '8px 8px', borderBottom: '1px solid var(--border)', fontWeight: 500 }}>Počet osob</td>
+                {months.map(m => (
+                  <td key={m} style={{ padding: '8px 6px', borderBottom: '1px solid var(--border)', textAlign: 'center' }}>
+                    <span style={{ color: 'var(--primary, #6366f1)', cursor: 'pointer', fontWeight: 500 }}>
+                      {occupancyData[m] ?? 0}
+                    </span>
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   )
 }
