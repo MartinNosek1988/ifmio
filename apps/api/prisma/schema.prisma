@@ -266,6 +266,9 @@ model Property {
   managedTo        DateTime?          // ve správě do
   accountingSystem AccountingSystem?
   cutoverDate      DateTime?          // datum přechodu na ifmio
+  importSource     String?            // "cuzk_domsys" etc.
+  importedAt       DateTime?
+  cadastralData    Json?              // raw ČÚZK metadata (building, parcel, k.ú.)
   country          String             @default("CZ")
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
@@ -382,6 +385,7 @@ model Unit {
   validFrom          DateTime?
   validTo            DateTime?
   extAllocatorRef    String?                         // pár. symbol pro ext. rozúčtovatele
+  cadastralData      Json?                           // ČÚZK metadata (LV, omezení, ochrana, řízení)
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
