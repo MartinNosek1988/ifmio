@@ -564,7 +564,9 @@ export class AuthService {
     user: { id: string; email: string; name: string; role: string; tenantId: string },
     meta?: RequestMeta,
   ): Promise<AuthResponse> {
-    const payload = { sub: user.id, tenantId: user.tenantId, role: user.role };
+    // jti (JWT ID) ensures uniqueness even if two tokens are issued in the same second
+    const jti = crypto.randomBytes(16).toString('hex');
+    const payload = { sub: user.id, tenantId: user.tenantId, role: user.role, jti };
 
     const accessToken = this.jwt.sign(payload, {
       secret: process.env.JWT_SECRET,
