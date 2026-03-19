@@ -23,6 +23,7 @@ export default function CuzkImportTab({ onClose }: { onClose: () => void }) {
   const [preview, setPreview] = useState<CuzkImportResult | null>(null)
   const [form, setForm] = useState({ propertyName: '', propertyAddress: '', propertyCity: '', postalCode: '', propertyType: 'bytdum', ownership: 'vlastnictvi' })
   const [error, setError] = useState('')
+  const [showValidation, setShowValidation] = useState(false)
 
   const parseMut = useMutation({
     mutationFn: async (file: File) => {
@@ -151,32 +152,40 @@ export default function CuzkImportTab({ onClose }: { onClose: () => void }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
             <div>
               <label style={labelStyle}>Název *</label>
-              <input value={form.propertyName} onChange={e => setForm(f => ({ ...f, propertyName: e.target.value }))} style={inputStyle} />
+              <input value={form.propertyName} onChange={e => setForm(f => ({ ...f, propertyName: e.target.value }))} style={{ ...inputStyle, borderColor: showValidation && !form.propertyName ? 'var(--danger, #ef4444)' : undefined }} />
+              {showValidation && !form.propertyName && <div style={{ color: 'var(--danger, #ef4444)', fontSize: '.72rem', marginTop: 2 }}>Povinné pole</div>}
             </div>
             <div>
               <label style={labelStyle}>Adresa *</label>
-              <input value={form.propertyAddress} onChange={e => setForm(f => ({ ...f, propertyAddress: e.target.value }))} style={inputStyle} placeholder="Sokolská 1883" />
+              <input value={form.propertyAddress} onChange={e => setForm(f => ({ ...f, propertyAddress: e.target.value }))} style={{ ...inputStyle, borderColor: showValidation && !form.propertyAddress ? 'var(--danger, #ef4444)' : undefined }} placeholder="Sokolská 1883" />
+              {showValidation && !form.propertyAddress && <div style={{ color: 'var(--danger, #ef4444)', fontSize: '.72rem', marginTop: 2 }}>Povinné pole</div>}
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: 12, marginBottom: 16 }}>
             <div>
               <label style={labelStyle}>Město *</label>
-              <input value={form.propertyCity} onChange={e => setForm(f => ({ ...f, propertyCity: e.target.value }))} style={inputStyle} />
+              <input value={form.propertyCity} onChange={e => setForm(f => ({ ...f, propertyCity: e.target.value }))} style={{ ...inputStyle, borderColor: showValidation && !form.propertyCity ? 'var(--danger, #ef4444)' : undefined }} />
+              {showValidation && !form.propertyCity && <div style={{ color: 'var(--danger, #ef4444)', fontSize: '.72rem', marginTop: 2 }}>Povinné pole</div>}
             </div>
             <div>
               <label style={labelStyle}>PSČ *</label>
-              <input value={form.postalCode} onChange={e => setForm(f => ({ ...f, postalCode: e.target.value }))} style={inputStyle} />
+              <input value={form.postalCode} onChange={e => setForm(f => ({ ...f, postalCode: e.target.value }))} style={{ ...inputStyle, borderColor: showValidation && !form.postalCode ? 'var(--danger, #ef4444)' : undefined }} placeholder="11000" />
+              {showValidation && !form.postalCode && <div style={{ color: 'var(--danger, #ef4444)', fontSize: '.72rem', marginTop: 2 }}>Povinné pole</div>}
             </div>
           </div>
 
           <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center' }}>
-            <button onClick={() => { setPreview(null); setError('') }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '.82rem' }}>
+            <button onClick={() => { setPreview(null); setError(''); setShowValidation(false) }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '.82rem' }}>
               ← Nahrát jiný soubor
             </button>
             <Button
               variant="primary"
-              onClick={() => confirmMut.mutate()}
-              disabled={confirmMut.isPending || !form.propertyName || !form.propertyAddress || !form.propertyCity || !form.postalCode}
+              onClick={() => {
+                const isValid = form.propertyName && form.propertyAddress && form.propertyCity && form.postalCode
+                if (!isValid) { setShowValidation(true); return }
+                confirmMut.mutate()
+              }}
+              disabled={confirmMut.isPending}
               icon={confirmMut.isPending ? undefined : <Check size={15} />}
             >
               {confirmMut.isPending ? 'Importuji...' : `Importovat ${preview.units.length} jednotek`}
