@@ -56,7 +56,10 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
+import { SensitiveReadInterceptor } from './common/interceptors/sensitive-read.interceptor';
+import { PropertyAccessGuard } from './common/guards/property-access.guard';
 import { CryptoService } from './common/crypto.service';
+import { FieldEncryptionService } from './common/crypto/field-encryption.service';
 
 @Module({
   imports: [
@@ -137,10 +140,13 @@ import { CryptoService } from './common/crypto.service';
     { provide: APP_GUARD, useClass: ThrottlerBehindProxyGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: PropertyAccessGuard },
     { provide: APP_INTERCEPTOR, useClass: TenantContextInterceptor },
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: SensitiveReadInterceptor },
     CryptoService,
+    FieldEncryptionService,
   ],
-  exports: [CryptoService],
+  exports: [CryptoService, FieldEncryptionService],
 })
 export class AppModule {}
