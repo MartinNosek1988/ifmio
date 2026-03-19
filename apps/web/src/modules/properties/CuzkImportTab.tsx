@@ -45,7 +45,7 @@ export default function CuzkImportTab({ onClose }: { onClose: () => void }) {
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null)
   const handleAddressChange = useCallback((value: string) => {
     setForm(f => ({ ...f, propertyAddress: value }))
-    clearTimeout(debounceRef.current)
+    clearTimeout(debounceRef.current ?? undefined)
     debounceRef.current = setTimeout(() => {
       setAddressQuery(value)
       if (value.length >= 3) setShowDropdown(true)
