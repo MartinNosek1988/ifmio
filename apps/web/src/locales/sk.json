@@ -8,16 +8,40 @@
     "close": "Zavrieť"
   },
   "auth": {
+    "layout": {
+      "loginHeadline": "Spravujte budovy s istotou",
+      "loginSubtext": "Inteligentná platforma pre správu nehnuteľností, ktorá vám pomôže zefektívniť prevádzku, znížiť náklady a rozhodovať sa na základe dát.",
+      "registerHeadline": "Začnite spravovať inteligentnejšie",
+      "registerSubtext": "14-dňová bezplatná skúšobná verzia bez platobnej karty. Nastavte si pracovný priestor za 2 minúty.",
+      "feature1": "AI asistent Mio",
+      "feature2": "Súlad s ISO 41001",
+      "feature3": "Kompletná správa nehnuteľností",
+      "regFeature1": "12+ integrovaných modulov",
+      "regFeature2": "Import z katastra ČÚZK",
+      "regFeature3": "AI asistent Mio v cene"
+    },
     "login": {
       "subtitle": "Property & Facility Management",
+      "welcomeBack": "Vitajte späť",
+      "signInToAccount": "Prihláste sa do svojho účtu",
       "email": "Email",
       "password": "Heslo",
+      "rememberMe": "Zapamätať si ma",
       "forgotPassword": "Zabudli ste heslo?",
       "submit": "Prihlásiť sa",
       "submitting": "Prihlasovanie...",
       "noAccount": "Nemáte účet?",
       "register": "Zaregistrujte sa",
-      "error": "Nesprávny email alebo heslo."
+      "error": "Nesprávny email alebo heslo.",
+      "orContinueWith": "alebo pokračujte cez",
+      "twoFactorTitle": "Dvojfaktorové overenie",
+      "enterCode": "Zadajte kód z autentifikačnej aplikácie",
+      "enterBackupCode": "Zadajte záložný kód",
+      "verify": "Overiť",
+      "verifying": "Overovanie...",
+      "useBackupCode": "Použiť záložný kód",
+      "useAuthCode": "Použiť kód z aplikácie",
+      "invalidCode": "Neplatný kód. Skúste to znova."
     },
     "register": {
       "title": "Vytvorte si účet zadarmo",

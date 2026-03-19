@@ -1,5 +1,9 @@
 import { Link } from 'react-router-dom'
 import { CheckCircle } from 'lucide-react'
+import i18n from '../../core/i18n'
+
+const LANGS = ['cs', 'en', 'sk', 'de', 'uk'] as const
+const LANG_LABELS: Record<string, string> = { cs: 'CZ', en: 'EN', sk: 'SK', de: 'DE', uk: 'UA' }
 
 interface Props {
   children: React.ReactNode
@@ -46,9 +50,26 @@ export function AuthLayout({ children, headline, subtext, features }: Props) {
       </div>
 
       {/* Right panel — form */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px', background: '#fff' }}>
-        <div style={{ width: '100%', maxWidth: 420 }}>
-          {children}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#fff' }}>
+        {/* Language switcher */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 24px', gap: 2 }}>
+          {LANGS.map(lang => (
+            <button key={lang} onClick={() => i18n.changeLanguage(lang)}
+              style={{
+                background: i18n.language === lang ? '#0D9488' : 'transparent',
+                color: i18n.language === lang ? '#fff' : '#9CA3AF',
+                border: '1px solid ' + (i18n.language === lang ? '#0D9488' : '#E5E7EB'),
+                borderRadius: 6, padding: '3px 8px', fontSize: '11px', fontWeight: 600,
+                cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+              }}>
+              {LANG_LABELS[lang]}
+            </button>
+          ))}
+        </div>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 40px 40px' }}>
+          <div style={{ width: '100%', maxWidth: 420 }}>
+            {children}
+          </div>
         </div>
       </div>
 
