@@ -38,12 +38,12 @@ describe('Auth (e2e)', () => {
       const email = `dup${Date.now()}@test.cz`
       await request(testApp.server)
         .post('/api/v1/auth/register')
-        .send({ tenantName: `Tenant Dup ${Date.now()}`, name: 'Adam Test', email, password: 'pass12345' })
+        .send({ tenantName: `Tenant Dup ${Date.now()}`, name: 'Adam Test', email, password: 'Pass12345' })
         .expect(201)
 
       await request(testApp.server)
         .post('/api/v1/auth/register')
-        .send({ tenantName: `Tenant Dup2 ${Date.now()}`, name: 'Bob Test', email, password: 'pass12345' })
+        .send({ tenantName: `Tenant Dup2 ${Date.now()}`, name: 'Bob Test', email, password: 'Pass12345' })
         .expect(409)
     })
   })
