@@ -21,7 +21,7 @@ describe('Auth (e2e)', () => {
           tenantName: `Nový Tenant ${Date.now()}`,
           name: 'Jan Novák',
           email,
-          password: 'heslo12345',
+          password: 'Heslo12345',
         })
         .expect(201)
 
@@ -53,11 +53,11 @@ describe('Auth (e2e)', () => {
       const email = `login${Date.now()}@test.cz`
       await request(testApp.server)
         .post('/api/v1/auth/register')
-        .send({ tenantName: `Login Tenant ${Date.now()}`, name: 'User Test', email, password: 'heslo12345' })
+        .send({ tenantName: `Login Tenant ${Date.now()}`, name: 'User Test', email, password: 'Heslo12345' })
 
       const res = await request(testApp.server)
         .post('/api/v1/auth/login')
-        .send({ email, password: 'heslo12345' })
+        .send({ email, password: 'Heslo12345' })
         .expect(200)
 
       expect(res.body).toHaveProperty('accessToken')
@@ -94,7 +94,7 @@ describe('Auth (e2e)', () => {
       const email = `refresh${Date.now()}@test.cz`
       const regRes = await request(testApp.server)
         .post('/api/v1/auth/register')
-        .send({ tenantName: `Refresh Tenant ${Date.now()}`, name: 'Refresh User', email, password: 'heslo12345' })
+        .send({ tenantName: `Refresh Tenant ${Date.now()}`, name: 'Refresh User', email, password: 'Heslo12345' })
         .expect(201)
 
       const res = await request(testApp.server)

@@ -150,7 +150,7 @@ describe('Asset QR Codes (e2e)', () => {
         tenantName: `Other QR Tenant ${Date.now()}`,
         name: 'Other User',
         email: `other_qr_${Date.now()}@test.cz`,
-        password: 'testpass123',
+        password: 'Testpass123',
       })
 
     const otherApi = authRequest(testApp.server, reg.body.accessToken)

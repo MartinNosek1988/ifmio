@@ -183,7 +183,7 @@ describe('Field Checks & QR Scan Events (e2e)', () => {
         tenantName: `FC Other Tenant ${Date.now()}`,
         name: 'FC Other User',
         email: `fc_other_${Date.now()}@test.cz`,
-        password: 'testpass123',
+        password: 'Testpass123',
       })
 
     const otherApi = authRequest(testApp.server, reg.body.accessToken)

@@ -200,7 +200,7 @@ describe('Asset Plan Sync — P7.1b (e2e)', () => {
         tenantName: `Other Tenant Sync ${Date.now()}`,
         name: 'Other User',
         email: `other_sync_${Date.now()}@test.cz`,
-        password: 'testpass123',
+        password: 'Testpass123',
       })
 
     const otherApi = authRequest(testApp.server, reg.body.accessToken)

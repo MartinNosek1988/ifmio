@@ -39,7 +39,7 @@ export async function createTestApp(): Promise<TestApp> {
       tenantName: `Test Tenant ${Date.now()}`,
       name: 'Test User',
       email: `test${Date.now()}@test.cz`,
-      password: 'testpass123',
+      password: 'Testpass123',
     })
 
   const token = registerRes.body.accessToken
