@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Plus, Pencil, Layers, Trash2, UserPlus } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Layers, Trash2, UserPlus, Gauge, FileText, Settings } from 'lucide-react';
 import { KpiCard, Table, Badge, Button, Modal, EmptyState, LoadingState, ErrorState } from '../../shared/components';
 import type { Column } from '../../shared/components';
 import { useProperty } from './use-properties';
@@ -58,6 +58,9 @@ export default function PropertyDetailPage() {
   const [terminateModal, setTerminateModal] = useState<ApiTenancy | null>(null);
   const [contractModal, setContractModal] = useState<{ contract?: ApiManagementContract } | null>(null);
   const [fcModal, setFcModal] = useState<{ context?: ApiFinancialContext } | null>(null);
+
+  type DetailTab = 'overview' | 'units' | 'meters' | 'components' | 'representatives' | 'owners'
+  const [detailTab, setDetailTab] = useState<DetailTab>('overview');
 
   const handleDeleteFc = async (fcId: string) => {
     if (!window.confirm('Deaktivovat finanční kontext?')) return;
@@ -341,7 +344,49 @@ export default function PropertyDetailPage() {
         />
       </div>
 
-      {/* ── Kontexty správy ────────────────────────────────────────── */}
+      {/* ── Tab navigation ──────────────────────────────────────────── */}
+      <div className="tabs" style={{ marginBottom: 16 }}>
+        {([
+          { key: 'overview' as DetailTab, label: 'Přehled' },
+          { key: 'units' as DetailTab, label: `Jednotky (${totalUnits})` },
+          { key: 'owners' as DetailTab, label: 'Vlastníci' },
+          { key: 'meters' as DetailTab, label: 'Měřidla' },
+          { key: 'components' as DetailTab, label: 'Složky předpisu' },
+          { key: 'representatives' as DetailTab, label: 'Zástupci' },
+        ]).map(t => (
+          <button key={t.key} className={`tab-btn${detailTab === t.key ? ' active' : ''}`} onClick={() => setDetailTab(t.key)}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── PŘEHLED TAB ──────────────────────────────────────────── */}
+      {detailTab === 'overview' && <>
+
+      {/* Základní informace */}
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16, marginBottom: 16 }}>
+        <div style={{ fontWeight: 600, marginBottom: 10, fontSize: '.9rem' }}>Základní informace</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, fontSize: '.85rem' }}>
+          <div><span className="text-muted">Adresa:</span> {property.address}, {property.city} {property.postalCode}</div>
+          <div><span className="text-muted">Typ:</span> {property.type}</div>
+          <div><span className="text-muted">Forma:</span> {LEGAL_MODE_LABEL[property.legalMode ?? ''] ?? property.legalMode ?? '—'}</div>
+          {property.ico && <div><span className="text-muted">IČO:</span> {property.ico}</div>}
+          {property.dic && <div><span className="text-muted">DIČ:</span> {property.dic}</div>}
+          {property.isVatPayer && <div><Badge variant="yellow">Plátce DPH</Badge></div>}
+          {property.managedFrom && <div><span className="text-muted">Ve správě od:</span> {new Date(property.managedFrom).toLocaleDateString('cs-CZ')}</div>}
+          {property.managedTo && <div><span className="text-muted">Ve správě do:</span> {new Date(property.managedTo).toLocaleDateString('cs-CZ')}</div>}
+          {property.accountingSystem && property.accountingSystem !== 'NONE' && <div><span className="text-muted">Účetní systém:</span> {property.accountingSystem}</div>}
+        </div>
+        {(property as any).cadastralData && (
+          <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, fontSize: '.85rem' }}>
+            {(property as any).cadastralData.parcelNumber && <div><span className="text-muted">Parcela:</span> {(property as any).cadastralData.parcelNumber}</div>}
+            {(property as any).cadastralData.cadastralTerritory && <div><span className="text-muted">K.Ú.:</span> {(property as any).cadastralData.cadastralTerritory}</div>}
+            {(property as any).cadastralData.buildingNumber && <div><span className="text-muted">Č.p.:</span> {(property as any).cadastralData.buildingNumber}</div>}
+          </div>
+        )}
+      </div>
+
+      {/* Kontexty správy */}
       <ContractsSection
         contracts={contracts}
         navigate={navigate}
@@ -368,6 +413,11 @@ export default function PropertyDetailPage() {
         onDelete={(o) => handleDeleteOwnership('property', o.id)}
       />
 
+      </>}
+
+      {/* ── JEDNOTKY TAB ─────────────────────────────────────────── */}
+      {detailTab === 'units' && <>
+
       <h2 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: 12 }}>
         Jednotky
         {totalUnits > 0 && (
@@ -388,6 +438,73 @@ export default function PropertyDetailPage() {
           rowKey={(u) => u.id}
           onRowClick={(u) => setEditUnit(u)}
         />
+      )}
+
+      </>}
+
+      {/* ── VLASTNÍCI TAB ────────────────────────────────────────── */}
+      {detailTab === 'owners' && (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 }}>
+          <div style={{ fontWeight: 600, marginBottom: 12, fontSize: '.9rem' }}>Vlastníci jednotek ({unitOwnerships.length})</div>
+          {unitOwnerships.length === 0 ? (
+            <EmptyState title="Žádní vlastníci" description="Jednotky nemají přiřazené vlastníky." />
+          ) : (
+            <div style={{ overflow: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem' }}>
+                <thead>
+                  <tr>
+                    {['Jednotka', 'Vlastník', 'Podíl', 'Stav'].map(h => (
+                      <th key={h} style={{ padding: '8px 10px', fontWeight: 600, fontSize: '.8rem', color: 'var(--text-muted)', textAlign: 'left', borderBottom: '2px solid var(--border)' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {unitOwnerships.map((o: any) => (
+                    <tr key={o.id}>
+                      <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)' }}>
+                        <span style={{ fontWeight: 500, color: 'var(--primary, #6366f1)' }}>{o.unit?.name ?? '—'}</span>
+                      </td>
+                      <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)' }}>
+                        <div style={{ fontWeight: 500 }}>{o.party?.displayName?.replace(/^SJM\s+/i, 'SJ ') ?? '—'}</div>
+                        {o.party?.street && <div className="text-muted" style={{ fontSize: '.78rem' }}>{o.party.street}</div>}
+                      </td>
+                      <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)', fontFamily: 'monospace', fontSize: '.82rem' }}>
+                        {o.shareNumerator && o.shareDenominator ? `${o.shareNumerator}/${o.shareDenominator}` : o.sharePercent ? `${Number(o.sharePercent).toFixed(2)}%` : '—'}
+                      </td>
+                      <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)' }}>
+                        <Badge variant={o.isActive ? 'green' : 'muted'}>{o.isActive ? 'Aktivní' : 'Ukončen'}</Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── PLACEHOLDER TABS ─────────────────────────────────────── */}
+      {detailTab === 'meters' && <EmptyState title="Měřidla" description="Přejděte do sekce Měřidla & Energie pro správu měřidel této nemovitosti." action={{ label: 'Otevřít měřidla', onClick: () => navigate('/meters') }} />}
+      {detailTab === 'components' && <EmptyState title="Složky předpisu" description="Správa složek předpisu bude dostupná z detailu nemovitosti." />}
+      {detailTab === 'representatives' && (
+        <div>
+          {contracts.length > 0 ? (
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 }}>
+              <div style={{ fontWeight: 600, marginBottom: 10, fontSize: '.9rem' }}>Zástupci — smlouvy o správě ({contracts.length})</div>
+              {contracts.map((c: any) => (
+                <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: '.85rem' }}>
+                  <div>
+                    <span style={{ fontWeight: 500 }}>{c.principal?.displayName ?? '—'}</span>
+                    <span className="text-muted" style={{ marginLeft: 8 }}>{MGMT_TYPE_BADGE[c.type]?.label ?? c.type}</span>
+                  </div>
+                  <Badge variant={c.isActive ? 'green' : 'muted'}>{c.isActive ? 'Aktivní' : 'Ukončen'}</Badge>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState title="Žádní zástupci" description="K nemovitosti nejsou přiřazeny žádné smlouvy o správě." />
+          )}
+        </div>
       )}
 
       {/* Edit property */}
