@@ -16,7 +16,7 @@ describe('RegisterPage', () => {
     renderRegister()
 
     expect(screen.getByText('ifmio')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('Jan Novak')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Jan Novák')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('jan@firma.cz')).toBeInTheDocument()
     expect(screen.getByPlaceholderText(/min\. 8/i)).toBeInTheDocument()
   })
@@ -31,8 +31,10 @@ describe('RegisterPage', () => {
   it('shows step progress indicators', () => {
     renderRegister()
 
-    expect(screen.getByText(/osobní údaje/i)).toBeInTheDocument()
-    expect(screen.getByText(/organizace/i)).toBeInTheDocument()
-    expect(screen.getByText(/plán/i)).toBeInTheDocument()
+    // Progress bar has step labels; heading also contains step text
+    // Use getAllByText and check at least one exists
+    expect(screen.getAllByText(/osobní údaje/i).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText(/organizace/i).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText(/plán/i).length).toBeGreaterThanOrEqual(1)
   })
 })
