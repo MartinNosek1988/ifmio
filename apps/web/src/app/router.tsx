@@ -3,12 +3,13 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import AppShell from './AppShell';
 import LoginPage from '../modules/auth/LoginPage';
 import RegisterPage from '../modules/auth/RegisterPage';
-import LandingPage from '../modules/landing/LandingPage';
+const LandingPage = lazy(() => import('../modules/landing/LandingPage'));
 
 const VerifyEmailPage = lazy(() => import('../modules/auth/VerifyEmailPage'));
 const ForgotPasswordPage = lazy(() => import('../modules/auth/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('../modules/auth/ResetPasswordPage'));
 const AcceptInvitationPage = lazy(() => import('../modules/auth/AcceptInvitationPage'));
+const OAuthCallbackPage = lazy(() => import('../modules/auth/OAuthCallbackPage'));
 const PortalPage = lazy(() => import('../modules/portal/PortalPage'));
 import { ErrorBoundary } from '../shared/components';
 
@@ -82,6 +83,7 @@ export const router = createBrowserRouter([
   { path: '/reset-password', element: withBoundary('Nové heslo', ResetPasswordPage) },
   { path: '/accept-invitation', element: withBoundary('Přijetí pozvánky', AcceptInvitationPage) },
   { path: '/q/:token', element: withBoundary('QR Scan', QrResolvePage) },
+  { path: '/auth/callback', element: withBoundary('OAuth Callback', OAuthCallbackPage) },
   { path: '/terms', element: withBoundary('Terms', TermsPage) },
   { path: '/privacy', element: withBoundary('Privacy', PrivacyPage) },
   { path: '/gdpr', element: withBoundary('GDPR', GdprPage) },

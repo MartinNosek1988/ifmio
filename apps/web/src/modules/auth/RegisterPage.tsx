@@ -6,6 +6,7 @@ import {
   User, Building2, CreditCard, CheckCircle,
   ArrowRight, ArrowLeft, Eye, EyeOff,
 } from 'lucide-react';
+import { PasswordStrengthIndicator } from '../../shared/components/PasswordStrengthIndicator';
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -95,6 +96,7 @@ export default function RegisterPage() {
               <button type="button" onClick={() => setShowPw(!showPw)} style={{ position: 'absolute', right: 10, top: 30, background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer' }}>
                 {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
+              <PasswordStrengthIndicator password={form.password} />
             </div>
             <Field label={t('auth.register.phone')} value={form.phone} onChange={set('phone')} placeholder="+420 777 123 456" />
           </div>

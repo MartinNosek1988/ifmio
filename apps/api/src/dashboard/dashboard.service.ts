@@ -259,4 +259,36 @@ export class DashboardService {
       })),
     }
   }
+
+  async getBadges(user: AuthUser) {
+    const tenantId = user.tenantId
+
+    const [helpdeskOpen, helpdeskInProgress, woOpen, contractsExpiring] = await Promise.all([
+      this.prisma.helpdeskTicket.count({
+        where: { tenantId, status: 'open', deletedAt: null },
+      }),
+      this.prisma.helpdeskTicket.count({
+        where: { tenantId, status: 'in_progress', deletedAt: null },
+      }),
+      this.prisma.workOrder.count({
+        where: { tenantId, status: { in: ['nova', 'v_reseni'] } },
+      }),
+      this.prisma.leaseAgreement.count({
+        where: {
+          tenantId,
+          status: 'aktivni',
+          endDate: {
+            gte: new Date(),
+            lte: new Date(Date.now() + 30 * 86_400_000),
+          },
+        },
+      }),
+    ])
+
+    return {
+      helpdesk: { open: helpdeskOpen, inProgress: helpdeskInProgress },
+      workOrders: { open: woOpen },
+      contracts: { expiringSoon: contractsExpiring },
+    }
+  }
 }

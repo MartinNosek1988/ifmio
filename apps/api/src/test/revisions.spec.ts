@@ -704,7 +704,7 @@ describe('Revisions & Compliance (e2e)', () => {
         tenantName: `Tenant2 ${Date.now()}`,
         name: 'User 2',
         email: `tenant2-${Date.now()}@test.cz`,
-        password: 'testpass123',
+        password: 'Testpass123',
       })
       .expect(201)
 

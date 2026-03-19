@@ -474,4 +474,34 @@ export class AdminService {
     if (!inv) throw new NotFoundException('Pozvánka nenalezena')
     await this.prisma.tenantInvitation.delete({ where: { id } })
   }
+
+  // ─── Password Policy ──────────────────────────────────────
+
+  async setForcePasswordChange(tenantId: string, userId: string, force: boolean) {
+    const target = await this.prisma.user.findFirst({ where: { id: userId, tenantId } })
+    if (!target) throw new NotFoundException('Uživatel nenalezen')
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { forcePasswordChange: force },
+      select: { id: true, name: true, forcePasswordChange: true },
+    })
+  }
+
+  async setPasswordExpiry(tenantId: string, userId: string, months: number | null) {
+    const target = await this.prisma.user.findFirst({ where: { id: userId, tenantId } })
+    if (!target) throw new NotFoundException('Uživatel nenalezen')
+
+    let passwordExpiresAt: Date | null = null
+    if (months != null && months > 0) {
+      passwordExpiresAt = new Date()
+      passwordExpiresAt.setMonth(passwordExpiresAt.getMonth() + months)
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordExpiresAt },
+      select: { id: true, name: true, passwordExpiresAt: true },
+    })
+  }
 }

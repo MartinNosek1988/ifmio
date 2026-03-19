@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../core/api/client';
+import { PasswordStrengthIndicator } from '../../shared/components/PasswordStrengthIndicator';
 import {
   useMioDigestPrefs, useUpdateMioDigestPrefs, useResetMioDigestPrefs,
   useMioDigestStatus, useMioDigestHistory, useMioDigestPreview,
@@ -177,6 +178,7 @@ function PersonalTab({ profile, onSave, saving }: {
 /* ─── Security Tab ───────────────────────────────────────────────── */
 
 function SecurityTab() {
+  const qc = useQueryClient();
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
@@ -185,47 +187,89 @@ function SecurityTab() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // 2FA state
+  const [show2faSetup, setShow2faSetup] = useState(false);
+  const [qrCode, setQrCode] = useState('');
+  const [totpSecret, setTotpSecret] = useState('');
+  const [totpCode, setTotpCode] = useState('');
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [show2faDisable, setShow2faDisable] = useState(false);
+  const [disableCode, setDisableCode] = useState('');
+  const [disablePw, setDisablePw] = useState('');
+  const [tfaError, setTfaError] = useState('');
+
+  const { data: meData } = useQuery({ queryKey: ['auth', 'me'], queryFn: () => apiClient.get('/auth/me').then(r => r.data), staleTime: 60_000 });
+  const totpEnabled = meData?.totpEnabled ?? false;
+
+  // Sessions
+  const { data: sessions } = useQuery({ queryKey: ['auth', 'sessions'], queryFn: () => apiClient.get('/auth/sessions').then(r => r.data) });
+  const revokeMut = useMutation({ mutationFn: (id: string) => apiClient.delete(`/auth/sessions/${id}`), onSuccess: () => qc.invalidateQueries({ queryKey: ['auth', 'sessions'] }) });
+
+  // Login history
+  const { data: loginHistory } = useQuery({ queryKey: ['auth', 'login-history'], queryFn: () => apiClient.get('/auth/login-history').then(r => r.data) });
+
   const changeMut = useMutation({
     mutationFn: (d: { currentPassword: string; newPassword: string }) =>
       apiClient.patch('/auth/change-password', d).then((r) => r.data),
-    onSuccess: () => {
-      setSuccess('Heslo bylo úspěšně změněno');
-      setError('');
-      setCurrentPw(''); setNewPw(''); setConfirmPw('');
-    },
-    onError: (err: any) => {
-      setSuccess('');
-      setError(err?.response?.data?.message ?? 'Změna hesla selhala');
-    },
+    onSuccess: () => { setSuccess('Heslo bylo úspěšně změněno'); setError(''); setCurrentPw(''); setNewPw(''); setConfirmPw(''); },
+    onError: (err: any) => { setSuccess(''); setError(err?.response?.data?.message ?? 'Změna hesla selhala'); },
   });
 
   const canSubmit = currentPw.length >= 1 && newPw.length >= 8 && newPw === confirmPw;
 
+  const handle2faSetup = async () => {
+    setTfaError('');
+    try {
+      const res = await apiClient.post('/auth/2fa/setup');
+      setQrCode(res.data.qrCodeUrl);
+      setTotpSecret(res.data.secret);
+      setShow2faSetup(true);
+    } catch (err: any) { setTfaError(err?.response?.data?.message ?? 'Nepodařilo se nastavit 2FA'); }
+  };
+
+  const handle2faVerify = async () => {
+    setTfaError('');
+    try {
+      const res = await apiClient.post('/auth/2fa/verify', { code: totpCode });
+      setBackupCodes(res.data.backupCodes);
+      qc.invalidateQueries({ queryKey: ['auth', 'me'] });
+    } catch (err: any) { setTfaError(err?.response?.data?.message ?? 'Neplatný kód'); }
+  };
+
+  const handle2faDisable = async () => {
+    setTfaError('');
+    try {
+      await apiClient.post('/auth/2fa/disable', { code: disableCode, password: disablePw });
+      setShow2faDisable(false); setDisableCode(''); setDisablePw('');
+      qc.invalidateQueries({ queryKey: ['auth', 'me'] });
+    } catch (err: any) { setTfaError(err?.response?.data?.message ?? 'Nepodařilo se deaktivovat 2FA'); }
+  };
+
+  const inputStyle: React.CSSProperties = { width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface-2, var(--surface))', color: 'var(--text)', boxSizing: 'border-box', fontSize: '.9rem' };
+
   return (
     <>
+      {/* Change password */}
       <div className="profile-card">
         <h3 className="profile-card-title">Změna hesla</h3>
         {error && <div className="profile-alert profile-alert-error">{error}</div>}
         {success && <div className="profile-alert profile-alert-success"><Check size={14} /> {success}</div>}
         <div className="profile-grid" style={{ maxWidth: 420 }}>
           <div style={{ position: 'relative' }}>
-            <Field label="Aktuální heslo" value={currentPw} onChange={setCurrentPw}
-              type={showCurrent ? 'text' : 'password'} />
+            <Field label="Aktuální heslo" value={currentPw} onChange={setCurrentPw} type={showCurrent ? 'text' : 'password'} />
             <button type="button" onClick={() => setShowCurrent(!showCurrent)} className="profile-pw-toggle">
               {showCurrent ? <EyeOff size={15} /> : <Eye size={15} />}
             </button>
           </div>
           <div style={{ position: 'relative' }}>
-            <Field label="Nové heslo" value={newPw} onChange={setNewPw}
-              type={showNew ? 'text' : 'password'} hint="Minimálně 8 znaků" />
+            <Field label="Nové heslo" value={newPw} onChange={setNewPw} type={showNew ? 'text' : 'password'} hint="Min. 8 znaků, velké písmeno" />
             <button type="button" onClick={() => setShowNew(!showNew)} className="profile-pw-toggle">
               {showNew ? <EyeOff size={15} /> : <Eye size={15} />}
             </button>
+            <PasswordStrengthIndicator password={newPw} />
           </div>
           <Field label="Potvrzení nového hesla" value={confirmPw} onChange={setConfirmPw} type="password" />
-          {confirmPw && newPw !== confirmPw && (
-            <p style={{ color: '#ef4444', fontSize: '.8rem', margin: '-8px 0 0' }}>Hesla se neshodují</p>
-          )}
+          {confirmPw && newPw !== confirmPw && <p style={{ color: '#ef4444', fontSize: '.8rem', margin: '-8px 0 0' }}>Hesla se neshodují</p>}
         </div>
         <div className="profile-save-bar">
           <button className="profile-btn-primary" disabled={!canSubmit || changeMut.isPending}
@@ -235,15 +279,129 @@ function SecurityTab() {
         </div>
       </div>
 
+      {/* 2FA */}
       <div className="profile-card" style={{ marginTop: 16 }}>
         <h3 className="profile-card-title">Dvoufaktorové ověření (2FA)</h3>
-        <p style={{ color: '#9ca3af', fontSize: '.85rem', lineHeight: 1.6 }}>
-          Dvoufaktorové ověření přidává další vrstvu zabezpečení vašeho účtu.
-          Tato funkce bude dostupná v příští verzi.
-        </p>
-        <button className="profile-btn-secondary" disabled style={{ marginTop: 12, opacity: 0.5 }}>
-          <Shield size={15} /> Aktivovat 2FA (připravujeme)
-        </button>
+        {tfaError && <div className="profile-alert profile-alert-error">{tfaError}</div>}
+
+        {!totpEnabled && !show2faSetup && (
+          <div>
+            <p style={{ color: '#9ca3af', fontSize: '.85rem', lineHeight: 1.6, marginBottom: 12 }}>
+              Dvoufaktorové ověření přidává další vrstvu zabezpečení vašeho účtu.
+            </p>
+            <button className="profile-btn-primary" onClick={handle2faSetup}>
+              <Shield size={15} /> Aktivovat 2FA
+            </button>
+          </div>
+        )}
+
+        {show2faSetup && backupCodes.length === 0 && (
+          <div>
+            <p style={{ color: '#9ca3af', fontSize: '.85rem', marginBottom: 12 }}>Naskenujte QR kód v autentizační aplikaci (Google Authenticator, Authy):</p>
+            {qrCode && <img src={qrCode} alt="TOTP QR" style={{ width: 200, height: 200, borderRadius: 8, marginBottom: 12 }} />}
+            <p style={{ color: '#6b7280', fontSize: '.78rem', marginBottom: 12 }}>Manuální kód: <code style={{ background: 'var(--surface-2)', padding: '2px 6px', borderRadius: 4 }}>{totpSecret}</code></p>
+            <div style={{ maxWidth: 300, marginBottom: 12 }}>
+              <label style={{ fontSize: '.82rem', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Zadejte 6místný kód z aplikace</label>
+              <input value={totpCode} onChange={e => setTotpCode(e.target.value)} maxLength={6} style={inputStyle} placeholder="123456" />
+            </div>
+            <button className="profile-btn-primary" onClick={handle2faVerify} disabled={totpCode.length < 6}>
+              <CheckCircle size={15} /> Ověřit a aktivovat
+            </button>
+          </div>
+        )}
+
+        {backupCodes.length > 0 && (
+          <div>
+            <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid #f59e0b', borderRadius: 8, padding: 16, marginBottom: 16 }}>
+              <p style={{ fontWeight: 600, color: '#f59e0b', marginBottom: 8 }}>Uložte si záložní kódy — zobrazí se pouze jednou!</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                {backupCodes.map((c, i) => (
+                  <code key={i} style={{ background: 'var(--surface)', padding: '4px 8px', borderRadius: 4, fontSize: '.85rem', fontFamily: 'monospace' }}>{c}</code>
+                ))}
+              </div>
+            </div>
+            <button className="profile-btn-primary" onClick={() => { setBackupCodes([]); setShow2faSetup(false); setTotpCode(''); }}>
+              <Check size={15} /> Hotovo, kódy jsem si uložil
+            </button>
+          </div>
+        )}
+
+        {totpEnabled && !show2faDisable && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <span style={{ background: 'rgba(34,197,94,0.12)', color: '#22c55e', padding: '2px 10px', borderRadius: 4, fontSize: '.78rem', fontWeight: 600 }}>2FA aktivní</span>
+            </div>
+            <button className="profile-btn-secondary" style={{ color: 'var(--danger, #ef4444)' }} onClick={() => setShow2faDisable(true)}>
+              <XCircle size={15} /> Deaktivovat 2FA
+            </button>
+          </div>
+        )}
+
+        {show2faDisable && (
+          <div style={{ maxWidth: 350 }}>
+            <p style={{ color: '#9ca3af', fontSize: '.85rem', marginBottom: 12 }}>Pro deaktivaci zadejte heslo a aktuální 2FA kód:</p>
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: '.82rem', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Heslo</label>
+              <input type="password" value={disablePw} onChange={e => setDisablePw(e.target.value)} style={inputStyle} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: '.82rem', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>2FA kód</label>
+              <input value={disableCode} onChange={e => setDisableCode(e.target.value)} maxLength={6} style={inputStyle} placeholder="123456" />
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="profile-btn-secondary" onClick={() => { setShow2faDisable(false); setDisableCode(''); setDisablePw(''); }}>Zrušit</button>
+              <button className="profile-btn-primary" style={{ background: 'var(--danger, #ef4444)' }} onClick={handle2faDisable} disabled={disablePw.length < 1 || disableCode.length < 6}>
+                Deaktivovat
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Active sessions */}
+      <div className="profile-card" style={{ marginTop: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <h3 className="profile-card-title" style={{ margin: 0 }}>Aktivní relace</h3>
+          {(sessions?.length ?? 0) > 1 && (
+            <button className="profile-btn-secondary" style={{ fontSize: '.78rem' }} onClick={async () => {
+              const token = sessionStorage.getItem('ifmio:refresh_token');
+              if (token) { await apiClient.delete('/auth/sessions', { data: { currentToken: token } }); qc.invalidateQueries({ queryKey: ['auth', 'sessions'] }); }
+            }}>Odhlásit ostatní</button>
+          )}
+        </div>
+        {sessions?.length ? (
+          <div style={{ fontSize: '.85rem' }}>
+            {(sessions as any[]).map((s: any) => (
+              <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                <div>
+                  <div style={{ fontWeight: 500 }}>{s.deviceName ?? 'Neznámé'}</div>
+                  <div style={{ fontSize: '.78rem', color: 'var(--text-muted)' }}>{s.ipAddress ?? '—'} · {s.lastUsedAt ? new Date(s.lastUsedAt).toLocaleString('cs-CZ') : '—'}</div>
+                </div>
+                <button className="profile-btn-secondary" style={{ fontSize: '.75rem', padding: '2px 8px' }} onClick={() => revokeMut.mutate(s.id)}>Odhlásit</button>
+              </div>
+            ))}
+          </div>
+        ) : <p style={{ color: '#9ca3af', fontSize: '.85rem' }}>Žádné aktivní relace</p>}
+      </div>
+
+      {/* Login history */}
+      <div className="profile-card" style={{ marginTop: 16 }}>
+        <h3 className="profile-card-title">Historie přihlášení</h3>
+        {loginHistory?.length ? (
+          <div style={{ fontSize: '.82rem', maxHeight: 300, overflow: 'auto' }}>
+            {(loginHistory as any[]).slice(0, 20).map((e: any) => (
+              <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                <span style={{
+                  fontSize: '.72rem', fontWeight: 600, padding: '1px 6px', borderRadius: 3,
+                  background: e.action === 'LOGIN' ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
+                  color: e.action === 'LOGIN' ? '#22c55e' : '#ef4444',
+                }}>{e.action === 'LOGIN' ? 'Přihlášení' : 'Neúspěšný pokus'}</span>
+                <span style={{ color: 'var(--text-muted)' }}>{e.ipAddress ?? '—'}</span>
+                <span style={{ color: 'var(--text-muted)', marginLeft: 'auto' }}>{new Date(e.createdAt).toLocaleString('cs-CZ')}</span>
+              </div>
+            ))}
+          </div>
+        ) : <p style={{ color: '#9ca3af', fontSize: '.85rem' }}>Žádná historie</p>}
       </div>
     </>
   );

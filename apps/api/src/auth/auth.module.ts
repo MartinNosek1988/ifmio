@@ -4,6 +4,10 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { GoogleStrategy } from './strategies/google.strategy';
+import { FacebookStrategy } from './strategies/facebook.strategy';
+import { MicrosoftStrategy } from './strategies/microsoft.strategy';
+import { CryptoService } from '../common/crypto.service';
 
 @Module({
   imports: [
@@ -13,7 +17,14 @@ import { JwtStrategy } from './strategies/jwt.strategy';
       signOptions: { expiresIn: '15m' },
     }),
   ],
-  providers: [AuthService, JwtStrategy],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    GoogleStrategy,
+    FacebookStrategy,
+    MicrosoftStrategy,
+    CryptoService,
+  ],
   controllers: [AuthController],
   exports: [AuthService],
 })

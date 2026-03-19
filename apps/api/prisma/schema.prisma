@@ -110,6 +110,15 @@ model User {
   notifEmail   Boolean   @default(true)
   passwordResetToken   String?   @unique
   passwordResetExpiry  DateTime?
+  passwordHistory      Json?              // array of last 5 bcrypt hashes
+  passwordChangedAt    DateTime?          // when password was last changed
+  passwordExpiresAt    DateTime?          // null = never expires
+  forcePasswordChange  Boolean   @default(false)
+  totpSecret           String?              // AES-encrypted TOTP secret
+  totpEnabled          Boolean   @default(false)
+  totpBackupCodes      Json?               // array of hashed backup codes
+  oauthProvider        String?              // 'google' | 'facebook' | 'microsoft'
+  oauthId              String?              // provider's unique user ID
   lastLoginAt  DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -140,6 +149,7 @@ model User {
   mioDigestLogs           MioDigestLog[]
 
   @@unique([tenantId, email])
+  @@unique([oauthProvider, oauthId])
   @@index([tenantId])
   @@map("users")
 }
@@ -180,11 +190,15 @@ model TenantInvitation {
 }
 
 model RefreshToken {
-  id        String   @id @default(uuid())
-  userId    String
-  token     String   @unique
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  id         String    @id @default(uuid())
+  userId     String
+  token      String    @unique
+  expiresAt  DateTime
+  ipAddress  String?
+  userAgent  String?
+  deviceName String?
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -252,6 +266,9 @@ model Property {
   managedTo        DateTime?          // ve správě do
   accountingSystem AccountingSystem?
   cutoverDate      DateTime?          // datum přechodu na ifmio
+  importSource     String?            // "cuzk_domsys" etc.
+  importedAt       DateTime?
+  cadastralData    Json?              // raw ČÚZK metadata (building, parcel, k.ú.)
   country          String             @default("CZ")
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
@@ -368,6 +385,7 @@ model Unit {
   validFrom          DateTime?
   validTo            DateTime?
   extAllocatorRef    String?                         // pár. symbol pro ext. rozúčtovatele
+  cadastralData      Json?                           // ČÚZK metadata (LV, omezení, ochrana, řízení)
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 

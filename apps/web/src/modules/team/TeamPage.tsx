@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Key } from 'lucide-react';
 import { KpiCard, Badge, SearchBar, Button, Modal } from '../../shared/components';
 import { LoadingState } from '../../shared/components/LoadingState';
 import { ErrorState } from '../../shared/components/ErrorState';
 import type { BadgeVariant } from '../../shared/components';
 import { formatCzDate } from '../../shared/utils/format';
 import { useAuthStore } from '../../core/auth/auth.store';
+import { apiClient } from '../../core/api/client';
 import {
   useAdminUsers, useInviteUser, useUpdateUser, useDeactivateUser,
 } from '../admin/api/admin.queries';
@@ -156,6 +157,13 @@ export default function TeamPage() {
                       {!isSelf && (
                         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                           <Button size="sm" onClick={(e: React.MouseEvent) => { e.stopPropagation(); setEditUser(u); }}>Upravit</Button>
+                          <Button size="sm" onClick={async (e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            try {
+                              await apiClient.post(`/admin/users/${u.id}/force-password-change`, { force: true });
+                              alert('Uživatel bude vyzván ke změně hesla při příštím přihlášení.');
+                            } catch { alert('Nepodařilo se nastavit.'); }
+                          }} title="Vyžadovat změnu hesla"><Key size={13} /></Button>
                           <Button size="sm" onClick={(e: React.MouseEvent) => { e.stopPropagation(); setDeleteTarget(u); }}
                             style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}>Smazat</Button>
                         </div>

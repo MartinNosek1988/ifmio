@@ -266,7 +266,7 @@ describe('Asset Passport — GET /assets/:id/passport (e2e)', () => {
         tenantName: `Other Tenant Passport ${Date.now()}`,
         name: 'Other User',
         email: `other_passport_${Date.now()}@test.cz`,
-        password: 'testpass123',
+        password: 'Testpass123',
       })
 
     const otherApi = authRequest(testApp.server, reg.body.accessToken)

@@ -226,7 +226,7 @@ describe('Asset Types & Activity Assignments (e2e)', () => {
         tenantName: `Other Tenant ${Date.now()}`,
         name: 'Other User',
         email: `other${Date.now()}@test.cz`,
-        password: 'testpass123',
+        password: 'Testpass123',
       })
 
     const otherApi = authRequest(testApp.server, reg.body.accessToken)

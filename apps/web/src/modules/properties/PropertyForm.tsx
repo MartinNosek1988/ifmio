@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { Modal, Button } from '../../shared/components';
 import { useCreateProperty, useUpdateProperty } from './use-properties';
 import type { ApiProperty, PropertyLegalMode, AccountingSystemType } from './properties-api';
-import { ChevronDown, ChevronUp, Info, Search } from 'lucide-react';
+import { ChevronDown, ChevronUp, Info, Search, Upload, Pencil } from 'lucide-react';
 import { integrationsApi } from '../integrations/api/integrations.api';
+
+const CuzkImportTab = lazy(() => import('./CuzkImportTab'));
 
 interface Props {
   property?: ApiProperty;
@@ -51,6 +53,7 @@ export default function PropertyForm({ property, onClose }: Props) {
   const createMutation = useCreateProperty();
   const updateMutation = useUpdateProperty();
   const isEdit = !!property;
+  const [activeTab, setActiveTab] = useState<'manual' | 'import'>('manual');
 
   const [form, setForm] = useState({
     name: property?.name || '',
@@ -167,15 +170,54 @@ export default function PropertyForm({ property, onClose }: Props) {
       open
       onClose={onClose}
       title={isEdit ? 'Upravit nemovitost' : 'Nová nemovitost'}
-      footer={
+      footer={activeTab === 'manual' ? (
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <Button onClick={onClose}>Zrušit</Button>
           <Button variant="primary" onClick={handleSubmit} disabled={isPending}>
             {isPending ? 'Ukládám...' : isEdit ? 'Uložit' : 'Vytvořit'}
           </Button>
         </div>
-      }
+      ) : undefined}
     >
+      {/* Tab switcher (only for create mode) */}
+      {!isEdit && (
+        <div style={{ display: 'flex', gap: 4, marginBottom: 16 }}>
+          <button
+            onClick={() => setActiveTab('manual')}
+            style={{
+              flex: 1, padding: '8px 14px', borderRadius: 6, fontSize: '.85rem', fontWeight: 600, cursor: 'pointer',
+              border: activeTab === 'manual' ? '2px solid var(--primary, #6366f1)' : '1px solid var(--border)',
+              background: activeTab === 'manual' ? 'var(--primary, #6366f1)' : 'transparent',
+              color: activeTab === 'manual' ? '#fff' : 'var(--text)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}
+          >
+            <Pencil size={14} /> Ruční zadání
+          </button>
+          <button
+            onClick={() => setActiveTab('import')}
+            style={{
+              flex: 1, padding: '8px 14px', borderRadius: 6, fontSize: '.85rem', fontWeight: 600, cursor: 'pointer',
+              border: activeTab === 'import' ? '2px solid var(--primary, #6366f1)' : '1px solid var(--border)',
+              background: activeTab === 'import' ? 'var(--primary, #6366f1)' : 'transparent',
+              color: activeTab === 'import' ? '#fff' : 'var(--text)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}
+          >
+            <Upload size={14} /> Import z katastru
+          </button>
+        </div>
+      )}
+
+      {/* Import tab */}
+      {!isEdit && activeTab === 'import' && (
+        <Suspense fallback={<div style={{ textAlign: 'center', padding: 20, color: 'var(--text-muted)' }}>Načítání...</div>}>
+          <CuzkImportTab onClose={onClose} />
+        </Suspense>
+      )}
+
+      {/* Manual form (original content) */}
+      {activeTab === 'manual' && <>
       {/* ── Základní údaje ──────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
         <div>
@@ -331,6 +373,7 @@ export default function PropertyForm({ property, onClose }: Props) {
           Nepodařilo se uložit nemovitost.
         </div>
       )}
+      </>}
     </Modal>
   );
 }

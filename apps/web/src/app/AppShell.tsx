@@ -204,35 +204,17 @@ export default function AppShell() {
     staleTime: Infinity,
   });
 
-  const { data: helpdeskData } = useQuery({
-    queryKey: ['helpdesk', 'list', { status: 'open', limit: 1 }],
-    queryFn: () => apiClient.get('/helpdesk', { params: { status: 'open', limit: 1 } }).then((r) => r.data),
+  // Consolidated badge counts — single API call replaces 4 separate queries
+  const { data: badges } = useQuery({
+    queryKey: ['dashboard', 'badges'],
+    queryFn: () => apiClient.get('/dashboard/badges').then((r) => r.data),
     staleTime: 60_000,
+    refetchInterval: 60_000,
     retry: false,
   });
-  const { data: helpdeskInProgress } = useQuery({
-    queryKey: ['helpdesk', 'list', { status: 'in_progress', limit: 1 }],
-    queryFn: () => apiClient.get('/helpdesk', { params: { status: 'in_progress', limit: 1 } }).then((r) => r.data),
-    staleTime: 60_000,
-    retry: false,
-  });
-  const openTicketsCount = (helpdeskData?.total ?? 0) + (helpdeskInProgress?.total ?? 0);
-
-  const { data: contractStats } = useQuery({
-    queryKey: ['contracts', 'stats'],
-    queryFn: () => apiClient.get('/contracts/stats').then((r) => r.data),
-    staleTime: 60_000,
-    retry: false,
-  });
-  const expiringContracts = contractStats?.expiringSoon ?? 0;
-
-  const { data: woStats } = useQuery({
-    queryKey: ['workorders', 'stats'],
-    queryFn: () => apiClient.get('/work-orders/stats').then((r) => r.data),
-    staleTime: 60_000,
-    retry: false,
-  });
-  const openWOCount = woStats?.open ?? 0;
+  const openTicketsCount = (badges?.helpdesk?.open ?? 0) + (badges?.helpdesk?.inProgress ?? 0);
+  const expiringContracts = badges?.contracts?.expiringSoon ?? 0;
+  const openWOCount = badges?.workOrders?.open ?? 0;
 
   const { data: meData } = useQuery({
     queryKey: ['auth', 'me'],

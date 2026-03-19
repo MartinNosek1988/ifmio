@@ -23,4 +23,10 @@ export class DashboardController {
   getOperational(@CurrentUser() user: AuthUser) {
     return this.service.getOperationalDashboard(user)
   }
+
+  @Get('badges')
+  @ApiOperation({ summary: 'Sidebar badge counts — single query for all nav badges' })
+  getBadges(@CurrentUser() user: AuthUser) {
+    return this.service.getBadges(user)
+  }
 }
