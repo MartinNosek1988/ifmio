@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Plus, Pencil, Layers, Trash2, UserPlus, Gauge, FileText, Settings } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Layers, Trash2, UserPlus } from 'lucide-react';
 import { KpiCard, Table, Badge, Button, Modal, EmptyState, LoadingState, ErrorState } from '../../shared/components';
 import type { Column } from '../../shared/components';
 import { useProperty } from './use-properties';

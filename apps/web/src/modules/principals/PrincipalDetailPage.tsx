@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Building2, Users, UserCheck, Pencil, Trash2, MessageSquare, Wallet, ChevronLeft, ChevronRight, FileText, User } from 'lucide-react'
+import { ArrowLeft, Users, Pencil, Trash2, Wallet, FileText } from 'lucide-react'
 import { Badge, Button, LoadingState, EmptyState, ErrorState } from '../../shared/components'
-import { usePrincipal, usePrincipalProperties, usePrincipalUnits, usePrincipalTenants } from './api/principals.queries'
+import { usePrincipal, usePrincipalUnits } from './api/principals.queries'
 import ManagementContractFormModal from '../properties/ManagementContractFormModal'
-import { managementContractsApi } from '../properties/management-contracts-api'
 
 const TYPE_LABELS: Record<string, { label: string; color: string }> = {
   hoa: { label: 'SVJ', color: 'blue' },
@@ -13,12 +12,6 @@ const TYPE_LABELS: Record<string, { label: string; color: string }> = {
   corporate_owner: { label: 'Vlastník PO', color: 'yellow' },
   tenant_client: { label: 'Klient nájemce', color: 'purple' },
   mixed_client: { label: 'Smíšený', color: 'muted' },
-}
-
-const MGMT_TYPE_LABELS: Record<string, string> = {
-  hoa_management: 'Správa SVJ', rental_management: 'Správa pronájmu',
-  technical_management: 'Technická správa', accounting_management: 'Účetní správa',
-  admin_management: 'Administrativní správa',
 }
 
 type Tab = 'overview' | 'persons' | 'users' | 'units' | 'finance' | 'communication' | 'profile'
@@ -42,15 +35,6 @@ export default function PrincipalDetailPage() {
   const qc = useQueryClient()
   const [contractModal, setContractModal] = useState<{ contract?: any } | null>(null)
   const displayName = (principal.displayName ?? '').replace(/^SJM\s+/i, 'SJ ')
-
-  const handleDeleteContract = async (contractId: string) => {
-    if (!window.confirm('Deaktivovat smlouvu správy?')) return
-    try {
-      await managementContractsApi.remove(contractId)
-      qc.invalidateQueries({ queryKey: ['principals'] })
-      qc.invalidateQueries({ queryKey: ['management-contracts'] })
-    } catch { /* ignore */ }
-  }
 
   const neuvedeno = <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>neuvedeno</span>
   const fieldStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: '.85rem' }
@@ -408,60 +392,3 @@ function UsersTimelineTab({ principalId }: { principalId: string }) {
   )
 }
 
-// ─── Properties Tab ──────────────────────────────────────────────────
-
-function PropertiesTab({ principalId }: { principalId: string }) {
-  const navigate = useNavigate()
-  const { data: properties = [], isLoading } = usePrincipalProperties(principalId)
-  const thStyle: React.CSSProperties = { padding: '8px 12px', fontWeight: 600, fontSize: '.8rem', color: 'var(--text-muted)', textAlign: 'left', borderBottom: '1px solid var(--border)' }
-  const tdStyle: React.CSSProperties = { padding: '8px 12px', borderBottom: '1px solid var(--border)' }
-
-  if (isLoading) return <LoadingState text="Načítání nemovitostí..." />
-  if (properties.length === 0) return <EmptyState title="Žádné nemovitosti" description="Tento klient nemá přiřazené žádné nemovitosti." />
-
-  return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem' }}>
-        <thead><tr><th style={thStyle}>Název / Adresa</th><th style={thStyle}>Město</th><th style={{ ...thStyle, textAlign: 'center' }}>Jednotky</th></tr></thead>
-        <tbody>
-          {properties.map(p => (
-            <tr key={p.id} onClick={() => navigate(`/properties/${p.id}`)} style={{ cursor: 'pointer' }}>
-              <td style={tdStyle}><div style={{ fontWeight: 600 }}>{p.name}</div><div className="text-muted text-sm">{p.address}</div></td>
-              <td style={tdStyle}>{p.city}</td>
-              <td style={{ ...tdStyle, textAlign: 'center' }}>{p._count?.units ?? 0}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-// ─── Tenants Tab ─────────────────────────────────────────────────────
-
-function TenantsTab({ principalId }: { principalId: string }) {
-  const { data: tenancies = [], isLoading } = usePrincipalTenants(principalId)
-  const thStyle: React.CSSProperties = { padding: '8px 12px', fontWeight: 600, fontSize: '.8rem', color: 'var(--text-muted)', textAlign: 'left', borderBottom: '1px solid var(--border)' }
-  const tdStyle: React.CSSProperties = { padding: '8px 12px', borderBottom: '1px solid var(--border)' }
-
-  if (isLoading) return <LoadingState text="Načítání nájemníků..." />
-  if (tenancies.length === 0) return <EmptyState title="Žádní nájemníci" description="Tento klient nemá žádné aktivní nájemníky." />
-
-  return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem' }}>
-        <thead><tr><th style={thStyle}>Jméno</th><th style={thStyle}>Jednotka</th><th style={thStyle}>Nemovitost</th><th style={thStyle}>Stav</th></tr></thead>
-        <tbody>
-          {tenancies.map(t => (
-            <tr key={t.id}>
-              <td style={tdStyle}><span style={{ fontWeight: 500 }}>{t.party?.displayName}</span></td>
-              <td style={tdStyle}>{t.unit?.name}</td>
-              <td style={tdStyle} className="text-muted">{t.unit?.property?.name}</td>
-              <td style={tdStyle}><Badge variant={t.isActive ? 'green' : 'muted'}>{t.isActive ? 'Aktivní' : 'Ukončen'}</Badge></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
