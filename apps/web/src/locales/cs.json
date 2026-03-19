@@ -8,16 +8,40 @@
     "close": "Zavřít"
   },
   "auth": {
+    "layout": {
+      "loginHeadline": "Spravujte budovy s jistotou",
+      "loginSubtext": "Chytrá platforma pro správu nemovitostí, která vám pomůže zefektivnit provoz, snížit náklady a rozhodovat se na základě dat.",
+      "registerHeadline": "Začněte spravovat chytřeji",
+      "registerSubtext": "14denní zkušební verze zdarma, bez platební karty. Nastavení pracovního prostoru do 2 minut.",
+      "feature1": "AI asistent Mio",
+      "feature2": "Soulad s ISO 41001",
+      "feature3": "Kompletní správa nemovitostí",
+      "regFeature1": "12+ integrovaných modulů",
+      "regFeature2": "Import z katastru ČÚZK",
+      "regFeature3": "AI asistent Mio v ceně"
+    },
     "login": {
       "subtitle": "Property & Facility Management",
+      "welcomeBack": "Vítejte zpět",
+      "signInToAccount": "Přihlaste se do svého účtu",
       "email": "Email",
       "password": "Heslo",
+      "rememberMe": "Zapamatovat si mě",
       "forgotPassword": "Zapomněli jste heslo?",
       "submit": "Přihlásit se",
       "submitting": "Přihlašování...",
       "noAccount": "Nemáte účet?",
       "register": "Zaregistrujte se",
-      "error": "Nesprávný email nebo heslo."
+      "error": "Nesprávný email nebo heslo.",
+      "orContinueWith": "nebo pokračujte přes",
+      "twoFactorTitle": "Dvoufaktorové ověření",
+      "enterCode": "Zadejte kód z autentizační aplikace",
+      "enterBackupCode": "Zadejte záložní kód",
+      "verify": "Ověřit",
+      "verifying": "Ověřování...",
+      "useBackupCode": "Použít záložní kód",
+      "useAuthCode": "Použít kód z aplikace",
+      "invalidCode": "Neplatný kód. Zkuste to znovu."
     },
     "register": {
       "title": "Vytvořte si účet zdarma",

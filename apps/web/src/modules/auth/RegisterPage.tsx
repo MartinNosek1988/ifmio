@@ -57,12 +57,12 @@ export default function RegisterPage() {
 
   return (
     <AuthLayout
-      headline="Start managing smarter today"
-      subtext="Free 14-day trial, no credit card required. Set up your workspace in under 2 minutes."
+      headline={t('auth.layout.registerHeadline')}
+      subtext={t('auth.layout.registerSubtext')}
       features={[
-        { text: '12+ integrated modules' },
-        { text: 'ČÚZK cadastral import' },
-        { text: 'Mio AI assistant included' },
+        { text: t('auth.layout.regFeature1') },
+        { text: t('auth.layout.regFeature2') },
+        { text: t('auth.layout.regFeature3') },
       ]}
     >
       {/* Progress */}

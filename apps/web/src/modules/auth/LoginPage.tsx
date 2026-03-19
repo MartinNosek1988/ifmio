@@ -54,7 +54,7 @@ export default function LoginPage() {
       const res = await apiClient.post('/auth/2fa/validate', { tempToken, code: totpCode });
       completeLogin(res.data);
     } catch {
-      setError('Neplatný kód. Zkuste to znovu.');
+      setError(t('auth.login.invalidCode'));
     } finally {
       setLoading(false);
     }
@@ -82,20 +82,20 @@ export default function LoginPage() {
 
   return (
     <AuthLayout
-      headline="Manage your buildings with confidence"
-      subtext="The smart facility management platform that helps you streamline operations, reduce costs, and make data-driven decisions."
+      headline={t('auth.layout.loginHeadline')}
+      subtext={t('auth.layout.loginSubtext')}
       features={[
-        { text: 'AI-powered insights with Mio' },
-        { text: 'ISO 41001 aligned compliance' },
-        { text: 'All-in-one property management' },
+        { text: t('auth.layout.feature1') },
+        { text: t('auth.layout.feature2') },
+        { text: t('auth.layout.feature3') },
       ]}
     >
       {loginStep === 'credentials' && (
         <>
           <h2 style={{ fontSize: '1.6rem', fontWeight: 700, color: '#1A1A2E', margin: '0 0 6px', fontFamily: "'DM Sans', sans-serif" }}>
-            {t('auth.login.noAccount') ? 'Welcome back' : 'Welcome back'}
+            {t('auth.login.welcomeBack')}
           </h2>
-          <p style={{ color: '#6B7280', fontSize: '.95rem', margin: '0 0 28px' }}>Sign in to your account</p>
+          <p style={{ color: '#6B7280', fontSize: '.95rem', margin: '0 0 28px' }}>{t('auth.login.signInToAccount')}</p>
 
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: 16 }}>
@@ -124,7 +124,7 @@ export default function LoginPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '.82rem', color: '#6B7280', cursor: 'pointer' }}>
                 <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} style={{ accentColor: '#0D9488' }} />
-                Remember me
+                {t('auth.login.rememberMe')}
               </label>
               <Link to="/forgot-password" style={{ fontSize: '.82rem', color: '#0D9488', textDecoration: 'none', fontWeight: 500 }}>
                 {t('auth.login.forgotPassword')}
@@ -142,11 +142,11 @@ export default function LoginPage() {
                 transition: 'background 0.2s', boxShadow: '0 2px 8px rgba(13,148,136,0.3)',
               }}
             >
-              {loading ? 'Signing in...' : <>{t('auth.login.submit')} <ArrowRight size={16} /></>}
+              {loading ? t('auth.login.submitting') : <>{t('auth.login.submit')} <ArrowRight size={16} /></>}
             </button>
           </form>
 
-          <OAuthButtons dividerText="or continue with" />
+          <OAuthButtons dividerText={t('auth.login.orContinueWith')} />
 
           <div style={{ textAlign: 'center', marginTop: 20 }}>
             <span style={{ color: '#6B7280', fontSize: '.85rem' }}>
@@ -161,9 +161,9 @@ export default function LoginPage() {
         <form onSubmit={handle2faSubmit}>
           <div style={{ textAlign: 'center', marginBottom: 24 }}>
             <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>🔐</div>
-            <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#1A1A2E', margin: '0 0 6px' }}>Two-factor authentication</h2>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#1A1A2E', margin: '0 0 6px' }}>{t('auth.login.twoFactorTitle')}</h2>
             <p style={{ color: '#6B7280', fontSize: '.9rem' }}>
-              {useBackupCode ? 'Enter a backup code' : 'Enter the code from your authenticator app'}
+              {useBackupCode ? t('auth.login.enterBackupCode') : t('auth.login.enterCode')}
             </p>
           </div>
           <div style={{ marginBottom: 20 }}>
@@ -174,12 +174,12 @@ export default function LoginPage() {
           {error && <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', color: '#DC2626', fontSize: '.85rem', marginBottom: 16 }}>{error}</div>}
           <button type="submit" disabled={loading || totpCode.length < 6}
             style={{ width: '100%', padding: '13px', background: '#0D9488', border: 'none', borderRadius: 10, color: '#fff', fontSize: '1rem', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
-            {loading ? 'Verifying...' : 'Verify'}
+            {loading ? t('auth.login.verifying') : t('auth.login.verify')}
           </button>
           <div style={{ textAlign: 'center', marginTop: 12 }}>
             <button type="button" onClick={() => { setUseBackupCode(!useBackupCode); setTotpCode('') }}
               style={{ background: 'none', border: 'none', color: '#0D9488', cursor: 'pointer', fontSize: '.82rem', textDecoration: 'underline' }}>
-              {useBackupCode ? 'Use authenticator code' : 'Use backup code'}
+              {useBackupCode ? t('auth.login.useAuthCode') : t('auth.login.useBackupCode')}
             </button>
           </div>
         </form>

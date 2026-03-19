@@ -8,16 +8,40 @@
     "close": "Close"
   },
   "auth": {
+    "layout": {
+      "loginHeadline": "Manage your buildings with confidence",
+      "loginSubtext": "The smart facility management platform that helps you streamline operations, reduce costs, and make data-driven decisions.",
+      "registerHeadline": "Start managing smarter today",
+      "registerSubtext": "Free 14-day trial, no credit card required. Set up your workspace in under 2 minutes.",
+      "feature1": "AI-powered insights with Mio",
+      "feature2": "ISO 41001 aligned compliance",
+      "feature3": "All-in-one property management",
+      "regFeature1": "12+ integrated modules",
+      "regFeature2": "ČÚZK cadastral import",
+      "regFeature3": "Mio AI assistant included"
+    },
     "login": {
       "subtitle": "Property & Facility Management",
+      "welcomeBack": "Welcome back",
+      "signInToAccount": "Sign in to your account",
       "email": "Email",
       "password": "Password",
+      "rememberMe": "Remember me",
       "forgotPassword": "Forgot your password?",
       "submit": "Sign in",
       "submitting": "Signing in...",
       "noAccount": "Don't have an account?",
       "register": "Sign up",
-      "error": "Incorrect email or password."
+      "error": "Incorrect email or password.",
+      "orContinueWith": "or continue with",
+      "twoFactorTitle": "Two-factor authentication",
+      "enterCode": "Enter the code from your authenticator app",
+      "enterBackupCode": "Enter a backup code",
+      "verify": "Verify",
+      "verifying": "Verifying...",
+      "useBackupCode": "Use backup code",
+      "useAuthCode": "Use authenticator code",
+      "invalidCode": "Invalid code. Try again."
     },
     "register": {
       "title": "Create your free account",

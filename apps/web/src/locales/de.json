@@ -8,16 +8,40 @@
     "close": "Schließen"
   },
   "auth": {
+    "layout": {
+      "loginHeadline": "Verwalten Sie Ihre Gebäude mit Zuversicht",
+      "loginSubtext": "Die intelligente Facility-Management-Plattform, die Ihnen hilft, Abläufe zu optimieren, Kosten zu senken und datenbasierte Entscheidungen zu treffen.",
+      "registerHeadline": "Starten Sie noch heute mit intelligentem Management",
+      "registerSubtext": "14-tägige kostenlose Testversion, keine Kreditkarte erforderlich. Richten Sie Ihren Arbeitsbereich in 2 Minuten ein.",
+      "feature1": "KI-gestützte Erkenntnisse mit Mio",
+      "feature2": "ISO 41001-konforme Compliance",
+      "feature3": "Umfassendes Immobilienmanagement",
+      "regFeature1": "12+ integrierte Module",
+      "regFeature2": "Katasterimport ČÚZK",
+      "regFeature3": "KI-Assistent Mio inklusive"
+    },
     "login": {
       "subtitle": "Property & Facility Management",
+      "welcomeBack": "Willkommen zurück",
+      "signInToAccount": "Melden Sie sich bei Ihrem Konto an",
       "email": "E-Mail",
       "password": "Passwort",
+      "rememberMe": "Angemeldet bleiben",
       "forgotPassword": "Passwort vergessen?",
       "submit": "Anmelden",
       "submitting": "Anmeldung...",
       "noAccount": "Noch kein Konto?",
       "register": "Registrieren",
-      "error": "Falsche E-Mail oder falsches Passwort."
+      "error": "Falsche E-Mail oder falsches Passwort.",
+      "orContinueWith": "oder fortfahren mit",
+      "twoFactorTitle": "Zwei-Faktor-Authentifizierung",
+      "enterCode": "Geben Sie den Code aus Ihrer Authenticator-App ein",
+      "enterBackupCode": "Geben Sie einen Backup-Code ein",
+      "verify": "Bestätigen",
+      "verifying": "Überprüfung...",
+      "useBackupCode": "Backup-Code verwenden",
+      "useAuthCode": "Authenticator-Code verwenden",
+      "invalidCode": "Ungültiger Code. Versuchen Sie es erneut."
     },
     "register": {
       "title": "Kostenloses Konto erstellen",
