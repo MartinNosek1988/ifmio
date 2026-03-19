@@ -22,7 +22,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await apiClient.post('/auth/login', { email, password });
-      const { accessToken, refreshToken, user } = res.data;
+      const { accessToken, refreshToken, user, passwordExpired } = res.data;
       sessionStorage.setItem('ifmio:access_token', accessToken);
       sessionStorage.setItem('ifmio:refresh_token', refreshToken);
       sessionStorage.setItem('ifmio:user', JSON.stringify(user));
@@ -30,7 +30,11 @@ export default function LoginPage() {
       if (user.language && user.language !== i18n.language) {
         i18n.changeLanguage(user.language);
       }
-      navigate(returnUrl, { replace: true });
+      if (passwordExpired) {
+        navigate('/profile?tab=security&expired=1', { replace: true });
+      } else {
+        navigate(returnUrl, { replace: true });
+      }
     } catch {
       setError(t('auth.login.error'));
     } finally {

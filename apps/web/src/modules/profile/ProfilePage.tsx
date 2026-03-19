@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../core/api/client';
+import { PasswordStrengthIndicator } from '../../shared/components/PasswordStrengthIndicator';
 import {
   useMioDigestPrefs, useUpdateMioDigestPrefs, useResetMioDigestPrefs,
   useMioDigestStatus, useMioDigestHistory, useMioDigestPreview,
@@ -217,10 +218,11 @@ function SecurityTab() {
           </div>
           <div style={{ position: 'relative' }}>
             <Field label="Nové heslo" value={newPw} onChange={setNewPw}
-              type={showNew ? 'text' : 'password'} hint="Minimálně 8 znaků" />
+              type={showNew ? 'text' : 'password'} hint="Min. 8 znaků, velké písmeno" />
             <button type="button" onClick={() => setShowNew(!showNew)} className="profile-pw-toggle">
               {showNew ? <EyeOff size={15} /> : <Eye size={15} />}
             </button>
+            <PasswordStrengthIndicator password={newPw} />
           </div>
           <Field label="Potvrzení nového hesla" value={confirmPw} onChange={setConfirmPw} type="password" />
           {confirmPw && newPw !== confirmPw && (

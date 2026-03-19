@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { apiClient } from '../../core/api/client'
+import { PasswordStrengthIndicator } from '../../shared/components/PasswordStrengthIndicator'
 
 interface InvitationInfo {
   name: string
@@ -97,6 +98,7 @@ export default function AcceptInvitationPage() {
             <div style={{ marginBottom: '14px' }}>
               <label style={{ display: 'block', color: '#9ca3af', fontSize: '0.85rem', marginBottom: '6px' }}>{t('auth.acceptInvitation.password')}</label>
               <input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} style={inputStyle} />
+              <PasswordStrengthIndicator password={password} />
             </div>
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', color: '#9ca3af', fontSize: '0.85rem', marginBottom: '6px' }}>{t('auth.acceptInvitation.confirmPassword')}</label>

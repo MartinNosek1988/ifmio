@@ -7,6 +7,7 @@ interface AuthState {
   user: AuthUser | null;
   isLoading: boolean;
   isLoggedIn: boolean;
+  passwordExpired: boolean;
   login: (data: LoginRequest) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
@@ -17,14 +18,15 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isLoading: true,
   isLoggedIn: false,
+  passwordExpired: false,
 
   login: async (data) => {
-    const res = await apiClient.post<AuthResponse>('/auth/login', data);
-    const { accessToken, refreshToken, user } = res.data;
+    const res = await apiClient.post<AuthResponse & { passwordExpired?: boolean }>('/auth/login', data);
+    const { accessToken, refreshToken, user, passwordExpired } = res.data;
     sessionStorage.setItem('ifmio:access_token', accessToken);
     sessionStorage.setItem('ifmio:refresh_token', refreshToken);
     sessionStorage.setItem('ifmio:user', JSON.stringify(user));
-    set({ user, isLoggedIn: true });
+    set({ user, isLoggedIn: true, passwordExpired: !!passwordExpired });
   },
 
   register: async (data) => {

@@ -213,4 +213,28 @@ export class AdminController {
   revokeInvitation(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.service.revokeInvitation(user.tenantId, id)
   }
+
+  // ─── Password Policy ──────────────────────────────────────
+
+  @Post('users/:id/force-password-change')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Vyžadovat změnu hesla při příštím přihlášení' })
+  forcePasswordChange(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() body: { force: boolean },
+  ) {
+    return this.service.setForcePasswordChange(user.tenantId, id, body.force)
+  }
+
+  @Post('users/:id/password-expiry')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Nastavit expiraci hesla' })
+  setPasswordExpiry(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() body: { months: number | null },
+  ) {
+    return this.service.setPasswordExpiry(user.tenantId, id, body.months)
+  }
 }

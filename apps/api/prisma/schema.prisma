@@ -110,6 +110,10 @@ model User {
   notifEmail   Boolean   @default(true)
   passwordResetToken   String?   @unique
   passwordResetExpiry  DateTime?
+  passwordHistory      Json?              // array of last 5 bcrypt hashes
+  passwordChangedAt    DateTime?          // when password was last changed
+  passwordExpiresAt    DateTime?          // null = never expires
+  forcePasswordChange  Boolean   @default(false)
   lastLoginAt  DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt

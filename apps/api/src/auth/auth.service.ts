@@ -15,6 +15,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { validatePassword } from './password-policy';
 import type { AuthUser } from '@ifmio/shared-types';
 
 export interface RequestMeta {
@@ -26,6 +27,7 @@ export interface AuthResponse {
   accessToken: string;
   refreshToken: string;
   user: AuthUser;
+  passwordExpired?: boolean;
 }
 
 @Injectable()
@@ -55,6 +57,9 @@ export class AuthService {
     });
     if (emailExists)
       throw new ConflictException('Uživatel s tímto emailem již existuje');
+
+    const pwCheck = validatePassword(dto.password);
+    if (!pwCheck.valid) throw new BadRequestException(pwCheck.errors.join(' '));
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
 
@@ -96,6 +101,8 @@ export class AuthService {
           name: dto.name,
           passwordHash,
           role: 'tenant_owner',
+          passwordChangedAt: new Date(),
+          passwordHistory: [passwordHash],
         },
       });
 
@@ -169,7 +176,15 @@ export class AuthService {
       }),
     ]);
 
-    return this.issueTokens(user);
+    const tokens = await this.issueTokens(user);
+
+    // Check password expiry
+    const expired = this.checkPasswordExpiry(user);
+    if (expired) {
+      return { ...tokens, passwordExpired: true };
+    }
+
+    return tokens;
   }
 
   async logout(userId: string, meta?: RequestMeta): Promise<void> {
@@ -248,11 +263,29 @@ export class AuthService {
     const valid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
     if (!valid) throw new UnauthorizedException('Nesprávné aktuální heslo');
 
+    const pwCheck = validatePassword(dto.newPassword);
+    if (!pwCheck.valid) throw new BadRequestException(pwCheck.errors.join(' '));
+
+    // Check password history (last 5)
+    const history = (user.passwordHistory as string[]) ?? [];
+    for (const oldHash of history) {
+      if (await bcrypt.compare(dto.newPassword, oldHash)) {
+        throw new BadRequestException('Toto heslo jste již použili. Zvolte jiné.');
+      }
+    }
+
     const passwordHash = await bcrypt.hash(dto.newPassword, 12);
+    const updatedHistory = [passwordHash, ...history].slice(0, 5);
+
     await this.prisma.$transaction([
       this.prisma.user.update({
         where: { id: userId },
-        data: { passwordHash },
+        data: {
+          passwordHash,
+          passwordHistory: updatedHistory,
+          passwordChangedAt: new Date(),
+          forcePasswordChange: false,
+        },
       }),
       this.prisma.auditLog.create({
         data: {
@@ -444,6 +477,9 @@ export class AuthService {
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {
+    const pwCheck = validatePassword(newPassword);
+    if (!pwCheck.valid) throw new BadRequestException(pwCheck.errors.join(' '));
+
     const user = await this.prisma.user.findFirst({
       where: { passwordResetToken: token },
     })
@@ -453,10 +489,19 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 12)
+    const history = (user.passwordHistory as string[] ?? [])
+    const updatedHistory = [passwordHash, ...history].slice(0, 5)
 
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { passwordHash, passwordResetToken: null, passwordResetExpiry: null },
+      data: {
+        passwordHash,
+        passwordResetToken: null,
+        passwordResetExpiry: null,
+        passwordChangedAt: new Date(),
+        passwordHistory: updatedHistory,
+        forcePasswordChange: false,
+      },
     })
 
     this.logger.log(`Password reset completed for user ${user.id}`)
@@ -484,6 +529,9 @@ export class AuthService {
     const existing = await this.prisma.user.findFirst({ where: { tenantId: inv.tenantId, email: inv.email } })
     if (existing) throw new ConflictException('Uživatel s tímto e-mailem již existuje')
 
+    const pwCheck = validatePassword(password);
+    if (!pwCheck.valid) throw new BadRequestException(pwCheck.errors.join(' '));
+
     const passwordHash = await bcrypt.hash(password, 12)
 
     // Try to find a matching Party by email to link user
@@ -500,6 +548,8 @@ export class AuthService {
         role: inv.role,
         isActive: true,
         partyId: matchingParty?.id ?? undefined,
+        passwordChangedAt: new Date(),
+        passwordHistory: [passwordHash],
       },
     })
 
@@ -510,6 +560,12 @@ export class AuthService {
 
     this.logger.log(`Invitation accepted: ${inv.email} joined tenant ${inv.tenantId}`)
     return { success: true }
+  }
+
+  private checkPasswordExpiry(user: { passwordExpiresAt?: Date | null; forcePasswordChange?: boolean }): boolean {
+    if (user.forcePasswordChange) return true;
+    if (user.passwordExpiresAt && user.passwordExpiresAt < new Date()) return true;
+    return false;
   }
 
   private maskEmail(email: string): string {
