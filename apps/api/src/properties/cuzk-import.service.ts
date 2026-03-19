@@ -262,6 +262,7 @@ export class CuzkImportService {
   async confirmImport(user: AuthUser, dto: CuzkImportConfirmDto) {
     const { importData } = dto
 
+    // 166 units × ~3 queries = ~500 ops — increase timeout from default 5s
     return this.prisma.$transaction(async (tx) => {
       // 1. Create property
       const property = await tx.property.create({
@@ -319,8 +320,19 @@ export class CuzkImportService {
         })
 
         // 3. Create Party + UnitOwnership for each owner
-        for (const owner of parsedUnit.owners) {
-          const partyType: PartyType = owner.isLegalEntity ? 'company' : (owner.isSJM ? 'person' : 'person')
+        // Skip SJM partner rows (isSJM=false, share=null, preceded by SJM row)
+        // They are informational duplicates — the SJM row is the real owner
+        const realOwners = parsedUnit.owners.filter((o, i, arr) => {
+          // Keep if has explicit share or is first owner (sole owner)
+          if (o.share || o.isSJM || o.isLegalEntity) return true
+          // Skip if preceded by SJM owner (this is a partner detail row)
+          const prev = arr.slice(0, i).reverse().find(p => p.isSJM)
+          if (prev && !o.share) return false
+          return true
+        })
+
+        for (const owner of realOwners) {
+          const partyType: PartyType = owner.isLegalEntity ? 'company' : 'person'
           const displayName = owner.name.replace(/^SJM?\s+/i, '').trim()
 
           // Find or create Party
@@ -339,7 +351,12 @@ export class CuzkImportService {
             })
           }
 
-          // Create UnitOwnership
+          // Create UnitOwnership — skip if already exists (same party+unit+null validFrom)
+          const existingOwnership = await tx.unitOwnership.findFirst({
+            where: { unitId: unit.id, partyId: party.id, validFrom: null },
+          })
+          if (existingOwnership) continue
+
           await tx.unitOwnership.create({
             data: {
               tenantId: user.tenantId,
@@ -361,7 +378,7 @@ export class CuzkImportService {
         where: { id: property.id },
         include: { units: true },
       })
-    })
+    }, { timeout: 60_000, maxWait: 10_000 })
   }
 
   private mapUsageToSpaceType(usage: string): string {
