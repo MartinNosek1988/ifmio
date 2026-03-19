@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { apiClient } from '../../core/api/client';
+import { OAuthButtons } from '../../shared/components/OAuthButtons';
 import i18n from '../../core/i18n';
 
 const LANGS = ['cs', 'en', 'sk', 'de', 'uk'] as const;
@@ -101,6 +102,8 @@ export default function LoginPage() {
             <button type="submit" disabled={loading} style={{ width: '100%', padding: '12px', background: loading ? '#4338ca' : '#6366f1', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '1rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer' }}>
               {loading ? t('auth.login.submitting') : t('auth.login.submit')}
             </button>
+
+            <OAuthButtons />
           </form>
         )}
 

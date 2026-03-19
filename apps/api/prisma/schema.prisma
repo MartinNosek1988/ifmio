@@ -117,6 +117,8 @@ model User {
   totpSecret           String?              // AES-encrypted TOTP secret
   totpEnabled          Boolean   @default(false)
   totpBackupCodes      Json?               // array of hashed backup codes
+  oauthProvider        String?              // 'google' | 'facebook' | 'microsoft'
+  oauthId              String?              // provider's unique user ID
   lastLoginAt  DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -147,6 +149,7 @@ model User {
   mioDigestLogs           MioDigestLog[]
 
   @@unique([tenantId, email])
+  @@unique([oauthProvider, oauthId])
   @@index([tenantId])
   @@map("users")
 }

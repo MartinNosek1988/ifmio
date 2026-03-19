@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { apiClient } from '../../core/api/client'
 import { PasswordStrengthIndicator } from '../../shared/components/PasswordStrengthIndicator'
+import { OAuthButtons } from '../../shared/components/OAuthButtons'
 
 interface InvitationInfo {
   name: string
@@ -87,6 +88,8 @@ export default function AcceptInvitationPage() {
           <form onSubmit={handleSubmit}>
             <div style={{ background: '#1e1b4b', borderRadius: '8px', padding: '12px 16px', marginBottom: '20px', fontSize: '0.85rem', color: '#c4b5fd' }}
               dangerouslySetInnerHTML={{ __html: t('auth.acceptInvitation.invitedTo', { tenantName: info.tenantName }) }} />
+            <OAuthButtons dividerText="nebo přijměte pozvánku přes" />
+
             <div style={{ marginBottom: '14px' }}>
               <label style={{ display: 'block', color: '#9ca3af', fontSize: '0.85rem', marginBottom: '6px' }}>{t('auth.acceptInvitation.name')}</label>
               <input value={name} onChange={e => setName(e.target.value)} required style={inputStyle} />

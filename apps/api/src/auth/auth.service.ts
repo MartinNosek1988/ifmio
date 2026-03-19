@@ -733,6 +733,117 @@ export class AuthService {
     return false;
   }
 
+  // ─── OAuth SSO ──────────────────────────────────────────────
+
+  async verifyOAuthToken(provider: string, accessToken: string) {
+    if (provider === 'google') {
+      const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!res.ok) throw new UnauthorizedException('Neplatný Google token');
+      const data = await res.json() as Record<string, string>;
+      return { provider: 'google' as const, oauthId: data.sub, email: data.email, name: data.name, avatarUrl: data.picture };
+    }
+    if (provider === 'facebook') {
+      const res = await fetch(`https://graph.facebook.com/me?fields=id,name,email&access_token=${accessToken}`);
+      if (!res.ok) throw new UnauthorizedException('Neplatný Facebook token');
+      const data = await res.json() as Record<string, string>;
+      return { provider: 'facebook' as const, oauthId: data.id, email: data.email, name: data.name };
+    }
+    if (provider === 'microsoft') {
+      const res = await fetch('https://graph.microsoft.com/v1.0/me', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!res.ok) throw new UnauthorizedException('Neplatný Microsoft token');
+      const data = await res.json() as Record<string, string>;
+      return { provider: 'microsoft' as const, oauthId: data.id, email: data.mail || data.userPrincipalName, name: data.displayName };
+    }
+    throw new BadRequestException('Nepodporovaný OAuth provider');
+  }
+
+  async handleOAuthLogin(profile: { provider: string; oauthId: string; email: string; name: string }, meta?: RequestMeta) {
+    // 1. Find by oauthProvider + oauthId
+    let user = await this.prisma.user.findFirst({
+      where: { oauthProvider: profile.provider, oauthId: profile.oauthId },
+    });
+
+    // 2. If not found, try by email
+    if (!user) {
+      const existing = await this.prisma.user.findFirst({
+        where: { email: profile.email, isActive: true },
+      });
+      if (existing) {
+        user = await this.prisma.user.update({
+          where: { id: existing.id },
+          data: { oauthProvider: profile.provider, oauthId: profile.oauthId },
+        });
+      }
+    }
+
+    if (!user) throw new UnauthorizedException('Účet nenalezen. Požádejte správce o pozvánku.');
+    if (!user.isActive) throw new UnauthorizedException('Účet je deaktivován.');
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }),
+      this.prisma.auditLog.create({
+        data: {
+          tenantId: user.tenantId, userId: user.id,
+          action: 'LOGIN_OAUTH', entity: 'User', entityId: user.id,
+          newData: { provider: profile.provider },
+          ipAddress: meta?.ip, userAgent: meta?.userAgent,
+        },
+      }),
+    ]);
+
+    return this.issueTokens(user, meta);
+  }
+
+  async acceptInvitationWithOAuth(
+    token: string,
+    provider: string,
+    oauthId: string,
+    email: string,
+    name: string,
+    meta?: RequestMeta,
+  ) {
+    const inv = await this.prisma.tenantInvitation.findUnique({ where: { token }, include: { tenant: true } });
+    if (!inv) throw new BadRequestException('Neplatná pozvánka');
+    if (inv.acceptedAt) throw new BadRequestException('Pozvánka již byla použita');
+    if (inv.expiresAt < new Date()) throw new BadRequestException('Platnost pozvánky vypršela');
+
+    if (email.toLowerCase() !== inv.email.toLowerCase()) {
+      throw new BadRequestException(`E-mail OAuth účtu se neshoduje s pozváním. Přihlaste se účtem: ${inv.email}`);
+    }
+
+    const existing = await this.prisma.user.findFirst({ where: { tenantId: inv.tenantId, email: inv.email } });
+    if (existing) throw new ConflictException('Uživatel s tímto e-mailem již existuje');
+
+    const matchingParty = await this.prisma.party.findFirst({
+      where: { tenantId: inv.tenantId, email: inv.email, isActive: true },
+    });
+
+    const user = await this.prisma.user.create({
+      data: {
+        tenantId: inv.tenantId,
+        email: inv.email,
+        name: name ?? inv.name,
+        passwordHash: null,
+        role: inv.role,
+        isActive: true,
+        oauthProvider: provider,
+        oauthId,
+        partyId: matchingParty?.id ?? undefined,
+      },
+    });
+
+    await this.prisma.tenantInvitation.update({ where: { token }, data: { acceptedAt: new Date() } });
+    this.logger.log(`Invitation accepted via OAuth (${provider}): ${inv.email} joined tenant ${inv.tenantId}`);
+
+    return this.issueTokens(user, meta);
+  }
+
+  // ─── Private helpers ───────────────────────────────────────
+
   private maskEmail(email: string): string {
     const [local, domain] = email.split('@');
     if (!domain) return '***';

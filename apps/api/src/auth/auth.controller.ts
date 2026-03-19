@@ -204,4 +204,35 @@ export class AuthController {
   validate2fa(@Body() body: { tempToken: string; code: string }, @Req() req: any) {
     return this.auth.validate2fa(body.tempToken, body.code, extractMeta(req));
   }
+
+  // ─── OAuth SSO ─────────────────────────────────────────────
+
+  @Public()
+  @Post('oauth/token')
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'OAuth token exchange — přihlášení přes Google/Facebook/Microsoft' })
+  async oauthTokenExchange(
+    @Body() body: { provider: string; accessToken: string },
+    @Req() req: any,
+  ) {
+    const profile = await this.auth.verifyOAuthToken(body.provider, body.accessToken);
+    return this.auth.handleOAuthLogin(profile, extractMeta(req));
+  }
+
+  @Public()
+  @Post('oauth/accept-invitation')
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Přijmout pozvánku přes OAuth' })
+  async acceptInvitationWithOAuth(
+    @Body() body: { token: string; provider: string; accessToken: string },
+    @Req() req: any,
+  ) {
+    const profile = await this.auth.verifyOAuthToken(body.provider, body.accessToken);
+    return this.auth.acceptInvitationWithOAuth(
+      body.token, profile.provider, profile.oauthId, profile.email, profile.name,
+      extractMeta(req),
+    );
+  }
 }
