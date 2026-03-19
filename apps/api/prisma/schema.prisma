@@ -114,6 +114,9 @@ model User {
   passwordChangedAt    DateTime?          // when password was last changed
   passwordExpiresAt    DateTime?          // null = never expires
   forcePasswordChange  Boolean   @default(false)
+  totpSecret           String?              // AES-encrypted TOTP secret
+  totpEnabled          Boolean   @default(false)
+  totpBackupCodes      Json?               // array of hashed backup codes
   lastLoginAt  DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -184,11 +187,15 @@ model TenantInvitation {
 }
 
 model RefreshToken {
-  id        String   @id @default(uuid())
-  userId    String
-  token     String   @unique
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  id         String    @id @default(uuid())
+  userId     String
+  token      String    @unique
+  expiresAt  DateTime
+  ipAddress  String?
+  userAgent  String?
+  deviceName String?
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

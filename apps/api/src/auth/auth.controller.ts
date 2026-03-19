@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
   Patch,
   Body,
   Param,
@@ -118,7 +119,7 @@ export class AuthController {
 
   @Public()
   @Get('invitation-info/:token')
-  @ApiOperation({ summary: 'Informace o pozvánce (pro předvyplnění formuláře)' })
+  @ApiOperation({ summary: 'Informace o pozvánce' })
   getInvitationInfo(@Param('token') token: string) {
     return this.auth.getInvitationInfo(token);
   }
@@ -130,5 +131,77 @@ export class AuthController {
   @ApiOperation({ summary: 'Přijmout pozvánku a vytvořit účet' })
   acceptInvitation(@Body() body: { token: string; password: string; name?: string }) {
     return this.auth.acceptInvitation(body.token, body.password, body.name);
+  }
+
+  // ─── Sessions ──────────────────────────────────────────────
+
+  @Get('sessions')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Aktivní relace uživatele' })
+  getSessions(@CurrentUser() user: AuthUser) {
+    return this.auth.getSessions(user.id);
+  }
+
+  @Delete('sessions/:id')
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Odvolat konkrétní relaci' })
+  revokeSession(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.auth.revokeSession(user.id, id);
+  }
+
+  @Delete('sessions')
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Odvolat všechny ostatní relace' })
+  revokeAllOtherSessions(
+    @CurrentUser() user: AuthUser,
+    @Body() body: { currentToken: string },
+  ) {
+    return this.auth.revokeAllOtherSessions(user.id, body.currentToken);
+  }
+
+  @Get('login-history')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Historie přihlášení' })
+  getLoginHistory(@CurrentUser() user: AuthUser) {
+    return this.auth.getLoginHistory(user.id);
+  }
+
+  // ─── 2FA ───────────────────────────────────────────────────
+
+  @Post('2fa/setup')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Zahájit nastavení 2FA' })
+  setup2fa(@CurrentUser() user: AuthUser) {
+    return this.auth.setup2fa(user.id);
+  }
+
+  @Post('2fa/verify')
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Ověřit a aktivovat 2FA' })
+  verify2fa(@CurrentUser() user: AuthUser, @Body() body: { code: string }) {
+    return this.auth.verify2fa(user.id, body.code);
+  }
+
+  @Post('2fa/disable')
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Deaktivovat 2FA' })
+  disable2fa(
+    @CurrentUser() user: AuthUser,
+    @Body() body: { code: string; password: string },
+  ) {
+    return this.auth.disable2fa(user.id, body.code, body.password);
+  }
+
+  @Public()
+  @Post('2fa/validate')
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Dokončit přihlášení s 2FA kódem' })
+  validate2fa(@Body() body: { tempToken: string; code: string }, @Req() req: any) {
+    return this.auth.validate2fa(body.tempToken, body.code, extractMeta(req));
   }
 }
