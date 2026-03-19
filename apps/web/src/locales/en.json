@@ -109,7 +109,7 @@
     "gdpr": "GDPR",
     "cookies": "Cookies",
     "backToLogin": "← Back to sign in",
-    "copyright": "© {{year}} Grand Facility s.r.o.",
+    "copyright": "© {{year}} IFMIO Ltd.",
     "placeholder": "[Content will be provided by the system administrator]",
     "termsHeadings": ["Service provider", "Subject of agreement", "User account", "Prices and payments", "Liability", "Data protection", "Final provisions"],
     "privacyHeadings": ["Data controller", "Processing purposes", "Legal basis", "Categories of personal data", "Data recipients", "Retention period", "Data subject rights", "DPO contact"],

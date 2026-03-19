@@ -16,6 +16,7 @@ import { ErrorBoundary } from '../shared/components';
 const DashboardPage = lazy(() => import('../modules/dashboard/DashboardPage'));
 const PropertiesPage = lazy(() => import('../modules/properties/PropertiesPage'));
 const PropertyDetailPage = lazy(() => import('../modules/properties/PropertyDetailPage'));
+const UnitDetailPage = lazy(() => import('../modules/properties/UnitDetailPage'));
 const FinancePage = lazy(() => import('../modules/finance/FinancePage'));
 const WorkOrdersPage = lazy(() => import('../modules/workorders/WorkOrdersPage'));
 const TechnicianAgendaPage = lazy(() => import('../modules/workorders/TechnicianAgendaPage'));
@@ -105,6 +106,7 @@ export const router = createBrowserRouter([
       { path: 'portal/konto', element: withBoundary('Konto', MyKontoPage) },
       { path: 'properties', element: withBoundary('Nemovitosti', PropertiesPage) },
       { path: 'properties/:id', element: withBoundary('Detail nemovitosti', PropertyDetailPage) },
+      { path: 'properties/:id/units/:unitId', element: withBoundary('Detail jednotky', UnitDetailPage) },
       { path: 'principals', element: withBoundary('Klienti', PrincipalsPage) },
       { path: 'principals/:principalId', element: withBoundary('Detail klienta', PrincipalDetailPage) },
       { path: 'finance', element: withBoundary('Finance', FinancePage) },

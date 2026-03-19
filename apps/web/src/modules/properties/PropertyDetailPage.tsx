@@ -11,9 +11,9 @@ import PropertyForm, { LEGAL_MODE_LABEL } from './PropertyForm';
 import UnitForm, { SPACE_TYPES } from './UnitForm';
 import BulkUnitForm from './BulkUnitForm';
 import OccupancyForm from './OccupancyForm';
-import { usePropertyContracts, type ApiManagementContract, managementContractsApi } from './management-contracts-api';
-import { usePropertyFinancialContexts, type ApiFinancialContext, financialContextsApi } from './financial-contexts-api';
-import { usePropertyOwnerships, useUnitOwnershipsByProperty, type ApiOwnership, ownershipsApi } from './ownerships-api';
+import { usePropertyContracts, type ApiManagementContract } from './management-contracts-api';
+import { usePropertyFinancialContexts, type ApiFinancialContext } from './financial-contexts-api';
+import { usePropertyOwnerships, useUnitOwnershipsByProperty, type ApiOwnership } from './ownerships-api';
 import { usePropertyTenancies, type ApiTenancy } from './tenancies-api';
 import OwnershipFormModal from './OwnershipFormModal';
 import TenancyFormModal from './TenancyFormModal';
@@ -29,21 +29,14 @@ const MGMT_TYPE_BADGE: Record<string, { label: string; variant: string }> = {
   admin_management: { label: 'Administrativní', variant: 'purple' },
 };
 
-const SCOPE_LABELS: Record<string, string> = {
-  property: 'Nemovitost',
-  principal: 'Principál',
-  manager: 'Správce',
-  manual: 'Ruční',
-};
-
 export default function PropertyDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: property, isLoading, error, refetch } = useProperty(id!);
   const { data: contracts = [] } = usePropertyContracts(id!);
-  const { data: finContexts = [] } = usePropertyFinancialContexts(id!);
-  const { data: propOwnerships = [] } = usePropertyOwnerships(id!);
+  usePropertyFinancialContexts(id!);
+  usePropertyOwnerships(id!);
   const { data: unitOwnerships = [] } = useUnitOwnershipsByProperty(id!);
   const { data: propTenancies = [] } = usePropertyTenancies(id!);
   const [showEditProp, setShowEditProp] = useState(false);
@@ -52,7 +45,6 @@ export default function PropertyDetailPage() {
   const [editUnit, setEditUnit] = useState<ApiUnit | null>(null);
   const [deleteUnit, setDeleteUnit] = useState<ApiUnit | null>(null);
   const [occupancyUnit, setOccupancyUnit] = useState<ApiUnit | null>(null);
-  const [activeFinContextId, setActiveFinContextId] = useState<string | null>(null);
   const [ownershipModal, setOwnershipModal] = useState<{ type: 'property' | 'unit'; unitId?: string; ownership?: ApiOwnership } | null>(null);
   const [tenancyModal, setTenancyModal] = useState<{ unitId: string; tenancy?: ApiTenancy } | null>(null);
   const [terminateModal, setTerminateModal] = useState<ApiTenancy | null>(null);
@@ -62,34 +54,7 @@ export default function PropertyDetailPage() {
   type DetailTab = 'overview' | 'units' | 'meters' | 'components' | 'representatives' | 'owners'
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
 
-  const handleDeleteFc = async (fcId: string) => {
-    if (!window.confirm('Deaktivovat finanční kontext?')) return;
-    try {
-      await financialContextsApi.remove(fcId);
-      queryClient.invalidateQueries({ queryKey: ['financial-contexts'] });
-    } catch { /* ignore */ }
-  };
-
-  const handleDeleteContract = async (contractId: string) => {
-    if (!window.confirm('Deaktivovat smlouvu správy?')) return;
-    try {
-      await managementContractsApi.remove(contractId);
-      queryClient.invalidateQueries({ queryKey: ['management-contracts'] });
-    } catch { /* ignore */ }
-  };
-
-  const refetchOwnerships = () => {
-    queryClient.invalidateQueries({ queryKey: ['ownerships'] });
-  };
-
-  const handleDeleteOwnership = async (ownerType: 'property' | 'unit', ownershipId: string) => {
-    if (!window.confirm('Odebrat vlastnictví?')) return;
-    try {
-      if (ownerType === 'property') await ownershipsApi.removePropertyOwnership(ownershipId);
-      else await ownershipsApi.removeUnitOwnership(ownershipId);
-      refetchOwnerships();
-    } catch { /* ignore */ }
-  };
+  const refetchOwnerships = () => queryClient.invalidateQueries({ queryKey: ['ownerships'] });
 
   const deleteMutation = useMutation({
     mutationFn: (unitId: string) => propertiesApi.deleteUnit(id!, unitId),
@@ -115,15 +80,6 @@ export default function PropertyDetailPage() {
   const occupiedUnits = units.filter((u) => u.isOccupied).length;
   const totalArea = units.reduce((s, u) => s + (u.area ?? 0), 0);
 
-  // Build a map: unitId → list of contracts covering it
-  // whole_property contracts cover all units
-  const wholePropertyContracts = contracts.filter(c => c.scope === 'whole_property');
-
-  function getUnitContractBadges(_unit: ApiUnit) {
-    // whole_property contracts always apply; selected_units would need unit-level data from API
-    return wholePropertyContracts;
-  }
-
   // Build maps: unitId → ownerships and unitId → tenancies
   const unitOwnershipMap: Record<string, ApiOwnership[]> = {};
   for (const o of unitOwnerships) {
@@ -144,32 +100,19 @@ export default function PropertyDetailPage() {
 
   const unitColumns: Column<ApiUnit>[] = [
     {
-      key: 'name', label: 'Název',
-      render: (u) => {
-        const badges = getUnitContractBadges(u);
-        return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontWeight: 600 }}>{u.name}</span>
-            {badges.map(c => {
-              const b = MGMT_TYPE_BADGE[c.type] ?? { label: c.type, variant: 'muted' };
-              return (
-                <span
-                  key={c.id}
-                  className={`badge badge--${b.variant}`}
-                  style={{ fontSize: '0.65rem', padding: '1px 5px', lineHeight: 1.3 }}
-                  title={`${b.label} — ${c.principal.displayName}`}
-                >
-                  {c.principal.displayName.length > 12
-                    ? c.principal.displayName.slice(0, 12) + '…'
-                    : c.principal.displayName}
-                </span>
-              );
-            })}
-          </div>
-        );
-      },
+      key: 'name', label: 'Ozn. dle KN',
+      render: (u) => (
+        <div>
+          <span style={{ fontWeight: 600, color: 'var(--primary, #6366f1)' }}>{u.name}</span>
+          {(u.ownDesignation || u.floor != null) && (
+            <div style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>
+              {u.ownDesignation ?? ''}{u.floor != null ? ` / ${u.floor}. NP` : ''}
+              {u.spaceType && u.spaceType !== 'RESIDENTIAL' ? `, ${u.spaceType === 'NON_RESIDENTIAL' ? 'nebyt.' : u.spaceType.toLowerCase()}` : ''}
+            </div>
+          )}
+        </div>
+      ),
     },
-    { key: 'floor', label: 'Patro', render: (u) => u.floor != null ? String(u.floor) : '—' },
     {
       key: 'area', label: 'Plocha', align: 'right',
       render: (u) => u.area != null
@@ -386,32 +329,17 @@ export default function PropertyDetailPage() {
         )}
       </div>
 
-      {/* Kontexty správy */}
-      <ContractsSection
-        contracts={contracts}
-        navigate={navigate}
-        onAdd={() => setContractModal({})}
-        onEdit={(c) => setContractModal({ contract: c })}
-        onDelete={(c) => handleDeleteContract(c.id)}
-      />
-
-      {/* ── Finanční kontexty ──────────────────────────────────────── */}
-      <FinancialContextsSection
-        contexts={finContexts}
-        activeId={activeFinContextId}
-        onSelect={setActiveFinContextId}
-        onAdd={() => setFcModal({})}
-        onEdit={(fc) => setFcModal({ context: fc })}
-        onDelete={(fc) => handleDeleteFc(fc.id)}
-      />
-
-      {/* ── Vlastníci nemovitosti ─────────────────────────────────── */}
-      <PropertyOwnershipsSection
-        ownerships={propOwnerships}
-        onAdd={() => setOwnershipModal({ type: 'property' })}
-        onEdit={(o) => setOwnershipModal({ type: 'property', ownership: o })}
-        onDelete={(o) => handleDeleteOwnership('property', o.id)}
-      />
+      {/* Stats row */}
+      <div style={{ display: 'flex', gap: 16, marginTop: 16 }}>
+        {[
+          { label: 'Vlastníků', value: unitOwnerships.filter((o: any) => o.isActive !== false).length },
+          { label: 'Správců', value: contracts.length },
+        ].map(s => (
+          <div key={s.label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 16px', fontSize: '.82rem' }}>
+            <span className="text-muted">{s.label}:</span> <strong>{s.value}</strong>
+          </div>
+        ))}
+      </div>
 
       </>}
 
@@ -436,7 +364,7 @@ export default function PropertyDetailPage() {
           data={units}
           columns={unitColumns}
           rowKey={(u) => u.id}
-          onRowClick={(u) => setEditUnit(u)}
+          onRowClick={(u) => navigate(`/properties/${id}/units/${u.id}`)}
         />
       )}
 
@@ -444,35 +372,48 @@ export default function PropertyDetailPage() {
 
       {/* ── VLASTNÍCI TAB ────────────────────────────────────────── */}
       {detailTab === 'owners' && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 }}>
-          <div style={{ fontWeight: 600, marginBottom: 12, fontSize: '.9rem' }}>Vlastníci jednotek ({unitOwnerships.length})</div>
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ fontWeight: 600, fontSize: '.9rem' }}>Vlastníci jednotek ({unitOwnerships.length})</div>
+          </div>
           {unitOwnerships.length === 0 ? (
             <EmptyState title="Žádní vlastníci" description="Jednotky nemají přiřazené vlastníky." />
           ) : (
-            <div style={{ overflow: 'auto' }}>
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem' }}>
                 <thead>
                   <tr>
-                    {['Jednotka', 'Vlastník', 'Podíl', 'Stav'].map(h => (
-                      <th key={h} style={{ padding: '8px 10px', fontWeight: 600, fontSize: '.8rem', color: 'var(--text-muted)', textAlign: 'left', borderBottom: '2px solid var(--border)' }}>{h}</th>
+                    {['Platnost', 'Ozn. dle KN', 'Jméno vlastníka', 'Podíl', 'Předpis', 'Konto'].map(h => (
+                      <th key={h} style={{ padding: '8px 10px', fontWeight: 600, fontSize: '.78rem', color: 'var(--text-muted)', textAlign: 'left', borderBottom: '2px solid var(--border)' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {unitOwnerships.map((o: any) => (
-                    <tr key={o.id}>
+                    <tr key={o.id} style={{ cursor: 'pointer' }} onClick={() => {
+                      // Navigate to principal if available, otherwise just highlight
+                      const principalId = o.party?.principals?.[0]?.id
+                      if (principalId) navigate(`/principals/${principalId}`)
+                    }}>
                       <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)' }}>
-                        <span style={{ fontWeight: 500, color: 'var(--primary, #6366f1)' }}>{o.unit?.name ?? '—'}</span>
+                        <Badge variant="blue">od počátku</Badge>
+                      </td>
+                      <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)' }}>
+                        <div style={{ fontWeight: 600, color: 'var(--primary, #6366f1)' }}>{o.unit?.name ?? '—'}</div>
                       </td>
                       <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)' }}>
                         <div style={{ fontWeight: 500 }}>{o.party?.displayName?.replace(/^SJM\s+/i, 'SJ ') ?? '—'}</div>
-                        {o.party?.street && <div className="text-muted" style={{ fontSize: '.78rem' }}>{o.party.street}</div>}
+                        {o.note && <div className="text-muted" style={{ fontSize: '.75rem' }}>{o.note}</div>}
+                        <span style={{ marginTop: 2, display: 'inline-block' }}><Badge variant="muted">ISIR</Badge></span>
                       </td>
                       <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)', fontFamily: 'monospace', fontSize: '.82rem' }}>
                         {o.shareNumerator && o.shareDenominator ? `${o.shareNumerator}/${o.shareDenominator}` : o.sharePercent ? `${Number(o.sharePercent).toFixed(2)}%` : '—'}
                       </td>
-                      <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)' }}>
-                        <Badge variant={o.isActive ? 'green' : 'muted'}>{o.isActive ? 'Aktivní' : 'Ukončen'}</Badge>
+                      <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)', fontStyle: 'italic', color: 'var(--text-muted)' }}>
+                        nenalezen
+                      </td>
+                      <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                        0,00 Kč
                       </td>
                     </tr>
                   ))}
@@ -642,239 +583,3 @@ export default function PropertyDetailPage() {
   );
 }
 
-// ─── Contracts Section ──────────────────────────────────────────────────
-
-function ContractsSection({ contracts, navigate, onAdd, onEdit, onDelete }: {
-  contracts: ApiManagementContract[];
-  navigate: (path: string) => void;
-  onAdd: () => void;
-  onEdit: (c: ApiManagementContract) => void;
-  onDelete: (c: ApiManagementContract) => void;
-}) {
-  return (
-    <div style={{ marginBottom: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h2 style={{ fontSize: '0.95rem', fontWeight: 600, margin: 0 }}>
-          Kontexty správy
-          <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8, fontSize: '0.85rem' }}>
-            {contracts.length}
-          </span>
-        </h2>
-        <Button size="sm" onClick={onAdd}>+ Přidat smlouvu správy</Button>
-      </div>
-      {contracts.length === 0 ? (
-        <div className="text-muted" style={{ fontSize: '.85rem' }}>Nemovitost nemá přiřazené kontexty správy.</div>
-      ) : (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-          {contracts.map((c, i) => {
-            const b = MGMT_TYPE_BADGE[c.type] ?? { label: c.type, variant: 'muted' };
-            const scopeLabel = c.scope === 'whole_property'
-              ? 'celý dům'
-              : `${c._count.units} ${c._count.units === 1 ? 'jednotka' : c._count.units < 5 ? 'jednotky' : 'jednotek'}`;
-            return (
-              <div
-                key={c.id}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px',
-                  borderBottom: i < contracts.length - 1 ? '1px solid var(--border)' : undefined,
-                  fontSize: '0.85rem',
-                }}
-              >
-                <Badge variant={b.variant as any}>{b.label}</Badge>
-                <button
-                  onClick={() => navigate(`/principals/${c.principalId}`)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)', fontWeight: 500, padding: 0, textDecoration: 'underline dotted', textUnderlineOffset: 2, fontSize: '0.85rem' }}
-                >
-                  {c.principal.displayName}
-                </button>
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{scopeLabel}</span>
-                {c.contractNo && <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>č. {c.contractNo}</span>}
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
-                  <button onClick={() => onEdit(c)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', color: 'var(--text-muted)' }} title="Upravit"><Pencil size={13} /></button>
-                  <button onClick={() => onDelete(c)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', color: 'var(--danger)' }} title="Deaktivovat"><Trash2 size={13} /></button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Financial Contexts Section ─────────────────────────────────────────
-
-function FinancialContextsSection({
-  contexts, activeId, onSelect, onAdd, onEdit, onDelete,
-}: {
-  contexts: ApiFinancialContext[];
-  activeId: string | null;
-  onSelect: (id: string | null) => void;
-  onAdd: () => void;
-  onEdit: (fc: ApiFinancialContext) => void;
-  onDelete: (fc: ApiFinancialContext) => void;
-}) {
-  const showAll = contexts.length > 1;
-
-  return (
-    <div style={{ marginBottom: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h2 style={{ fontSize: '0.95rem', fontWeight: 600, margin: 0 }}>
-          Finanční kontexty
-          <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8, fontSize: '0.85rem' }}>
-            {contexts.length}
-          </span>
-        </h2>
-        <Button size="sm" onClick={onAdd}>+ Přidat finanční kontext</Button>
-      </div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-        {showAll && (
-          <button
-            onClick={() => onSelect(null)}
-            style={{
-              padding: '6px 14px', borderRadius: 8, fontSize: '0.82rem', fontWeight: 500, cursor: 'pointer',
-              border: '1px solid var(--border)',
-              background: activeId === null ? 'var(--primary, #6366f1)' : 'var(--surface)',
-              color: activeId === null ? '#fff' : 'var(--text)',
-            }}
-          >
-            Vše
-          </button>
-        )}
-        {contexts.map(fc => {
-          const isActive = activeId === fc.id;
-          return (
-            <button
-              key={fc.id}
-              onClick={() => onSelect(isActive && showAll ? null : fc.id)}
-              style={{
-                padding: '6px 14px', borderRadius: 8, fontSize: '0.82rem', fontWeight: 500, cursor: 'pointer',
-                border: '1px solid var(--border)',
-                background: isActive ? 'var(--primary, #6366f1)' : 'var(--surface)',
-                color: isActive ? '#fff' : 'var(--text)',
-                display: 'flex', alignItems: 'center', gap: 6,
-              }}
-              title={fc.code ? `Kód: ${fc.code}` : undefined}
-            >
-              {fc.displayName}
-              {fc.vatPayer && <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>DPH</span>}
-            </button>
-          );
-        })}
-      </div>
-      {/* Active context indicator */}
-      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 8 }}>
-        Zobrazeno pro: <strong>{activeId ? contexts.find(fc => fc.id === activeId)?.displayName ?? '—' : 'Vše'}</strong>
-      </div>
-      {/* Detail of selected context */}
-      {activeId && (
-        <div>
-          <FinancialContextDetail context={contexts.find(fc => fc.id === activeId)!} />
-          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-            <Button size="sm" onClick={() => onEdit(contexts.find(fc => fc.id === activeId)!)}>Upravit</Button>
-            <Button size="sm" variant="danger" onClick={() => onDelete(contexts.find(fc => fc.id === activeId)!)}>Deaktivovat</Button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function FinancialContextDetail({ context }: { context: ApiFinancialContext }) {
-  if (!context) return null;
-  return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16, fontSize: '0.85rem' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-        <div><span className="text-muted">Název:</span> {context.displayName}</div>
-        <div><span className="text-muted">Typ:</span> {SCOPE_LABELS[context.scopeType] ?? context.scopeType}</div>
-        <div><span className="text-muted">Měna:</span> {context.currency}</div>
-        {context.code && <div><span className="text-muted">Kód:</span> {context.code}</div>}
-        <div><span className="text-muted">DPH:</span> {context.vatPayer ? 'Plátce' : 'Neplátce'}</div>
-        <div><span className="text-muted">Bankovní účty:</span> {context._count.bankAccounts}</div>
-        {context.principal && (
-          <div><span className="text-muted">Principál:</span> {context.principal.displayName}</div>
-        )}
-        {context.invoicePrefix && <div><span className="text-muted">Prefix faktur:</span> {context.invoicePrefix}</div>}
-      </div>
-    </div>
-  );
-}
-
-// ─── Property Ownerships Section ────────────────────────────────────────
-
-const OWNERSHIP_ROLE_LABELS: Record<string, string> = {
-  legal_owner: 'vlastník',
-  beneficial_owner: 'spoluvlastník',
-  managing_owner: 'správce',
-  silent_coowner: 'tichý',
-};
-
-function PropertyOwnershipsSection({ ownerships, onAdd, onEdit, onDelete }: {
-  ownerships: ApiOwnership[];
-  onAdd: () => void;
-  onEdit: (o: ApiOwnership) => void;
-  onDelete: (o: ApiOwnership) => void;
-}) {
-  const thStyle: React.CSSProperties = { padding: '8px 12px', fontWeight: 600, fontSize: '.8rem', color: 'var(--text-muted)', textAlign: 'left', borderBottom: '1px solid var(--border)' };
-  const tdStyle: React.CSSProperties = { padding: '8px 12px', borderBottom: '1px solid var(--border)' };
-
-  return (
-    <div style={{ marginBottom: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h2 style={{ fontSize: '0.95rem', fontWeight: 600, margin: 0 }}>
-          Vlastníci nemovitosti
-          <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8, fontSize: '0.85rem' }}>
-            {ownerships.length}
-          </span>
-        </h2>
-        <Button size="sm" onClick={onAdd}>+ Přidat vlastníka</Button>
-      </div>
-      {ownerships.length === 0 ? (
-        <div className="text-muted" style={{ fontSize: '.85rem' }}>Žádní vlastníci nemovitosti.</div>
-      ) : (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem' }}>
-            <thead>
-              <tr>
-                <th style={thStyle}>Subjekt</th>
-                <th style={{ ...thStyle, textAlign: 'right' }}>Podíl</th>
-                <th style={thStyle}>Role</th>
-                <th style={thStyle}>Od</th>
-                <th style={{ ...thStyle, width: 80 }} />
-              </tr>
-            </thead>
-            <tbody>
-              {ownerships.map(o => (
-                <tr key={o.id}>
-                  <td style={tdStyle}>
-                    <span style={{ fontWeight: 500 }}>{o.party.displayName}</span>
-                    {o.party.ic && <span className="text-muted text-sm" style={{ marginLeft: 8 }}>IČ: {o.party.ic}</span>}
-                  </td>
-                  <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'monospace' }}>
-                    {o.shareNumerator != null && o.shareDenominator != null
-                      ? `${o.shareNumerator}/${o.shareDenominator}`
-                      : o.sharePercent != null ? `${Number(o.sharePercent).toFixed(1)}%` : '—'}
-                  </td>
-                  <td style={tdStyle} className="text-muted">{OWNERSHIP_ROLE_LABELS[o.role] ?? o.role}</td>
-                  <td style={tdStyle} className="text-muted">
-                    {o.validFrom ? new Date(o.validFrom).toLocaleDateString('cs-CZ') : '—'}
-                  </td>
-                  <td style={tdStyle}>
-                    <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                      <button onClick={() => onEdit(o)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', color: 'var(--text-muted)' }} title="Upravit">
-                        <Pencil size={13} />
-                      </button>
-                      <button onClick={() => onDelete(o)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', color: 'var(--danger)' }} title="Odebrat">
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
