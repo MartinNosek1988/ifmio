@@ -54,6 +54,7 @@ const PrincipalsPage = lazy(() => import('../modules/principals/PrincipalsPage')
 const PrincipalDetailPage = lazy(() => import('../modules/principals/PrincipalDetailPage'));
 const PartiesPage = lazy(() => import('../modules/parties/PartiesPage'));
 const SettlementPage = lazy(() => import('../modules/settlement/SettlementPage'));
+const KanbanPage = lazy(() => import('../modules/kanban/KanbanPage'));
 const TermsPage = lazy(() => import('../modules/legal/TermsPage'));
 const PrivacyPage = lazy(() => import('../modules/legal/PrivacyPage'));
 const GdprPage = lazy(() => import('../modules/legal/GdprPage'));
@@ -107,6 +108,7 @@ export const router = createBrowserRouter([
       { path: 'principals/:principalId', element: withBoundary('Detail klienta', PrincipalDetailPage) },
       { path: 'finance', element: withBoundary('Finance', FinancePage) },
       { path: 'settlements', element: withBoundary('Vyúčtování', SettlementPage) },
+      { path: 'kanban', element: withBoundary('Pipeline', KanbanPage) },
       { path: 'workorders', element: withBoundary('Pracovní úkoly', WorkOrdersPage) },
       { path: 'my-agenda', element: withBoundary('Moje agenda', TechnicianAgendaPage) },
       { path: 'workorders/:id/execute', element: withBoundary('Provádění úkolu', WorkOrderExecutionPage) },

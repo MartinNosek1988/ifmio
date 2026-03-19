@@ -6,7 +6,7 @@ import {
   Wrench, Headphones, Box, Gauge, FileText, UserCheck,
   Wallet, AlertTriangle, TrendingUp,
   MessageSquare, Mail, Settings, BarChart3,
-  ClipboardList, ClipboardCheck, ScrollText, UsersRound, FileCheck2,
+  ClipboardList, ClipboardCheck, ScrollText, UsersRound, FileCheck2, Columns3,
   User as UserIcon, LogOut, Shield, Menu, X, ChevronDown,
 } from 'lucide-react';
 import { LoadingSpinner } from '../shared/components';
@@ -46,6 +46,7 @@ const NAV_SECTIONS: NavSection[] = [
     title: 'Provoz',
     items: [
       { to: '/helpdesk', label: 'Helpdesk', icon: <Headphones size={17} /> },
+      { to: '/kanban', label: 'Pipeline', icon: <Columns3 size={17} />, roles: ['fm', 'tech'] },
       { to: '/my-agenda', label: 'Moje agenda', icon: <ClipboardCheck size={17} />, roles: ['tech'] },
       { to: '/workorders', label: 'Pracovní úkoly', icon: <Wrench size={17} />, roles: ['fm', 'tech', 'owner'] },
       { to: '/assets', label: 'Pasportizace', icon: <Box size={17} />, roles: ['fm', 'tech', 'owner'] },
@@ -152,6 +153,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/portal/meters': 'Měřiče',
   '/portal/documents': 'Dokumenty',
   '/portal/konto': 'Konto',
+  '/kanban': 'Pipeline',
 };
 
 function getPageTitle(pathname: string): string {
