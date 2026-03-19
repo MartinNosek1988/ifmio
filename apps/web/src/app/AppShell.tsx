@@ -316,10 +316,13 @@ export default function AppShell() {
         <button className="mobile-menu-btn" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Menu">
           {sidebarOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
-        <div className="topbar__title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          {pageTitle}
+        <div className="topbar__title" style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+          <span className="hide-on-mobile">{pageTitle}</span>
+          <span className="show-mobile-only" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {activePropertyData?.name ?? pageTitle}
+          </span>
           {activePropertyData?.name && (
-            <>
+            <span className="hide-on-mobile" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem', fontWeight: 400 }}>›</span>
               <button
                 onClick={() => setShowPropertyPicker(true)}
@@ -334,7 +337,7 @@ export default function AppShell() {
                 {activePropertyData.name}
                 <ChevronDown size={12} color="var(--text-muted)" />
               </button>
-            </>
+            </span>
           )}
         </div>
         <GlobalSearch />
