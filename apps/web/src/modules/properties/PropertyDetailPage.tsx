@@ -144,32 +144,19 @@ export default function PropertyDetailPage() {
 
   const unitColumns: Column<ApiUnit>[] = [
     {
-      key: 'name', label: 'Název',
-      render: (u) => {
-        const badges = getUnitContractBadges(u);
-        return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontWeight: 600 }}>{u.name}</span>
-            {badges.map(c => {
-              const b = MGMT_TYPE_BADGE[c.type] ?? { label: c.type, variant: 'muted' };
-              return (
-                <span
-                  key={c.id}
-                  className={`badge badge--${b.variant}`}
-                  style={{ fontSize: '0.65rem', padding: '1px 5px', lineHeight: 1.3 }}
-                  title={`${b.label} — ${c.principal.displayName}`}
-                >
-                  {c.principal.displayName.length > 12
-                    ? c.principal.displayName.slice(0, 12) + '…'
-                    : c.principal.displayName}
-                </span>
-              );
-            })}
-          </div>
-        );
-      },
+      key: 'name', label: 'Ozn. dle KN',
+      render: (u) => (
+        <div>
+          <span style={{ fontWeight: 600, color: 'var(--primary, #6366f1)' }}>{u.name}</span>
+          {(u.ownDesignation || u.floor != null) && (
+            <div style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>
+              {u.ownDesignation ?? ''}{u.floor != null ? ` / ${u.floor}. NP` : ''}
+              {u.spaceType && u.spaceType !== 'RESIDENTIAL' ? `, ${u.spaceType === 'NON_RESIDENTIAL' ? 'nebyt.' : u.spaceType.toLowerCase()}` : ''}
+            </div>
+          )}
+        </div>
+      ),
     },
-    { key: 'floor', label: 'Patro', render: (u) => u.floor != null ? String(u.floor) : '—' },
     {
       key: 'area', label: 'Plocha', align: 'right',
       render: (u) => u.area != null
@@ -386,32 +373,17 @@ export default function PropertyDetailPage() {
         )}
       </div>
 
-      {/* Kontexty správy */}
-      <ContractsSection
-        contracts={contracts}
-        navigate={navigate}
-        onAdd={() => setContractModal({})}
-        onEdit={(c) => setContractModal({ contract: c })}
-        onDelete={(c) => handleDeleteContract(c.id)}
-      />
-
-      {/* ── Finanční kontexty ──────────────────────────────────────── */}
-      <FinancialContextsSection
-        contexts={finContexts}
-        activeId={activeFinContextId}
-        onSelect={setActiveFinContextId}
-        onAdd={() => setFcModal({})}
-        onEdit={(fc) => setFcModal({ context: fc })}
-        onDelete={(fc) => handleDeleteFc(fc.id)}
-      />
-
-      {/* ── Vlastníci nemovitosti ─────────────────────────────────── */}
-      <PropertyOwnershipsSection
-        ownerships={propOwnerships}
-        onAdd={() => setOwnershipModal({ type: 'property' })}
-        onEdit={(o) => setOwnershipModal({ type: 'property', ownership: o })}
-        onDelete={(o) => handleDeleteOwnership('property', o.id)}
-      />
+      {/* Stats row */}
+      <div style={{ display: 'flex', gap: 16, marginTop: 16 }}>
+        {[
+          { label: 'Vlastníků', value: unitOwnerships.filter((o: any) => o.isActive !== false).length },
+          { label: 'Správců', value: contracts.length },
+        ].map(s => (
+          <div key={s.label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 16px', fontSize: '.82rem' }}>
+            <span className="text-muted">{s.label}:</span> <strong>{s.value}</strong>
+          </div>
+        ))}
+      </div>
 
       </>}
 
@@ -436,7 +408,7 @@ export default function PropertyDetailPage() {
           data={units}
           columns={unitColumns}
           rowKey={(u) => u.id}
-          onRowClick={(u) => setEditUnit(u)}
+          onRowClick={(u) => navigate(`/properties/${id}/units/${u.id}`)}
         />
       )}
 
@@ -444,35 +416,48 @@ export default function PropertyDetailPage() {
 
       {/* ── VLASTNÍCI TAB ────────────────────────────────────────── */}
       {detailTab === 'owners' && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 }}>
-          <div style={{ fontWeight: 600, marginBottom: 12, fontSize: '.9rem' }}>Vlastníci jednotek ({unitOwnerships.length})</div>
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ fontWeight: 600, fontSize: '.9rem' }}>Vlastníci jednotek ({unitOwnerships.length})</div>
+          </div>
           {unitOwnerships.length === 0 ? (
             <EmptyState title="Žádní vlastníci" description="Jednotky nemají přiřazené vlastníky." />
           ) : (
-            <div style={{ overflow: 'auto' }}>
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem' }}>
                 <thead>
                   <tr>
-                    {['Jednotka', 'Vlastník', 'Podíl', 'Stav'].map(h => (
-                      <th key={h} style={{ padding: '8px 10px', fontWeight: 600, fontSize: '.8rem', color: 'var(--text-muted)', textAlign: 'left', borderBottom: '2px solid var(--border)' }}>{h}</th>
+                    {['Platnost', 'Ozn. dle KN', 'Jméno vlastníka', 'Podíl', 'Předpis', 'Konto'].map(h => (
+                      <th key={h} style={{ padding: '8px 10px', fontWeight: 600, fontSize: '.78rem', color: 'var(--text-muted)', textAlign: 'left', borderBottom: '2px solid var(--border)' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {unitOwnerships.map((o: any) => (
-                    <tr key={o.id}>
+                    <tr key={o.id} style={{ cursor: 'pointer' }} onClick={() => {
+                      // Navigate to principal if available, otherwise just highlight
+                      const principalId = o.party?.principals?.[0]?.id
+                      if (principalId) navigate(`/principals/${principalId}`)
+                    }}>
                       <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)' }}>
-                        <span style={{ fontWeight: 500, color: 'var(--primary, #6366f1)' }}>{o.unit?.name ?? '—'}</span>
+                        <Badge variant="blue">od počátku</Badge>
+                      </td>
+                      <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)' }}>
+                        <div style={{ fontWeight: 600, color: 'var(--primary, #6366f1)' }}>{o.unit?.name ?? '—'}</div>
                       </td>
                       <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)' }}>
                         <div style={{ fontWeight: 500 }}>{o.party?.displayName?.replace(/^SJM\s+/i, 'SJ ') ?? '—'}</div>
-                        {o.party?.street && <div className="text-muted" style={{ fontSize: '.78rem' }}>{o.party.street}</div>}
+                        {o.note && <div className="text-muted" style={{ fontSize: '.75rem' }}>{o.note}</div>}
+                        <Badge variant="muted" style={{ marginTop: 2 }}>ISIR</Badge>
                       </td>
                       <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)', fontFamily: 'monospace', fontSize: '.82rem' }}>
                         {o.shareNumerator && o.shareDenominator ? `${o.shareNumerator}/${o.shareDenominator}` : o.sharePercent ? `${Number(o.sharePercent).toFixed(2)}%` : '—'}
                       </td>
-                      <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)' }}>
-                        <Badge variant={o.isActive ? 'green' : 'muted'}>{o.isActive ? 'Aktivní' : 'Ukončen'}</Badge>
+                      <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)', fontStyle: 'italic', color: 'var(--text-muted)' }}>
+                        nenalezen
+                      </td>
+                      <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                        0,00 Kč
                       </td>
                     </tr>
                   ))}
