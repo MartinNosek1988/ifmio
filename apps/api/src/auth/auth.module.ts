@@ -7,6 +7,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { FacebookStrategy } from './strategies/facebook.strategy';
 import { MicrosoftStrategy } from './strategies/microsoft.strategy';
+import { TokenBlacklistService } from './token-blacklist.service';
 import { CryptoService } from '../common/crypto.service';
 
 @Module({
@@ -24,8 +25,9 @@ import { CryptoService } from '../common/crypto.service';
     FacebookStrategy,
     MicrosoftStrategy,
     CryptoService,
+    TokenBlacklistService,
   ],
   controllers: [AuthController],
-  exports: [AuthService],
+  exports: [AuthService, TokenBlacklistService],
 })
 export class AuthModule {}

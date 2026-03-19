@@ -3070,3 +3070,15 @@ model UserFeature {
   @@unique([userId, feature])
   @@map("user_features")
 }
+
+// ─── REVOKED TOKENS (Zero Trust W3 — token blacklist DB fallback) ────
+
+model RevokedToken {
+  id        String   @id @default(uuid())
+  jti       String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+  @@map("revoked_tokens")
+}
