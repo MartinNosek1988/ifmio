@@ -3,7 +3,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import AppShell from './AppShell';
 import LoginPage from '../modules/auth/LoginPage';
 import RegisterPage from '../modules/auth/RegisterPage';
-import LandingPage from '../modules/landing/LandingPage';
+const LandingPage = lazy(() => import('../modules/landing/LandingPage'));
 
 const VerifyEmailPage = lazy(() => import('../modules/auth/VerifyEmailPage'));
 const ForgotPasswordPage = lazy(() => import('../modules/auth/ForgotPasswordPage'));

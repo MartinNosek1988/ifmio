@@ -9,6 +9,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { Logger as PinoLogger } from 'nestjs-pino';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from '@fastify/helmet';
+import compress from '@fastify/compress';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import multipart from '@fastify/multipart';
@@ -47,6 +48,7 @@ async function bootstrap() {
     crossOriginEmbedderPolicy: false,
   });
 
+  await app.register(compress as any, { global: true, threshold: 1024 });
   await app.register(multipart as any, { limits: { fileSize: 20 * 1024 * 1024 } });
 
   app.setGlobalPrefix('api/v1');
