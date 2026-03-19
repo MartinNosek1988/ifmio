@@ -75,6 +75,7 @@ export default function PropertyForm({ property, onClose }: Props) {
   const [showSprava, setShowSprava] = useState(!!property?.managedFrom || !!property?.accountingSystem);
   const [aresLoading, setAresLoading] = useState(false);
   const [aresError, setAresError] = useState('');
+  const [aresSuccess, setAresSuccess] = useState('');
 
   const set = (key: string, value: string | boolean) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -83,7 +84,7 @@ export default function PropertyForm({ property, onClose }: Props) {
 
   const handleAres = async () => {
     if (!form.ico || form.ico.length < 8) { setAresError('Zadejte platné IČ (8 číslic)'); return; }
-    setAresLoading(true); setAresError(''); setAresDefunct('');
+    setAresLoading(true); setAresError(''); setAresDefunct(''); setAresSuccess('');
     try {
       const data = await integrationsApi.ares.lookupByIco(form.ico);
       if (data) {
@@ -99,7 +100,7 @@ export default function PropertyForm({ property, onClose }: Props) {
         setForm((f) => ({
           ...f,
           dic: data.dic ?? f.dic,
-          name: data.nazev && !f.name ? data.nazev : f.name,
+          name: data.nazev || f.name,
           address: addr || f.address,
           city: data.adresa.obec || f.city,
           postalCode: data.adresa.psc || f.postalCode,
@@ -107,10 +108,20 @@ export default function PropertyForm({ property, onClose }: Props) {
         if (data.datumZaniku) {
           setAresDefunct(data.datumZaniku);
         }
+        const filled: string[] = [];
+        if (data.nazev) filled.push('název');
+        if (addr) filled.push('adresa');
+        if (data.adresa.obec) filled.push('město');
+        if (data.adresa.psc) filled.push('PSČ');
+        if (data.dic) filled.push('DIČ');
+        setAresSuccess(filled.length ? `ARES: načteno (${filled.join(', ')})` : 'ARES: subjekt nalezen');
       } else {
         setAresError('IČ nenalezeno v ARES');
       }
-    } catch { setAresError('Chyba při ověřování v ARES'); }
+    } catch (err) {
+      console.error('ARES lookup failed:', err);
+      setAresError('Chyba při ověřování v ARES');
+    }
     finally { setAresLoading(false); }
   };
 
@@ -297,6 +308,7 @@ export default function PropertyForm({ property, onClose }: Props) {
                 </button>
               </div>
               {aresError && <div style={{ color: 'var(--danger)', fontSize: '0.78rem', marginTop: 2 }}>{aresError}</div>}
+              {aresSuccess && <div style={{ color: 'var(--success, #22c55e)', fontSize: '0.78rem', marginTop: 2 }}>{aresSuccess}</div>}
               {aresDefunct && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid var(--danger)', borderRadius: 4, padding: '4px 8px', color: 'var(--danger)', fontSize: '0.78rem', marginTop: 4 }}>Subjekt je zaniklý dle ARES ({aresDefunct})</div>}
               {errors.ico && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.ico}</div>}
             </div>

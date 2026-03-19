@@ -53,6 +53,7 @@ const QrResolvePage = lazy(() => import('../modules/asset-qr/QrResolvePage'));
 const PrincipalsPage = lazy(() => import('../modules/principals/PrincipalsPage'));
 const PrincipalDetailPage = lazy(() => import('../modules/principals/PrincipalDetailPage'));
 const PartiesPage = lazy(() => import('../modules/parties/PartiesPage'));
+const PartyDetailPage = lazy(() => import('../modules/parties/PartyDetailPage'));
 const SettlementPage = lazy(() => import('../modules/settlement/SettlementPage'));
 const KanbanPage = lazy(() => import('../modules/kanban/KanbanPage'));
 const TermsPage = lazy(() => import('../modules/legal/TermsPage'));
@@ -122,6 +123,7 @@ export const router = createBrowserRouter([
       { path: 'residents', element: withBoundary('Bydlící', ResidentsPage) },
       { path: 'documents', element: withBoundary('Dokumenty', DocumentsPage) },
       { path: 'parties', element: withBoundary('Adresář', PartiesPage) },
+      { path: 'parties/:id', element: withBoundary('Detail subjektu', PartyDetailPage) },
       { path: 'calendar', element: withBoundary('Kalendář', CalendarPage) },
       { path: 'communication', element: withBoundary('Komunikace', CommunicationPage) },
       { path: 'reporting', element: withBoundary('Reporting', ReportingPage) },

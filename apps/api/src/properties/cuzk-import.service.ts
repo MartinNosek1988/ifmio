@@ -161,7 +161,9 @@ export class CuzkImportService {
       // Check SJM
       if (firstTd.startsWith('SJM') || firstTd.startsWith('SJ ')) {
         const sjmComma = firstTd.indexOf(',')
-        const sjmName = sjmComma > 0 ? firstTd.slice(0, sjmComma).trim() : firstTd
+        const sjmRaw = sjmComma > 0 ? firstTd.slice(0, sjmComma).trim() : firstTd
+        // Normalize "SJM " → "SJ " for display
+        const sjmName = sjmRaw.replace(/^SJM\s+/i, 'SJ ')
         const sjmAddr = sjmComma > 0 ? firstTd.slice(sjmComma + 1).trim() : ''
         const sjmOwner: CuzkOwner = {
           name: sjmName, address: sjmAddr, share: tds.length > 1 ? $(tds[tds.length - 1]).text().trim() || null : null,
@@ -333,7 +335,10 @@ export class CuzkImportService {
 
         for (const owner of realOwners) {
           const partyType: PartyType = owner.isLegalEntity ? 'company' : 'person'
-          const displayName = owner.name.replace(/^SJM?\s+/i, '').trim()
+          // Normalize SJM→SJ prefix for display; keep full SJ name for co-ownership
+          const displayName = owner.isSJM
+            ? owner.name.replace(/^SJM\s+/i, 'SJ ').trim()
+            : owner.name
 
           // Find or create Party
           let party = await tx.party.findFirst({
@@ -368,7 +373,7 @@ export class CuzkImportService {
                 ? (owner.shareNumerator / owner.shareDenominator) * 100
                 : undefined,
               isActive: true,
-              note: owner.isSJM ? `SJM: ${(owner.sjmPartners ?? []).map(p => p.name).join(', ')}` : undefined,
+              note: owner.isSJM ? `SJ: ${(owner.sjmPartners ?? []).map(p => p.name).join(', ')}` : undefined,
             },
           })
         }
