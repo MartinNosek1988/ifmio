@@ -55,6 +55,7 @@ import { Microsoft365Module } from './microsoft365/microsoft365.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
+import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
 import { CryptoService } from './common/crypto.service';
 
 @Module({
@@ -136,6 +137,7 @@ import { CryptoService } from './common/crypto.service';
     { provide: APP_GUARD, useClass: ThrottlerBehindProxyGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_INTERCEPTOR, useClass: TenantContextInterceptor },
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
     CryptoService,
   ],

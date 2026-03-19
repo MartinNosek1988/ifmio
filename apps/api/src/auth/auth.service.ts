@@ -390,6 +390,37 @@ export class AuthService {
     const user = stored.user;
     if (!user.isActive) throw new UnauthorizedException('Účet je deaktivován');
 
+    // Priority 3 — Device binding: detect suspicious refresh from different device
+    const ipChanged = stored.ipAddress && meta?.ip && stored.ipAddress !== meta.ip;
+    const uaChanged = stored.userAgent && meta?.userAgent && stored.userAgent !== meta.userAgent;
+    if (ipChanged || uaChanged) {
+      this.logger.warn(
+        `SUSPICIOUS_REFRESH: userId=${user.id}, storedIP=${stored.ipAddress}, currentIP=${meta?.ip}`,
+      );
+      // Forced re-login: delete ALL tokens for this user
+      await this.prisma.$transaction([
+        this.prisma.refreshToken.deleteMany({ where: { userId: user.id } }),
+        this.prisma.auditLog.create({
+          data: {
+            tenantId: user.tenantId,
+            userId: user.id,
+            action: 'SUSPICIOUS_REFRESH',
+            entity: 'User',
+            entityId: user.id,
+            newData: {
+              storedIp: stored.ipAddress,
+              currentIp: meta?.ip,
+              storedUa: stored.userAgent?.slice(0, 60),
+              currentUa: meta?.userAgent?.slice(0, 60),
+            },
+            ipAddress: meta?.ip,
+            userAgent: meta?.userAgent,
+          },
+        }),
+      ]);
+      throw new UnauthorizedException('Podezřelý pokus o obnovení tokenu — přihlaste se znovu');
+    }
+
     // Rotate: delete old, issue new
     await this.prisma.$transaction([
       this.prisma.refreshToken.delete({ where: { id: stored.id } }),
