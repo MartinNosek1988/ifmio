@@ -5,11 +5,14 @@ dist
 .env.*
 !.env.example
 *.log
+*.md
 .DS_Store
 test-results
 playwright-report
+coverage
 apps/api/uploads
 uploads
 .github
 .vscode
 .idea
+.claude

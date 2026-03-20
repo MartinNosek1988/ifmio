@@ -22,6 +22,7 @@ export class ResidentsService {
     const where: Prisma.ResidentWhereInput = {
       tenantId: user.tenantId,
       isActive: true,
+      gdprErased: false,
       ...scopeWhere,
       ...(role ? { role: role as Prisma.EnumResidentRoleFilter } : {}),
       ...(propertyId ? { propertyId } : {}),

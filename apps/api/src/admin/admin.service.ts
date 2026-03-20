@@ -8,6 +8,7 @@ import * as bcrypt       from 'bcryptjs'
 import * as crypto       from 'crypto'
 import type { AuthUser } from '@ifmio/shared-types'
 import type { UserRole } from '@prisma/client'
+import { OffboardingService } from './offboarding.service'
 
 @Injectable()
 export class AdminService {
@@ -17,6 +18,7 @@ export class AdminService {
     private prisma: PrismaService,
     private email:  EmailService,
     private config: ConfigService,
+    private offboarding: OffboardingService,
   ) {}
 
   // ─── TENANT SETTINGS ──────────────────────────────────────────
@@ -171,20 +173,8 @@ export class AdminService {
     if (!['tenant_owner', 'tenant_admin'].includes(user.role)) {
       throw new ForbiddenException('Nemáte oprávnění pro tuto akci')
     }
-    if (targetUserId === user.id) {
-      throw new ForbiddenException('Nemůžete deaktivovat sebe')
-    }
-
-    const target = await this.prisma.user.findFirst({
-      where: { id: targetUserId, tenantId: user.tenantId },
-    })
-    if (!target) throw new NotFoundException('Uživatel nenalezen')
-
-    return this.prisma.user.update({
-      where: { id: targetUserId },
-      data:  { isActive: false },
-      select: { id: true, name: true, isActive: true },
-    })
+    // Full offboarding: deactivate + revoke tokens + revoke API keys + alert
+    return this.offboarding.deactivateUser(user.tenantId, targetUserId, user.id)
   }
 
   // ─── EXPORT ─────────────────────────────────────────────────

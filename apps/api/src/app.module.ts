@@ -52,10 +52,15 @@ import { PortalModule } from './portal/portal.module';
 import { CommunicationModule } from './communication/communication.module';
 import { WhatsAppModule } from './whatsapp/whatsapp.module';
 import { Microsoft365Module } from './microsoft365/microsoft365.module';
+import { SecurityAlertingModule } from './common/security/security-alerting.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
+import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
+import { SensitiveReadInterceptor } from './common/interceptors/sensitive-read.interceptor';
+import { PropertyAccessGuard } from './common/guards/property-access.guard';
 import { CryptoService } from './common/crypto.service';
+import { FieldEncryptionService } from './common/crypto/field-encryption.service';
 
 @Module({
   imports: [
@@ -131,14 +136,19 @@ import { CryptoService } from './common/crypto.service';
     CommunicationModule,
     WhatsAppModule,
     Microsoft365Module,
+    SecurityAlertingModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerBehindProxyGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: PropertyAccessGuard },
+    { provide: APP_INTERCEPTOR, useClass: TenantContextInterceptor },
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: SensitiveReadInterceptor },
     CryptoService,
+    FieldEncryptionService,
   ],
-  exports: [CryptoService],
+  exports: [CryptoService, FieldEncryptionService],
 })
 export class AppModule {}

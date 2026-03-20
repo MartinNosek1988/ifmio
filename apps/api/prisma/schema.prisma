@@ -22,6 +22,10 @@ model Tenant {
   maxProperties Int        @default(3)
   trialEndsAt   DateTime?
   notes         String?
+  // Data retention policies (ZT-W5-02)
+  retentionAuditLogDays  Int  @default(365)
+  retentionBackupDays    Int  @default(90)
+  retentionSessionDays   Int  @default(30)
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
@@ -80,6 +84,7 @@ model Tenant {
   outboxLogs                  OutboxLog[]
   invitations                 TenantInvitation[]
   kanbanTasks                 KanbanTask[]
+  apiKeys                     ApiKey[]
 
   @@map("tenants")
 }
@@ -151,6 +156,7 @@ model User {
   kanbanTasksAssigned     KanbanTask[]             @relation("KanbanTaskAssignee")
   kanbanTasksCreated      KanbanTask[]             @relation("KanbanTaskCreator")
   features                UserFeature[]
+  apiKeys                 ApiKey[]
 
   @@unique([tenantId, email])
   @@unique([oauthProvider, oauthId])
@@ -451,6 +457,10 @@ model Resident {
   dataBoxId                String?      // ID datové schránky
   birthDate                DateTime?
   note                     String?      @db.Text
+  // GDPR (ZT-W5-01)
+  gdprErased               Boolean      @default(false)
+  gdprErasedAt             DateTime?
+
   createdAt                DateTime     @default(now())
   updatedAt                DateTime     @updatedAt
 
@@ -2571,6 +2581,10 @@ model Party {
   czNace                Json?              // pole NACE kódů z ARES
   zastupci              Json?              // statutární zástupci z ARES [{jmeno, prijmeni, funkce}]
 
+  // GDPR (ZT-W5-01)
+  gdprErased            Boolean   @default(false)
+  gdprErasedAt          DateTime?
+
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
@@ -3069,4 +3083,64 @@ model UserFeature {
 
   @@unique([userId, feature])
   @@map("user_features")
+}
+
+// ─── REVOKED TOKENS (Zero Trust W3 — token blacklist DB fallback) ────
+
+model RevokedToken {
+  id        String   @id @default(uuid())
+  jti       String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+  @@map("revoked_tokens")
+}
+
+// ─── API KEYS (Zero Trust W4 — integration API keys) ─────────────────
+
+model ApiKey {
+  id          String    @id @default(uuid())
+  tenantId    String
+  userId      String
+  name        String
+  keyHash     String    @unique        // SHA-256 hash of the actual key
+  keyPrefix   String                   // first 8 chars for identification
+  scopes      String[]                 // e.g. ['properties:read', 'units:read']
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  lastUsedIp  String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([keyHash])
+  @@map("api_keys")
+}
+
+// ─── LOGIN RISK LOG (Zero Trust W4 — adaptive risk scoring) ──────────
+
+model LoginRiskLog {
+  id            String   @id @default(uuid())
+  userId        String
+  tenantId      String?
+  ipAddress     String?
+  userAgent     String?
+  country       String?
+  city          String?
+  lat           Float?
+  lon           Float?
+  riskScore     Int      @default(0)   // 0–100
+  riskFactors   Json?                  // array of { factor, score, detail }
+  action        String                 // 'allow' | 'challenge' | 'block'
+  loginSuccess  Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([tenantId, createdAt])
+  @@map("login_risk_logs")
 }

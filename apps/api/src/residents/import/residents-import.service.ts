@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
 import { PropertyScopeService } from '../../common/services/property-scope.service'
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 import type { AuthUser } from '@ifmio/shared-types'
 
 export interface ResidentImportRow {
@@ -43,17 +43,42 @@ export class ResidentsImportService {
     private scope: PropertyScopeService,
   ) {}
 
-  parseFile(buffer: Buffer, _mimetype: string): ResidentImportRow[] {
-    const wb = XLSX.read(buffer, { type: 'buffer' })
-    const rawRows: Record<string, unknown>[] = XLSX.utils.sheet_to_json(
-      wb.Sheets[wb.SheetNames[0]], { defval: '' },
-    )
-
-    if (!rawRows.length) {
+  async parseFile(buffer: Buffer, _mimetype: string): Promise<ResidentImportRow[]> {
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load(new Uint8Array(buffer).buffer as ArrayBuffer)
+    const ws = wb.worksheets[0]
+    if (!ws || ws.rowCount < 2) {
       throw new BadRequestException('Soubor neobsahuje zadna data')
     }
 
-    return rawRows.map((row, i) => this.normalizeRow(row, i + 2))
+    // Read header row
+    const headerRow = ws.getRow(1)
+    const headers: string[] = []
+    headerRow.eachCell((cell, colNumber) => {
+      headers[colNumber] = String(cell.value ?? '').trim()
+    })
+
+    // Read data rows
+    const rows: ResidentImportRow[] = []
+    for (let r = 2; r <= ws.rowCount; r++) {
+      const row = ws.getRow(r)
+      const raw: Record<string, unknown> = {}
+      let hasData = false
+      row.eachCell((cell, colNumber) => {
+        const header = headers[colNumber]
+        if (header) {
+          raw[header] = cell.value ?? ''
+          if (cell.value) hasData = true
+        }
+      })
+      if (hasData) rows.push(this.normalizeRow(raw, r))
+    }
+
+    if (!rows.length) {
+      throw new BadRequestException('Soubor neobsahuje zadna data')
+    }
+
+    return rows
   }
 
   private normalizeRow(raw: Record<string, unknown>, rowIndex: number): ResidentImportRow {
@@ -217,18 +242,22 @@ export class ResidentsImportService {
     return { imported, skipped, errors, total: rows.length }
   }
 
-  generateTemplate(): Buffer {
-    const wb = XLSX.utils.book_new()
-    const ws = XLSX.utils.aoa_to_sheet([
-      ['jmeno', 'prijmeni', 'email', 'telefon', 'nemovitost', 'jednotka'],
-      ['Jan', 'Novak', 'jan.novak@email.cz', '+420777123456', 'Bytovy dum A', 'Byt 2+1'],
-      ['Jana', 'Novakova', 'jana@email.cz', '', 'Bytovy dum A', 'Byt 1+1'],
-    ])
-    ws['!cols'] = [
-      { wch: 12 }, { wch: 14 }, { wch: 25 },
-      { wch: 16 }, { wch: 20 }, { wch: 12 },
+  async generateTemplate(): Promise<Buffer> {
+    const wb = new ExcelJS.Workbook()
+    const ws = wb.addWorksheet('Najemnici')
+
+    ws.columns = [
+      { header: 'jmeno', key: 'jmeno', width: 12 },
+      { header: 'prijmeni', key: 'prijmeni', width: 14 },
+      { header: 'email', key: 'email', width: 25 },
+      { header: 'telefon', key: 'telefon', width: 16 },
+      { header: 'nemovitost', key: 'nemovitost', width: 20 },
+      { header: 'jednotka', key: 'jednotka', width: 12 },
     ]
-    XLSX.utils.book_append_sheet(wb, ws, 'Najemnici')
-    return Buffer.from(XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }))
+
+    ws.addRow(['Jan', 'Novak', 'jan.novak@email.cz', '+420777123456', 'Bytovy dum A', 'Byt 2+1'])
+    ws.addRow(['Jana', 'Novakova', 'jana@email.cz', '', 'Bytovy dum A', 'Byt 1+1'])
+
+    return Buffer.from(await wb.xlsx.writeBuffer())
   }
 }

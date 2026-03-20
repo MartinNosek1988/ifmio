@@ -12,6 +12,7 @@ import helmet from '@fastify/helmet';
 import compress from '@fastify/compress';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { SanitizePipe } from './common/pipes/sanitize.pipe';
 import multipart from '@fastify/multipart';
 
 function validateEnv() {
@@ -42,10 +43,26 @@ async function bootstrap() {
 
   app.useLogger(app.get(PinoLogger));
 
-  // Security headers — CSP handled at reverse proxy (Caddy/nginx)
+  // Security headers (defense-in-depth — Caddy also sets headers)
   await app.register(helmet as any, {
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "blob:"],
+        connectSrc: ["'self'", "https://ags.cuzk.gov.cz", "https://ares.gov.cz"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+      },
+    },
     crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: 'same-site' as const },
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' as const },
+    hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
   });
 
   await app.register(compress as any, { global: true, threshold: 1024 });
@@ -54,16 +71,23 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1');
 
   app.enableCors({
-    origin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
+    origin: process.env.NODE_ENV === 'production'
+      ? [process.env.CORS_ORIGIN ?? 'https://ifmio.com'].filter(Boolean)
+      : [process.env.CORS_ORIGIN ?? 'http://localhost:5173', 'http://localhost:5173'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
+    maxAge: 86400,
   });
 
   app.useGlobalPipes(
+    new SanitizePipe(),
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
-      transformOptions: { enableImplicitConversion: true },
+      // enableImplicitConversion REMOVED — it coerces objects to "[object Object]"
+      // which bypasses @IsString() validation. Use explicit @Type() decorators instead.
     }),
   );
 

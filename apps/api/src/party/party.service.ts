@@ -56,7 +56,7 @@ export class PartyService {
     const limit = Math.min(100, Math.max(1, query.limit || 20))
     const skip = (page - 1) * limit
 
-    const where: Record<string, unknown> = { tenantId }
+    const where: Record<string, unknown> = { tenantId, gdprErased: false }
     if (query.type) where.type = query.type
     if (query.isActive !== undefined) where.isActive = query.isActive
     else where.isActive = true
@@ -144,6 +144,7 @@ export class PartyService {
       where: {
         tenantId,
         isActive: true,
+        gdprErased: false,
         OR: [
           { displayName: { contains: term, mode: 'insensitive' } },
           { ic: { contains: term, mode: 'insensitive' } },

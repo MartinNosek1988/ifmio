@@ -11,6 +11,7 @@ import { MioObservabilityService } from '../mio/mio-observability.service';
 import { MioWebhookService } from '../mio/mio-webhook.service';
 import { BankingService } from '../banking/banking.service';
 import { WhatsAppAutomationService } from '../whatsapp/whatsapp-automation.service';
+import { RetentionService } from './retention.service';
 
 const ONE_HOUR = 60 * 60 * 1000;
 const FIFTEEN_MIN = 15 * 60 * 1000;
@@ -44,6 +45,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     private readonly mioWebhooks: MioWebhookService,
     private readonly banking: BankingService,
     private readonly waAutomation: WhatsAppAutomationService,
+    private readonly retention: RetentionService,
   ) {}
 
   onModuleInit() {
@@ -183,67 +185,20 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
   // ─── Audit Log Retention ─────────────────────────────────────
 
   private initAuditRetention() {
-    const retentionDays = parseInt(
-      this.config.get<string>('AUDIT_LOG_RETENTION_DAYS') ?? '365',
-      10,
-    );
+    this.logger.log('Per-tenant data retention enabled (daily at 2:00)');
 
-    if (retentionDays <= 0) {
-      this.logger.log('Audit log retention disabled (AUDIT_LOG_RETENTION_DAYS <= 0)');
-      return;
-    }
-
-    this.logger.log(`Audit log retention enabled — deleting logs older than ${retentionDays} days (daily)`);
-
-    // Run once on startup (delayed by 30s to let app fully initialize)
-    setTimeout(() => this.purgeOldAuditLogs(retentionDays), 30_000);
+    // Run once on startup (delayed by 30s)
+    setTimeout(() => this.retention.enforceRetention().catch(err =>
+      this.logger.error('Retention job FAILED', (err as Error).stack),
+    ), 30_000);
 
     // Then every 24 hours
     this.retentionInterval = setInterval(
-      () => this.purgeOldAuditLogs(retentionDays),
+      () => this.retention.enforceRetention().catch(err =>
+        this.logger.error('Retention job FAILED', (err as Error).stack),
+      ),
       TWENTY_FOUR_HOURS,
     );
-  }
-
-  private async purgeOldAuditLogs(retentionDays: number) {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - retentionDays);
-
-    let totalDeleted = 0;
-
-    try {
-      // Delete in batches to avoid long-running transactions
-      let deleted: number;
-      do {
-        const batch = await this.prisma.auditLog.findMany({
-          where: { createdAt: { lt: cutoff } },
-          select: { id: true },
-          take: BATCH_SIZE,
-        });
-
-        if (batch.length === 0) break;
-
-        const result = await this.prisma.auditLog.deleteMany({
-          where: { id: { in: batch.map((r) => r.id) } },
-        });
-
-        deleted = result.count;
-        totalDeleted += deleted;
-      } while (deleted === BATCH_SIZE);
-
-      if (totalDeleted > 0) {
-        this.logger.log(
-          `Audit retention: deleted ${totalDeleted} logs older than ${retentionDays} days (cutoff: ${cutoff.toISOString()})`,
-        );
-      } else {
-        this.logger.log('Audit retention: no expired logs to delete');
-      }
-    } catch (err) {
-      this.logger.error(
-        'Audit retention job FAILED',
-        (err as Error).stack,
-      );
-    }
   }
 
   // ─── Daily Digest ──────────────────────────────────────────
