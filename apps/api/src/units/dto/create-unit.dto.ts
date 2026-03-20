@@ -27,6 +27,7 @@ export class CreateUnitDto {
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) heatingArea?: number;
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) tuvArea?: number;
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) heatingCoefficient?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) hotWaterCoefficient?: number;
   @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) personCount?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20) disposition?: string;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() hasElevator?: boolean;

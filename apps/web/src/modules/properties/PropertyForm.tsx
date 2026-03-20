@@ -69,6 +69,8 @@ export default function PropertyForm({ property, onClose }: Props) {
     managedFrom: property?.managedFrom ? property.managedFrom.slice(0, 10) : '',
     managedTo: property?.managedTo ? property.managedTo.slice(0, 10) : '',
     accountingSystem: (property?.accountingSystem || 'NONE') as AccountingSystemType,
+    cadastralArea: property?.cadastralArea || '',
+    landRegistrySheet: property?.landRegistrySheet || '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -155,6 +157,8 @@ export default function PropertyForm({ property, onClose }: Props) {
       managedFrom: form.managedFrom || null,
       managedTo: form.managedTo || null,
       accountingSystem: form.accountingSystem !== 'NONE' ? form.accountingSystem : null,
+      cadastralArea: form.cadastralArea || null,
+      landRegistrySheet: form.landRegistrySheet || null,
     };
     if (isEdit) {
       await updateMutation.mutateAsync({ id: property!.id, data: payload });
@@ -375,6 +379,17 @@ export default function PropertyForm({ property, onClose }: Props) {
               <select value={form.accountingSystem} onChange={(e) => set('accountingSystem', e.target.value)} style={inputStyle()}>
                 {ACCOUNTING_SYSTEMS.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
               </select>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <div>
+                <label className="form-label">Katastrální území</label>
+                <input value={form.cadastralArea} onChange={(e) => set('cadastralArea', e.target.value)} placeholder="např. Vysočany" style={inputStyle()} />
+              </div>
+              <div>
+                <label className="form-label">List vlastnictví (LV)</label>
+                <input value={form.landRegistrySheet} onChange={(e) => set('landRegistrySheet', e.target.value)} placeholder="např. 1234" style={inputStyle()} />
+              </div>
             </div>
           </div>
         )}

@@ -30,6 +30,8 @@ export class PropertiesService {
         accountingSystem: dto.accountingSystem as AccountingSystem | undefined,
         managedFrom: dto.managedFrom ? new Date(dto.managedFrom) : undefined,
         managedTo: dto.managedTo ? new Date(dto.managedTo) : undefined,
+        cadastralArea: dto.cadastralArea,
+        landRegistrySheet: dto.landRegistrySheet,
       },
       include: { units: true },
     });
@@ -81,6 +83,8 @@ export class PropertiesService {
         ...(dto.accountingSystem !== undefined && { accountingSystem: dto.accountingSystem as AccountingSystem }),
         ...(dto.managedFrom !== undefined && { managedFrom: dto.managedFrom ? new Date(dto.managedFrom) : null }),
         ...(dto.managedTo !== undefined && { managedTo: dto.managedTo ? new Date(dto.managedTo) : null }),
+        ...(dto.cadastralArea !== undefined && { cadastralArea: dto.cadastralArea || null }),
+        ...(dto.landRegistrySheet !== undefined && { landRegistrySheet: dto.landRegistrySheet || null }),
       },
       include: { units: true },
     });

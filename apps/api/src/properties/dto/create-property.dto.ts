@@ -24,4 +24,6 @@ export class CreatePropertyDto {
   accountingSystem?: string;
   @ApiPropertyOptional() @IsOptional() @IsDateString() managedFrom?: string;
   @ApiPropertyOptional() @IsOptional() @IsDateString() managedTo?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) cadastralArea?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(50) landRegistrySheet?: string;
 }

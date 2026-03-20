@@ -320,11 +320,13 @@ export default function PropertyDetailPage() {
           {property.managedTo && <div><span className="text-muted">Ve správě do:</span> {new Date(property.managedTo).toLocaleDateString('cs-CZ')}</div>}
           {property.accountingSystem && property.accountingSystem !== 'NONE' && <div><span className="text-muted">Účetní systém:</span> {property.accountingSystem}</div>}
         </div>
-        {(property as any).cadastralData && (
+        {((property as any).cadastralData || (property as any).cadastralArea || (property as any).landRegistrySheet) && (
           <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, fontSize: '.85rem' }}>
-            {(property as any).cadastralData.parcelNumber && <div><span className="text-muted">Parcela:</span> {(property as any).cadastralData.parcelNumber}</div>}
-            {(property as any).cadastralData.cadastralTerritory && <div><span className="text-muted">K.Ú.:</span> {(property as any).cadastralData.cadastralTerritory}</div>}
-            {(property as any).cadastralData.buildingNumber && <div><span className="text-muted">Č.p.:</span> {(property as any).cadastralData.buildingNumber}</div>}
+            {(property as any).cadastralArea && <div><span className="text-muted">K.Ú.:</span> {(property as any).cadastralArea}</div>}
+            {(property as any).landRegistrySheet && <div><span className="text-muted">LV:</span> {(property as any).landRegistrySheet}</div>}
+            {(property as any).cadastralData?.parcelNumber && <div><span className="text-muted">Parcela:</span> {(property as any).cadastralData.parcelNumber}</div>}
+            {!(property as any).cadastralArea && (property as any).cadastralData?.cadastralTerritory && <div><span className="text-muted">K.Ú.:</span> {(property as any).cadastralData.cadastralTerritory}</div>}
+            {(property as any).cadastralData?.buildingNumber && <div><span className="text-muted">Č.p.:</span> {(property as any).cadastralData.buildingNumber}</div>}
           </div>
         )}
       </div>

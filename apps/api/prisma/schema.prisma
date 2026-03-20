@@ -279,6 +279,8 @@ model Property {
   importSource     String?            // "cuzk_domsys" etc.
   importedAt       DateTime?
   cadastralData    Json?              // raw ČÚZK metadata (building, parcel, k.ú.)
+  cadastralArea    String?            // katastrální území (text)
+  landRegistrySheet String?           // list vlastnictví (LV)
   country          String             @default("CZ")
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
@@ -389,6 +391,7 @@ model Unit {
   heatingArea        Float?                          // vytápěná plocha m²
   tuvArea            Float?                          // plocha pro TUV m²
   heatingCoefficient Float?                          // koeficient vytápění
+  hotWaterCoefficient Float?                         // koeficient TUV
   personCount        Int?                            // výchozí počet osob
   disposition        String?                         // 1+1, 2+kk
   hasElevator        Boolean?
