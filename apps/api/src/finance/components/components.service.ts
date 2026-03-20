@@ -71,6 +71,7 @@ export class ComponentsService {
         code: dto.code,
         componentType: dto.componentType as never,
         calculationMethod: dto.calculationMethod as never,
+        allocationMethod: (dto.allocationMethod as never) ?? 'area',
         defaultAmount: new Decimal(dto.defaultAmount),
         vatRate: dto.vatRate ?? 0,
         description: dto.description,
@@ -101,6 +102,7 @@ export class ComponentsService {
     if (dto.code !== undefined) data.code = dto.code
     if (dto.componentType !== undefined) data.componentType = dto.componentType
     if (dto.calculationMethod !== undefined) data.calculationMethod = dto.calculationMethod
+    if (dto.allocationMethod !== undefined) data.allocationMethod = dto.allocationMethod
     if (dto.defaultAmount !== undefined) data.defaultAmount = new Decimal(dto.defaultAmount)
     if (dto.vatRate !== undefined) data.vatRate = dto.vatRate
     if (dto.description !== undefined) data.description = dto.description

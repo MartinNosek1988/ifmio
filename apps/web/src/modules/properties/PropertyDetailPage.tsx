@@ -441,7 +441,7 @@ export default function PropertyDetailPage() {
 
       {/* ── PLACEHOLDER TABS ─────────────────────────────────────── */}
       {detailTab === 'meters' && <EmptyState title="Měřidla" description="Přejděte do sekce Měřidla & Energie pro správu měřidel této nemovitosti." action={{ label: 'Otevřít měřidla', onClick: () => navigate('/meters') }} />}
-      {detailTab === 'components' && <EmptyState title="Složky předpisu" description="Správa složek předpisu bude dostupná z detailu nemovitosti." />}
+      {detailTab === 'components' && <EmptyState title="Složky předpisu" description="Přejděte do Finance → Složky předpisu pro správu složek této nemovitosti." action={{ label: 'Otevřít složky', onClick: () => navigate('/finance?tab=components') }} />}
       {detailTab === 'representatives' && (
         <div>
           {contracts.length > 0 ? (
