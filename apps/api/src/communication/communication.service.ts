@@ -140,4 +140,93 @@ export class CommunicationService {
       this.logger.error(`Failed to log outbox entry: ${err}`)
     }
   }
+
+  // ─── BULK SEND TO PROPERTY OWNERS/TENANTS ──────────────────────
+
+  async bulkSendToProperty(tenantId: string, dto: {
+    propertyId: string
+    subject: string
+    body: string
+    recipientFilter: 'all' | 'owners' | 'tenants' | 'custom'
+    recipientIds?: string[]
+    unitGroupId?: string
+    attachmentType?: 'evidencni_list' | 'predpis' | 'vyuctovani'
+  }) {
+    // Get recipients based on filter
+    const occupancyWhere: Record<string, unknown> = {
+      tenantId,
+      unit: { propertyId: dto.propertyId },
+      isActive: true,
+    }
+
+    if (dto.recipientFilter === 'owners') {
+      occupancyWhere.role = 'owner'
+    } else if (dto.recipientFilter === 'tenants') {
+      occupancyWhere.role = 'tenant'
+    }
+
+    if (dto.unitGroupId) {
+      const memberships = await this.prisma.unitGroupMembership.findMany({
+        where: { unitGroupId: dto.unitGroupId },
+        select: { unitId: true },
+      })
+      occupancyWhere.unitId = { in: memberships.map(m => m.unitId) }
+    }
+
+    const occupancies = await this.prisma.occupancy.findMany({
+      where: occupancyWhere,
+      include: {
+        resident: { select: { id: true, firstName: true, lastName: true, email: true, companyName: true, isLegalEntity: true } },
+        unit: { select: { id: true, name: true } },
+      },
+    })
+
+    // Filter by custom IDs if provided
+    let recipients = occupancies
+    if (dto.recipientFilter === 'custom' && dto.recipientIds?.length) {
+      recipients = occupancies.filter(o => dto.recipientIds!.includes(o.id))
+    }
+
+    let sent = 0
+    let failed = 0
+    let skipped = 0
+
+    for (const occ of recipients) {
+      const email = occ.resident?.email
+      if (!email) { skipped++; continue }
+
+      const name = occ.resident.isLegalEntity && occ.resident.companyName
+        ? occ.resident.companyName
+        : `${occ.resident.firstName} ${occ.resident.lastName}`
+
+      try {
+        const ok = await this.emailService.send({
+          to: email,
+          subject: dto.subject,
+          html: dto.body,
+        })
+
+        // Log is handled by the multi-channel dispatcher; for bulk we log directly
+        await this.prisma.outboxLog.create({
+          data: { tenantId, channel: 'email', recipient: email, subject: dto.subject, status: ok ? 'sent' : 'failed' },
+        }).catch(() => {})
+
+        if (ok) sent++
+        else failed++
+      } catch (err) {
+        await this.prisma.outboxLog.create({
+          data: { tenantId, channel: 'email', recipient: email, subject: dto.subject, status: 'failed', error: String(err) },
+        }).catch(() => {})
+        failed++
+      }
+    }
+
+    return {
+      total: recipients.length,
+      sent,
+      failed,
+      skipped,
+      recipientCount: recipients.length,
+    }
+  }
 }
