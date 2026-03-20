@@ -283,6 +283,7 @@ model Property {
   cadastralArea    String?            // katastrální území (text)
   landRegistrySheet String?           // list vlastnictví (LV)
   country          String             @default("CZ")
+  matchStrategy    MatchStrategy      @default(OLDEST_FIRST)  // Strategie párování plateb
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 
@@ -377,6 +378,12 @@ enum AccountingSystem {
   PREMIER
   VARIO
   NONE
+}
+
+enum MatchStrategy {
+  OLDEST_FIRST   // Nejstarší neuhrazený předpis první
+  SAME_MONTH     // Předpis za stejný měsíc jako datum platby
+  EXACT_AMOUNT   // Jen pokud částka přesně odpovídá
 }
 
 model Unit {

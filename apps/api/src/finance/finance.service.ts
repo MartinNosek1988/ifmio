@@ -569,65 +569,101 @@ export class FinanceService {
     const where: any = {
       tenantId: user.tenantId,
       status:   'unmatched',
+      type:     'credit',
       ...txScopeWhere,
       ...(bankAccountId ? { bankAccountId } : {}),
     }
 
     const prescriptionScope = await this.scope.scopeByPropertyId(user)
     const [transactions, prescriptions] = await Promise.all([
-      this.prisma.bankTransaction.findMany({ where }),
+      this.prisma.bankTransaction.findMany({
+        where,
+        include: { bankAccount: { select: { propertyId: true } } },
+      }),
       this.prisma.prescription.findMany({
         where:   { tenantId: user.tenantId, status: 'active', ...prescriptionScope } as any,
         include: { items: true },
+        orderBy: { validFrom: 'asc' },
       }),
     ])
+
+    // Load property match strategies
+    const propertyIds = [...new Set(prescriptions.map(p => p.propertyId))]
+    const properties = await this.prisma.property.findMany({
+      where: { id: { in: propertyIds } },
+      select: { id: true, matchStrategy: true },
+    })
+    const strategyMap = new Map(properties.map(p => [p.id, p.matchStrategy]))
 
     let matched   = 0
     let unmatched = 0
     const results: any[] = []
+    const matchedPrescriptionIds = new Set<string>()
 
     for (const tx of transactions) {
-      let matchedPrescription: any = null
-      let strategy = ''
+      const txAmount = Number(tx.amount)
+      let remaining = txAmount
+      const txPropertyId = (tx as any).bankAccount?.propertyId
+      const propertyStrategy = txPropertyId ? strategyMap.get(txPropertyId) : 'OLDEST_FIRST'
 
-      // Strategie 1: VS match
-      if (tx.variableSymbol) {
-        matchedPrescription = prescriptions.find(
-          (p) => p.variableSymbol === tx.variableSymbol
+      // Find matching prescriptions by VS
+      let candidates = tx.variableSymbol
+        ? prescriptions.filter(p => p.variableSymbol === tx.variableSymbol && !matchedPrescriptionIds.has(p.id))
+        : []
+
+      // Fallback: if no VS match, try amount match for EXACT_AMOUNT strategy
+      if (candidates.length === 0 && propertyStrategy === 'EXACT_AMOUNT') {
+        candidates = prescriptions.filter(p =>
+          Math.abs(Number(p.amount) - txAmount) < 0.01 && !matchedPrescriptionIds.has(p.id),
         )
-        if (matchedPrescription) strategy = 'vs_match'
       }
 
-      // Strategie 2: Amount + date fallback
-      if (!matchedPrescription) {
-        const txAmount = Number(tx.amount)
-        matchedPrescription = prescriptions.find((p) => {
-          const totalAmount = Number(p.amount)
-          return Math.abs(totalAmount - txAmount) < 0.01
+      // Sort candidates by strategy
+      if (propertyStrategy === 'SAME_MONTH' && tx.date) {
+        const txMonth = tx.date.getMonth()
+        const txYear = tx.date.getFullYear()
+        candidates.sort((a, b) => {
+          const aMatch = a.validFrom.getMonth() === txMonth && a.validFrom.getFullYear() === txYear ? 0 : 1
+          const bMatch = b.validFrom.getMonth() === txMonth && b.validFrom.getFullYear() === txYear ? 0 : 1
+          return aMatch - bMatch || a.validFrom.getTime() - b.validFrom.getTime()
         })
-        if (matchedPrescription) strategy = 'amount_match'
+      }
+      // OLDEST_FIRST is already sorted by validFrom: 'asc'
+
+      if (candidates.length === 0) { unmatched++; continue }
+
+      // Chain matching: match to multiple prescriptions if amount covers more than one
+      const matchedItems: { prescriptionId: string; amount: number }[] = []
+      for (const p of candidates) {
+        if (remaining <= 0) break
+        const prescriptionAmount = Number(p.amount)
+        const matchAmount = Math.min(remaining, prescriptionAmount)
+        matchedItems.push({ prescriptionId: p.id, amount: matchAmount })
+        matchedPrescriptionIds.add(p.id)
+        remaining -= prescriptionAmount
       }
 
-      if (matchedPrescription) {
-        // Defense-in-depth: prescriptions are already fetched with scope filter,
-        // but verify explicitly to prevent cross-property matching after refactors
-        await this.scope.verifyPropertyAccess(user, matchedPrescription.propertyId)
+      if (matchedItems.length > 0) {
+        // Match to the first (primary) prescription
+        const primaryMatch = matchedItems[0]
+        await this.scope.verifyPropertyAccess(user, candidates[0].propertyId)
 
         await this.prisma.bankTransaction.update({
           where: { id: tx.id },
-          data:  {
-            status:         'matched',
-            prescriptionId: matchedPrescription.id,
+          data: {
+            status: remaining >= 0 ? 'matched' : 'partially_matched',
+            prescriptionId: primaryMatch.prescriptionId,
           },
         })
 
-        // Auto-post to konto: CREDIT
-        if (matchedPrescription.unitId && matchedPrescription.residentId) {
+        // Auto-post to konto
+        const primaryP = candidates.find(c => c.id === primaryMatch.prescriptionId)
+        if (primaryP?.unitId && primaryP?.residentId) {
           try {
             const account = await this.konto.getOrCreateAccount(
-              user.tenantId, matchedPrescription.propertyId, matchedPrescription.unitId, matchedPrescription.residentId,
+              user.tenantId, primaryP.propertyId, primaryP.unitId, primaryP.residentId,
             )
-            const entry = await this.konto.postCredit(account.id, Number(tx.amount), 'BANK_TRANSACTION', tx.id, `Platba ${tx.variableSymbol ?? 'bez VS'}`, tx.date)
+            const entry = await this.konto.postCredit(account.id, txAmount, 'BANK_TRANSACTION', tx.id, `Platba ${tx.variableSymbol ?? 'bez VS'}`, tx.date)
             await this.prisma.bankTransaction.update({ where: { id: tx.id }, data: { ledgerEntryId: entry.id } })
           } catch (err) {
             this.logger.error(`Auto-posting match ${tx.id} to konto failed: ${err}`)
@@ -636,9 +672,10 @@ export class FinanceService {
 
         matched++
         results.push({
-          transactionId:  tx.id,
-          prescriptionId: matchedPrescription.id,
-          strategy,
+          transactionId: tx.id,
+          prescriptions: matchedItems,
+          strategy: tx.variableSymbol ? 'vs_match' : 'amount_match',
+          chainMatched: matchedItems.length > 1,
         })
       } else {
         unmatched++
