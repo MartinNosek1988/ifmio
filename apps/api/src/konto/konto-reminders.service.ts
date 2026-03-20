@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { Decimal } from '@prisma/client/runtime/library'
+import PDFDocument from 'pdfkit'
+import * as QRCode from 'qrcode'
 
 @Injectable()
 export class KontoRemindersService {
@@ -204,5 +206,120 @@ export class KontoRemindersService {
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),
     }))
+  }
+
+  // ─── PDF WITH QR PAYMENT CODE ──────────────────────────────────
+
+  async generateReminderPdf(tenantId: string, reminderId: string): Promise<PDFKit.PDFDocument> {
+    const reminder = await this.prisma.kontoReminder.findFirst({
+      where: { id: reminderId, tenantId },
+      include: {
+        property: true,
+        unit: true,
+        resident: true,
+        account: true,
+      },
+    })
+    if (!reminder) throw new NotFoundException('Upomínka nenalezena')
+
+    const property = reminder.property
+    const resident = reminder.resident
+    const ownerName = resident?.isLegalEntity && resident?.companyName
+      ? resident.companyName
+      : `${resident?.firstName ?? ''} ${resident?.lastName ?? ''}`
+    const amount = Number(reminder.amount)
+    const fmtCzk = (n: number) => Math.round(n).toLocaleString('cs-CZ') + ' Kč'
+
+    const LEVEL_TITLES = ['1. UPOMÍNKA', '2. UPOMÍNKA', 'PŘEDŽALOBNÍ VÝZVA']
+    const title = LEVEL_TITLES[Math.min(reminder.reminderNumber - 1, 2)] ?? `UPOMÍNKA č. ${reminder.reminderNumber}`
+
+    const doc = new PDFDocument({ size: 'A4', margin: 50 })
+
+    // Header — property info
+    doc.fontSize(11).font('Helvetica-Bold').text(property.name)
+    if (property.ico) doc.font('Helvetica').fontSize(9).text(`IČ: ${property.ico}`)
+    doc.font('Helvetica').fontSize(9).text(`${property.address}, ${property.postalCode} ${property.city}`)
+    doc.moveDown(1)
+
+    // Title
+    doc.fontSize(16).font('Helvetica-Bold').text(title, { align: 'center' }).moveDown(1)
+
+    // Greeting
+    doc.fontSize(10).font('Helvetica')
+    doc.text('Vážený vlastníku / nájemce,')
+    doc.moveDown(0.5)
+
+    if (reminder.reminderNumber === 1) {
+      doc.text(`dovolujeme si Vás upozornit, že ke dni ${new Date().toLocaleDateString('cs-CZ')} evidujeme na Vašem kontě neuhrazený dluh.`)
+    } else if (reminder.reminderNumber === 2) {
+      doc.text(`navzdory naší předchozí upomínce evidujeme ke dni ${new Date().toLocaleDateString('cs-CZ')} na Vašem kontě stále neuhrazený dluh. Důrazně Vás žádáme o neprodlenou úhradu.`)
+    } else {
+      doc.text(`tímto Vás naposledy vyzýváme k úhradě dlužné částky. V případě neuhrazení do 15 dnů od doručení této výzvy budeme nuceni přistoupit k vymáhání soudní cestou.`)
+    }
+    doc.moveDown(1)
+
+    // Owner + unit info
+    doc.font('Helvetica-Bold').text('Vlastník: ', { continued: true }).font('Helvetica').text(ownerName)
+    doc.font('Helvetica-Bold').text('Jednotka: ', { continued: true }).font('Helvetica').text(reminder.unit?.name ?? '—')
+    doc.moveDown(1)
+
+    // Debt amount
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#333').moveDown(0.5)
+    doc.fontSize(14).font('Helvetica-Bold')
+    doc.text(`DLUH CELKEM: ${fmtCzk(amount)}`, { align: 'center' })
+    doc.moveDown(0.3)
+    doc.fontSize(9).font('Helvetica')
+    doc.text(`Splatnost: ${reminder.dueDate.toLocaleDateString('cs-CZ')}`, { align: 'center' })
+    doc.moveDown(0.5)
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#333').moveDown(1)
+
+    // Payment instructions
+    const bankAccount = await this.prisma.bankAccount.findFirst({
+      where: { tenantId, propertyId: reminder.propertyId },
+      select: { accountNumber: true, bankCode: true, iban: true },
+    })
+
+    if (bankAccount) {
+      const acc = bankAccount.iban ?? `${bankAccount.accountNumber}/${bankAccount.bankCode}`
+      doc.fontSize(10).font('Helvetica')
+      doc.text(`Uhraďte na účet: ${acc}`)
+
+      // Find VS from occupancy
+      const occ = await this.prisma.occupancy.findFirst({
+        where: { unitId: reminder.unitId, residentId: reminder.residentId, isActive: true },
+        select: { variableSymbol: true },
+      })
+      if (occ?.variableSymbol) doc.text(`VS: ${occ.variableSymbol}`)
+      doc.moveDown(1)
+
+      // QR payment code
+      try {
+        const vs = occ?.variableSymbol ?? ''
+        const spd = `SPD*1.0*ACC:${acc}*AM:${amount.toFixed(2)}*CC:CZK*X-VS:${vs}*MSG:Upominka*`
+        const qrBuffer = await QRCode.toBuffer(spd, { width: 120, margin: 1 })
+        doc.image(qrBuffer, 50, doc.y, { width: 80, height: 80 })
+        doc.fontSize(7).text('QR Platba', 50, doc.y + 84, { width: 80, align: 'center' })
+        doc.y += 100
+      } catch { /* QR generation failed */ }
+    }
+
+    // Generated text from reminder
+    if (reminder.generatedText) {
+      doc.moveDown(0.5)
+      doc.fontSize(9).font('Helvetica').text(reminder.generatedText, { lineGap: 3 })
+    }
+
+    // Footer
+    doc.moveDown(2)
+    doc.fontSize(9).font('Helvetica')
+    doc.text(`V ${property.city ?? 'Praze'} dne ${new Date().toLocaleDateString('cs-CZ')}`)
+    doc.moveDown(1)
+    doc.text('S pozdravem, správce nemovitosti', { align: 'right' })
+
+    doc.moveDown(2)
+    doc.fontSize(7).fillColor('#aaa').text(`ifmio | ${new Date().toLocaleDateString('cs-CZ')}`, { align: 'center' })
+
+    doc.end()
+    return doc
   }
 }
