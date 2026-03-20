@@ -9,7 +9,8 @@ import {
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import type { FastifyReply } from 'fastify';
 import { PdfService } from './pdf.service';
-import type { EvidencniListData } from './pdf.service';
+import type { EvidencniListData, PrescriptionPdfData } from './pdf.service';
+import * as QRCode from 'qrcode';
 import { PrismaService } from '../prisma/prisma.service';
 import { PropertyScopeService } from '../common/services/property-scope.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -256,5 +257,111 @@ export class PdfController {
     reply.header('Content-Type', 'application/pdf');
     reply.header('Content-Disposition', `attachment; filename="${filename}"`);
     return reply.send(doc);
+  }
+
+  @Get('prescriptions/:id/pdf')
+  @ApiOperation({ summary: 'Předpis/faktura PDF' })
+  async prescriptionPdf(
+    @Param('id') id: string,
+    @Query('type') type: string | undefined,
+    @CurrentUser() user: AuthUser,
+    @Res() reply: FastifyReply,
+  ) {
+    const pdfType = type === 'faktura' ? 'faktura' : 'predpis';
+
+    const p = await this.prisma.prescription.findFirst({
+      where: { id, tenantId: user.tenantId },
+      include: {
+        items: true,
+        property: true,
+        unit: true,
+        resident: true,
+      },
+    });
+    if (!p) throw new NotFoundException('Předpis nenalezen');
+    if (p.propertyId) await this.scope.verifyEntityAccess(user, p.propertyId);
+
+    // Build QR payment code (SPD format)
+    let qrBuffer: Buffer | null = null;
+    const bankAccount = await this.prisma.bankAccount.findFirst({
+      where: { tenantId: user.tenantId, propertyId: p.propertyId },
+      select: { accountNumber: true, bankCode: true, iban: true },
+    });
+    if (bankAccount) {
+      const total = p.items.length > 0
+        ? p.items.reduce((s, i) => s + Number(i.amount), 0)
+        : Number(p.amount);
+      const dueDate = new Date(p.validFrom);
+      dueDate.setDate(p.dueDay);
+      const dtStr = dueDate.toISOString().slice(0, 10).replace(/-/g, '');
+      const acc = bankAccount.iban
+        ? bankAccount.iban
+        : `${bankAccount.accountNumber}/${bankAccount.bankCode}`;
+      const spd = `SPD*1.0*ACC:${acc}*AM:${total.toFixed(2)}*CC:CZK*X-VS:${p.variableSymbol ?? ''}*MSG:Predpis ${p.description}*DT:${dtStr}*`;
+      try {
+        qrBuffer = await QRCode.toBuffer(spd, { width: 200, margin: 1 });
+      } catch { /* QR generation failed — proceed without */ }
+    }
+
+    const data: PrescriptionPdfData = {
+      type: pdfType as 'predpis' | 'faktura',
+      number: p.variableSymbol ?? p.id.slice(0, 8),
+      supplierName: p.property?.name ?? '—',
+      supplierIco: p.property?.ico,
+      supplierAddress: p.property ? `${p.property.address}, ${p.property.postalCode} ${p.property.city}` : '',
+      customerName: p.resident
+        ? (p.resident.isLegalEntity && p.resident.companyName ? p.resident.companyName : `${p.resident.firstName} ${p.resident.lastName}`)
+        : '—',
+      customerAddress: p.resident?.correspondenceAddress ?? undefined,
+      issuedDate: p.validFrom.toLocaleDateString('cs-CZ'),
+      dueDate: (() => { const d = new Date(p.validFrom); d.setDate(p.dueDay); return d.toLocaleDateString('cs-CZ'); })(),
+      variableSymbol: p.variableSymbol,
+      bankAccount: bankAccount
+        ? (bankAccount.iban ?? `${bankAccount.accountNumber}/${bankAccount.bankCode}`)
+        : undefined,
+      isVatPayer: p.property?.isVatPayer ?? false,
+      items: p.items.map(i => ({ name: i.name, amount: Number(i.amount), vatRate: i.vatRate })),
+      qrCodeBuffer: qrBuffer,
+    };
+
+    const doc = await this.pdf.generatePrescriptionPdf(data);
+    const filename = `${pdfType}-${p.variableSymbol ?? p.id.slice(0, 8)}.pdf`;
+    reply.header('Content-Type', 'application/pdf');
+    reply.header('Content-Disposition', `attachment; filename="${filename}"`);
+    return reply.send(doc);
+  }
+
+  @Get('prescriptions/:id/qr-code')
+  @ApiOperation({ summary: 'QR platební kód (PNG)' })
+  async prescriptionQrCode(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
+    @Res() reply: FastifyReply,
+  ) {
+    const p = await this.prisma.prescription.findFirst({
+      where: { id, tenantId: user.tenantId },
+      include: { items: true },
+    });
+    if (!p) throw new NotFoundException('Předpis nenalezen');
+
+    const bankAccount = await this.prisma.bankAccount.findFirst({
+      where: { tenantId: user.tenantId, propertyId: p.propertyId },
+      select: { accountNumber: true, bankCode: true, iban: true },
+    });
+    if (!bankAccount) throw new NotFoundException('Bankovní účet pro nemovitost nenalezen');
+
+    const total = p.items.length > 0
+      ? p.items.reduce((s, i) => s + Number(i.amount), 0)
+      : Number(p.amount);
+    const dueDate = new Date(p.validFrom);
+    dueDate.setDate(p.dueDay);
+    const dtStr = dueDate.toISOString().slice(0, 10).replace(/-/g, '');
+    const acc = bankAccount.iban ?? `${bankAccount.accountNumber}/${bankAccount.bankCode}`;
+    const spd = `SPD*1.0*ACC:${acc}*AM:${total.toFixed(2)}*CC:CZK*X-VS:${p.variableSymbol ?? ''}*MSG:Predpis ${p.description}*DT:${dtStr}*`;
+
+    const png = await QRCode.toBuffer(spd, { width: 300, margin: 2 });
+    reply.header('Content-Type', 'image/png');
+    reply.header('Content-Disposition', `inline; filename="qr-${p.variableSymbol ?? p.id.slice(0, 8)}.png"`);
+    return reply.send(png);
   }
 }

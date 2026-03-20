@@ -884,6 +884,16 @@ enum CalculationMethod {
   MANUAL           // ruční nastavení per jednotka
 }
 
+enum AllocationMethod {
+  area             // dle podlahové plochy
+  share            // dle podílu na společných částech
+  persons          // dle počtu osob
+  consumption      // dle měřidel (spotřeba)
+  equal            // rovným dílem
+  heating_area     // dle plochy pro vytápění
+  custom           // ruční
+}
+
 model PrescriptionComponent {
   id                String              @id @default(cuid())
   tenantId          String
@@ -892,6 +902,7 @@ model PrescriptionComponent {
   code              String?
   componentType     ComponentType
   calculationMethod CalculationMethod
+  allocationMethod  AllocationMethod    @default(area)  // Rozúčtování nákladů pro vyúčtování
   defaultAmount     Decimal             @db.Decimal(12, 2)
   vatRate           Int                 @default(0)
   description       String?

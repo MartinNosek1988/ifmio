@@ -51,6 +51,12 @@ const METHOD_HINTS: Record<string, string> = {
   MANUAL: '\u010C\u00E1stka se nastav\u00ED individu\u00E1ln\u011B per jednotka',
 };
 
+const ALLOCATION_LABELS: Record<string, string> = {
+  area: 'Dle plochy', share: 'Dle podílu', persons: 'Dle osob',
+  consumption: 'Dle spotřeby', equal: 'Rovným dílem',
+  heating_area: 'Dle vytáp. plochy', custom: 'Ruční',
+};
+
 const TYPE_BADGE_VARIANT: Record<string, string> = {
   ADVANCE: 'blue', FLAT_FEE: 'purple', FUND: 'green',
   RENT: 'yellow', DEPOSIT: 'muted', ANNUITY: 'blue', OTHER: 'muted',
@@ -134,6 +140,7 @@ export default function ComponentsTab() {
                 <th style={thStyle}>Kód</th>
                 <th style={thStyle}>Typ</th>
                 <th style={thStyle}>Výpočet</th>
+                <th style={thStyle}>Rozúčtování</th>
                 <th style={{ ...thStyle, textAlign: 'right' }}>Sazba</th>
                 <th style={{ ...thStyle, textAlign: 'right' }}>DPH</th>
                 <th style={{ ...thStyle, textAlign: 'center' }}>Jednotek</th>
@@ -157,6 +164,9 @@ export default function ComponentsTab() {
                   </td>
                   <td style={tdStyle}>
                     <Badge variant="muted">{METHOD_LABELS[c.calculationMethod] ?? c.calculationMethod}</Badge>
+                  </td>
+                  <td style={tdStyle}>
+                    <span style={{ fontSize: '.8rem', color: 'var(--text-secondary)' }}>{ALLOCATION_LABELS[(c as any).allocationMethod] ?? '—'}</span>
                   </td>
                   <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'monospace' }}>
                     {c.calculationMethod === 'MANUAL' ? '—' : `${fmtCzk(c.defaultAmount).replace(/\s*CZK\s*/, '')} ${METHOD_SUFFIX[c.calculationMethod] ?? ''}`}
@@ -280,6 +290,7 @@ function ComponentFormModal({ propertyId, component, onClose, onSuccess }: Compo
     code: component?.code ?? '',
     componentType: component?.componentType ?? 'ADVANCE',
     calculationMethod: component?.calculationMethod ?? 'FIXED',
+    allocationMethod: (component as any)?.allocationMethod ?? 'area',
     defaultAmount: component?.defaultAmount?.toString() ?? '',
     vatRate: component?.vatRate?.toString() ?? '0',
     description: component?.description ?? '',
@@ -301,6 +312,7 @@ function ComponentFormModal({ propertyId, component, onClose, onSuccess }: Compo
       code: form.code.trim() || null,
       componentType: form.componentType,
       calculationMethod: form.calculationMethod,
+      allocationMethod: form.allocationMethod,
       defaultAmount: isManual ? 0 : parseFloat(form.defaultAmount) || 0,
       vatRate: parseFloat(form.vatRate) || 0,
       description: form.description.trim() || null,
@@ -354,6 +366,16 @@ function ComponentFormModal({ propertyId, component, onClose, onSuccess }: Compo
           </select>
           <div style={{ fontSize: '.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
             {METHOD_HINTS[form.calculationMethod] ?? ''}
+          </div>
+        </div>
+        {/* Allocation method (for annual settlement) */}
+        <div>
+          <label className="form-label">Rozúčtování (vyúčtování)</label>
+          <select value={form.allocationMethod} onChange={e => set('allocationMethod', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+            {Object.entries(ALLOCATION_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+          <div style={{ fontSize: '.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+            Způsob rozdělení skutečných nákladů při ročním vyúčtování
           </div>
         </div>
         {/* Default amount — hidden for MANUAL */}

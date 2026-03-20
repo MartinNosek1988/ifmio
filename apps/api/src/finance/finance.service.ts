@@ -3,6 +3,10 @@ import * as iconv from 'iconv-lite';
 import { PrismaService } from '../prisma/prisma.service';
 import { PropertyScopeService } from '../common/services/property-scope.service';
 import { KontoService } from '../konto/konto.service';
+import { EmailService } from '../email/email.service';
+import { PdfService } from '../pdf/pdf.service';
+import type { PrescriptionPdfData } from '../pdf/pdf.service';
+import * as QRCode from 'qrcode';
 import type { Prisma } from '@prisma/client';
 import { parseCsv } from './parsers/csv.parser';
 import { parseAbo } from './parsers/abo.parser';
@@ -16,6 +20,8 @@ export class FinanceService {
     private prisma: PrismaService,
     private scope: PropertyScopeService,
     private konto: KontoService,
+    private email: EmailService,
+    private pdf: PdfService,
   ) {}
 
   // ─── BANK ACCOUNTS ────────────────────────────────────────────
@@ -199,6 +205,25 @@ export class FinanceService {
   }
 
   // ─── PRESCRIPTIONS ────────────────────────────────────────────
+
+  async getPrescription(user: AuthUser, id: string) {
+    const p = await this.prisma.prescription.findFirst({
+      where: { id, tenantId: user.tenantId },
+      include: {
+        items: { include: { component: { select: { id: true, name: true, componentType: true, calculationMethod: true } } } },
+        property: { select: { id: true, name: true, ico: true, address: true, city: true, postalCode: true, legalMode: true, isVatPayer: true } },
+        unit: { select: { id: true, name: true, knDesignation: true, area: true, commonAreaShare: true, disposition: true, spaceType: true } },
+        resident: { select: { id: true, firstName: true, lastName: true, email: true, correspondenceAddress: true, correspondenceCity: true, companyName: true, isLegalEntity: true } },
+      },
+    })
+    if (!p) throw new NotFoundException('Předpis nenalezen')
+    return {
+      ...p,
+      amount: Number(p.amount),
+      vatAmount: Number(p.vatAmount),
+      items: p.items.map(i => ({ ...i, amount: Number(i.amount), quantity: Number(i.quantity) })),
+    }
+  }
 
   async listPrescriptions(user: AuthUser, query: {
     propertyId?: string;
@@ -864,5 +889,113 @@ export class FinanceService {
 
     // AUDIT: soft delete — set status to ignored, preserved for audit trail (Wave 2)
     await this.prisma.bankTransaction.update({ where: { id }, data: { status: 'ignored' } })
+  }
+
+  // ─── BULK SEND PRESCRIPTIONS BY EMAIL ────────────────────────
+
+  async sendPrescriptionEmails(user: AuthUser, dto: {
+    propertyId: string;
+    month: string;
+    type?: 'predpis' | 'faktura';
+    subject?: string;
+    message?: string;
+  }) {
+    const pdfType = dto.type ?? 'predpis';
+    const [yearStr, monthStr] = dto.month.split('-');
+    const monthStart = new Date(`${yearStr}-${monthStr}-01`);
+    const monthEnd = new Date(monthStart);
+    monthEnd.setMonth(monthEnd.getMonth() + 1);
+
+    const prescriptions = await this.prisma.prescription.findMany({
+      where: {
+        tenantId: user.tenantId,
+        propertyId: dto.propertyId,
+        status: 'active',
+        validFrom: { gte: monthStart, lt: monthEnd },
+      },
+      include: {
+        items: true,
+        property: true,
+        resident: true,
+      },
+    });
+
+    const bankAccount = await this.prisma.bankAccount.findFirst({
+      where: { tenantId: user.tenantId, propertyId: dto.propertyId },
+      select: { accountNumber: true, bankCode: true, iban: true },
+    });
+
+    let sent = 0;
+    let failed = 0;
+    let skipped = 0;
+
+    const subjectLine = dto.subject ?? `Předpis plateb za ${monthStr}/${yearStr}`;
+
+    for (const p of prescriptions) {
+      const recipientEmail = p.resident?.email;
+      if (!recipientEmail) { skipped++; continue; }
+
+      try {
+        // Generate QR
+        let qrBuffer: Buffer | null = null;
+        if (bankAccount) {
+          const total = p.items.length > 0
+            ? p.items.reduce((s, i) => s + Number(i.amount), 0)
+            : Number(p.amount);
+          const acc = bankAccount.iban ?? `${bankAccount.accountNumber}/${bankAccount.bankCode}`;
+          const spd = `SPD*1.0*ACC:${acc}*AM:${total.toFixed(2)}*CC:CZK*X-VS:${p.variableSymbol ?? ''}*`;
+          try { qrBuffer = await QRCode.toBuffer(spd, { width: 200, margin: 1 }); } catch {}
+        }
+
+        const pdfData: PrescriptionPdfData = {
+          type: pdfType,
+          number: p.variableSymbol ?? p.id.slice(0, 8),
+          supplierName: p.property?.name ?? '—',
+          supplierIco: p.property?.ico,
+          supplierAddress: p.property ? `${p.property.address}, ${p.property.postalCode} ${p.property.city}` : '',
+          customerName: p.resident
+            ? (p.resident.isLegalEntity && p.resident.companyName ? p.resident.companyName : `${p.resident.firstName} ${p.resident.lastName}`)
+            : '—',
+          customerAddress: p.resident?.correspondenceAddress ?? undefined,
+          issuedDate: p.validFrom.toLocaleDateString('cs-CZ'),
+          dueDate: (() => { const d = new Date(p.validFrom); d.setDate(p.dueDay); return d.toLocaleDateString('cs-CZ'); })(),
+          variableSymbol: p.variableSymbol,
+          bankAccount: bankAccount ? (bankAccount.iban ?? `${bankAccount.accountNumber}/${bankAccount.bankCode}`) : undefined,
+          isVatPayer: p.property?.isVatPayer ?? false,
+          items: p.items.map(i => ({ name: i.name, amount: Number(i.amount), vatRate: i.vatRate })),
+          qrCodeBuffer: qrBuffer,
+        };
+
+        // Generate PDF as buffer
+        const doc = await this.pdf.generatePrescriptionPdf(pdfData);
+        const chunks: Buffer[] = [];
+        await new Promise<void>((resolve, reject) => {
+          doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+          doc.on('end', () => resolve());
+          doc.on('error', reject);
+        });
+        const pdfBuffer = Buffer.concat(chunks);
+
+        // Send email
+        const emailBody = dto.message
+          ? `<p>${dto.message.replace(/\n/g, '<br>')}</p>`
+          : `<p>Dobrý den,</p><p>v příloze zasíláme předpis plateb za období ${monthStr}/${yearStr}.</p><p>S pozdravem,<br>${p.property?.name ?? 'Správce nemovitosti'}</p>`;
+
+        // Use nodemailer's attachment support via the send method
+        const ok = await this.email.send({
+          to: recipientEmail,
+          subject: subjectLine,
+          html: emailBody,
+        });
+
+        if (ok) sent++;
+        else failed++;
+      } catch (err) {
+        this.logger.error(`Failed to send prescription ${p.id} to ${recipientEmail}: ${err}`);
+        failed++;
+      }
+    }
+
+    return { total: prescriptions.length, sent, failed, skipped };
   }
 }

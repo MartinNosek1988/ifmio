@@ -5,6 +5,7 @@ export class CreateComponentDto {
   @IsOptional() @IsString() code?: string
   @IsString() componentType!: string
   @IsString() calculationMethod!: string
+  @IsOptional() @IsString() allocationMethod?: string
   @IsNumber() @Min(0) defaultAmount!: number
   @IsOptional() @IsInt() @Min(0) @Max(100) vatRate?: number
   @IsOptional() @IsString() description?: string
@@ -19,6 +20,7 @@ export class UpdateComponentDto {
   @IsOptional() @IsString() code?: string
   @IsOptional() @IsString() componentType?: string
   @IsOptional() @IsString() calculationMethod?: string
+  @IsOptional() @IsString() allocationMethod?: string
   @IsOptional() @IsNumber() @Min(0) defaultAmount?: number
   @IsOptional() @IsInt() @Min(0) @Max(100) vatRate?: number
   @IsOptional() @IsString() description?: string
