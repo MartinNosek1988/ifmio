@@ -46,4 +46,22 @@ export class CommunicationController {
   outbox(@CurrentUser() user: AuthUser, @Query('limit') limit?: string) {
     return this.service.getOutboxLogs(user.tenantId, limit ? parseInt(limit) : 50)
   }
+
+  @Post('bulk-send')
+  @Roles('tenant_owner', 'tenant_admin')
+  @ApiOperation({ summary: 'Hromadný email vlastníkům/nájemcům nemovitosti' })
+  bulkSend(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: {
+      propertyId: string
+      subject: string
+      body: string
+      recipientFilter: 'all' | 'owners' | 'tenants' | 'custom'
+      recipientIds?: string[]
+      unitGroupId?: string
+      attachmentType?: 'evidencni_list' | 'predpis' | 'vyuctovani'
+    },
+  ) {
+    return this.service.bulkSendToProperty(user.tenantId, dto)
+  }
 }

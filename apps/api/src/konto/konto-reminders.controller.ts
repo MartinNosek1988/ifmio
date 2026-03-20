@@ -1,5 +1,6 @@
-import { Controller, Get, Post, Patch, Param, Query, Body } from '@nestjs/common'
+import { Controller, Get, Post, Patch, Param, Query, Body, Res } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
+import type { FastifyReply } from 'fastify'
 import { Roles } from '../common/decorators/roles.decorator'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
 import { ROLES_FINANCE } from '../common/constants/roles.constants'
@@ -77,5 +78,18 @@ export class KontoRemindersController {
     @Param('reminderId') reminderId: string,
   ) {
     return this.service.cancelReminder(user.tenantId, reminderId)
+  }
+
+  @Get(':reminderId/pdf')
+  @ApiOperation({ summary: 'Stáhnout upomínku jako PDF s QR kódem' })
+  async reminderPdf(
+    @CurrentUser() user: AuthUser,
+    @Param('reminderId') reminderId: string,
+    @Res() reply: FastifyReply,
+  ) {
+    const doc = await this.service.generateReminderPdf(user.tenantId, reminderId)
+    reply.header('Content-Type', 'application/pdf')
+    reply.header('Content-Disposition', `attachment; filename="upominka-${reminderId.slice(0, 8)}.pdf"`)
+    return reply.send(doc)
   }
 }
