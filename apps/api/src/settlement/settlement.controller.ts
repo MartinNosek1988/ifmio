@@ -1,5 +1,6 @@
-import { Controller, Get, Post, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common'
+import { Controller, Get, Post, Delete, Body, Param, Query, Res, HttpCode, HttpStatus } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger'
+import type { FastifyReply } from 'fastify'
 import { SettlementService } from './settlement.service'
 import { CreateSettlementDto, AddCostDto } from './dto/create-settlement.dto'
 import { Roles } from '../common/decorators/roles.decorator'
@@ -72,5 +73,39 @@ export class SettlementController {
   @ApiOperation({ summary: 'Detail vyúčtování pro jednotku' })
   getUnitDetail(@CurrentUser() user: AuthUser, @Param('id') id: string, @Param('unitId') unitId: string) {
     return this.service.getUnitDetail(user.tenantId, id, unitId)
+  }
+
+  @Post(':id/populate-costs')
+  @Roles('tenant_owner', 'tenant_admin')
+  @ApiOperation({ summary: 'Auto-naplnit náklady z dokladů (InvoiceCostAllocation)' })
+  populateCosts(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.service.populateCostsFromInvoices(user.tenantId, id)
+  }
+
+  @Get(':id/pdf')
+  @Roles('tenant_owner', 'tenant_admin', 'finance_manager')
+  @ApiOperation({ summary: 'Hromadné vyúčtování PDF (všichni vlastníci)' })
+  async bulkPdf(@CurrentUser() user: AuthUser, @Param('id') id: string, @Res() reply: FastifyReply) {
+    const doc = await this.service.generateBulkPdf(user.tenantId, id)
+    reply.header('Content-Type', 'application/pdf')
+    reply.header('Content-Disposition', 'attachment; filename="vyuctovani.pdf"')
+    return reply.send(doc)
+  }
+
+  @Get(':id/items/:itemId/pdf')
+  @Roles('tenant_owner', 'tenant_admin', 'finance_manager')
+  @ApiOperation({ summary: 'Vyúčtování PDF pro jednoho vlastníka' })
+  async itemPdf(@CurrentUser() user: AuthUser, @Param('id') id: string, @Param('itemId') itemId: string, @Res() reply: FastifyReply) {
+    const doc = await this.service.generateItemPdf(user.tenantId, id, itemId)
+    reply.header('Content-Type', 'application/pdf')
+    reply.header('Content-Disposition', 'attachment; filename="vyuctovani-jednotka.pdf"')
+    return reply.send(doc)
+  }
+
+  @Post(':id/send')
+  @Roles('tenant_owner', 'tenant_admin')
+  @ApiOperation({ summary: 'Hromadně odeslat vyúčtování emailem' })
+  send(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: { subject?: string; message?: string }) {
+    return this.service.sendSettlementEmails(user.tenantId, id, dto)
   }
 }
