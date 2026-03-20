@@ -18,6 +18,7 @@ import { usePropertyTenancies, type ApiTenancy } from './tenancies-api';
 import OwnershipFormModal from './OwnershipFormModal';
 import TenancyFormModal from './TenancyFormModal';
 import TenancyTerminateModal from './TenancyTerminateModal';
+import { UnitGroupsTab } from './UnitGroupsTab';
 import ManagementContractFormModal from './ManagementContractFormModal';
 import FinancialContextFormModal from './FinancialContextFormModal';
 
@@ -51,7 +52,7 @@ export default function PropertyDetailPage() {
   const [contractModal, setContractModal] = useState<{ contract?: ApiManagementContract } | null>(null);
   const [fcModal, setFcModal] = useState<{ context?: ApiFinancialContext } | null>(null);
 
-  type DetailTab = 'overview' | 'units' | 'meters' | 'components' | 'representatives' | 'owners'
+  type DetailTab = 'overview' | 'units' | 'owners' | 'groups' | 'meters' | 'components' | 'representatives'
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
 
   const refetchOwnerships = () => queryClient.invalidateQueries({ queryKey: ['ownerships'] });
@@ -293,6 +294,7 @@ export default function PropertyDetailPage() {
           { key: 'overview' as DetailTab, label: 'Přehled' },
           { key: 'units' as DetailTab, label: `Jednotky (${totalUnits})` },
           { key: 'owners' as DetailTab, label: 'Vlastníci' },
+          { key: 'groups' as DetailTab, label: 'Uspořádání' },
           { key: 'meters' as DetailTab, label: 'Měřidla' },
           { key: 'components' as DetailTab, label: 'Složky předpisu' },
           { key: 'representatives' as DetailTab, label: 'Zástupci' },
@@ -425,6 +427,9 @@ export default function PropertyDetailPage() {
           )}
         </div>
       )}
+
+      {/* ── USPOŘÁDÁNÍ TAB ────────────────────────────────────────── */}
+      {detailTab === 'groups' && <UnitGroupsTab propertyId={id!} units={property.units ?? []} />}
 
       {/* ── PLACEHOLDER TABS ─────────────────────────────────────── */}
       {detailTab === 'meters' && <EmptyState title="Měřidla" description="Přejděte do sekce Měřidla & Energie pro správu měřidel této nemovitosti." action={{ label: 'Otevřít měřidla', onClick: () => navigate('/meters') }} />}

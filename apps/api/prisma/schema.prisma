@@ -85,6 +85,7 @@ model Tenant {
   invitations                 TenantInvitation[]
   kanbanTasks                 KanbanTask[]
   apiKeys                     ApiKey[]
+  unitGroups                  UnitGroup[]
 
   @@map("tenants")
 }
@@ -317,6 +318,7 @@ model Property {
   settlements                Settlement[]
   invitations                TenantInvitation[]
   kanbanTasks                KanbanTask[]
+  unitGroups                 UnitGroup[]
 
   @@index([tenantId])
   @@map("properties")
@@ -422,6 +424,7 @@ model Unit {
   tenancies                Tenancy[]
   settlementItems          SettlementItem[]
   invitations              TenantInvitation[]
+  groupMemberships         UnitGroupMembership[]
 
   @@index([propertyId])
   @@map("units")
@@ -2654,6 +2657,7 @@ model UnitOwnership {
   validFrom             DateTime?
   validTo               DateTime?
   isActive              Boolean       @default(true)
+  variableSymbol        String?       // VS pro párování plateb
   note                  String?       @db.Text
 
   createdAt             DateTime      @default(now())
@@ -2689,6 +2693,7 @@ model Tenancy {
   depositAmount         Decimal?     @db.Decimal(12, 2)
 
   isActive              Boolean      @default(true)
+  variableSymbol        String?      // VS pro párování plateb
   note                  String?      @db.Text
 
   createdAt             DateTime     @default(now())
@@ -3146,4 +3151,42 @@ model LoginRiskLog {
   @@index([userId, createdAt])
   @@index([tenantId, createdAt])
   @@map("login_risk_logs")
+}
+
+// ─── UNIT GROUPS (E2 — uspořádání jednotek) ──────────────────────────
+
+model UnitGroup {
+  id          String        @id @default(uuid())
+  tenantId    String
+  propertyId  String
+  name        String
+  type        UnitGroupType @default(custom)
+  sortOrder   Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property    Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  memberships UnitGroupMembership[]
+
+  @@index([tenantId, propertyId])
+  @@map("unit_groups")
+}
+
+model UnitGroupMembership {
+  id          String    @id @default(uuid())
+  unitGroupId String
+  unitId      String
+
+  unitGroup   UnitGroup @relation(fields: [unitGroupId], references: [id], onDelete: Cascade)
+  unit        Unit      @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@unique([unitGroupId, unitId])
+  @@map("unit_group_memberships")
+}
+
+enum UnitGroupType {
+  entrance
+  floor
+  custom
 }
