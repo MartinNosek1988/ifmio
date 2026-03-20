@@ -1,0 +1,15 @@
+{
+  "name": "@ifmio/e2e",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:smoke": "playwright test tests/smoke/",
+    "screenshots": "npx tsx scripts/take-screenshots.ts",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.0",
+    "dotenv": "^16.4.0",
+    "tsx": "^4.19.0"
+  }
+}
