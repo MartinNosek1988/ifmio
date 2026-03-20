@@ -19,6 +19,7 @@ import OwnershipFormModal from './OwnershipFormModal';
 import TenancyFormModal from './TenancyFormModal';
 import TenancyTerminateModal from './TenancyTerminateModal';
 import { UnitGroupsTab } from './UnitGroupsTab';
+import TransferModal from './TransferModal';
 import ManagementContractFormModal from './ManagementContractFormModal';
 import FinancialContextFormModal from './FinancialContextFormModal';
 
@@ -51,6 +52,7 @@ export default function PropertyDetailPage() {
   const [terminateModal, setTerminateModal] = useState<ApiTenancy | null>(null);
   const [contractModal, setContractModal] = useState<{ contract?: ApiManagementContract } | null>(null);
   const [fcModal, setFcModal] = useState<{ context?: ApiFinancialContext } | null>(null);
+  const [transferModal, setTransferModal] = useState<{ unitId: string; unitName: string; occupancyId: string; ownerName: string; share?: number | null } | null>(null);
 
   type DetailTab = 'overview' | 'units' | 'owners' | 'groups' | 'meters' | 'components' | 'representatives'
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
@@ -379,6 +381,12 @@ export default function PropertyDetailPage() {
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <div style={{ fontWeight: 600, fontSize: '.9rem' }}>Vlastníci jednotek ({unitOwnerships.length})</div>
+            <button className="btn btn--sm" onClick={() => {
+              const token = sessionStorage.getItem('ifmio:access_token');
+              window.open(`${import.meta.env.VITE_API_URL ?? '/api/v1'}/pdf/evidencni-listy/property/${id}?year=${new Date().getFullYear()}&token=${token}`, '_blank');
+            }}>
+              Hromadné evidenční listy
+            </button>
           </div>
           {unitOwnerships.length === 0 ? (
             <EmptyState title="Žádní vlastníci" description="Jednotky nemají přiřazené vlastníky." />
@@ -584,6 +592,21 @@ export default function PropertyDetailPage() {
           context={fcModal.context}
           onClose={() => setFcModal(null)}
           onSaved={() => { setFcModal(null); queryClient.invalidateQueries({ queryKey: ['financial-contexts'] }); }}
+        />
+      )}
+
+      {transferModal && (
+        <TransferModal
+          open={true}
+          onClose={() => { setTransferModal(null); refetch(); }}
+          propertyId={id!}
+          unitId={transferModal.unitId}
+          unitName={transferModal.unitName}
+          currentOwner={{
+            occupancyId: transferModal.occupancyId,
+            name: transferModal.ownerName,
+            ownershipShare: transferModal.share,
+          }}
         />
       )}
     </div>
