@@ -52,6 +52,10 @@ services:
         VITE_API_URL: ${VITE_API_URL:-/api/v1}
     restart: unless-stopped
     read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
     security_opt:
       - no-new-privileges:true
     depends_on:
