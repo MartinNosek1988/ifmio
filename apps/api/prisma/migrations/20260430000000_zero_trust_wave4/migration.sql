@@ -20,10 +20,16 @@ CREATE UNIQUE INDEX IF NOT EXISTS "api_keys_keyHash_key" ON "api_keys"("keyHash"
 CREATE INDEX IF NOT EXISTS "api_keys_tenantId_idx" ON "api_keys"("tenantId");
 CREATE INDEX IF NOT EXISTS "api_keys_keyHash_idx" ON "api_keys"("keyHash");
 
-ALTER TABLE "api_keys" ADD CONSTRAINT "api_keys_tenantId_fkey"
-    FOREIGN KEY ("tenantId") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "api_keys" ADD CONSTRAINT "api_keys_userId_fkey"
-    FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'api_keys_tenantId_fkey') THEN
+    ALTER TABLE "api_keys" ADD CONSTRAINT "api_keys_tenantId_fkey"
+      FOREIGN KEY ("tenantId") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'api_keys_userId_fkey') THEN
+    ALTER TABLE "api_keys" ADD CONSTRAINT "api_keys_userId_fkey"
+      FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
 
 -- ZT-W4-03: Login Risk Logs for adaptive risk scoring
 CREATE TABLE IF NOT EXISTS "login_risk_logs" (
