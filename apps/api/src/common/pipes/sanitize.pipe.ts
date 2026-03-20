@@ -1,38 +1,47 @@
-import { Injectable, PipeTransform } from '@nestjs/common'
+import { PipeTransform, Injectable, ArgumentMetadata } from '@nestjs/common'
 import sanitizeHtml from 'sanitize-html'
+
+// Resolve the actual function (handles both ESM default and CJS export)
+const sanitize: typeof sanitizeHtml =
+  typeof sanitizeHtml === 'function'
+    ? sanitizeHtml
+    : (sanitizeHtml as any).default ?? sanitizeHtml
 
 const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
   allowedTags: [],
   allowedAttributes: {},
-  disallowedTagsMode: 'recursiveEscape',
+  disallowedTagsMode: 'discard',
 }
 
 /**
- * Global pipe that strips HTML tags from all string inputs.
+ * Global pipe that strips ALL HTML tags from string inputs.
  * Prevents stored XSS by sanitizing at the API boundary.
+ * Runs BEFORE ValidationPipe — sanitizes raw input before validation.
  */
 @Injectable()
 export class SanitizePipe implements PipeTransform {
-  transform(value: unknown): unknown {
-    if (typeof value === 'string') {
-      return sanitizeHtml(value, SANITIZE_OPTIONS)
-    }
-    if (Array.isArray(value)) {
-      return value.map(item => this.transform(item))
-    }
-    if (typeof value === 'object' && value !== null) {
-      return this.sanitizeObject(value as Record<string, unknown>)
-    }
+  transform(value: unknown, _metadata?: ArgumentMetadata): unknown {
+    if (value === null || value === undefined) return value
+    if (typeof value === 'string') return this.sanitizeString(value)
+    if (Buffer.isBuffer(value)) return value
+    if (Array.isArray(value)) return value.map(item => this.transform(item))
+    if (typeof value === 'object') return this.sanitizeObject(value as Record<string, unknown>)
     return value
+  }
+
+  private sanitizeString(str: string): string {
+    return sanitize(str, SANITIZE_OPTIONS)
   }
 
   private sanitizeObject(obj: Record<string, unknown>): Record<string, unknown> {
     const result: Record<string, unknown> = {}
     for (const [key, val] of Object.entries(obj)) {
       if (typeof val === 'string') {
-        result[key] = sanitizeHtml(val, SANITIZE_OPTIONS)
+        result[key] = this.sanitizeString(val)
       } else if (Array.isArray(val)) {
         result[key] = val.map(item => this.transform(item))
+      } else if (Buffer.isBuffer(val)) {
+        result[key] = val
       } else if (typeof val === 'object' && val !== null) {
         result[key] = this.sanitizeObject(val as Record<string, unknown>)
       } else {

@@ -94,6 +94,7 @@ export class MioWebhookService {
       where: { id, tenantId: user.tenantId },
     })
     if (!sub) throw new NotFoundException('Webhook nenalezen')
+    if (dto.endpointUrl) this.validateWebhookUrl(dto.endpointUrl)
     if (dto.eventTypes) {
       for (const et of dto.eventTypes) {
         if (!VALID_EVENT_TYPES.includes(et)) throw new BadRequestException(`Neplatný typ události: ${et}`)
@@ -503,10 +504,56 @@ export class MioWebhookService {
   private validateDto(dto: { name: string; endpointUrl: string; eventTypes: string[] }) {
     if (!dto.name?.trim()) throw new BadRequestException('Název je povinný')
     if (!dto.endpointUrl?.trim()) throw new BadRequestException('URL endpointu je povinná')
-    try { new URL(dto.endpointUrl) } catch { throw new BadRequestException('Neplatná URL endpointu') }
+    this.validateWebhookUrl(dto.endpointUrl)
     if (!dto.eventTypes?.length) throw new BadRequestException('Vyberte alespoň jednu událost')
     for (const et of dto.eventTypes) {
       if (!VALID_EVENT_TYPES.includes(et)) throw new BadRequestException(`Neplatný typ události: ${et}`)
+    }
+  }
+
+  /** SSRF protection: reject private IPs, localhost, metadata endpoints */
+  private validateWebhookUrl(url: string): void {
+    let parsed: URL
+    try {
+      parsed = new URL(url)
+    } catch {
+      throw new BadRequestException('Neplatná webhook URL')
+    }
+
+    // Must be HTTPS in production
+    if (process.env.NODE_ENV === 'production' && parsed.protocol !== 'https:') {
+      throw new BadRequestException('Webhook URL musí používat HTTPS')
+    }
+
+    // Must be http or https
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new BadRequestException('Webhook URL musí používat HTTP/HTTPS protokol')
+    }
+
+    const hostname = parsed.hostname.toLowerCase()
+
+    // Block localhost variants
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '0.0.0.0') {
+      throw new BadRequestException('Webhook URL nesmí odkazovat na localhost')
+    }
+
+    // Block cloud metadata endpoints
+    if (hostname === '169.254.169.254' || hostname === 'metadata.google.internal' || hostname === '100.100.100.200') {
+      throw new BadRequestException('Webhook URL nesmí odkazovat na metadata endpoint')
+    }
+
+    // Block private IP ranges
+    const ipMatch = hostname.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/)
+    if (ipMatch) {
+      const [, a, b] = ipMatch.map(Number)
+      if (a === 10 ||                            // 10.0.0.0/8
+          (a === 172 && b >= 16 && b <= 31) ||   // 172.16.0.0/12
+          (a === 192 && b === 168) ||             // 192.168.0.0/16
+          (a === 169 && b === 254) ||             // link-local
+          a === 127 ||                            // loopback
+          a === 0) {                              // 0.0.0.0/8
+        throw new BadRequestException('Webhook URL nesmí odkazovat na privátní IP adresu')
+      }
     }
   }
 }

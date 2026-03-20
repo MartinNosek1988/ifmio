@@ -18,8 +18,8 @@ export class ResidentsImportController {
 
   @Get('template')
   @ApiOperation({ summary: 'Stahnout XLSX sablonu pro import' })
-  downloadTemplate(@Res() res: FastifyReply) {
-    const buffer = this.service.generateTemplate()
+  async downloadTemplate(@Res() res: FastifyReply) {
+    const buffer = await this.service.generateTemplate()
     res
       .header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
       .header('Content-Disposition', 'attachment; filename="import-najemniku-sablona.xlsx"')
@@ -50,7 +50,7 @@ export class ResidentsImportController {
     }
     const buffer = Buffer.concat(chunks)
 
-    const rows = this.service.parseFile(buffer, data.mimetype)
+    const rows = await this.service.parseFile(buffer, data.mimetype)
     return this.service.validate(user, rows)
   }
 

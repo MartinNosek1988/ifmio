@@ -86,7 +86,8 @@ async function bootstrap() {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
-      transformOptions: { enableImplicitConversion: true },
+      // enableImplicitConversion REMOVED — it coerces objects to "[object Object]"
+      // which bypasses @IsString() validation. Use explicit @Type() decorators instead.
     }),
   );
 
