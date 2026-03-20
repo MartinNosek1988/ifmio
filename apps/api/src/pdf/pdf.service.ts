@@ -503,6 +503,132 @@ export class PdfService {
   private formatCzk(amount: number): string {
     return amount.toLocaleString('cs-CZ') + ' Kč';
   }
+
+  // ─── Předpis / Faktura PDF ──────────────────────────────────────
+
+  async generatePrescriptionPdf(data: PrescriptionPdfData): Promise<PDFKit.PDFDocument> {
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    const isInvoice = data.type === 'faktura';
+
+    // Header
+    doc.fontSize(18).font('Helvetica-Bold').text('ifmio', { align: 'center' }).moveDown(0.3);
+    doc.fontSize(14).font('Helvetica-Bold')
+      .text(isInvoice ? `FAKTURA - PŘEDPIS č. ${data.number}` : `PŘEDPIS č. ${data.number}`, { align: 'center' })
+      .moveDown(1);
+
+    // Supplier + Customer columns
+    if (isInvoice) {
+      const startY = doc.y;
+      doc.fontSize(9).font('Helvetica-Bold').text('Dodavatel:', 50, startY);
+      doc.font('Helvetica').fontSize(9);
+      doc.text(data.supplierName, 50, startY + 14);
+      if (data.supplierIco) doc.text(`IČ: ${data.supplierIco}`);
+      doc.text(data.supplierAddress);
+
+      doc.fontSize(9).font('Helvetica-Bold').text('Odběratel:', 300, startY);
+      doc.font('Helvetica').fontSize(9);
+      doc.text(data.customerName, 300, startY + 14);
+      if (data.customerAddress) doc.text(data.customerAddress, 300);
+      doc.y = Math.max(doc.y, startY + 60);
+      doc.moveDown(0.5);
+    }
+
+    // Metadata
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#cccccc').moveDown(0.5);
+    doc.fontSize(9).font('Helvetica');
+    const metaY = doc.y;
+    doc.text(`Datum vystavení: ${data.issuedDate}`, 50, metaY);
+    doc.text(`Datum splatnosti: ${data.dueDate}`, 50);
+    if (data.variableSymbol) doc.text(`VS: ${data.variableSymbol}`, 50);
+    doc.text(`Forma úhrady: Bankovní převod`, 300, metaY);
+    if (data.bankAccount) doc.text(`Číslo účtu: ${data.bankAccount}`, 300);
+    doc.moveDown(1);
+
+    // Items table
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#cccccc').moveDown(0.5);
+    doc.font('Helvetica-Bold').fontSize(9);
+    doc.text('Položka', 50, doc.y);
+    doc.text('Částka', 420, doc.y - 10, { align: 'right', width: 75 });
+    if (data.isVatPayer) doc.text('DPH', 500, doc.y - 10, { align: 'right', width: 45 });
+    doc.moveDown(0.5);
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#e0e0e0').moveDown(0.3);
+
+    doc.font('Helvetica').fontSize(9);
+    let totalBase = 0;
+    const vatGroups = new Map<number, number>();
+
+    for (const item of data.items) {
+      doc.text(item.name, 50, doc.y);
+      doc.text(this.formatCzk(item.amount), 420, doc.y - 10, { align: 'right', width: 75 });
+      if (data.isVatPayer) {
+        const vr = item.vatRate ?? 0;
+        doc.text(vr > 0 ? `${vr}%` : '—', 500, doc.y - 10, { align: 'right', width: 45 });
+        if (vr > 0) {
+          vatGroups.set(vr, (vatGroups.get(vr) ?? 0) + item.amount * vr / 100);
+        }
+      }
+      totalBase += item.amount;
+      doc.moveDown(0.3);
+    }
+
+    // Totals
+    doc.moveDown(0.3);
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#cccccc').moveDown(0.3);
+    doc.font('Helvetica-Bold').fontSize(10);
+
+    if (data.isVatPayer && vatGroups.size > 0) {
+      doc.text(`Základ bez DPH:`, 50, doc.y);
+      doc.text(this.formatCzk(totalBase), 420, doc.y - 10, { align: 'right', width: 125 });
+      doc.moveDown(0.3);
+      let totalVat = 0;
+      for (const [rate, amount] of vatGroups) {
+        doc.font('Helvetica').fontSize(9);
+        doc.text(`DPH ${rate}%:`, 50, doc.y);
+        doc.text(this.formatCzk(Math.round(amount * 100) / 100), 420, doc.y - 10, { align: 'right', width: 125 });
+        totalVat += amount;
+        doc.moveDown(0.3);
+      }
+      doc.font('Helvetica-Bold').fontSize(11);
+      doc.text('CELKEM K ÚHRADĚ:', 50, doc.y);
+      doc.text(this.formatCzk(Math.round((totalBase + totalVat) * 100) / 100), 420, doc.y - 10, { align: 'right', width: 125 });
+    } else {
+      doc.text('CELKEM:', 50, doc.y);
+      doc.text(this.formatCzk(totalBase), 420, doc.y - 10, { align: 'right', width: 125 });
+    }
+    doc.moveDown(1.5);
+
+    // QR payment code
+    if (data.qrCodeBuffer) {
+      doc.image(data.qrCodeBuffer, 50, doc.y, { width: 100, height: 100 });
+      doc.fontSize(8).font('Helvetica').text('QR Platba', 50, doc.y + 104, { width: 100, align: 'center' });
+      doc.y += 120;
+    }
+
+    // Footer
+    doc.moveDown(1);
+    doc.fontSize(7).fillColor('#aaaaaa')
+      .text(`Vygenerováno: ${new Date().toLocaleDateString('cs-CZ')} | ifmio Property Management`, { align: 'center' });
+
+    doc.end();
+    return doc;
+  }
+}
+
+export interface PrescriptionPdfData {
+  type: 'predpis' | 'faktura';
+  number: string;
+  supplierName: string;
+  supplierIco?: string | null;
+  supplierAddress: string;
+  customerName: string;
+  customerAddress?: string | null;
+  issuedDate: string;
+  dueDate: string;
+  variableSymbol?: string | null;
+  bankAccount?: string | null;
+  isVatPayer: boolean;
+  items: { name: string; amount: number; vatRate?: number | null }[];
+  qrCodeBuffer?: Buffer | null;
 }
 
 export interface EvidencniListData {

@@ -322,7 +322,15 @@ export default function FinancePage() {
       {/* ── MODAL: DETAIL PŘEDPISU ────────────────────────────────── */}
       <Modal open={!!detailPredpis} onClose={() => setDetailPredpis(null)}
         title={detailPredpis?.popis || ''} subtitle={detailPredpis ? getPropName(detailPredpis.propId) : ''}
-        footer={<Button onClick={() => setDetailPredpis(null)}>Zavřít</Button>}>
+        footer={<div style={{ display: 'flex', gap: 8 }}>
+          {detailPredpis && (
+            <>
+              <Button onClick={() => window.open(`${import.meta.env.VITE_API_URL ?? '/api/v1'}/pdf/prescriptions/${detailPredpis.id}/pdf?type=predpis`, '_blank')}>Stáhnout předpis</Button>
+              <Button onClick={() => window.open(`${import.meta.env.VITE_API_URL ?? '/api/v1'}/pdf/prescriptions/${detailPredpis.id}/pdf?type=faktura`, '_blank')}>Stáhnout fakturu</Button>
+            </>
+          )}
+          <Button onClick={() => setDetailPredpis(null)}>Zavřít</Button>
+        </div>}>
         {detailPredpis && (
           <PredpisDetail predpis={detailPredpis} transactions={transactions} getTenantName={getTenantName} />
         )}

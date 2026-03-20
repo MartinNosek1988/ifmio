@@ -74,6 +74,12 @@ export class FinanceController {
     return this.service.createTransaction(user, dto);
   }
 
+  @Get('prescriptions/:id')
+  @ApiOperation({ summary: 'Detail předpisu s položkami' })
+  getPrescription(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.service.getPrescription(user, id);
+  }
+
   @Get('prescriptions')
   @ApiOperation({ summary: 'Předpisy' })
   listPrescriptions(@CurrentUser() user: AuthUser, @Query() query: {
@@ -321,5 +327,21 @@ export class FinanceController {
   @ApiOperation({ summary: 'Smazat doklad' })
   deleteInvoice(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.invoicesService.remove(user, id);
+  }
+
+  // ─── HROMADNÉ ODESÍLÁNÍ PŘEDPISŮ ────────────────────────────
+
+  @Post('prescriptions/send')
+  @Roles(...ROLES_FINANCE)
+  @AuditAction('Prescription', 'BULK_SEND')
+  @ApiOperation({ summary: 'Hromadně odeslat předpisy emailem' })
+  sendPrescriptions(@CurrentUser() user: AuthUser, @Body() dto: {
+    propertyId: string;
+    month: string;
+    type?: 'predpis' | 'faktura';
+    subject?: string;
+    message?: string;
+  }) {
+    return this.service.sendPrescriptionEmails(user, dto);
   }
 }
