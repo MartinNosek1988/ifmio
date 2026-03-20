@@ -91,7 +91,7 @@ export default function NotificationsPage() {
 
       {/* List */}
       {notifications.length === 0 ? (
-        <EmptyState title="Zadne notifikace" description="Vsechny notifikace byly precteny nebo filtrovany." />
+        <EmptyState title="Žádné notifikace" description="Všechny notifikace byly přečteny nebo filtrovány." />
       ) : (
         <div className="notif-list">
           {notifications.map((n) => (

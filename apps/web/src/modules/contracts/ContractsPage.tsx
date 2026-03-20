@@ -14,7 +14,7 @@ const STATUS_COLOR: Record<string, BadgeVariant> = {
   aktivni: 'green', ukoncena: 'muted', pozastavena: 'yellow', pripravovana: 'blue',
 };
 const STATUS_LABEL: Record<string, string> = {
-  aktivni: 'Aktivni', ukoncena: 'Ukoncena', pozastavena: 'Pozastavena', pripravovana: 'Pripravovana',
+  aktivni: 'Aktivní', ukoncena: 'Ukončená', pozastavena: 'Pozastavená', pripravovana: 'Připravovaná',
 };
 
 function daysToExpiry(endDate: string | null): number | null {
@@ -113,27 +113,27 @@ export default function ContractsPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Najemni smlouvy</h1>
-          <p className="page-subtitle">{stats?.active ?? 0} aktivnich smluv</p>
+          <p className="page-subtitle">{stats?.active ?? 0} aktivních smluv</p>
         </div>
         <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)}>Nova smlouva</Button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
         <KpiCard label="Celkem smluv" value={String(stats?.total ?? 0)} color="var(--accent-blue)" />
-        <KpiCard label="Aktivnich" value={String(stats?.active ?? 0)} color="var(--accent-green)" />
-        <KpiCard label="Expiruje do 30 dni" value={String(stats?.expiringSoon ?? 0)} color="var(--accent-orange)" />
-        <KpiCard label="Ukoncenych" value={String(stats?.terminated ?? 0)} color="var(--text-muted)" />
+        <KpiCard label="Aktivních" value={String(stats?.active ?? 0)} color="var(--accent-green)" />
+        <KpiCard label="Expiruje do 30 dní" value={String(stats?.expiringSoon ?? 0)} color="var(--accent-orange)" />
+        <KpiCard label="Ukončených" value={String(stats?.terminated ?? 0)} color="var(--text-muted)" />
       </div>
 
       <div className="flex-bar" style={{ marginBottom: 16 }}>
-        <SearchBar placeholder="Hledat najemnika, cislo smlouvy..." onSearch={setSearch} />
+        <SearchBar placeholder="Hledat nájemníka, číslo smlouvy..." onSearch={setSearch} />
         <select className="btn" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
           <option value="all">Vse</option>
           {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
       </div>
 
-      <Table data={items} columns={columns} rowKey={(c) => c.id} onRowClick={(c) => setSelected(c)} emptyText="Zadne najemni smlouvy" />
+      <Table data={items} columns={columns} rowKey={(c) => c.id} onRowClick={(c) => setSelected(c)} emptyText="Žádné nájemní smlouvy" />
 
       {selected && (
         <LeaseDetailModal

@@ -190,7 +190,7 @@ export function GlobalSearch() {
                 query.trim().length >= 2 &&
                 data?.total === 0 && (
                   <div className="px-4 py-6 text-center text-sm text-gray-500">
-                    Zadne vysledky pro &quot;{query}&quot;
+                    Žádné výsledky pro &quot;{query}&quot;
                   </div>
                 )}
 

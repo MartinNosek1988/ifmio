@@ -142,7 +142,7 @@ export const router = createBrowserRouter([
       { path: 'asset-types', element: withBoundary('Typy zařízení', AssetTypesPage) },
       { path: 'audit', element: withBoundary('Audit log', AuditPage) },
       { path: 'admin', element: <Navigate to="/team" replace /> },
-      { path: 'settings', element: withBoundary('Nastaveni', SettingsPage) },
+      { path: 'settings', element: withBoundary('Nastavení', SettingsPage) },
       { path: 'notifications', element: withBoundary('Notifikace', NotificationsPage) },
       { path: 'profile', element: withBoundary('Profil', ProfilePage) },
       { path: 'super-admin', element: withBoundary('Super Admin', SuperAdminPage) },

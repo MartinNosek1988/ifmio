@@ -91,7 +91,7 @@ export default function LeaseForm({ lease, onClose }: Props) {
   });
 
   return (
-    <Modal open onClose={onClose} title={isEdit ? 'Upravit smlouvu' : 'Nova najemni smlouva'}
+    <Modal open onClose={onClose} title={isEdit ? 'Upravit smlouvu' : 'Nová nájemní smlouva'}
       footer={
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <Button onClick={onClose}>Zrusit</Button>
