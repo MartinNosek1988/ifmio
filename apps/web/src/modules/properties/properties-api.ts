@@ -21,6 +21,8 @@ export interface ApiProperty {
   managedFrom?: string | null;
   managedTo?: string | null;
   accountingSystem?: AccountingSystemType | null;
+  cadastralArea?: string | null;
+  landRegistrySheet?: string | null;
   country?: string;
   createdAt: string;
   updatedAt: string;
@@ -44,6 +46,7 @@ export interface ApiUnit {
   heatingArea?: number | null;
   tuvArea?: number | null;
   heatingCoefficient?: number | null;
+  hotWaterCoefficient?: number | null;
   personCount?: number | null;
   disposition?: string | null;
   hasElevator?: boolean | null;
@@ -70,6 +73,8 @@ export interface CreatePropertyPayload {
   managedFrom?: string | null;
   managedTo?: string | null;
   accountingSystem?: AccountingSystemType | null;
+  cadastralArea?: string | null;
+  landRegistrySheet?: string | null;
 }
 
 export interface UpdatePropertyPayload extends Partial<CreatePropertyPayload> {}
@@ -85,6 +90,7 @@ export interface CreateUnitPayload {
   heatingArea?: number | null;
   tuvArea?: number | null;
   heatingCoefficient?: number | null;
+  hotWaterCoefficient?: number | null;
   personCount?: number | null;
   disposition?: string | null;
   hasElevator?: boolean | null;

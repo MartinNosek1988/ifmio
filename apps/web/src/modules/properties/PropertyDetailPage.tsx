@@ -18,6 +18,8 @@ import { usePropertyTenancies, type ApiTenancy } from './tenancies-api';
 import OwnershipFormModal from './OwnershipFormModal';
 import TenancyFormModal from './TenancyFormModal';
 import TenancyTerminateModal from './TenancyTerminateModal';
+import { UnitGroupsTab } from './UnitGroupsTab';
+import TransferModal from './TransferModal';
 import ManagementContractFormModal from './ManagementContractFormModal';
 import FinancialContextFormModal from './FinancialContextFormModal';
 
@@ -50,8 +52,9 @@ export default function PropertyDetailPage() {
   const [terminateModal, setTerminateModal] = useState<ApiTenancy | null>(null);
   const [contractModal, setContractModal] = useState<{ contract?: ApiManagementContract } | null>(null);
   const [fcModal, setFcModal] = useState<{ context?: ApiFinancialContext } | null>(null);
+  const [transferModal, setTransferModal] = useState<{ unitId: string; unitName: string; occupancyId: string; ownerName: string; share?: number | null } | null>(null);
 
-  type DetailTab = 'overview' | 'units' | 'meters' | 'components' | 'representatives' | 'owners'
+  type DetailTab = 'overview' | 'units' | 'owners' | 'groups' | 'meters' | 'components' | 'representatives'
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
 
   const refetchOwnerships = () => queryClient.invalidateQueries({ queryKey: ['ownerships'] });
@@ -293,6 +296,7 @@ export default function PropertyDetailPage() {
           { key: 'overview' as DetailTab, label: 'Přehled' },
           { key: 'units' as DetailTab, label: `Jednotky (${totalUnits})` },
           { key: 'owners' as DetailTab, label: 'Vlastníci' },
+          { key: 'groups' as DetailTab, label: 'Uspořádání' },
           { key: 'meters' as DetailTab, label: 'Měřidla' },
           { key: 'components' as DetailTab, label: 'Složky předpisu' },
           { key: 'representatives' as DetailTab, label: 'Zástupci' },
@@ -320,11 +324,13 @@ export default function PropertyDetailPage() {
           {property.managedTo && <div><span className="text-muted">Ve správě do:</span> {new Date(property.managedTo).toLocaleDateString('cs-CZ')}</div>}
           {property.accountingSystem && property.accountingSystem !== 'NONE' && <div><span className="text-muted">Účetní systém:</span> {property.accountingSystem}</div>}
         </div>
-        {(property as any).cadastralData && (
+        {((property as any).cadastralData || (property as any).cadastralArea || (property as any).landRegistrySheet) && (
           <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, fontSize: '.85rem' }}>
-            {(property as any).cadastralData.parcelNumber && <div><span className="text-muted">Parcela:</span> {(property as any).cadastralData.parcelNumber}</div>}
-            {(property as any).cadastralData.cadastralTerritory && <div><span className="text-muted">K.Ú.:</span> {(property as any).cadastralData.cadastralTerritory}</div>}
-            {(property as any).cadastralData.buildingNumber && <div><span className="text-muted">Č.p.:</span> {(property as any).cadastralData.buildingNumber}</div>}
+            {(property as any).cadastralArea && <div><span className="text-muted">K.Ú.:</span> {(property as any).cadastralArea}</div>}
+            {(property as any).landRegistrySheet && <div><span className="text-muted">LV:</span> {(property as any).landRegistrySheet}</div>}
+            {(property as any).cadastralData?.parcelNumber && <div><span className="text-muted">Parcela:</span> {(property as any).cadastralData.parcelNumber}</div>}
+            {!(property as any).cadastralArea && (property as any).cadastralData?.cadastralTerritory && <div><span className="text-muted">K.Ú.:</span> {(property as any).cadastralData.cadastralTerritory}</div>}
+            {(property as any).cadastralData?.buildingNumber && <div><span className="text-muted">Č.p.:</span> {(property as any).cadastralData.buildingNumber}</div>}
           </div>
         )}
       </div>
@@ -375,6 +381,12 @@ export default function PropertyDetailPage() {
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <div style={{ fontWeight: 600, fontSize: '.9rem' }}>Vlastníci jednotek ({unitOwnerships.length})</div>
+            <button className="btn btn--sm" onClick={() => {
+              const token = sessionStorage.getItem('ifmio:access_token');
+              window.open(`${import.meta.env.VITE_API_URL ?? '/api/v1'}/pdf/evidencni-listy/property/${id}?year=${new Date().getFullYear()}&token=${token}`, '_blank');
+            }}>
+              Hromadné evidenční listy
+            </button>
           </div>
           {unitOwnerships.length === 0 ? (
             <EmptyState title="Žádní vlastníci" description="Jednotky nemají přiřazené vlastníky." />
@@ -423,6 +435,9 @@ export default function PropertyDetailPage() {
           )}
         </div>
       )}
+
+      {/* ── USPOŘÁDÁNÍ TAB ────────────────────────────────────────── */}
+      {detailTab === 'groups' && <UnitGroupsTab propertyId={id!} units={property.units ?? []} />}
 
       {/* ── PLACEHOLDER TABS ─────────────────────────────────────── */}
       {detailTab === 'meters' && <EmptyState title="Měřidla" description="Přejděte do sekce Měřidla & Energie pro správu měřidel této nemovitosti." action={{ label: 'Otevřít měřidla', onClick: () => navigate('/meters') }} />}
@@ -577,6 +592,21 @@ export default function PropertyDetailPage() {
           context={fcModal.context}
           onClose={() => setFcModal(null)}
           onSaved={() => { setFcModal(null); queryClient.invalidateQueries({ queryKey: ['financial-contexts'] }); }}
+        />
+      )}
+
+      {transferModal && (
+        <TransferModal
+          open={true}
+          onClose={() => { setTransferModal(null); refetch(); }}
+          propertyId={id!}
+          unitId={transferModal.unitId}
+          unitName={transferModal.unitName}
+          currentOwner={{
+            occupancyId: transferModal.occupancyId,
+            name: transferModal.ownerName,
+            ownershipShare: transferModal.share,
+          }}
         />
       )}
     </div>

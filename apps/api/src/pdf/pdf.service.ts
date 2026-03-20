@@ -384,4 +384,143 @@ export class PdfService {
     doc.end();
     return doc;
   }
+
+  // ─── Evidenční list ──────────────────────────────────────────────
+
+  generateEvidencniList(data: EvidencniListData): PDFKit.PDFDocument {
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+
+    // Header
+    doc
+      .fontSize(20).font('Helvetica-Bold')
+      .text('ifmio', { align: 'center' })
+      .moveDown(0.5);
+
+    doc
+      .fontSize(16).font('Helvetica-Bold')
+      .text('EVIDENČNÍ LIST', { align: 'center' })
+      .fontSize(12).font('Helvetica')
+      .text(`pro rok ${data.year}`, { align: 'center' })
+      .moveDown(1.5);
+
+    // Property section
+    doc.fontSize(10).font('Helvetica-Bold').text('NEMOVITOST');
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#cccccc');
+    doc.moveDown(0.3);
+    doc.font('Helvetica').fontSize(10);
+    doc.text(`Název: ${data.propertyName}`);
+    if (data.propertyIco) doc.text(`IČ: ${data.propertyIco}`);
+    doc.text(`Adresa: ${data.propertyAddress}`);
+    if (data.propertyLegalMode) doc.text(`Forma: ${data.propertyLegalMode}`);
+    doc.moveDown(1);
+
+    // Unit section
+    doc.font('Helvetica-Bold').text('JEDNOTKA');
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#cccccc');
+    doc.moveDown(0.3);
+    doc.font('Helvetica');
+    doc.text(`Označení: ${data.unitName}`);
+    if (data.unitKnDesignation) doc.text(`KN označení: ${data.unitKnDesignation}`);
+    if (data.unitSpaceType) doc.text(`Typ: ${data.unitSpaceType}`);
+    if (data.unitDisposition) doc.text(`Dispozice: ${data.unitDisposition}`);
+    if (data.unitArea) doc.text(`Podlahová plocha: ${data.unitArea} m²`);
+    if (data.unitCommonShare) doc.text(`Podíl na spol. částech: ${data.unitCommonShare}`);
+    doc.moveDown(1);
+
+    // Owner section
+    doc.font('Helvetica-Bold').text('VLASTNÍK / NÁJEMCE');
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#cccccc');
+    doc.moveDown(0.3);
+    doc.font('Helvetica');
+    doc.text(`Jméno: ${data.ownerName}`);
+    if (data.ownerAddress) doc.text(`Adresa: ${data.ownerAddress}`);
+    if (data.variableSymbol) doc.text(`Variabilní symbol: ${data.variableSymbol}`);
+    doc.moveDown(1);
+
+    // Prescription section (if available)
+    if (data.prescriptionItems && data.prescriptionItems.length > 0) {
+      doc.font('Helvetica-Bold').text('MĚSÍČNÍ PŘEDPIS PLATEB');
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#cccccc');
+      doc.moveDown(0.5);
+
+      const colX = 50;
+      const amtX = 420;
+
+      doc.font('Helvetica-Bold').fontSize(9);
+      doc.text('Složka', colX, doc.y);
+      doc.text('Částka', amtX, doc.y - 10, { align: 'right', width: 125 });
+      doc.moveDown(0.5);
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#e0e0e0');
+      doc.moveDown(0.3);
+
+      doc.font('Helvetica').fontSize(10);
+      let total = 0;
+      for (const item of data.prescriptionItems) {
+        doc.text(item.name, colX, doc.y);
+        doc.text(this.formatCzk(item.amount), amtX, doc.y - 10, { align: 'right', width: 125 });
+        total += item.amount;
+        doc.moveDown(0.3);
+      }
+
+      doc.moveDown(0.3);
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#cccccc');
+      doc.moveDown(0.3);
+      doc.font('Helvetica-Bold');
+      doc.text('CELKEM', colX, doc.y);
+      doc.text(this.formatCzk(total), amtX, doc.y - 10, { align: 'right', width: 125 });
+      doc.moveDown(1);
+
+      if (data.bankAccount) {
+        doc.font('Helvetica').fontSize(10);
+        doc.text(`Platba na účet: ${data.bankAccount}`);
+        doc.text('Splatnost: do 25. dne v měsíci');
+      }
+    } else {
+      // TODO: Add prescription section when prescription components module is ready
+      doc.font('Helvetica').fontSize(9).fillColor('#888888');
+      doc.text('Sekce předpisu plateb bude doplněna po nastavení složek předpisu.', { align: 'center' });
+      doc.fillColor('#000000');
+    }
+
+    // Footer
+    doc.moveDown(2);
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#cccccc');
+    doc.moveDown(1);
+    doc.font('Helvetica').fontSize(10);
+    doc.text(`V ${data.city ?? 'Praze'} dne ${new Date().toLocaleDateString('cs-CZ')}`);
+    doc.moveDown(2);
+    doc.text('Správce nemovitosti', { align: 'right' });
+    doc.text('(podpis, razítko)', { align: 'right' });
+
+    doc.moveDown(2);
+    doc.fontSize(7).fillColor('#aaaaaa')
+      .text(`Vygenerováno: ${new Date().toLocaleDateString('cs-CZ')} | ifmio Property Management`, { align: 'center' });
+
+    doc.end();
+    return doc;
+  }
+
+  private formatCzk(amount: number): string {
+    return amount.toLocaleString('cs-CZ') + ' Kč';
+  }
+}
+
+export interface EvidencniListData {
+  year: number;
+  propertyName: string;
+  propertyIco?: string | null;
+  propertyAddress: string;
+  propertyLegalMode?: string | null;
+  city?: string | null;
+  unitName: string;
+  unitKnDesignation?: string | null;
+  unitSpaceType?: string | null;
+  unitDisposition?: string | null;
+  unitArea?: string | null;
+  unitCommonShare?: string | null;
+  ownerName: string;
+  ownerAddress?: string | null;
+  variableSymbol?: string | null;
+  bankAccount?: string | null;
+  prescriptionItems?: { name: string; amount: number }[];
 }

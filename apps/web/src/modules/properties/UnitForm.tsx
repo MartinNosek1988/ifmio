@@ -41,6 +41,7 @@ export default function UnitForm({ propertyId, unit, onClose, onSuccess }: Props
     hasElevator: unit?.hasElevator ?? false,
     heatingMethod: unit?.heatingMethod ?? '',
     heatingCoefficient: unit?.heatingCoefficient != null ? String(unit.heatingCoefficient) : '1.0',
+    hotWaterCoefficient: unit?.hotWaterCoefficient != null ? String(unit.hotWaterCoefficient) : '1.0',
     tuvArea: unit?.tuvArea != null ? String(unit.tuvArea) : '',
     extAllocatorRef: unit?.extAllocatorRef ?? '',
     validFrom: unit?.validFrom ? unit.validFrom.slice(0, 10) : '',
@@ -70,6 +71,7 @@ export default function UnitForm({ propertyId, unit, onClose, onSuccess }: Props
         hasElevator: form.hasElevator || null,
         heatingMethod: form.heatingMethod || null,
         heatingCoefficient: form.heatingCoefficient ? parseFloat(form.heatingCoefficient) : null,
+        hotWaterCoefficient: form.hotWaterCoefficient ? parseFloat(form.hotWaterCoefficient) : null,
         tuvArea: form.tuvArea ? parseFloat(form.tuvArea) : null,
         extAllocatorRef: form.extAllocatorRef || null,
         validFrom: form.validFrom || null,
@@ -206,6 +208,11 @@ export default function UnitForm({ propertyId, unit, onClose, onSuccess }: Props
                 <input type="number" step="0.01" min="0" value={form.heatingCoefficient} onChange={(e) => set('heatingCoefficient', e.target.value)} style={inputStyle()} />
                 <div style={hintStyle}>Standardní = 1.0</div>
               </div>
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label className="form-label">Koeficient TUV</label>
+              <input type="number" step="0.01" min="0" value={form.hotWaterCoefficient} onChange={(e) => set('hotWaterCoefficient', e.target.value)} style={inputStyle()} />
+              <div style={hintStyle}>Standardní = 1.0</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>

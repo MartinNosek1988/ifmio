@@ -4,9 +4,11 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { UnitsService } from './units.service';
+import { TransferService } from './transfer.service';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
 import { CreateOccupancyDto } from './dto/create-occupancy.dto';
+import { TransferDto } from './dto/transfer.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuditAction } from '../common/decorators/audit.decorator';
@@ -17,7 +19,10 @@ import type { AuthUser } from '@ifmio/shared-types';
 @ApiBearerAuth()
 @Controller('properties/:propertyId/units')
 export class UnitsController {
-  constructor(private service: UnitsService) {}
+  constructor(
+    private service: UnitsService,
+    private transfer: TransferService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Jednotky nemovitosti' })
@@ -100,5 +105,18 @@ export class UnitsController {
     @Param('occupancyId') occupancyId: string,
   ) {
     return this.service.endOccupancy(user, propertyId, unitId, occupancyId);
+  }
+
+  @Post(':unitId/transfer')
+  @Roles(...ROLES_WRITE)
+  @AuditAction('occupancy', 'transfer')
+  @ApiOperation({ summary: 'Stěhování — výměna vlastníka/nájemce na jednotce' })
+  transferOwner(
+    @CurrentUser() user: AuthUser,
+    @Param('propertyId') propertyId: string,
+    @Param('unitId') unitId: string,
+    @Body() dto: TransferDto,
+  ) {
+    return this.transfer.transferOwner(user, propertyId, unitId, dto);
   }
 }

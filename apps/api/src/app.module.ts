@@ -53,6 +53,7 @@ import { CommunicationModule } from './communication/communication.module';
 import { WhatsAppModule } from './whatsapp/whatsapp.module';
 import { Microsoft365Module } from './microsoft365/microsoft365.module';
 import { SecurityAlertingModule } from './common/security/security-alerting.module';
+import { UnitGroupsModule } from './unit-groups/unit-groups.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
@@ -137,6 +138,7 @@ import { FieldEncryptionService } from './common/crypto/field-encryption.service
     WhatsAppModule,
     Microsoft365Module,
     SecurityAlertingModule,
+    UnitGroupsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerBehindProxyGuard },
