@@ -16,7 +16,7 @@ const STATUS_COLOR: Record<string, BadgeVariant> = {
   aktivni: 'green', ukoncena: 'muted', pozastavena: 'yellow', pripravovana: 'blue',
 };
 const STATUS_LABEL: Record<string, string> = {
-  aktivni: 'Aktivni', ukoncena: 'Ukoncena', pozastavena: 'Pozastavena', pripravovana: 'Pripravovana',
+  aktivni: 'Aktivní', ukoncena: 'Ukončená', pozastavena: 'Pozastavená', pripravovana: 'Připravovaná',
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -185,7 +185,7 @@ export default function LeaseDetailModal({ lease, onClose, onUpdated }: Props) {
             {/* Termination info */}
             {lease.terminatedAt && (
               <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: 12, marginBottom: 14 }}>
-                <div style={{ fontWeight: 600, color: 'var(--danger)', marginBottom: 4 }}>Ukoncena</div>
+                <div style={{ fontWeight: 600, color: 'var(--danger)', marginBottom: 4 }}>Ukončená</div>
                 <div style={{ fontSize: '0.875rem' }}>Datum: {formatCzDate(lease.terminatedAt)}</div>
                 {lease.terminationNote && <div style={{ fontSize: '0.875rem', marginTop: 4 }}>{lease.terminationNote}</div>}
               </div>
@@ -194,13 +194,13 @@ export default function LeaseDetailModal({ lease, onClose, onUpdated }: Props) {
             {/* Terminate */}
             {lease.status === 'aktivni' && !showTerminate && (
               <Button size="sm" onClick={() => setShowTerminate(true)} style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}>
-                Ukoncit smlouvu
+                Ukončit smlouvu
               </Button>
             )}
 
             {showTerminate && (
               <div style={{ border: '1px solid var(--danger)', borderRadius: 8, padding: 14, background: 'var(--surface-2, var(--surface))' }}>
-                <div style={{ fontWeight: 600, marginBottom: 8, color: 'var(--danger)' }}>Ukonceni smlouvy</div>
+                <div style={{ fontWeight: 600, marginBottom: 8, color: 'var(--danger)' }}>Ukončení smlouvy</div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', marginBottom: 8 }}>
                   <div style={{ flex: 1 }}>
                     <label className="form-label">Datum ukonceni</label>

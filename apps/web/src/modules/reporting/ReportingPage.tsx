@@ -395,7 +395,7 @@ function NemovitostiTab({ data, loading }: { data: PropertyReport[]; loading: bo
       <div style={{ marginTop: 20 }}>
         <Section title={`Report nemovitosti (${data.length})`}>
           {data.length === 0 ? (
-            <div className="text-muted" style={{ textAlign: 'center', padding: 20 }}>Zadne nemovitosti</div>
+            <div className="text-muted" style={{ textAlign: 'center', padding: 20 }}>Žádné nemovitosti</div>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
               <thead>

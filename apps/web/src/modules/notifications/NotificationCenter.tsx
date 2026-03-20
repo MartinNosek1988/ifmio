@@ -124,7 +124,7 @@ export function NotificationCenter() {
                 padding: 40, textAlign: 'center',
                 color: 'var(--text-muted, #9ca3af)', fontSize: 14,
               }}>
-                Zadne notifikace
+                Žádné notifikace
               </div>
             ) : (
               recent.map((n) => (
