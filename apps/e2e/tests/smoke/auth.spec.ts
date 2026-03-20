@@ -4,10 +4,11 @@ import { login } from '../helpers/auth';
 test.describe('Authentication', () => {
   test('login page renders for unauthenticated user', async ({ page }) => {
     await page.goto('/login');
+    await page.waitForLoadState('networkidle');
     // Login form should be visible
-    await expect(page.getByRole('textbox', { name: /email/i })).toBeVisible();
+    await expect(page.locator('input[type="email"]')).toBeVisible();
     await expect(page.locator('input[type="password"]')).toBeVisible();
-    await expect(page.getByRole('button', { name: /přihlásit/i })).toBeVisible();
+    await expect(page.locator('button[type="submit"]')).toBeVisible();
   });
 
   test('login with valid credentials redirects to dashboard', async ({ page }) => {

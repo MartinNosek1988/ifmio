@@ -48,9 +48,9 @@ async function main() {
   // Login
   console.log('Logging in...');
   await page.goto(`${BASE_URL}/login`);
-  await page.getByRole('textbox', { name: /email/i }).fill(EMAIL);
+  await page.locator('input[type="email"]').fill(EMAIL);
   await page.locator('input[type="password"]').fill(PASSWORD);
-  await page.getByRole('button', { name: /přihlásit/i }).click();
+  await page.locator('button[type="submit"]').click();
   await page.waitForURL(/\/(dashboard|portal)/, { timeout: 15_000 });
   console.log('Login OK');
 

@@ -6,6 +6,7 @@ export default defineConfig({
   testDir: './tests',
   timeout: 30_000,
   retries: 1,
+  workers: 1, // Serialize — avoid rate limiting / risk scoring from parallel logins
   use: {
     baseURL: process.env.BASE_URL || 'https://ifmio.com',
     screenshot: 'only-on-failure',
