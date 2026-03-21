@@ -48,17 +48,17 @@ export default function MetersPage() {
     });
   };
 
-  if (isLoading) return <LoadingState text="Nacitani meridel..." />;
+  if (isLoading) return <LoadingState text="Načítání měřidel..." />;
   if (isError) return <ErrorState onRetry={refetch} />;
 
   const items = meters ?? [];
 
   const columns: Column<ApiMeter>[] = [
-    { key: 'name', label: 'Nazev', render: m => <span style={{ fontWeight: 600 }}>{m.name}</span> },
-    { key: 'serialNumber', label: 'Cislo', render: m => <span className="text-muted" style={{ fontFamily: 'monospace', fontSize: '0.82rem' }}>{m.serialNumber}</span> },
+    { key: 'name', label: 'Název', render: m => <span style={{ fontWeight: 600 }}>{m.name}</span> },
+    { key: 'serialNumber', label: 'Číslo', render: m => <span className="text-muted" style={{ fontFamily: 'monospace', fontSize: '0.82rem' }}>{m.serialNumber}</span> },
     { key: 'meterType', label: 'Typ', render: m => <Badge variant={TYP_COLOR[m.meterType] || 'muted'}>{label(METER_TYPE_LABELS, m.meterType)}</Badge> },
     { key: 'property', label: 'Nemovitost', render: m => <span className="text-muted">{m.property?.name || '—'}</span> },
-    { key: 'lastReading', label: 'Posledni odecet', align: 'right', render: m => (
+    { key: 'lastReading', label: 'Poslední odečet', align: 'right', render: m => (
       <span className="font-semibold">{m.lastReading != null ? `${m.lastReading.toLocaleString('cs-CZ')} ${m.unit}` : '—'}</span>
     )},
     { key: 'calibration', label: 'Kalibrace', render: m => {
@@ -80,29 +80,29 @@ export default function MetersPage() {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Meridla & Energie</h1>
-          <p className="page-subtitle">{stats?.total ?? 0} meridel</p>
+          <h1 className="page-title">Měřidla & Energie</h1>
+          <p className="page-subtitle">{stats?.total ?? 0} měřidel</p>
         </div>
-        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)}>Nove meridlo</Button>
+        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)}>Nové měřidlo</Button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
         <KpiCard label="Celkem" value={String(stats?.total ?? 0)} color="var(--accent-blue)" />
-        <KpiCard label="Elektrina" value={String(stats?.elektrina ?? 0)} color="var(--accent-orange)" />
+        <KpiCard label="Elektřina" value={String(stats?.elektrina ?? 0)} color="var(--accent-orange)" />
         <KpiCard label="Voda" value={String((stats?.vodaStudena ?? 0) + (stats?.vodaTepla ?? 0))} color="var(--accent-blue)" />
-        <KpiCard label="Prosl. kalibrace" value={String(stats?.calibrationDue ?? 0)} color="var(--danger)" />
+        <KpiCard label="Prošl. kalibrace" value={String(stats?.calibrationDue ?? 0)} color="var(--danger)" />
       </div>
 
       <div className="flex-bar" style={{ marginBottom: 16 }}>
-        <SearchBar placeholder="Hledat meridla..." onSearch={setSearch} />
+        <SearchBar placeholder="Hledat měřidla..." onSearch={setSearch} />
         <select className="btn" value={filterType} onChange={e => setFilterType(e.target.value)}>
-          <option value="all">Vse</option>
+          <option value="all">Vše</option>
           {Object.entries(METER_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
       </div>
 
       {items.length === 0 ? (
-        <EmptyState title="Zadna meridla" description="Pridejte prvni meridlo." />
+        <EmptyState title="Žádná měřidla" description="Přidejte první měřidlo." />
       ) : (
         <Table data={items} columns={columns} rowKey={m => m.id} onRowClick={m => setSelected(m)} />
       )}
@@ -129,12 +129,12 @@ export default function MetersPage() {
             background: 'var(--surface)', border: '1px solid var(--border)',
             borderRadius: 12, padding: 24, maxWidth: 420, width: '90%',
           }} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginBottom: 8 }}>Smazat meridlo?</h3>
+            <h3 style={{ marginBottom: 8 }}>Smazat měřidlo?</h3>
             <p style={{ color: 'var(--text-muted)', marginBottom: 16, fontSize: '0.9rem' }}>
-              Opravdu chcete smazat meridlo <strong>{deleteTarget.name}</strong> ({deleteTarget.serialNumber})? Vsechny odpocty budou take smazany.
+              Opravdu chcete smazat měřidlo <strong>{deleteTarget.name}</strong> ({deleteTarget.serialNumber})? Všechny odečty budou také smazány.
             </p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <Button onClick={() => setDeleteTarget(null)}>Zrusit</Button>
+              <Button onClick={() => setDeleteTarget(null)}>Zrušit</Button>
               <Button variant="primary" onClick={handleDelete}
                 style={{ background: 'var(--danger)', borderColor: 'var(--danger)' }}>
                 Smazat

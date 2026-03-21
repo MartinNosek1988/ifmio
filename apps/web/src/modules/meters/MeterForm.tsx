@@ -48,8 +48,8 @@ export default function MeterForm({ onClose }: Props) {
 
   const validate = () => {
     const errs: Record<string, string> = {};
-    if (!form.name.trim()) errs.name = 'Nazev je povinny';
-    if (!form.serialNumber.trim()) errs.serialNumber = 'Cislo je povinne';
+    if (!form.name.trim()) errs.name = 'Název je povinný';
+    if (!form.serialNumber.trim()) errs.serialNumber = 'Číslo je povinné';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -78,23 +78,23 @@ export default function MeterForm({ onClose }: Props) {
   });
 
   return (
-    <Modal open onClose={onClose} title="Nove meridlo"
+    <Modal open onClose={onClose} title="Nové měřidlo"
       footer={
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <Button onClick={onClose}>Zrusit</Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={createMutation.isPending}>Vytvorit</Button>
+          <Button onClick={onClose}>Zrušit</Button>
+          <Button variant="primary" onClick={handleSubmit} disabled={createMutation.isPending}>Vytvořit</Button>
         </div>
       }>
 
       <div style={{ marginBottom: 14 }}>
-        <label className="form-label">Nazev meridla *</label>
-        <input value={form.name} onChange={e => set('name', e.target.value)} style={inputStyle('name')} placeholder="napr. Hlavni elektromer" />
+        <label className="form-label">Název měřidla *</label>
+        <input value={form.name} onChange={e => set('name', e.target.value)} style={inputStyle('name')} placeholder="např. Hlavní elektroměr" />
         {errors.name && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.name}</div>}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div>
-          <label className="form-label">Vyrobni cislo *</label>
+          <label className="form-label">Výrobní číslo *</label>
           <input value={form.serialNumber} onChange={e => set('serialNumber', e.target.value)} style={inputStyle('serialNumber')} placeholder="SN-12345" />
           {errors.serialNumber && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.serialNumber}</div>}
         </div>
@@ -112,8 +112,8 @@ export default function MeterForm({ onClose }: Props) {
           <input value={form.unit} onChange={e => set('unit', e.target.value)} style={inputStyle()} />
         </div>
         <div>
-          <label className="form-label">Vyrobce</label>
-          <input value={form.manufacturer} onChange={e => set('manufacturer', e.target.value)} style={inputStyle()} placeholder="napr. Landis+Gyr" />
+          <label className="form-label">Výrobce</label>
+          <input value={form.manufacturer} onChange={e => set('manufacturer', e.target.value)} style={inputStyle()} placeholder="např. Landis+Gyr" />
         </div>
       </div>
 
@@ -121,7 +121,7 @@ export default function MeterForm({ onClose }: Props) {
         <div>
           <label className="form-label">Nemovitost</label>
           <select value={form.propertyId} onChange={e => { set('propertyId', e.target.value); set('unitId', ''); }} style={inputStyle()}>
-            <option value="">-- Vyber nemovitost --</option>
+            <option value="">-- Výběr nemovitost --</option>
             {(properties ?? []).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </div>
@@ -129,7 +129,7 @@ export default function MeterForm({ onClose }: Props) {
           <label className="form-label">Jednotka (byt)</label>
           <select value={form.unitId} onChange={e => set('unitId', e.target.value)}
             disabled={!form.propertyId || availableUnits.length === 0} style={inputStyle()}>
-            <option value="">-- Spolecne --</option>
+            <option value="">-- Společné --</option>
             {availableUnits.map(u => <option key={u.id} value={u.id}>{u.name}{u.area ? ` · ${u.area} m²` : ''}</option>)}
           </select>
         </div>
@@ -147,14 +147,14 @@ export default function MeterForm({ onClose }: Props) {
       </div>
 
       <div style={{ marginBottom: 14 }}>
-        <label className="form-label">Umisteni</label>
-        <input value={form.location} onChange={e => set('location', e.target.value)} style={inputStyle()} placeholder="napr. Sklep - rozvadec c.1" />
+        <label className="form-label">Umístění</label>
+        <input value={form.location} onChange={e => set('location', e.target.value)} style={inputStyle()} placeholder="např. Sklep - rozvaděč č.1" />
       </div>
 
       <div>
-        <label className="form-label">Poznamka</label>
+        <label className="form-label">Poznámka</label>
         <textarea value={form.note} onChange={e => set('note', e.target.value)}
-          rows={2} style={{ ...inputStyle(), resize: 'vertical' as const }} placeholder="Volitelna poznamka..." />
+          rows={2} style={{ ...inputStyle(), resize: 'vertical' as const }} placeholder="Volitelná poznámka..." />
       </div>
     </Modal>
   );

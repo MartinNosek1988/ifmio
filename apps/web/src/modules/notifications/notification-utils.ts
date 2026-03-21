@@ -7,19 +7,19 @@ import type { ComponentType } from 'react'
 
 export const TYPE_LABEL: Record<string, string> = {
   info: 'Informace',
-  warning: 'Upozorneni',
+  warning: 'Upozornění',
   error: 'Chyba',
-  success: 'Uspech',
-  reminder_due: 'Upominka',
-  new_debtor: 'Dluznik',
-  unit_vacant: 'Volna jednotka',
+  success: 'Úspěch',
+  reminder_due: 'Upomínka',
+  new_debtor: 'Dlužník',
+  unit_vacant: 'Volná jednotka',
   ticket_new: 'HelpDesk',
-  ticket_due_soon: 'SLA blizi se',
-  ticket_overdue: 'SLA prekroceno',
+  ticket_due_soon: 'SLA blíží se',
+  ticket_overdue: 'SLA překročeno',
   ticket_escalated: 'Eskalace',
-  payment_unmatched: 'Nesparovana platba',
+  payment_unmatched: 'Nespárovaná platba',
   contract_expiring: 'Smlouva',
-  meter_calibration: 'Meridlo',
+  meter_calibration: 'Měřidlo',
   payment_due: 'Platba',
 }
 
@@ -80,24 +80,24 @@ export const TYPE_ICON: Record<string, string> = {
 export function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
   const m = Math.floor(diff / 60_000)
-  if (m < 1) return 'prave ted'
-  if (m < 60) return `pred ${m} min`
+  if (m < 1) return 'právě teď'
+  if (m < 60) return `před ${m} min`
   const h = Math.floor(m / 60)
-  if (h < 24) return `pred ${h} h`
+  if (h < 24) return `před ${h} h`
   const d = Math.floor(h / 24)
-  if (d < 7) return `pred ${d} dny`
+  if (d < 7) return `před ${d} dny`
   return new Date(iso).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'numeric' })
 }
 
 export const FILTER_TYPES = [
-  { key: 'all', label: 'Vse' },
-  { key: 'unread', label: 'Neprectene' },
+  { key: 'all', label: 'Vše' },
+  { key: 'unread', label: 'Nepřečtené' },
   { key: 'contract_expiring', label: 'Smlouvy' },
   { key: 'ticket_new', label: 'HelpDesk' },
   { key: 'ticket_escalated', label: 'Eskalace' },
-  { key: 'meter_calibration', label: 'Meridla' },
-  { key: 'reminder_due', label: 'Upominky' },
+  { key: 'meter_calibration', label: 'Měřidla' },
+  { key: 'reminder_due', label: 'Upomínky' },
   { key: 'payment_unmatched', label: 'Platby' },
-  { key: 'warning', label: 'Upozorneni' },
+  { key: 'warning', label: 'Upozornění' },
   { key: 'info', label: 'Informace' },
 ] as const

@@ -64,7 +64,7 @@ export default function MeterDetailModal({ meter, onClose, onUpdated }: Props) {
   const inputStyle = { width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface-2, var(--surface))', color: 'var(--text)', boxSizing: 'border-box' as const };
 
   const tabs = ['detail', 'readings', 'chart'] as const;
-  const tabLabels = { detail: 'Detail', readings: `Odpocty (${readings.length})`, chart: 'Spotreba' };
+  const tabLabels = { detail: 'Detail', readings: `Odečty (${readings.length})`, chart: 'Spotřeba' };
 
   return (
     <Modal open onClose={onClose} wide
@@ -81,14 +81,14 @@ export default function MeterDetailModal({ meter, onClose, onUpdated }: Props) {
       }
       footer={
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <Button onClick={onClose}>Zavrit</Button>
+          <Button onClick={onClose}>Zavřít</Button>
         </div>
       }>
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
         <Badge variant={TYP_COLOR[meter.meterType] || 'muted'}>{label(METER_TYPE_LABELS, meter.meterType)}</Badge>
         <Badge variant="muted">{meter.unit}</Badge>
-        {!meter.isActive && <Badge variant="red">Neaktivni</Badge>}
+        {!meter.isActive && <Badge variant="red">Neaktivní</Badge>}
       </div>
 
       {/* Calibration warning */}
@@ -100,13 +100,13 @@ export default function MeterDetailModal({ meter, onClose, onUpdated }: Props) {
 
       {/* KPI */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
-        <KpiMini label="Aktualni stav" value={meter.lastReading != null ? `${meter.lastReading.toLocaleString('cs-CZ')} ${meter.unit}` : '—'}
+        <KpiMini label="Aktuální stav" value={meter.lastReading != null ? `${meter.lastReading.toLocaleString('cs-CZ')} ${meter.unit}` : '—'}
           sub={meter.lastReadingDate ? formatCzDate(meter.lastReadingDate) : undefined} />
-        <KpiMini label="Posledni spotreba"
+        <KpiMini label="Poslední spotřeba"
           value={latest?.consumption != null ? `+${latest.consumption.toLocaleString('cs-CZ')} ${meter.unit}` : '—'}
           sub={trend != null ? (trend > 0 ? `\u25B2 +${trend.toLocaleString('cs-CZ')}` : `\u25BC ${trend.toLocaleString('cs-CZ')}`) : undefined}
           subColor={trend != null ? (trend > 0 ? 'var(--danger)' : 'var(--accent-green)') : undefined} />
-        <KpiMini label="Pocet odpoctu" value={String(readings.length)}
+        <KpiMini label="Počet odečtů" value={String(readings.length)}
           sub={readings.length > 0 ? `Od ${formatCzDate(readings[readings.length - 1]?.readingDate)}` : undefined} />
       </div>
 
@@ -124,14 +124,14 @@ export default function MeterDetailModal({ meter, onClose, onUpdated }: Props) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
             <InfoCell label="Nemovitost" value={meter.property?.name} />
             <InfoCell label="Jednotka" value={meter.unitRel?.name} />
-            <InfoCell label="Umisteni" value={meter.location || undefined} />
-            <InfoCell label="Vyrobce" value={meter.manufacturer || undefined} />
+            <InfoCell label="Umístění" value={meter.location || undefined} />
+            <InfoCell label="Výrobce" value={meter.manufacturer || undefined} />
             <InfoCell label="Datum instalace" value={meter.installDate ? formatCzDate(meter.installDate) : undefined} />
             <InfoCell label="Kalibrace do" value={meter.calibrationDue ? formatCzDate(meter.calibrationDue) : undefined} />
           </div>
           {meter.note && (
             <div style={{ background: 'var(--surface-2, var(--surface))', borderRadius: 8, padding: 12 }}>
-              <div className="text-muted" style={{ fontSize: '0.72rem', marginBottom: 4 }}>POZNAMKA</div>
+              <div className="text-muted" style={{ fontSize: '0.72rem', marginBottom: 4 }}>POZNÁMKA</div>
               <div style={{ whiteSpace: 'pre-wrap' }}>{meter.note}</div>
             </div>
           )}
@@ -142,44 +142,44 @@ export default function MeterDetailModal({ meter, onClose, onUpdated }: Props) {
         <div>
           {/* Add reading */}
           {!showAddReading ? (
-            <Button variant="primary" size="sm" onClick={() => setShowAddReading(true)} style={{ marginBottom: 16 }}>+ Pridat odpocet</Button>
+            <Button variant="primary" size="sm" onClick={() => setShowAddReading(true)} style={{ marginBottom: 16 }}>+ Přidat odečet</Button>
           ) : (
             <div style={{ border: '1px solid var(--accent-blue)', borderRadius: 8, padding: 14, marginBottom: 16, background: 'var(--surface-2, var(--surface))' }}>
-              <div style={{ fontWeight: 600, marginBottom: 10, fontSize: '0.9rem' }}>Novy odpocet</div>
+              <div style={{ fontWeight: 600, marginBottom: 10, fontSize: '0.9rem' }}>Nový odečet</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
                 <div>
-                  <label className="form-label">Stav meridla ({meter.unit}) *</label>
+                  <label className="form-label">Stav měřidla ({meter.unit}) *</label>
                   <input type="number" value={newValue} onChange={e => setNewValue(e.target.value)}
                     placeholder={`napr. ${(meter.lastReading || 0) + 100}`} style={inputStyle} />
                   {meter.lastReading != null && newValue && Number(newValue) > meter.lastReading && (
                     <div style={{ fontSize: '0.75rem', color: 'var(--accent-green)', marginTop: 2 }}>
-                      Spotreba: {(Number(newValue) - meter.lastReading).toLocaleString('cs-CZ')} {meter.unit}
+                      Spotřeba: {(Number(newValue) - meter.lastReading).toLocaleString('cs-CZ')} {meter.unit}
                     </div>
                   )}
                 </div>
                 <div>
-                  <label className="form-label">Datum odpoctu</label>
+                  <label className="form-label">Datum odečtu</label>
                   <input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} style={inputStyle} />
                 </div>
               </div>
               <input value={newNote} onChange={e => setNewNote(e.target.value)}
-                placeholder="Poznamka (volitelne)" style={{ ...inputStyle, marginBottom: 10 }} />
+                placeholder="Poznámka (volitelné)" style={{ ...inputStyle, marginBottom: 10 }} />
               <div style={{ display: 'flex', gap: 6 }}>
                 <Button variant="primary" size="sm" onClick={handleAddReading}
-                  disabled={!newValue || addReadingMutation.isPending}>Ulozit odpocet</Button>
-                <Button size="sm" onClick={() => { setShowAddReading(false); setNewValue(''); }}>Zrusit</Button>
+                  disabled={!newValue || addReadingMutation.isPending}>Uložit odečet</Button>
+                <Button size="sm" onClick={() => { setShowAddReading(false); setNewValue(''); }}>Zrušit</Button>
               </div>
             </div>
           )}
 
           {/* Readings table */}
           {readings.length === 0 ? (
-            <div className="text-muted" style={{ textAlign: 'center', padding: 20 }}>Zatim zadne odpocty</div>
+            <div className="text-muted" style={{ textAlign: 'center', padding: 20 }}>Zatím žádné odečty</div>
           ) : (
             <table style={{ width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  {['DATUM', 'STAV', 'SPOTREBA', 'ZDROJ', 'POZNAMKA'].map(h => (
+                  {['DATUM', 'STAV', 'SPOTŘEBA', 'ZDROJ', 'POZNÁMKA'].map(h => (
                     <th key={h} style={{ textAlign: 'left', padding: '6px 6px 6px 0', borderBottom: '1px solid var(--border)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{h}</th>
                   ))}
                 </tr>
@@ -190,7 +190,7 @@ export default function MeterDetailModal({ meter, onClose, onUpdated }: Props) {
                     <td style={{ padding: '8px 6px 8px 0', borderBottom: '1px solid var(--border)', fontWeight: i === 0 ? 600 : 400 }}>{formatCzDate(r.readingDate)}</td>
                     <td style={{ padding: '8px 6px 8px 0', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>{r.value.toLocaleString('cs-CZ')} {meter.unit}</td>
                     <td style={{ padding: '8px 6px 8px 0', borderBottom: '1px solid var(--border)' }} className="text-muted">{r.consumption != null ? `+${r.consumption.toLocaleString('cs-CZ')}` : '—'}</td>
-                    <td style={{ padding: '8px 6px 8px 0', borderBottom: '1px solid var(--border)' }}><Badge variant={r.source === 'manual' ? 'muted' : 'blue'}>{r.source === 'manual' ? 'Rucni' : 'Import'}</Badge></td>
+                    <td style={{ padding: '8px 6px 8px 0', borderBottom: '1px solid var(--border)' }}><Badge variant={r.source === 'manual' ? 'muted' : 'blue'}>{r.source === 'manual' ? 'Ruční' : 'Import'}</Badge></td>
                     <td style={{ padding: '8px 0', borderBottom: '1px solid var(--border)' }} className="text-muted text-sm">{r.note || '—'}</td>
                   </tr>
                 ))}
@@ -222,7 +222,7 @@ function ConsumptionChart({ readings, unit }: { readings: ApiMeterReading[]; uni
 
   return (
     <div>
-      <div style={{ fontWeight: 600, marginBottom: 12, fontSize: '0.9rem' }}>Spotreba ({unit})</div>
+      <div style={{ fontWeight: 600, marginBottom: 12, fontSize: '0.9rem' }}>Spotřeba ({unit})</div>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: barHeight + 30, padding: '0 4px' }}>
         {withConsumption.map(r => {
           const pct = maxVal > 0 ? (r.consumption! / maxVal) * 100 : 0;

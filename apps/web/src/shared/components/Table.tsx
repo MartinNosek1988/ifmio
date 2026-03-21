@@ -16,7 +16,7 @@ interface Props<T> {
   onRowClick?: (row: T) => void;
 }
 
-export function Table<T>({ data, columns, rowKey, emptyText = 'Zadna data', onRowClick }: Props<T>) {
+export function Table<T>({ data, columns, rowKey, emptyText = 'Žádná data', onRowClick }: Props<T>) {
   if (data.length === 0) {
     return (
       <div className="card table-wrap" style={{ padding: 0, overflow: 'hidden' }}>

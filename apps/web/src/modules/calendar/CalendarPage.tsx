@@ -11,8 +11,8 @@ import type { ApiCalendarEvent } from './api/calendar.api';
 import EventDetailModal from './EventDetailModal';
 import EventForm from './EventForm';
 
-const DAYS_CS = ['Po', 'Ut', 'St', 'Ct', 'Pa', 'So', 'Ne'];
-const MONTHS_CS = ['Leden', 'Unor', 'Brezen', 'Duben', 'Kveten', 'Cerven', 'Cervenec', 'Srpen', 'Zari', 'Rijen', 'Listopad', 'Prosinec'];
+const DAYS_CS = ['Po', 'Út', 'St', 'Čt', 'Pá', 'So', 'Ne'];
+const MONTHS_CS = ['Leden', 'Únor', 'Březen', 'Duben', 'Květen', 'Červen', 'Červenec', 'Srpen', 'Září', 'Říjen', 'Listopad', 'Prosinec'];
 
 const SOURCE_COLOR: Record<string, BadgeVariant> = {
   workorder: 'blue', contract: 'yellow', meter: 'yellow', custom: 'green',
@@ -34,7 +34,7 @@ const TYP_HEX: Record<string, string> = {
 };
 
 const FILTER_TYPES = [
-  { value: '', label: 'Vse' },
+  { value: '', label: 'Vše' },
   { value: 'schuze', label: 'Schůze' },
   { value: 'revize', label: 'Revize' },
   { value: 'udrzba', label: 'Údržba' },
@@ -157,31 +157,31 @@ export default function CalendarPage() {
     [items]
   );
 
-  if (isLoading) return <LoadingState text="Nacitani kalendare..." />;
+  if (isLoading) return <LoadingState text="Načítání kalendáře..." />;
   if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Kalendar</h1>
-          <p className="page-subtitle">{stats?.upcoming ?? 0} nadchazejicich udalosti</p>
+          <h1 className="page-title">Kalendář</h1>
+          <p className="page-subtitle">{stats?.upcoming ?? 0} nadcházejících událostí</p>
         </div>
-        <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setFormDefaultDate(''); setShowForm(true); }}>Nova udalost</Button>
+        <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setFormDefaultDate(''); setShowForm(true); }}>Nová událost</Button>
       </div>
 
       {/* KPI */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
-        <KpiCard label="Celkem vlastnich" value={String(stats?.total ?? 0)} color="var(--accent-blue)" />
-        <KpiCard label="Nadchazejici" value={String(stats?.upcoming ?? 0)} color="var(--accent-green)" />
-        <KpiCard label="Tento mesic" value={String(stats?.thisMonth ?? 0)} color="var(--accent-orange)" />
+        <KpiCard label="Celkem vlastních" value={String(stats?.total ?? 0)} color="var(--accent-blue)" />
+        <KpiCard label="Nadcházející" value={String(stats?.upcoming ?? 0)} color="var(--accent-green)" />
+        <KpiCard label="Tento měsíc" value={String(stats?.thisMonth ?? 0)} color="var(--accent-orange)" />
         <KpiCard label="HD / WO / Sml. / Kal." value={`${stats?.helpdesk ?? 0} / ${stats?.workorders ?? 0} / ${stats?.contracts ?? 0} / ${stats?.meters ?? 0}`} color="var(--accent-blue)" />
       </div>
 
       {/* Toolbar */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ flex: 1, minWidth: 200 }}>
-          <SearchBar placeholder="Hledat udalosti..." onSearch={setSearch} />
+          <SearchBar placeholder="Hledat události..." onSearch={setSearch} />
         </div>
         <select value={filterTyp} onChange={e => setFilterTyp(e.target.value)}
           style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}>
@@ -195,7 +195,7 @@ export default function CalendarPage() {
                 background: view === v ? 'var(--accent)' : 'var(--surface)',
                 color: view === v ? 'var(--bg)' : 'var(--text)',
               }}>
-              {v === 'list' ? 'Seznam' : v === 'week' ? 'Tyden' : 'Mesic'}
+              {v === 'list' ? 'Seznam' : v === 'week' ? 'Týden' : 'Měsíc'}
             </button>
           ))}
         </div>
@@ -207,14 +207,14 @@ export default function CalendarPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['Datum', 'Cas', 'Nazev', 'Typ', 'Zdroj', 'Popis'].map(h => (
+                {['Datum', 'Čas', 'Název', 'Typ', 'Zdroj', 'Popis'].map(h => (
                   <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid var(--border)' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 && (
-                <tr><td colSpan={6} style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>Zadne udalosti</td></tr>
+                <tr><td colSpan={6} style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>Žádné události</td></tr>
               )}
               {filtered.map(e => {
                 const isToday = e.date === today.toISOString().slice(0, 10);
@@ -296,7 +296,7 @@ export default function CalendarPage() {
                     <EventChip key={e.id} event={e} onClick={() => setSelected(e)} />
                   ))}
                   {dayEvents.length > 2 && (
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', paddingLeft: 4 }}>+{dayEvents.length - 2} dalsi</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', paddingLeft: 4 }}>+{dayEvents.length - 2} další</div>
                   )}
                 </div>
               );
