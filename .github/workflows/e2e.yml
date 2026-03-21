@@ -39,6 +39,7 @@ jobs:
       E2E_SEED_ENABLED: 'true'
       PORT: 3000
       CORS_ORIGIN: http://localhost:5173
+      SENTRY_DSN: ''
 
     steps:
       - name: Checkout
@@ -69,61 +70,78 @@ jobs:
         run: npm run build
         working-directory: apps/web
 
-      # Start API in background (uses compiled dist)
-      - name: Start API server
-        run: npm run start &
-        working-directory: apps/api
-
-      # Serve web build with vite preview
-      - name: Start Web server
-        run: npx vite preview --port 5173 &
-        working-directory: apps/web
-
-      - name: Wait for servers
-        run: |
-          echo "Waiting for API..."
-          for i in $(seq 1 30); do
-            if curl -s http://localhost:3000/api/v1/health > /dev/null 2>&1; then
-              echo "API ready on attempt $i"
-              break
-            fi
-            sleep 2
-          done
-          echo "Waiting for Web..."
-          for i in $(seq 1 15); do
-            if curl -s http://localhost:5173 > /dev/null 2>&1; then
-              echo "Web ready on attempt $i"
-              break
-            fi
-            sleep 2
-          done
-
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
         working-directory: apps/e2e
 
-      # Seed test data via API
+      # Start servers in background
+      - name: Start API server
+        run: |
+          cd apps/api
+          node dist/main > /tmp/api.log 2>&1 &
+          echo $! > /tmp/api.pid
+
+      - name: Start Web server
+        run: |
+          cd apps/web
+          npx vite preview --port 5173 > /tmp/web.log 2>&1 &
+          echo $! > /tmp/web.pid
+
+      - name: Wait for API
+        run: |
+          echo "Waiting for API on :3000..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000/api/v1/health > /dev/null 2>&1; then
+              echo "API ready (attempt $i)"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "=== API FAILED TO START ==="
+          cat /tmp/api.log || true
+          exit 1
+
+      - name: Wait for Web
+        run: |
+          echo "Waiting for Web on :5173..."
+          for i in $(seq 1 15); do
+            if curl -sf http://localhost:5173 > /dev/null 2>&1; then
+              echo "Web ready (attempt $i)"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "=== WEB FAILED TO START ==="
+          cat /tmp/web.log || true
+          exit 1
+
+      # Seed creates a test user — capture the email for login
       - name: Seed E2E test data
         run: |
-          SEED=$(curl -s -X POST http://localhost:3000/api/v1/e2e-seed/setup)
-          echo "Seed response: $SEED"
+          SEED=$(curl -sf -X POST http://localhost:3000/api/v1/e2e-seed/setup)
+          echo "Seed: $SEED"
           echo "E2E_TENANT_ID=$(echo $SEED | jq -r .tenantId)" >> $GITHUB_ENV
+          echo "E2E_USER_EMAIL=$(echo $SEED | jq -r .userEmail)" >> $GITHUB_ENV
 
       - name: Run E2E tests
         run: npx playwright test
         working-directory: apps/e2e
         env:
           BASE_URL: http://localhost:5173
-          TEST_EMAIL: ${{ env.SEED_EMAIL || 'e2e-test@test.ifmio.dev' }}
+          TEST_EMAIL: ${{ env.E2E_USER_EMAIL }}
           TEST_PASSWORD: E2eTestPass123!
 
-      # Cleanup seed data
+      # Cleanup
       - name: Cleanup E2E data
         if: always()
         run: |
           if [ -n "$E2E_TENANT_ID" ]; then
             curl -s -X DELETE "http://localhost:3000/api/v1/e2e-seed/cleanup/$E2E_TENANT_ID" || true
           fi
+
+      - name: Show API logs on failure
+        if: failure()
+        run: cat /tmp/api.log 2>/dev/null || true
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
