@@ -104,9 +104,9 @@ export class PdfService {
       doc.text(`Prirazeno: ${data.assigneeName}`);
     }
 
-    doc.text(`Vytvoreno: ${data.createdAt}`);
+    doc.text(`Vytvořeno: ${data.createdAt}`);
     if (data.resolvedAt) {
-      doc.text(`Vyreseno: ${data.resolvedAt}`);
+      doc.text(`Vyřešeno: ${data.resolvedAt}`);
     }
 
     doc.moveDown(1);
@@ -345,7 +345,7 @@ export class PdfService {
 
     // Recipient info
     doc.font('Helvetica').fontSize(10);
-    doc.text(`Adresat: ${data.residentName}`);
+    doc.text(`Adresát: ${data.residentName}`);
     doc.text(`Nemovitost: ${data.propertyName}`);
     if (data.unitName) {
       doc.text(`Jednotka: ${data.unitName}`);
@@ -355,7 +355,7 @@ export class PdfService {
     // Body
     const body = data.templateBody
       .replace('{{jmeno}}', data.residentName)
-      .replace('{{castka}}', `${data.amount.toLocaleString('cs-CZ')} Kc`)
+      .replace('{{castka}}', `${data.amount.toLocaleString('cs-CZ')} Kč`)
       .replace('{{splatnost}}', data.dueDate)
       .replace('{{nemovitost}}', data.propertyName);
 
@@ -365,11 +365,11 @@ export class PdfService {
     doc
       .font('Helvetica-Bold')
       .fontSize(12)
-      .text(`Dluzna castka: ${data.amount.toLocaleString('cs-CZ')} Kc`)
+      .text(`Dlužná částka: ${data.amount.toLocaleString('cs-CZ')} Kč`)
       .font('Helvetica')
       .fontSize(10)
       .text(`Splatnost: ${data.dueDate}`)
-      .text(`Uroven upominky: ${data.level}`)
+      .text(`Úroveň upomínky: ${data.level}`)
       .moveDown(2);
 
     // Footer

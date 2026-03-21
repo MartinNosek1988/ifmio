@@ -22,7 +22,7 @@ function exportCSV(filename: string, csvContent: string) {
 }
 
 function yearlyToCSV(months: MonthlyRow[], _year: number): string {
-  const header = 'Mesic;Prijmy;Vydaje;Saldo;Inkaso %';
+  const header = 'Měsíc;Příjmy;Výdaje;Saldo;Inkaso %';
   const rows = months.map(m =>
     `${MONTHS_CS[m.month - 1]};${m.income};${m.expense};${m.balance};${m.collectionRate}`
   );
@@ -194,8 +194,8 @@ function PrehledTab({ kpi, yearly, year, setYear, yearlyLoading }: {
       {/* KPI row 1 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 16 }}>
         <KpiCard label="Obsazenost" value={`${kpi.occupancyPct}%`} color={occColor} />
-        <KpiCard label="Prijmy tento mesic" value={formatKc(kpi.monthIncome)} color="var(--accent-green)" />
-        <KpiCard label="Vydaje tento mesic" value={formatKc(kpi.monthExpense)} color="var(--danger)" />
+        <KpiCard label="Příjmy tento měsíc" value={formatKc(kpi.monthIncome)} color="var(--accent-green)" />
+        <KpiCard label="Výdaje tento měsíc" value={formatKc(kpi.monthExpense)} color="var(--danger)" />
         <KpiCard label="Bilance" value={formatKc(kpi.monthBalance)} color={kpi.monthBalance >= 0 ? 'var(--accent-green)' : 'var(--danger)'} />
       </div>
 
@@ -238,7 +238,7 @@ function PrehledTab({ kpi, yearly, year, setYear, yearlyLoading }: {
       {/* Income/Expense chart */}
       {!yearlyLoading && yearly && (
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
-          <Section title={`Prijmy vs Vydaje ${year}`}
+          <Section title={`Příjmy vs Výdaje ${year}`}
             action={<YearSelector year={year} setYear={setYear} />}>
             <DualBarChart
               data={yearly.months.map(m => ({
@@ -251,11 +251,11 @@ function PrehledTab({ kpi, yearly, year, setYear, yearlyLoading }: {
             <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginTop: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{ width: 12, height: 12, borderRadius: 2, background: '#22c55e' }} />
-                <span style={{ fontSize: '0.8rem' }}>Prijmy: {formatKc(yearly.totals.income)}</span>
+                <span style={{ fontSize: '0.8rem' }}>Příjmy: {formatKc(yearly.totals.income)}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{ width: 12, height: 12, borderRadius: 2, background: '#ef4444' }} />
-                <span style={{ fontSize: '0.8rem' }}>Vydaje: {formatKc(yearly.totals.expense)}</span>
+                <span style={{ fontSize: '0.8rem' }}>Výdaje: {formatKc(yearly.totals.expense)}</span>
               </div>
             </div>
           </Section>
@@ -304,7 +304,7 @@ function FinancniTab({ yearly, year, setYear, yearlyLoading }: {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
               <thead>
                 <tr>
-                  {['Mesic', 'Prijmy', 'Vydaje', 'Saldo', 'Inkaso %'].map(h => (
+                  {['Měsíc', 'Příjmy', 'Výdaje', 'Saldo', 'Inkaso %'].map(h => (
                     <th key={h} style={{ padding: '8px 12px', textAlign: h === 'Mesic' ? 'left' : 'right', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid var(--border)' }}>{h}</th>
                   ))}
                 </tr>
@@ -347,11 +347,11 @@ function FinancniTab({ yearly, year, setYear, yearlyLoading }: {
               <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginTop: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <div style={{ width: 12, height: 12, borderRadius: 2, background: '#22c55e' }} />
-                  <span style={{ fontSize: '0.78rem' }}>Prijmy</span>
+                  <span style={{ fontSize: '0.78rem' }}>Příjmy</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <div style={{ width: 12, height: 12, borderRadius: 2, background: '#ef4444' }} />
-                  <span style={{ fontSize: '0.78rem' }}>Vydaje</span>
+                  <span style={{ fontSize: '0.78rem' }}>Výdaje</span>
                 </div>
               </div>
             </div>

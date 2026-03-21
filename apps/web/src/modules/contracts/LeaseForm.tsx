@@ -185,7 +185,7 @@ export default function LeaseForm({ lease, onClose }: Props) {
       {/* Notice period + Renewal */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div>
-          <label className="form-label">Vypovedni lhuta (mesice)</label>
+          <label className="form-label">Výpovědní lhůta (měsíce)</label>
           <input type="number" min="0" value={form.noticePeriod} onChange={(e) => set('noticePeriod', e.target.value)} style={inputStyle()} />
         </div>
         <div>

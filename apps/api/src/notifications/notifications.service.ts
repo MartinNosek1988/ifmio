@@ -342,10 +342,10 @@ export class NotificationsService {
   }) {
     const levelLabel =
       params.level === 'first'
-        ? '1. upominka'
+        ? '1. upomínka'
         : params.level === 'second'
-          ? '2. upominka'
-          : '3. upominka'
+          ? '2. upomínka'
+          : '3. upomínka'
 
     await this.createForTenant(params.tenantId, {
       type: 'reminder_due',

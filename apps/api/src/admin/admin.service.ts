@@ -238,17 +238,17 @@ export class AdminService {
       steps: [
         {
           id: 'property',
-          label: 'Pridejte prvni nemovitost',
+          label: 'Přidejte první nemovitost',
           completed: propertiesCount > 0,
         },
         {
           id: 'unit',
-          label: 'Pridejte jednotku',
+          label: 'Přidejte jednotku',
           completed: propertiesCount > 0,
         },
         {
           id: 'invite',
-          label: 'Pozvete dalsiho uzivatele (volitelne)',
+          label: 'Pozvěte dalšího uživatele (volitelné)',
           completed: usersCount > 1,
           optional: true,
         },
