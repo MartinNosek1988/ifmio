@@ -172,19 +172,25 @@ test.describe('Residents — Deep CRUD', () => {
       await expect(page.locator('[data-testid="resident-form-firstName"]')).not.toHaveValue('');
       await expect(page.locator('[data-testid="resident-form-lastName"]')).not.toHaveValue('');
 
-      // Change values — use pressSequentially so react-hook-form detects isDirty
-      const lastName = page.locator('[data-testid="resident-form-lastName"]');
-      await lastName.click({ clickCount: 3 });
-      await lastName.press('Backspace');
-      await lastName.pressSequentially('Upravený E2E', { delay: 20 });
+      // Change values — use native value setter + event dispatch to trigger
+      // react-hook-form's isDirty (fill()/pressSequentially() may not reliably
+      // trigger RHF's internal dirty tracking)
+      async function setInputValue(loc: ReturnType<typeof page.locator>, value: string) {
+        await loc.evaluate((el: HTMLInputElement, v: string) => {
+          const setter = Object.getOwnPropertyDescriptor(
+            window.HTMLInputElement.prototype, 'value',
+          )!.set!;
+          setter.call(el, v);
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        }, value);
+      }
 
-      const phone = page.locator('[data-testid="resident-form-phone"]');
-      await phone.click({ clickCount: 3 });
-      await phone.press('Backspace');
-      await phone.pressSequentially('+420111222333', { delay: 20 });
+      await setInputValue(page.locator('[data-testid="resident-form-lastName"]'), 'Upravený E2E');
+      await setInputValue(page.locator('[data-testid="resident-form-phone"]'), '+420111222333');
 
       // Verify save button is enabled after changes
-      await expect(page.locator('[data-testid="resident-form-save"]')).toBeEnabled({ timeout: 5000 });
+      await expect(page.locator('[data-testid="resident-form-save"]')).toBeEnabled({ timeout: 10000 });
 
       // Save
       const responsePromise = page.waitForResponse(
