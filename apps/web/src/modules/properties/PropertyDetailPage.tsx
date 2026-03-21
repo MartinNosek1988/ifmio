@@ -54,7 +54,7 @@ export default function PropertyDetailPage() {
   const [fcModal, setFcModal] = useState<{ context?: ApiFinancialContext } | null>(null);
   const [transferModal, setTransferModal] = useState<{ unitId: string; unitName: string; occupancyId: string; ownerName: string; share?: number | null } | null>(null);
 
-  type DetailTab = 'overview' | 'units' | 'owners' | 'groups' | 'meters' | 'components' | 'representatives' | 'assemblies'
+  type DetailTab = 'overview' | 'units' | 'owners' | 'groups' | 'meters' | 'components' | 'representatives' | 'assemblies' | 'per-rollam'
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
 
   const refetchOwnerships = () => queryClient.invalidateQueries({ queryKey: ['ownerships'] });
@@ -301,6 +301,7 @@ export default function PropertyDetailPage() {
           { key: 'components' as DetailTab, label: 'Složky předpisu' },
           { key: 'representatives' as DetailTab, label: 'Zástupci' },
           { key: 'assemblies' as DetailTab, label: 'Shromáždění' },
+          { key: 'per-rollam' as DetailTab, label: 'Per rollam' },
         ]).map(t => (
           <button key={t.key} className={`tab-btn${detailTab === t.key ? ' active' : ''}`} data-testid={`property-tab-${t.key}`} onClick={() => setDetailTab(t.key)}>
             {t.label}
@@ -469,6 +470,15 @@ export default function PropertyDetailPage() {
         <div style={{ textAlign: 'center', padding: 20 }}>
           <Button variant="primary" onClick={() => navigate(`/properties/${property.id}/assemblies`)}>
             Otevřít modul Shromáždění
+          </Button>
+        </div>
+      )}
+
+      {/* ── PER ROLLAM TAB ─────────────────────────────────── */}
+      {detailTab === 'per-rollam' && (
+        <div style={{ textAlign: 'center', padding: 20 }}>
+          <Button variant="primary" onClick={() => navigate(`/properties/${property.id}/per-rollam`)}>
+            Otevřít hlasování per rollam
           </Button>
         </div>
       )}
