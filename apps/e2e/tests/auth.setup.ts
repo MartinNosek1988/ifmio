@@ -5,7 +5,7 @@ import path from 'path';
 const AUTH_FILE = path.join(__dirname, '.auth', 'tokens.json');
 
 setup('authenticate', async ({ page }) => {
-  const baseUrl = process.env.BASE_URL || 'https://ifmio.com';
+  const apiUrl = process.env.API_URL || process.env.BASE_URL || 'https://ifmio.com';
   const email = process.env.TEST_EMAIL;
   const password = process.env.TEST_PASSWORD;
   if (!email || !password) {
@@ -27,7 +27,7 @@ setup('authenticate', async ({ page }) => {
         });
         return res.json();
       },
-      { url: baseUrl, email, password },
+      { url: apiUrl, email, password },
     );
 
     if (response.accessToken) break;

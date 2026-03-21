@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 async function globalTeardown() {
-  const baseUrl = process.env.BASE_URL || 'https://ifmio.com';
+  const baseUrl = process.env.API_URL || process.env.BASE_URL || 'https://ifmio.com';
   const tenantId = process.env.E2E_TENANT_ID;
 
   if (!tenantId) return;

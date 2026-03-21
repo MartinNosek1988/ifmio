@@ -35,7 +35,7 @@ export async function login(page: Page): Promise<void> {
  * Direct API login — used as fallback and by auth.spec.ts.
  */
 export async function loginViaApi(page: Page, attempt = 1): Promise<void> {
-  const baseUrl = process.env.BASE_URL || 'https://ifmio.com';
+  const apiUrl = process.env.API_URL || process.env.BASE_URL || 'https://ifmio.com';
   const email = process.env.TEST_EMAIL;
   const password = process.env.TEST_PASSWORD;
   if (!email || !password) throw new Error('TEST_EMAIL and TEST_PASSWORD must be set in .env');
@@ -52,7 +52,7 @@ export async function loginViaApi(page: Page, attempt = 1): Promise<void> {
       });
       return res.json();
     },
-    { url: baseUrl, email, password },
+    { url: apiUrl, email, password },
   );
 
   if ((response.requires2fa || response.statusCode === 429) && attempt < 3) {
