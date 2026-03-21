@@ -172,11 +172,19 @@ test.describe('Residents — Deep CRUD', () => {
       await expect(page.locator('[data-testid="resident-form-firstName"]')).not.toHaveValue('');
       await expect(page.locator('[data-testid="resident-form-lastName"]')).not.toHaveValue('');
 
-      // Change values
-      await page.locator('[data-testid="resident-form-lastName"]').clear();
-      await page.locator('[data-testid="resident-form-lastName"]').fill('Upravený E2E');
-      await page.locator('[data-testid="resident-form-phone"]').clear();
-      await page.locator('[data-testid="resident-form-phone"]').fill('+420111222333');
+      // Change values — use pressSequentially so react-hook-form detects isDirty
+      const lastName = page.locator('[data-testid="resident-form-lastName"]');
+      await lastName.click({ clickCount: 3 });
+      await lastName.press('Backspace');
+      await lastName.pressSequentially('Upravený E2E', { delay: 20 });
+
+      const phone = page.locator('[data-testid="resident-form-phone"]');
+      await phone.click({ clickCount: 3 });
+      await phone.press('Backspace');
+      await phone.pressSequentially('+420111222333', { delay: 20 });
+
+      // Verify save button is enabled after changes
+      await expect(page.locator('[data-testid="resident-form-save"]')).toBeEnabled({ timeout: 5000 });
 
       // Save
       const responsePromise = page.waitForResponse(
