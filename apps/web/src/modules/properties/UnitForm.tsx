@@ -117,7 +117,7 @@ export default function UnitForm({ propertyId, unit, onClose, onSuccess }: Props
       footer={
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <Button onClick={onClose}>Zrušit</Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={mutation.isPending}>
+          <Button variant="primary" onClick={handleSubmit} disabled={mutation.isPending} data-testid="unit-form-save">
             {mutation.isPending ? 'Ukládám...' : isEdit ? 'Uložit' : 'Vytvořit'}
           </Button>
         </div>
@@ -126,7 +126,7 @@ export default function UnitForm({ propertyId, unit, onClose, onSuccess }: Props
       {/* ── Identifikace ─────────────────────────────────────── */}
       <div style={{ marginBottom: 16 }}>
         <label className="form-label">Název jednotky *</label>
-        <input value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Byt 1, Garáž G1..." style={inputStyle('name')} />
+        <input data-testid="unit-form-name" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Byt 1, Garáž G1..." style={inputStyle('name')} />
         {errors.name && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.name}</div>}
       </div>
 
@@ -155,7 +155,7 @@ export default function UnitForm({ propertyId, unit, onClose, onSuccess }: Props
         </div>
         <div>
           <label className="form-label">Patro</label>
-          <input type="number" value={form.floor} onChange={(e) => set('floor', e.target.value)} placeholder="1" style={inputStyle()} />
+          <input type="number" data-testid="unit-form-floor" value={form.floor} onChange={(e) => set('floor', e.target.value)} placeholder="1" style={inputStyle()} />
         </div>
       </div>
 
@@ -165,7 +165,7 @@ export default function UnitForm({ propertyId, unit, onClose, onSuccess }: Props
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 10 }}>
           <div>
             <label className="form-label">Podlahová plocha (m²)</label>
-            <input type="number" step="0.01" min="0" value={form.area} onChange={(e) => set('area', e.target.value)} placeholder="65" style={inputStyle()} />
+            <input type="number" step="0.01" min="0" data-testid="unit-form-area" value={form.area} onChange={(e) => set('area', e.target.value)} placeholder="65" style={inputStyle()} />
           </div>
           <div>
             <label className="form-label">Vytápěná plocha (m²)</label>

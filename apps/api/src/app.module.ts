@@ -55,6 +55,7 @@ import { Microsoft365Module } from './microsoft365/microsoft365.module';
 import { SecurityAlertingModule } from './common/security/security-alerting.module';
 import { UnitGroupsModule } from './unit-groups/unit-groups.module';
 import { AccountingModule } from './accounting/accounting.module';
+import { E2eSeedModule } from './e2e-seed/e2e-seed.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
@@ -141,6 +142,7 @@ import { FieldEncryptionService } from './common/crypto/field-encryption.service
     SecurityAlertingModule,
     UnitGroupsModule,
     AccountingModule,
+    ...(process.env.NODE_ENV === 'test' || process.env.E2E_SEED_ENABLED === 'true' ? [E2eSeedModule] : []),
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerBehindProxyGuard },

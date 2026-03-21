@@ -280,6 +280,7 @@ export default function AppShell() {
                 <NavLink
                   key={item.to}
                   to={item.to}
+                  data-testid={`sidebar-nav-${item.to.replace(/^\//, '').replace(/[/?=]/g, '-') || 'home'}`}
                   className={({ isActive }) => {
                     if (hasQuery) {
                       const active = location.pathname + location.search === item.to;

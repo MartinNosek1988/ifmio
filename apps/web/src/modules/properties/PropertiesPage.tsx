@@ -98,7 +98,7 @@ export default function PropertiesPage() {
           <h1 className="page-title">Nemovitosti</h1>
           <p className="page-subtitle">{stats.count} nemovitostí, {stats.units} jednotek</p>
         </div>
-        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)}>
+        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)} data-testid="property-add-btn">
           Nová nemovitost
         </Button>
       </div>
@@ -122,6 +122,7 @@ export default function PropertiesPage() {
           columns={columns}
           rowKey={(p) => p.id}
           onRowClick={(p) => navigate(`/properties/${p.id}`)}
+          data-testid="property-list"
         />
       )}
 
