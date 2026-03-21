@@ -250,4 +250,10 @@ export class AssembliesController {
   async getVotingReportPdf(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.pdf.generateVotingReport(user, id)
   }
+
+  @Get(':id/pdf/garage-authorization')
+  @ApiOperation({ summary: 'Zmocnění společného zástupce garážové jednotky (PDF)' })
+  async getGarageAuthPdf(@CurrentUser() user: AuthUser, @Param('id') id: string, @Query('unitId') unitId: string) {
+    return this.pdf.generateGarageAuthorization(user, id, unitId)
+  }
 }

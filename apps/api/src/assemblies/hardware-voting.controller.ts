@@ -52,6 +52,14 @@ export class HardwareVotingController {
     return this.service.openVoting(user, id, body.agendaItemId)
   }
 
+  @Post('assemblies/:id/hardware-session/reset-voting')
+  @ApiBearerAuth()
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Opakovat hlasování (smazat hlasy a znovu otevřít)' })
+  resetVoting(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.service.resetVoting(user, id)
+  }
+
   @Post('assemblies/:id/hardware-session/close-voting')
   @ApiBearerAuth()
   @Roles(...ROLES_MANAGE)

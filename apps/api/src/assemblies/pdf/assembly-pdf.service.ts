@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, NotFoundException } from '@nestjs/common'
 import PDFDocument from 'pdfkit'
+import { PrismaService } from '../../prisma/prisma.service'
 import { AssembliesService } from '../assemblies.service'
 import type { AuthUser } from '@ifmio/shared-types'
 
@@ -17,7 +18,7 @@ const RESULT_LABELS: Record<string, string> = {
 
 @Injectable()
 export class AssemblyPdfService {
-  constructor(private assemblies: AssembliesService) {}
+  constructor(private assemblies: AssembliesService, private prisma: PrismaService) {}
 
   async generateMinutes(user: AuthUser, assemblyId: string) {
     const assembly = await this.assemblies.findOne(user, assemblyId)
@@ -180,6 +181,55 @@ export class AssemblyPdfService {
     }
 
     doc.moveDown(2)
+    doc.fontSize(8).fillColor('#888')
+      .text(`Vygenerováno systémem ifmio • ${new Date().toLocaleDateString('cs-CZ')}`, { align: 'center' })
+
+    doc.end()
+    return doc
+  }
+
+  async generateGarageAuthorization(user: AuthUser, assemblyId: string, unitId: string) {
+    const assembly = await this.assemblies.findOne(user, assemblyId)
+    const unit = await this.prisma.unit.findFirst({ where: { id: unitId, propertyId: assembly.propertyId, isGarageUnit: true } })
+    if (!unit) throw new NotFoundException('Garážová jednotka nenalezena')
+
+    const doc = new PDFDocument({ size: 'A4', margin: 50 })
+
+    doc.fontSize(14).font('Helvetica-Bold')
+      .text(`${assembly.property.name}`, { align: 'center' }).moveDown(0.3)
+    doc.fontSize(12).text('Zmocnění společného zástupce garážové jednotky', { align: 'center' }).moveDown(1)
+
+    doc.font('Helvetica').fontSize(10)
+      .text(`Shromáždění: ${assembly.title}`).moveDown(0.2)
+      .text(`Datum: ${assembly.scheduledAt.toLocaleDateString('cs-CZ')}`).moveDown(0.2)
+      .text(`Garážová jednotka č.: ${unit.name}`).moveDown(0.2)
+      .text(`Podíl na spol. částech: ${unit.commonAreaShare ? (Number(unit.commonAreaShare) * 100).toFixed(4) + ' %' : '—'}`).moveDown(1.5)
+
+    doc.text('Já, níže podepsaný/á:').moveDown(0.5)
+    doc.text('Jméno: _______________________________________').moveDown(0.3)
+    doc.text('Bydliště: ____________________________________').moveDown(0.3)
+    doc.text('Podíl na gar. jednotce: ______________________').moveDown(1)
+
+    doc.text('tímto zmocňuji pana/paní:').moveDown(0.5)
+    doc.text('Jméno: _______________________________________').moveDown(0.3)
+    doc.text('Bydliště: ____________________________________').moveDown(1)
+
+    doc.text(
+      `aby mne zastupoval/a jako společný zástupce při hlasování ` +
+      `na shromáždění SVJ ${assembly.property.name} konaném dne ` +
+      `${assembly.scheduledAt.toLocaleDateString('cs-CZ')} ` +
+      `v rozsahu mého podílu na garážové jednotce č. ${unit.name}.`,
+    ).moveDown(1)
+
+    doc.fontSize(9).text(
+      'Toto zmocnění se uděluje v souladu s §1185 odst. 2 zákona ' +
+      'č. 89/2012 Sb., občanského zákoníku.',
+    ).moveDown(1.5)
+
+    doc.fontSize(10)
+      .text('V _________________ dne _______________').moveDown(1.5)
+      .text('Podpis zmocnitele: _________________________').moveDown(2)
+
     doc.fontSize(8).fillColor('#888')
       .text(`Vygenerováno systémem ifmio • ${new Date().toLocaleDateString('cs-CZ')}`, { align: 'center' })
 

@@ -7,6 +7,7 @@ import { LiveVoteLog } from './LiveVoteLog'
 import { LiveResultReveal } from './LiveResultReveal'
 import { LiveQuorumBar } from './LiveQuorumBar'
 import { LiveWaitingState } from './LiveWaitingState'
+import { LivePendingKeypads } from './LivePendingKeypads'
 
 export default function LiveDashboardPage() {
   const { assemblyId } = useParams()
@@ -85,6 +86,15 @@ export default function LiveDashboardPage() {
           />
         ) : (
           <LiveWaitingState />
+        )}
+
+        {/* Pending keypads */}
+        {isVoting && ws.pendingKeypads && (
+          <LivePendingKeypads
+            pending={ws.pendingKeypads.pending}
+            totalKeypads={ws.pendingKeypads.totalKeypads}
+            votedKeypads={ws.pendingKeypads.votedKeypads}
+          />
         )}
 
         {/* Vote log */}
