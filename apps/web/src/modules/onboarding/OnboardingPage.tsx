@@ -1,9 +1,6 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  Building2, Layers, UserCheck, FileText, Landmark, Wallet, Users, ArrowDownToLine,
-  ArrowRight, X,
-} from 'lucide-react'
+import { ArrowRight, X } from 'lucide-react'
 import { LoadingSpinner } from '../../shared/components'
 import { useToast } from '../../shared/components/toast/Toast'
 import { useOnboardingStatus, useSkipOnboardingStep, useDismissOnboarding } from './onboarding.queries'
@@ -13,17 +10,6 @@ import {
   BankAccountStep, OpeningBalancesStep, PrescriptionsStep, BankTransactionsStep,
 } from './steps'
 import type { OnboardingStep as StepData } from './onboarding.api'
-
-const STEP_ICONS: Record<string, React.ReactNode> = {
-  property: <Building2 size={20} />,
-  units: <Layers size={20} />,
-  contacts: <UserCheck size={20} />,
-  components: <FileText size={20} />,
-  bank: <Landmark size={20} />,
-  balances: <Wallet size={20} />,
-  prescriptions: <Users size={20} />,
-  import: <ArrowDownToLine size={20} />,
-}
 
 const STEP_LABELS: Record<string, string> = {
   property: 'Založení nemovitosti',
