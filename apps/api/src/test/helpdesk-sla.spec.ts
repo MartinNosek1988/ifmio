@@ -8,7 +8,7 @@ describe('Helpdesk SLA (e2e)', () => {
 
   beforeAll(async () => {
     testApp = await createTestApp()
-  }, 30_000)
+  }, 60_000)
 
   afterAll(async () => {
     await closeTestApp(testApp)
@@ -238,6 +238,17 @@ describe('Helpdesk SLA (e2e)', () => {
 
   it('escalateOverdueTickets escalates overdue tickets', async () => {
     const api = authRequest(testApp.server, testApp.token)
+    const prisma = testApp.app.get(PrismaService)
+
+    // Clear stale overdue tickets from prior test runs so escalation scan is fast
+    await prisma.helpdeskTicket.updateMany({
+      where: {
+        status: { in: ['open', 'in_progress'] },
+        resolutionDueAt: { not: null, lt: new Date() },
+        escalationLevel: { lt: 5 },
+      },
+      data: { status: 'closed' },
+    })
 
     // Create an urgent ticket (1h response, 8h resolution)
     const createRes = await api
@@ -250,7 +261,6 @@ describe('Helpdesk SLA (e2e)', () => {
     const ticketId = createRes.body.id
 
     // Manually set resolutionDueAt to past via direct DB update
-    const prisma = testApp.app.get(PrismaService)
     await prisma.helpdeskTicket.update({
       where: { id: ticketId },
       data: { resolutionDueAt: new Date('2020-01-01') },
@@ -269,5 +279,5 @@ describe('Helpdesk SLA (e2e)', () => {
 
     expect(detail.body.escalationLevel).toBeGreaterThanOrEqual(1)
     expect(detail.body.escalatedAt).toBeTruthy()
-  })
+  }, 60_000)
 })

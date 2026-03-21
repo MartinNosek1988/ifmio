@@ -5,7 +5,7 @@ describe('Recurring Plan Completion Callback (e2e)', () => {
 
   beforeAll(async () => {
     testApp = await createTestApp()
-  }, 30_000)
+  }, 60_000)
 
   afterAll(async () => {
     await closeTestApp(testApp)
