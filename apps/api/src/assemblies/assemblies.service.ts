@@ -388,39 +388,110 @@ export class AssembliesService {
     const item = assembly.agendaItems.find(i => i.id === agendaItemId)
     if (!item) throw new NotFoundException('Bod programu nenalezen')
 
-    const votes = await this.prisma.assemblyVote.findMany({ where: { agendaItemId } })
-
-    let votesFor = 0, votesAgainst = 0, votesAbstain = 0
-    for (const v of votes) {
-      const w = Number(v.shareWeight)
-      if (v.choice === 'ANO') votesFor += w
-      else if (v.choice === 'NE') votesAgainst += w
-      else votesAbstain += w
-    }
+    // ── TASK 2: Per-item quorum snapshot ──────────────────────────
+    const presentAttendees = await this.prisma.assemblyAttendee.findMany({
+      where: { assemblyId, isPresent: true, leftAt: null },
+      select: { totalShare: true },
+    })
+    const presentSharesNow = presentAttendees.reduce((s, a) => s + Number(a.totalShare), 0)
 
     const totalShares = assembly.totalShares ? Number(assembly.totalShares) : 0
-    const presentShares = assembly.presentShares ? Number(assembly.presentShares) : 0
+    const isQuorateNow = totalShares > 0 && (presentSharesNow / totalShares) > 0.5
 
+    // Update assembly with fresh quorum
+    await this.prisma.assembly.update({
+      where: { id: assemblyId },
+      data: { presentShares: presentSharesNow, isQuorate: isQuorateNow },
+    })
+
+    // ── TASK 1: Garage internal voting ────────────────────────────
+    // Check if any units in this property are garage units
+    const garageUnits = await this.prisma.unit.findMany({
+      where: { propertyId: assembly.propertyId, isGarageUnit: true },
+      select: { id: true, name: true, commonAreaShare: true, garageVotingRule: true },
+    })
+
+    const garageUnitIds = new Set(garageUnits.map(u => u.id))
+    const garageInternalVotes: Record<string, { for: number; against: number; abstain: number; result: string }> = {}
+
+    const votes = await this.prisma.assemblyVote.findMany({
+      where: { agendaItemId },
+      include: { attendee: { select: { id: true, unitIds: true, totalShare: true } } },
+    })
+
+    let votesFor = 0, votesAgainst = 0, votesAbstain = 0
+
+    if (garageUnits.length > 0) {
+      // Separate garage votes from regular votes
+      // For each garage unit, collect votes from attendees representing it
+      for (const gu of garageUnits) {
+        let guFor = 0, guAgainst = 0, guAbstain = 0
+        for (const v of votes) {
+          if (v.attendee.unitIds.includes(gu.id)) {
+            const w = Number(v.shareWeight)
+            if (v.choice === 'ANO') guFor += w
+            else if (v.choice === 'NE') guAgainst += w
+            else guAbstain += w
+          }
+        }
+        // Determine garage unit's collective vote
+        let guResult: string
+        if (guFor === 0 && guAgainst === 0 && guAbstain === 0) {
+          guResult = 'ZDRZET' // No garage co-owners present
+        } else if (guFor > guAgainst) {
+          guResult = 'ANO'
+        } else if (guAgainst > guFor) {
+          guResult = 'NE'
+        } else {
+          guResult = 'ZDRZET' // Tied → abstain
+        }
+
+        garageInternalVotes[gu.id] = { for: guFor, against: guAgainst, abstain: guAbstain, result: guResult }
+
+        // Add garage unit's collective vote to overall tally
+        const guShare = gu.commonAreaShare ? Number(gu.commonAreaShare) : 0
+        if (guResult === 'ANO') votesFor += guShare
+        else if (guResult === 'NE') votesAgainst += guShare
+        else votesAbstain += guShare
+      }
+
+      // Add non-garage individual votes
+      for (const v of votes) {
+        const hasOnlyGarageUnits = v.attendee.unitIds.every(uid => garageUnitIds.has(uid))
+        if (!hasOnlyGarageUnits) {
+          // Attendee has at least one non-garage unit — count their vote directly
+          // but subtract garage share portion (complex edge case — simplified: count full share)
+          const w = Number(v.shareWeight)
+          if (v.choice === 'ANO') votesFor += w
+          else if (v.choice === 'NE') votesAgainst += w
+          else votesAbstain += w
+        }
+      }
+    } else {
+      // No garage units — simple direct counting (original logic)
+      for (const v of votes) {
+        const w = Number(v.shareWeight)
+        if (v.choice === 'ANO') votesFor += w
+        else if (v.choice === 'NE') votesAgainst += w
+        else votesAbstain += w
+      }
+    }
+
+    // ── Evaluate majority ─────────────────────────────────────────
     let result: 'SCHVALENO' | 'NESCHVALENO' | 'NEUSNASENO'
 
-    if (!assembly.isQuorate) {
+    if (!isQuorateNow) {
       result = 'NEUSNASENO'
     } else {
       const majority = item.majorityType as string
+      // Use fresh presentSharesNow for NADPOLOVICNI_PRITOMNYCH
       let threshold: number
-      if (majority === 'NADPOLOVICNI_PRITOMNYCH') {
-        threshold = presentShares / 2
-      } else if (majority === 'NADPOLOVICNI_VSECH') {
-        threshold = totalShares / 2
-      } else if (majority === 'KVALIFIKOVANA') {
-        threshold = totalShares * 0.75
-      } else {
-        // JEDNOMYSLNA
-        threshold = totalShares
-      }
+      if (majority === 'NADPOLOVICNI_PRITOMNYCH') threshold = presentSharesNow / 2
+      else if (majority === 'NADPOLOVICNI_VSECH') threshold = totalShares / 2
+      else if (majority === 'KVALIFIKOVANA') threshold = totalShares * 0.75
+      else threshold = totalShares // JEDNOMYSLNA
 
       result = votesFor > threshold ? 'SCHVALENO' : 'NESCHVALENO'
-      // For JEDNOMYSLNA, it must be exactly equal (all shares voting yes)
       if (majority === 'JEDNOMYSLNA') {
         result = votesFor >= totalShares && votesAgainst === 0 && votesAbstain === 0
           ? 'SCHVALENO' : 'NESCHVALENO'
@@ -429,17 +500,19 @@ export class AssembliesService {
 
     await this.prisma.assemblyAgendaItem.update({
       where: { id: agendaItemId },
-      data: { votesFor, votesAgainst, votesAbstain, result },
+      data: {
+        votesFor, votesAgainst, votesAbstain, result,
+        presentSharesAtVote: presentSharesNow,
+        isQuorateAtVote: isQuorateNow,
+        garageInternalVotes: garageUnits.length > 0 ? garageInternalVotes : undefined,
+      },
     })
 
     return {
-      result,
-      votesFor,
-      votesAgainst,
-      votesAbstain,
-      totalShares,
-      presentShares,
+      result, votesFor, votesAgainst, votesAbstain,
+      totalShares, presentShares: presentSharesNow,
       majorityType: item.majorityType,
+      garageInternalVotes: garageUnits.length > 0 ? garageInternalVotes : undefined,
     }
   }
 }

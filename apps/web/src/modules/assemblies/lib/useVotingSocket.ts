@@ -24,6 +24,12 @@ interface ResultEvent {
   votesFor: number; votesAgainst: number; votesAbstain: number
 }
 
+interface PendingEvent {
+  agendaItemId: string
+  pending: Array<{ keypadId: string; attendeeName: string; share: number }>
+  totalKeypads: number; votedKeypads: number
+}
+
 export function useVotingSocket(assemblyId: string | undefined) {
   const socketRef = useRef<Socket | null>(null)
   const [isConnected, setIsConnected] = useState(false)
@@ -32,6 +38,7 @@ export function useVotingSocket(assemblyId: string | undefined) {
   const [quorum, setQuorum] = useState<QuorumEvent | null>(null)
   const [votingState, setVotingState] = useState<VotingStateEvent | null>(null)
   const [lastResult, setLastResult] = useState<ResultEvent | null>(null)
+  const [pendingKeypads, setPendingKeypads] = useState<PendingEvent | null>(null)
   const [voteLog, setVoteLog] = useState<VoteEvent[]>([])
 
   useEffect(() => {
@@ -51,8 +58,12 @@ export function useVotingSocket(assemblyId: string | undefined) {
     })
     socket.on('tally:update', (data: TallyEvent) => setTally(data))
     socket.on('quorum:update', (data: QuorumEvent) => setQuorum(data))
-    socket.on('voting:state', (data: VotingStateEvent) => setVotingState(data))
+    socket.on('voting:state', (data: VotingStateEvent) => {
+      setVotingState(data)
+      if (data.votingOpen) { setLastResult(null); setVoteLog([]) } // Reset on new/re-vote
+    })
     socket.on('voting:result', (data: ResultEvent) => setLastResult(data))
+    socket.on('voting:pending', (data: PendingEvent) => setPendingKeypads(data))
 
     socketRef.current = socket
     return () => { socket.disconnect(); socketRef.current = null }
@@ -60,5 +71,5 @@ export function useVotingSocket(assemblyId: string | undefined) {
 
   const clearLog = useCallback(() => setVoteLog([]), [])
 
-  return { isConnected, lastVote, tally, quorum, votingState, lastResult, voteLog, clearLog }
+  return { isConnected, lastVote, tally, quorum, votingState, lastResult, pendingKeypads, voteLog, clearLog }
 }

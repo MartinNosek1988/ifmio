@@ -59,6 +59,14 @@ export class VotingGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(`assembly:${assemblyId}`).emit('voting:result', data)
   }
 
+  broadcastPendingKeypads(assemblyId: string, data: {
+    agendaItemId: string
+    pending: Array<{ keypadId: string; attendeeName: string; share: number }>
+    totalKeypads: number; votedKeypads: number
+  }) {
+    this.server.to(`assembly:${assemblyId}`).emit('voting:pending', data)
+  }
+
   getConnectedCount(assemblyId: string): number {
     return this.assemblyRooms.get(assemblyId)?.size ?? 0
   }
