@@ -356,8 +356,8 @@ export default function AppShell() {
               onClick={() => setShowUserMenu((v) => !v)}
               style={{ cursor: 'pointer' }}
             >
-              {meData?.avatarBase64 ? (
-                <img src={meData.avatarBase64} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+              {meData?.hasAvatar ? (
+                <img src={`${import.meta.env.VITE_API_URL ?? '/api/v1'}/auth/me/avatar`} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
               ) : (
                 (meData?.name ?? 'U').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
               )}

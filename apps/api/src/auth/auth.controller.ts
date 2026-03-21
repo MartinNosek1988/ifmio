@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   Req,
+  Res,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -64,6 +65,20 @@ export class AuthController {
   @ApiOperation({ summary: 'Aktuální uživatel + tenant info' })
   me(@CurrentUser() user: AuthUser) {
     return this.auth.me(user);
+  }
+
+  @Get('me/avatar')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Avatar uživatele (base64 nebo 204)' })
+  async avatar(@CurrentUser() user: AuthUser, @Res() reply: any) {
+    const u = await this.auth.getAvatar(user.id);
+    if (!u) {
+      reply.status(204).send();
+      return;
+    }
+    reply.header('Cache-Control', 'private, max-age=3600');
+    reply.header('Content-Type', 'application/json');
+    reply.send({ avatarBase64: u });
   }
 
   @Patch('profile')

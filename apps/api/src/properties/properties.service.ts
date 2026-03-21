@@ -49,7 +49,8 @@ export class PropertiesService {
 
     return this.prisma.property.findMany({
       where,
-      include: { units: true, _count: { select: { residents: true } } },
+      // units[] excluded from list — use detail endpoint for full units
+      include: { _count: { select: { units: true, residents: true } } },
       orderBy: { createdAt: 'desc' },
     });
   }

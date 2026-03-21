@@ -26,8 +26,8 @@ export interface ApiProperty {
   country?: string;
   createdAt: string;
   updatedAt: string;
-  units: ApiUnit[];
-  _count?: { residents: number };
+  units?: ApiUnit[];
+  _count?: { units?: number; residents?: number };
 }
 
 export type SpaceTypeValue = 'RESIDENTIAL' | 'NON_RESIDENTIAL' | 'GARAGE' | 'PARKING' | 'CELLAR' | 'LAND';
