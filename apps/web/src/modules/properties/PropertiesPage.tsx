@@ -31,9 +31,9 @@ export default function PropertiesPage() {
   }, [properties, search]);
 
   const stats = useMemo(() => {
-    const totalUnits = properties.reduce((s, p) => s + (p.units?.length ?? 0), 0);
+    const totalUnits = properties.reduce((s, p) => s + (p._count?.units ?? p.units?.length ?? 0), 0);
     const occupied = properties.reduce(
-      (s, p) => s + (p.units?.filter((u) => u.isOccupied).length ?? 0), 0
+      (s, p) => s + (p.units?.filter((u: any) => u.isOccupied).length ?? 0), 0
     );
     return {
       count: properties.length,
@@ -76,13 +76,13 @@ export default function PropertiesPage() {
     },
     {
       key: 'units', label: 'Jednotek',
-      render: (p) => String(p.units?.length ?? 0),
+      render: (p) => String(p._count?.units ?? p.units?.length ?? 0),
     },
     {
       key: 'obsazenost', label: 'Obsazenost',
       render: (p) => {
-        const total = p.units?.length ?? 0;
-        const occ = p.units?.filter((u) => u.isOccupied).length ?? 0;
+        const total = p._count?.units ?? p.units?.length ?? 0;
+        const occ = p.units?.filter((u: any) => u.isOccupied).length ?? 0;
         return `${occ}/${total}`;
       },
     },

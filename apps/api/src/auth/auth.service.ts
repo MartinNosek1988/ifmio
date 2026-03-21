@@ -343,7 +343,8 @@ export class AuthService {
       select: {
         id: true, email: true, name: true, role: true, tenantId: true,
         partyId: true, totpEnabled: true,
-        phone: true, position: true, avatarBase64: true,
+        phone: true, position: true,
+        // avatarBase64 excluded — use GET /auth/me/avatar instead (saves ~43KB per call)
         language: true, timezone: true, dateFormat: true, notifEmail: true,
         createdAt: true, lastLoginAt: true,
       },
@@ -357,7 +358,21 @@ export class AuthService {
       },
     });
 
-    return { ...full, tenant };
+    // Check if user has avatar without loading the blob
+    const hasAvatar = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      select: { avatarBase64: true },
+    }).then(u => !!u?.avatarBase64);
+
+    return { ...full, hasAvatar, tenant };
+  }
+
+  async getAvatar(userId: string): Promise<string | null> {
+    const u = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { avatarBase64: true },
+    });
+    return u?.avatarBase64 ?? null;
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {
