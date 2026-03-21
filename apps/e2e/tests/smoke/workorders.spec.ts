@@ -1,0 +1,24 @@
+import { test, expect } from '@playwright/test';
+import { login } from '../helpers/auth';
+
+test.describe('Pracovní úkoly', () => {
+  test('Seznam WO se načte a zobrazí tabulku nebo prázdný stav', async ({ page }) => {
+    await login(page);
+    await page.goto('/workorders');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(1500);
+
+    const hasTable = await page.locator('[data-testid="wo-list"]').isVisible().catch(() => false);
+    const hasEmpty = await page.locator('[data-testid="empty-state"]').isVisible().catch(() => false);
+    expect(hasTable || hasEmpty, 'WO stránka zobrazuje obsah').toBe(true);
+  });
+
+  test('Tlačítko Nový úkol je viditelné', async ({ page }) => {
+    await login(page);
+    await page.goto('/workorders');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(1500);
+
+    await expect(page.locator('[data-testid="wo-add-btn"]')).toBeVisible();
+  });
+});
