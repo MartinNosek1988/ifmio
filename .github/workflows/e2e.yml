@@ -1,0 +1,142 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: e2e
+          POSTGRES_PASSWORD: e2e_password
+          POSTGRES_DB: ifmio_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U e2e"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://e2e:e2e_password@localhost:5432/ifmio_e2e
+      DIRECT_URL: postgresql://e2e:e2e_password@localhost:5432/ifmio_e2e
+      JWT_SECRET: e2e-test-jwt-secret-not-for-production-use-min-32chars
+      JWT_REFRESH_SECRET: e2e-test-refresh-secret-not-for-production-use-32ch
+      NODE_ENV: test
+      E2E_SEED_ENABLED: 'true'
+      PORT: 3000
+      CORS_ORIGIN: http://localhost:5173
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+        working-directory: apps/api
+
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+        working-directory: apps/api
+
+      - name: Build API
+        run: npm run build
+        working-directory: apps/api
+
+      - name: Build Web
+        run: npm run build
+        working-directory: apps/web
+
+      # Start API in background (uses compiled dist)
+      - name: Start API server
+        run: npm run start &
+        working-directory: apps/api
+
+      # Serve web build with vite preview
+      - name: Start Web server
+        run: npx vite preview --port 5173 &
+        working-directory: apps/web
+
+      - name: Wait for servers
+        run: |
+          echo "Waiting for API..."
+          for i in $(seq 1 30); do
+            if curl -s http://localhost:3000/api/v1/health > /dev/null 2>&1; then
+              echo "API ready on attempt $i"
+              break
+            fi
+            sleep 2
+          done
+          echo "Waiting for Web..."
+          for i in $(seq 1 15); do
+            if curl -s http://localhost:5173 > /dev/null 2>&1; then
+              echo "Web ready on attempt $i"
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+        working-directory: apps/e2e
+
+      # Seed test data via API
+      - name: Seed E2E test data
+        run: |
+          SEED=$(curl -s -X POST http://localhost:3000/api/v1/e2e-seed/setup)
+          echo "Seed response: $SEED"
+          echo "E2E_TENANT_ID=$(echo $SEED | jq -r .tenantId)" >> $GITHUB_ENV
+
+      - name: Run E2E tests
+        run: npx playwright test
+        working-directory: apps/e2e
+        env:
+          BASE_URL: http://localhost:5173
+          TEST_EMAIL: ${{ env.SEED_EMAIL || 'e2e-test@test.ifmio.dev' }}
+          TEST_PASSWORD: E2eTestPass123!
+
+      # Cleanup seed data
+      - name: Cleanup E2E data
+        if: always()
+        run: |
+          if [ -n "$E2E_TENANT_ID" ]; then
+            curl -s -X DELETE "http://localhost:3000/api/v1/e2e-seed/cleanup/$E2E_TENANT_ID" || true
+          fi
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: apps/e2e/playwright-report/
+          retention-days: 7
+
+      - name: Upload failure screenshots
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-screenshots
+          path: apps/e2e/test-results/
+          retention-days: 7
