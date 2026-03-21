@@ -24,18 +24,12 @@ export class AdminService {
   // ─── TENANT SETTINGS ──────────────────────────────────────────
 
   async getSettings(user: AuthUser) {
-    const settings = await this.prisma.tenantSettings.findUnique({
-      where:   { tenantId: user.tenantId },
+    return this.prisma.tenantSettings.upsert({
+      where:  { tenantId: user.tenantId },
+      update: {},
+      create: { tenantId: user.tenantId },
       include: { tenant: { select: { id: true, name: true, slug: true, plan: true } } },
     })
-
-    if (!settings) {
-      return this.prisma.tenantSettings.create({
-        data: { tenantId: user.tenantId },
-        include: { tenant: { select: { id: true, name: true, slug: true, plan: true } } },
-      })
-    }
-    return settings
   }
 
   async updateSettings(user: AuthUser, dto: object) {
