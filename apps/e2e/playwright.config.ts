@@ -17,8 +17,14 @@ export default defineConfig({
   },
   projects: [
     {
+      name: 'setup',
+      testMatch: /auth\.setup\.ts/,
+    },
+    {
       name: 'chromium',
       use: { browserName: 'chromium', viewport: { width: 1440, height: 900 } },
+      dependencies: ['setup'],
+      testMatch: /smoke\/.+\.spec\.ts/,
     },
   ],
 });
