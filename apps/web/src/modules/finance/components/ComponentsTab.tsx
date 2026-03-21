@@ -116,7 +116,7 @@ export default function ComponentsTab() {
             {properties.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         )}
-        <Button variant="primary" size="sm" onClick={() => { setEditComponent(null); setShowCreate(true); }}>
+        <Button variant="primary" size="sm" data-testid="finance-components-add-btn" onClick={() => { setEditComponent(null); setShowCreate(true); }}>
           Přidat složku
         </Button>
         {components.length > 0 && (

@@ -186,7 +186,7 @@ export default function FinancePage() {
   // ── Render ────────────────────────────────────────────────────────────
 
   return (
-    <div>
+    <div data-testid="finance-page">
       <div className="page-header">
         <div>
           <h1 className="page-title">Finance</h1>
