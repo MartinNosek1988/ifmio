@@ -37,6 +37,22 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
     'mod.documents.detail':'Centralised document storage with smart templates, e-signature ready exports and ISDOC electronic invoice import for seamless accounting integration.',
     'mod.reporting.name':'Reporting','mod.reporting.short':'KPIs, dashboards, custom exports',
     'mod.reporting.detail':'Real-time KPI dashboards, occupancy reports, financial summaries and one-click CSV/PDF exports tailored to every stakeholder level.',
+    'mod.assets.name':'Assets & TZB','mod.assets.short':'Equipment passports, revisions, QR codes',
+    'mod.assets.detail':'Technical building equipment management \u2014 boilers, elevators, HVAC. Revision plans, service history, QR asset labels and field checks.',
+    'mod.kanban.name':'Kanban Board','mod.kanban.short':'Visual task management, drag & drop',
+    'mod.kanban.detail':'Unified task board aggregating helpdesk tickets, work orders and ad-hoc tasks into a single drag & drop Kanban view.',
+    'mod.mio.name':'Mio AI','mod.mio.short':'AI assistant for property insights',
+    'mod.mio.detail':'Intelligent AI assistant integrated into the platform. Query your data, get recommendations and detect anomalies. Powered by Anthropic Claude.',
+    'mod.portal.name':'Client Portal','mod.portal.short':'Self-service for tenants and owners',
+    'mod.portal.detail':'Tenant and owner self-service portal \u2014 view prescriptions, payments, submit requests, access documents and check account balance.',
+    'sec.label':'Security','sec.title':'Enterprise-grade security for every customer',
+    'sec.sub':'Your data is protected by multiple layers of security, encryption and compliance.',
+    'sec.enc.title':'Data Encryption','sec.enc.desc':'TLS 1.3 in transit, AES-256 at rest. Application-level encryption for sensitive fields (IBAN, birth numbers).',
+    'sec.cf.title':'Cloudflare Protection','sec.cf.desc':'DDoS protection, WAF and Cloudflare Tunnel \u2014 backend without public ports. 330+ edge locations.',
+    'sec.auth.title':'Authentication & Access','sec.auth.desc':'JWT with rotation, TOTP 2FA, role-based access control (6 roles), rate limiting and brute-force protection.',
+    'sec.tenant.title':'Tenant Isolation','sec.tenant.desc':'Strict multi-tenant architecture. Every API request validated against organisation. Full audit log of all changes.',
+    'sec.gdpr.title':'GDPR & Compliance','sec.gdpr.desc':'Full GDPR compliance \u2014 right to erasure, export, portability. Data stored in EU (Hetzner Frankfurt). NIS2 ready.',
+    'sec.backup.title':'Backups & Uptime','sec.backup.desc':'Automated database backups. 99.9% SLA availability. 24/7 monitoring and alerting.',
     'aud.label':"Who it's for",'aud.title':'Built for professionals at every scale',
     'aud.pm.title':'Property Managers','aud.pm.desc':'Manage residential and commercial portfolios with ease.',
     'aud.pm.1':'Multi-property dashboard','aud.pm.2':'Automated rent collection','aud.pm.3':'Tenant communication','aud.pm.4':'Legal document templates',
@@ -94,6 +110,22 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
     'mod.documents.detail':'Centralizovan\u00e9 \u00falo\u017ei\u0161t\u011b dokument\u016f s chytr\u00fdmi \u0161ablonami a importem ISDOC faktur.',
     'mod.reporting.name':'Reporting','mod.reporting.short':'KPI, dashboardy, vlastn\u00ed exporty',
     'mod.reporting.detail':'Dashboardy KPI v re\u00e1ln\u00e9m \u010dase, reporty obsazenosti a exporty CSV/PDF jedn\u00edm klikem.',
+    'mod.assets.name':'Assets & TZB','mod.assets.short':'Pasy za\u0159\u00edzen\u00ed, revize, QR k\u00f3dy',
+    'mod.assets.detail':'Evidence technick\u00fdch za\u0159\u00edzen\u00ed budov \u2014 kotle, v\u00fdtahy, klimatizace. Revizn\u00ed pl\u00e1ny, servisn\u00ed historie, QR \u0161t\u00edtky.',
+    'mod.kanban.name':'Kanban Board','mod.kanban.short':'Vizu\u00e1ln\u00ed \u0159\u00edzen\u00ed \u00fakol\u016f, drag & drop',
+    'mod.kanban.detail':'Sjednocen\u00fd board agreguj\u00edc\u00ed helpdesk tickety, pracovn\u00ed p\u0159\u00edkazy i ad-hoc \u00fakoly do jednoho drag & drop Kanban pohledu.',
+    'mod.mio.name':'Mio AI','mod.mio.short':'AI asistent pro spr\u00e1vu nemovitost\u00ed',
+    'mod.mio.detail':'Inteligentn\u00ed AI asistent integrovan\u00fd do platformy. Dotazy na data, anal\u00fdzy, doporu\u010den\u00ed. Napojeno na Anthropic Claude.',
+    'mod.portal.name':'Klientsk\u00fd port\u00e1l','mod.portal.short':'Self-service pro n\u00e1jemce a vlastn\u00edky',
+    'mod.portal.detail':'Port\u00e1l pro n\u00e1jemce a vlastn\u00edky \u2014 p\u0159edpisy, platby, po\u017eadavky, dokumenty, stav konta.',
+    'sec.label':'Bezpe\u010dnost','sec.title':'Enterprise bezpe\u010dnost pro ka\u017ed\u00e9ho z\u00e1kazn\u00edka',
+    'sec.sub':'Va\u0161e data chr\u00e1n\u00ed n\u011bkolik vrstev zabezpe\u010den\u00ed, \u0161ifrov\u00e1n\u00ed a compliance.',
+    'sec.enc.title':'\u0160ifrov\u00e1n\u00ed dat','sec.enc.desc':'TLS 1.3 p\u0159i p\u0159enosu, AES-256 v klidu. Aplika\u010dn\u00ed \u0161ifrov\u00e1n\u00ed citliv\u00fdch pol\u00ed (IBAN, rodn\u00e1 \u010d\u00edsla).',
+    'sec.cf.title':'Cloudflare ochrana','sec.cf.desc':'DDoS ochrana, WAF a Cloudflare Tunnel \u2014 backend bez ve\u0159ejn\u00fdch port\u016f. 330+ edge lokac\u00ed.',
+    'sec.auth.title':'Autentizace a p\u0159\u00edstup','sec.auth.desc':'JWT s rotac\u00ed, TOTP 2FA, \u0159\u00edzen\u00ed p\u0159\u00edstupu (6 rol\u00ed), rate limiting a ochrana proti brute-force.',
+    'sec.tenant.title':'Izolace tenant\u016f','sec.tenant.desc':'Striktn\u00ed multi-tenant architektura. Ka\u017ed\u00fd API request validov\u00e1n v\u016f\u010di organizaci. Kompletn\u00ed audit log.',
+    'sec.gdpr.title':'GDPR & Compliance','sec.gdpr.desc':'Pln\u00e1 shoda s GDPR \u2014 pr\u00e1vo na v\u00fdmaz, export, p\u0159enositelnost. Data ulo\u017eena v EU (Hetzner Frankfurt). P\u0159ipravenost na NIS2.',
+    'sec.backup.title':'Z\u00e1lohy a dostupnost','sec.backup.desc':'Automatick\u00e9 z\u00e1lohy datab\u00e1ze. 99.9% SLA dostupnost. Monitoring a alerting 24/7.',
     'aud.label':'Pro koho je ur\u010den','aud.title':'Vytvo\u0159eno pro profesion\u00e1ly na ka\u017ed\u00e9 \u00farovni',
     'aud.pm.title':'Spr\u00e1vci nemovitost\u00ed','aud.pm.desc':'Spravujte reziden\u010dn\u00ed i komer\u010dn\u00ed portfolia snadno.',
     'aud.pm.1':'P\u0159ehled v\u00edce nemovitost\u00ed','aud.pm.2':'Automatizovan\u00fd v\u00fdb\u011br n\u00e1jemn\u00e9ho','aud.pm.3':'Komunikace s n\u00e1jemci','aud.pm.4':'Pr\u00e1vn\u00ed \u0161ablony dokument\u016f',
@@ -247,9 +279,13 @@ const MODULE_DATA: Record<string, { icon: string; titleKey: string; textKey: str
   meters:      { icon: '\ud83d\udce1', titleKey: 'mod.meters.name',      textKey: 'mod.meters.detail',       tags: ['Water','Electricity','Gas','Heating'] },
   documents:   { icon: '\ud83d\udcc4', titleKey: 'mod.documents.name',   textKey: 'mod.documents.detail',    tags: ['Templates','ISDOC','Storage','e-Signature'] },
   reporting:   { icon: '\ud83d\udcca', titleKey: 'mod.reporting.name',   textKey: 'mod.reporting.detail',    tags: ['KPIs','Dashboards','CSV','PDF'] },
+  assets:      { icon: '\u2699\ufe0f', titleKey: 'mod.assets.name',     textKey: 'mod.assets.detail',       tags: ['TZB','Revize','Servis','QR'] },
+  kanban:      { icon: '\ud83d\udccb', titleKey: 'mod.kanban.name',     textKey: 'mod.kanban.detail',       tags: ['Drag & Drop','Helpdesk','WO','Tasks'] },
+  mio:         { icon: '\ud83e\udd16', titleKey: 'mod.mio.name',        textKey: 'mod.mio.detail',          tags: ['AI','Analytics','Recommendations'] },
+  portal:      { icon: '\ud83c\udf10', titleKey: 'mod.portal.name',     textKey: 'mod.portal.detail',       tags: ['Self-service','Tenants','Payments'] },
 };
 
-const MODULES_ORDER = ['finance','maintenance','tenants','meters','documents','reporting'] as const;
+const MODULES_ORDER = ['finance','maintenance','tenants','meters','documents','reporting','assets','kanban','mio','portal'] as const;
 
 /* ─── CSS ─────────────────────────────────────────────────────── */
 const LANDING_CSS = `
@@ -679,6 +715,38 @@ export default function LandingPage() {
                   <li key={n}>{t(`aud.${aud.key}.${n}`)}</li>
                 ))}
               </ul>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* SECURITY */}
+      <section className="lp-section" id="security" style={{ background: '#F0FDFA' }}>
+        <div className="section-head reveal">
+          <div className="section-label">{t('sec.label')}</div>
+          <h2 className="section-title">{t('sec.title')}</h2>
+          <p className="section-sub">{t('sec.sub')}</p>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, maxWidth: 1100, margin: '0 auto' }}>
+          {[
+            { key: 'enc', icon: '🔐' },
+            { key: 'cf', icon: '☁️' },
+            { key: 'auth', icon: '🔑' },
+            { key: 'tenant', icon: '🏢' },
+            { key: 'gdpr', icon: '📋' },
+            { key: 'backup', icon: '💾' },
+          ].map(s => (
+            <div key={s.key} className="reveal" style={{
+              background: 'var(--lp-card-bg)', borderRadius: 12, padding: '28px 24px',
+              border: '1px solid var(--lp-card-brd)', transition: 'box-shadow 0.2s',
+            }}>
+              <div style={{ fontSize: 28, marginBottom: 12 }}>{s.icon}</div>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--lp-text)', marginBottom: 8 }}>
+                {t(`sec.${s.key}.title`)}
+              </h3>
+              <p style={{ fontSize: '0.88rem', color: 'var(--lp-muted)', lineHeight: 1.65 }}>
+                {t(`sec.${s.key}.desc`)}
+              </p>
             </div>
           ))}
         </div>
