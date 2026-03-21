@@ -92,7 +92,7 @@ export default function PropertiesPage() {
   if (error) return <ErrorState message="Nepodařilo se načíst nemovitosti." />;
 
   return (
-    <div>
+    <div data-testid="property-list-page">
       <div className="page-header">
         <div>
           <h1 className="page-title">Nemovitosti</h1>
@@ -111,7 +111,7 @@ export default function PropertiesPage() {
       </div>
 
       <div style={{ marginBottom: 16 }}>
-        <SearchBar placeholder="Hledat nemovitost..." onSearch={setSearch} />
+        <SearchBar placeholder="Hledat nemovitost..." onSearch={setSearch} data-testid="property-search-input" />
       </div>
 
       {filtered.length === 0 ? (

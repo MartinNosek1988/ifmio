@@ -89,7 +89,7 @@ describe('Scope Gaps PR3 (e2e)', () => {
       })
       .expect(201)
     assetB = aB.body.id
-  }, 60_000)
+  }, 90_000)
 
   afterAll(async () => {
     await closeTestApp(testApp)

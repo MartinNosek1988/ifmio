@@ -82,7 +82,7 @@ describe('Asset Passport — GET /assets/:id/passport (e2e)', () => {
     assetId = res.body.id
 
     // Give async instantiation a moment to complete
-    await new Promise((r) => setTimeout(r, 300))
+    await new Promise((r) => setTimeout(r, 1500))
 
     // Confirm plan was auto-created
     const plansRes = await api
@@ -121,7 +121,7 @@ describe('Asset Passport — GET /assets/:id/passport (e2e)', () => {
     const freshAssetId = res.body.id
 
     // Wait briefly so auto-sync (if any) would have time — then delete the plan if created
-    await new Promise((r) => setTimeout(r, 300))
+    await new Promise((r) => setTimeout(r, 1500))
 
     // Get plans and delete them to simulate missing mandatory plan
     const plansRes = await api

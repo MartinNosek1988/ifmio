@@ -187,7 +187,7 @@ export default function PropertyForm({ property, onClose }: Props) {
       title={isEdit ? 'Upravit nemovitost' : 'Nová nemovitost'}
       footer={activeTab === 'manual' ? (
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <Button onClick={onClose}>Zrušit</Button>
+          <Button onClick={onClose} data-testid="property-form-cancel">Zrušit</Button>
           <Button variant="primary" onClick={handleSubmit} disabled={isPending} data-testid="property-form-save">
             {isPending ? 'Ukládám...' : isEdit ? 'Uložit' : 'Vytvořit'}
           </Button>
@@ -237,13 +237,13 @@ export default function PropertyForm({ property, onClose }: Props) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
         <div>
           <label className="form-label">Typ nemovitosti</label>
-          <select value={form.type} onChange={(e) => set('type', e.target.value)} style={inputStyle()}>
+          <select data-testid="property-form-type" value={form.type} onChange={(e) => set('type', e.target.value)} style={inputStyle()}>
             {PROPERTY_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
         </div>
         <div>
           <label className="form-label">Typ vlastnictví</label>
-          <select value={form.ownership} onChange={(e) => set('ownership', e.target.value)} style={inputStyle()}>
+          <select data-testid="property-form-ownership" value={form.ownership} onChange={(e) => set('ownership', e.target.value)} style={inputStyle()}>
             {OWNERSHIP_TYPES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
@@ -252,25 +252,25 @@ export default function PropertyForm({ property, onClose }: Props) {
       <div style={{ marginBottom: 16 }}>
         <label className="form-label">Název *</label>
         <input data-testid="property-form-name" value={form.name} onChange={(e) => set('name', e.target.value)} style={inputStyle('name')} />
-        {errors.name && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.name}</div>}
+        {errors.name && <div data-testid="property-form-error-name" style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.name}</div>}
       </div>
 
       <div style={{ marginBottom: 16 }}>
         <label className="form-label">Adresa *</label>
         <input data-testid="property-form-address" value={form.address} onChange={(e) => set('address', e.target.value)} style={inputStyle('address')} />
-        {errors.address && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.address}</div>}
+        {errors.address && <div data-testid="property-form-error-address" style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.address}</div>}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: 12, marginBottom: 16 }}>
         <div>
           <label className="form-label">Město *</label>
           <input data-testid="property-form-city" value={form.city} onChange={(e) => set('city', e.target.value)} style={inputStyle('city')} />
-          {errors.city && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.city}</div>}
+          {errors.city && <div data-testid="property-form-error-city" style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.city}</div>}
         </div>
         <div>
           <label className="form-label">PSČ *</label>
           <input data-testid="property-form-zip" value={form.postalCode} onChange={(e) => set('postalCode', e.target.value)} style={inputStyle('postalCode')} />
-          {errors.postalCode && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.postalCode}</div>}
+          {errors.postalCode && <div data-testid="property-form-error-postalCode" style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.postalCode}</div>}
         </div>
       </div>
 
@@ -286,6 +286,7 @@ export default function PropertyForm({ property, onClose }: Props) {
         <div style={{ marginBottom: 12 }}>
           <label className="form-label">Právní forma *</label>
           <select
+            data-testid="property-form-legalMode"
             value={form.legalMode}
             onChange={(e) => set('legalMode', e.target.value)}
             style={{ ...inputStyle(), fontWeight: 500 }}
@@ -300,6 +301,7 @@ export default function PropertyForm({ property, onClose }: Props) {
               <label className="form-label">IČ</label>
               <div style={{ display: 'flex', gap: 6 }}>
                 <input
+                  data-testid="property-form-ico"
                   value={form.ico}
                   onChange={(e) => set('ico', e.target.value.replace(/\D/g, '').slice(0, 8))}
                   placeholder="např. 01234567"
@@ -320,6 +322,7 @@ export default function PropertyForm({ property, onClose }: Props) {
               <div>
                 <label className="form-label">DIČ</label>
                 <input
+                  data-testid="property-form-dic"
                   value={form.dic}
                   onChange={(e) => set('dic', e.target.value.slice(0, 12))}
                   placeholder="např. CZ01234567"

@@ -4,9 +4,10 @@ import { Search } from 'lucide-react';
 interface Props {
   placeholder?: string;
   onSearch: (q: string) => void;
+  'data-testid'?: string;
 }
 
-export function SearchBar({ placeholder = 'Hledat...', onSearch }: Props) {
+export function SearchBar({ placeholder = 'Hledat...', onSearch, 'data-testid': testId }: Props) {
   const [value, setValue] = useState('');
 
   return (
@@ -16,6 +17,7 @@ export function SearchBar({ placeholder = 'Hledat...', onSearch }: Props) {
         type="text"
         placeholder={placeholder}
         value={value}
+        data-testid={testId}
         onChange={(e) => {
           setValue(e.target.value);
           onSearch(e.target.value);

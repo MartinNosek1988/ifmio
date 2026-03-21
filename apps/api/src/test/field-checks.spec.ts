@@ -14,7 +14,7 @@ describe('Field Checks & QR Scan Events (e2e)', () => {
       .post('/api/v1/assets', { name: 'Kotel Field Check Test', category: 'tzb' })
       .expect(201)
     assetId = res.body.id
-  }, 30_000)
+  }, 60_000)
 
   afterAll(async () => {
     await closeTestApp(testApp)

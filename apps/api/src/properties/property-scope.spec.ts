@@ -119,7 +119,7 @@ describe('Property Scope (e2e)', () => {
         tenantName: `Other Tenant ${Date.now()}`,
         name: 'Other Owner',
         email: `other${Date.now()}@test.cz`,
-        password: 'otherpass123',
+        password: 'Otherpass123',
       })
       .expect(201)
     const otherUserId = otherRes.body.user.id
