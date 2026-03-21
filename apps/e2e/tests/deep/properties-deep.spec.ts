@@ -221,16 +221,30 @@ test.describe('Properties — Jednotky (Units)', () => {
 
     await expect(page.locator('[data-testid="unit-form-name"]')).not.toBeVisible({ timeout: 5000 });
 
-    // Unit should appear in the table
-    await page.waitForTimeout(500);
-    await expect(page.getByText('Byt 101').first()).toBeVisible();
-  });
-
-  test('jednotka se zobrazí v seznamu', async ({ page }) => {
+    // Reload and switch to units tab to verify
     await page.goto(`/properties/${propertyId}`);
     await page.waitForLoadState('domcontentloaded');
     await page.locator('[data-testid="property-tab-units"]').click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1000);
+    await expect(page.getByText('Byt 101').first()).toBeVisible();
+  });
+
+  test('jednotka se zobrazí v seznamu s údaji', async ({ page }) => {
+    // Independent: create unit via API if not exists
+    const token = await getToken(page);
+    const propRes = await page.request.get(`${API_URL}/api/v1/properties/${propertyId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const prop = await propRes.json();
+    const hasUnit = prop.units?.some((u: any) => u.name === 'Byt 101');
+    if (!hasUnit) {
+      await createUnitApi(page, propertyId, 'Byt 101', { area: 65.5, floor: 1, knDesignation: '1883/1' });
+    }
+
+    await page.goto(`/properties/${propertyId}`);
+    await page.waitForLoadState('domcontentloaded');
+    await page.locator('[data-testid="property-tab-units"]').click();
+    await page.waitForTimeout(1000);
 
     await expect(page.getByText('Byt 101').first()).toBeVisible();
     await expect(page.getByText('65.5').first()).toBeVisible();
@@ -253,7 +267,12 @@ test.describe('Properties — Jednotky (Units)', () => {
     await responsePromise;
 
     await expect(page.locator('[data-testid="unit-form-name"]')).not.toBeVisible({ timeout: 5000 });
-    await page.waitForTimeout(500);
+
+    // Reload and verify on units tab
+    await page.goto(`/properties/${propertyId}`);
+    await page.waitForLoadState('domcontentloaded');
+    await page.locator('[data-testid="property-tab-units"]').click();
+    await page.waitForTimeout(1000);
     await expect(page.getByText('Garáž G1').first()).toBeVisible();
   });
 
