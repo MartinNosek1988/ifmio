@@ -154,7 +154,7 @@ test.describe('Properties — Deep CRUD', () => {
 
       // Verify the property we created in the previous test exists
       await expect(page.locator('text=Testovací Dům E2E')).toBeVisible({ timeout: 5000 });
-      await expect(page.locator('text=Testovací 123')).toBeVisible();
+      await expect(page.getByText('Testovací 123').first()).toBeVisible();
     });
   });
 
@@ -175,8 +175,8 @@ test.describe('Properties — Deep CRUD', () => {
       await expect(page.locator('[data-testid="property-detail-address"]')).toContainText('Testovací 123');
       await expect(page.locator('[data-testid="property-detail-address"]')).toContainText('Brno');
 
-      // IČ should be displayed in the info strip
-      await expect(page.locator('text=99887766')).toBeVisible();
+      // IČ should be displayed in the info strip (use first() — text appears in strip + overview)
+      await expect(page.getByText('99887766', { exact: true }).first()).toBeVisible();
     });
 
     test('detail má všechny taby', async ({ page }) => {
@@ -207,10 +207,11 @@ test.describe('Properties — Deep CRUD', () => {
 
       // Overview tab is default — check "Základní informace" section
       await expect(page.locator('text=Základní informace')).toBeVisible();
-      await expect(page.locator('text=Testovací 123')).toBeVisible();
-      await expect(page.locator('text=60200')).toBeVisible();
-      // IČO and DIČ displayed in overview
-      await expect(page.locator('text=99887766')).toBeVisible();
+      // Address appears in subtitle + overview — use testid for precision
+      await expect(page.locator('[data-testid="property-detail-address"]')).toContainText('Testovací 123');
+      await expect(page.getByText('60200').first()).toBeVisible();
+      // IČO displayed in overview (use first() — appears in strip + overview grid)
+      await expect(page.getByText('99887766', { exact: true }).first()).toBeVisible();
     });
   });
 
@@ -265,7 +266,7 @@ test.describe('Properties — Deep CRUD', () => {
       await expect(page.locator('[data-testid="property-detail-address"]')).toContainText('Ostrava');
 
       // Unchanged field should remain
-      await expect(page.locator('text=99887766')).toBeVisible();
+      await expect(page.getByText('99887766', { exact: true }).first()).toBeVisible();
     });
 
     test('editace se projeví v seznamu', async ({ page }) => {
@@ -299,11 +300,11 @@ test.describe('Properties — Deep CRUD', () => {
       const propertyId = url.split('/properties/')[1]?.split(/[?#/]/)[0];
       expect(propertyId).toBeTruthy();
 
-      // Delete via API
+      // Delete via API — must target the NestJS backend directly (not Vite dev server)
       const token = await page.evaluate(() => sessionStorage.getItem('ifmio:access_token'));
-      const baseUrl = await page.evaluate(() => window.location.origin);
+      const apiUrl = process.env.API_URL || 'http://localhost:3000';
       const deleteRes = await page.request.delete(
-        `${baseUrl}/api/v1/properties/${propertyId}`,
+        `${apiUrl}/api/v1/properties/${propertyId}`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
       expect(deleteRes.status()).toBeLessThan(300);
