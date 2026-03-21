@@ -155,6 +155,7 @@ export function GlobalSearch() {
               <input
                 ref={inputRef}
                 type="text"
+                data-testid="global-search-input"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Hledat nemovitosti, obyvatele, požadavky..."
@@ -179,7 +180,7 @@ export function GlobalSearch() {
             </div>
 
             {/* Results */}
-            <div className="max-h-80 overflow-y-auto">
+            <div className="max-h-80 overflow-y-auto" data-testid="global-search-results">
               {isLoading && query.trim().length >= 2 && (
                 <div className="px-4 py-6 text-center text-sm text-gray-500">
                   Hledani...

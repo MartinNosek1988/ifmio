@@ -188,7 +188,7 @@ export default function PropertyForm({ property, onClose }: Props) {
       footer={activeTab === 'manual' ? (
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <Button onClick={onClose}>Zrušit</Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={isPending}>
+          <Button variant="primary" onClick={handleSubmit} disabled={isPending} data-testid="property-form-save">
             {isPending ? 'Ukládám...' : isEdit ? 'Uložit' : 'Vytvořit'}
           </Button>
         </div>
@@ -251,25 +251,25 @@ export default function PropertyForm({ property, onClose }: Props) {
 
       <div style={{ marginBottom: 16 }}>
         <label className="form-label">Název *</label>
-        <input value={form.name} onChange={(e) => set('name', e.target.value)} style={inputStyle('name')} />
+        <input data-testid="property-form-name" value={form.name} onChange={(e) => set('name', e.target.value)} style={inputStyle('name')} />
         {errors.name && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.name}</div>}
       </div>
 
       <div style={{ marginBottom: 16 }}>
         <label className="form-label">Adresa *</label>
-        <input value={form.address} onChange={(e) => set('address', e.target.value)} style={inputStyle('address')} />
+        <input data-testid="property-form-address" value={form.address} onChange={(e) => set('address', e.target.value)} style={inputStyle('address')} />
         {errors.address && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.address}</div>}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: 12, marginBottom: 16 }}>
         <div>
           <label className="form-label">Město *</label>
-          <input value={form.city} onChange={(e) => set('city', e.target.value)} style={inputStyle('city')} />
+          <input data-testid="property-form-city" value={form.city} onChange={(e) => set('city', e.target.value)} style={inputStyle('city')} />
           {errors.city && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.city}</div>}
         </div>
         <div>
           <label className="form-label">PSČ *</label>
-          <input value={form.postalCode} onChange={(e) => set('postalCode', e.target.value)} style={inputStyle('postalCode')} />
+          <input data-testid="property-form-zip" value={form.postalCode} onChange={(e) => set('postalCode', e.target.value)} style={inputStyle('postalCode')} />
           {errors.postalCode && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.postalCode}</div>}
         </div>
       </div>

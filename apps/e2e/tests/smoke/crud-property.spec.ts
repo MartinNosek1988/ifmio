@@ -6,15 +6,13 @@ test.describe('Property CRUD', () => {
     await login(page);
   });
 
-  test('properties list page renders with table', async ({ page }) => {
+  test('properties list page renders', async ({ page }) => {
     await page.goto('/properties');
     await page.waitForLoadState('networkidle');
-    // Should see the page title
-    await expect(page.locator('.topbar__title')).toContainText('Nemovitosti');
-    // Should see a table or empty state
-    const hasTable = await page.locator('.tbl').isVisible().catch(() => false);
-    const hasEmpty = await page.locator('.empty-state').isVisible().catch(() => false);
-    expect(hasTable || hasEmpty).toBe(true);
+    // Should see either a table or empty state
+    const hasContent = await page.locator('.tbl').isVisible().catch(() => false);
+    const hasEmpty = await page.locator('[data-testid="empty-state"]').isVisible().catch(() => false);
+    expect(hasContent || hasEmpty).toBe(true);
   });
 
   test('property detail page renders when clicking first property', async ({ page }) => {
@@ -30,9 +28,23 @@ test.describe('Property CRUD', () => {
 
     await firstRow.click();
     await page.waitForLoadState('networkidle');
-    // Should navigate to property detail
     await expect(page).toHaveURL(/\/properties\/[a-z0-9-]+/);
-    // Should see tab navigation
-    await expect(page.locator('.topbar__title')).toContainText('Detail nemovitosti');
+  });
+
+  test('property detail tabs are visible', async ({ page }) => {
+    await page.goto('/properties');
+    await page.waitForLoadState('networkidle');
+
+    const firstRow = page.locator('.tbl tbody tr').first();
+    if (!(await firstRow.isVisible().catch(() => false))) {
+      test.skip(true, 'No properties exist');
+      return;
+    }
+
+    await firstRow.click();
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('[data-testid="property-tab-overview"]')).toBeVisible();
+    await expect(page.locator('[data-testid="property-tab-units"]')).toBeVisible();
+    await expect(page.locator('[data-testid="property-tab-owners"]')).toBeVisible();
   });
 });

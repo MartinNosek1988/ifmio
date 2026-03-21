@@ -19,7 +19,7 @@ const VARIANT_ICONS = {
 
 export function EmptyState({ title, description, icon, children, variant = 'default', action }: EmptyStateProps) {
   return (
-    <div className="empty-state">
+    <div className="empty-state" data-testid="empty-state">
       {icon || VARIANT_ICONS[variant]}
       <div className="empty-state__title">{title}</div>
       {description && <div className="empty-state__desc">{description}</div>}

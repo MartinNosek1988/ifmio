@@ -14,9 +14,10 @@ interface Props<T> {
   rowKey: (row: T) => string;
   emptyText?: string;
   onRowClick?: (row: T) => void;
+  'data-testid'?: string;
 }
 
-export function Table<T>({ data, columns, rowKey, emptyText = 'Žádná data', onRowClick }: Props<T>) {
+export function Table<T>({ data, columns, rowKey, emptyText = 'Žádná data', onRowClick, 'data-testid': testId }: Props<T>) {
   if (data.length === 0) {
     return (
       <div className="card table-wrap" style={{ padding: 0, overflow: 'hidden' }}>
@@ -39,7 +40,7 @@ export function Table<T>({ data, columns, rowKey, emptyText = 'Žádná data', o
   }
 
   return (
-    <div className="card table-wrap" style={{ padding: 0, overflow: 'hidden' }}>
+    <div className="card table-wrap" data-testid={testId} style={{ padding: 0, overflow: 'hidden' }}>
       <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
         <table className="tbl">
           <thead>
@@ -53,6 +54,7 @@ export function Table<T>({ data, columns, rowKey, emptyText = 'Žádná data', o
             {data.map((row) => (
               <tr
                 key={rowKey(row)}
+                data-testid={testId ? `${testId}-row-${rowKey(row)}` : undefined}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
                 style={onRowClick ? { cursor: 'pointer' } : undefined}
               >

@@ -301,7 +301,7 @@ export default function PropertyDetailPage() {
           { key: 'components' as DetailTab, label: 'Složky předpisu' },
           { key: 'representatives' as DetailTab, label: 'Zástupci' },
         ]).map(t => (
-          <button key={t.key} className={`tab-btn${detailTab === t.key ? ' active' : ''}`} onClick={() => setDetailTab(t.key)}>
+          <button key={t.key} className={`tab-btn${detailTab === t.key ? ' active' : ''}`} data-testid={`property-tab-${t.key}`} onClick={() => setDetailTab(t.key)}>
             {t.label}
           </button>
         ))}

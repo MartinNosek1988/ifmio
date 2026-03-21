@@ -101,6 +101,7 @@ export default function LoginPage() {
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', fontSize: '.85rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>{t('auth.login.email')}</label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
+                data-testid="login-email"
                 placeholder="you@company.com"
                 style={inputStyle(!!error)}
                 onFocus={e => { e.currentTarget.style.borderColor = '#0D9488' }}
@@ -111,6 +112,7 @@ export default function LoginPage() {
             <div style={{ marginBottom: 8, position: 'relative' }}>
               <label style={{ display: 'block', fontSize: '.85rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>{t('auth.login.password')}</label>
               <input type={showPw ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} required
+                data-testid="login-password"
                 style={{ ...inputStyle(!!error), paddingRight: 44 }}
                 onFocus={e => { e.currentTarget.style.borderColor = '#0D9488' }}
                 onBlur={e => { e.currentTarget.style.borderColor = error ? '#EF4444' : '#E5E7EB' }}
@@ -131,9 +133,9 @@ export default function LoginPage() {
               </Link>
             </div>
 
-            {error && <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', color: '#DC2626', fontSize: '.85rem', marginBottom: 16 }}>{error}</div>}
+            {error && <div data-testid="login-error" style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', color: '#DC2626', fontSize: '.85rem', marginBottom: 16 }}>{error}</div>}
 
-            <button type="submit" disabled={loading}
+            <button type="submit" disabled={loading} data-testid="login-submit"
               style={{
                 width: '100%', padding: '13px', background: loading ? '#0F766E' : '#0D9488',
                 border: 'none', borderRadius: 10, color: '#fff', fontSize: '1rem', fontWeight: 600,
