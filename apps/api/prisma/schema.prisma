@@ -322,6 +322,7 @@ model Property {
   kanbanTasks                KanbanTask[]
   unitGroups                 UnitGroup[]
   assemblies                 Assembly[]
+  perRollamVotings           PerRollamVoting[]
 
   @@index([tenantId])
   @@map("properties")
@@ -2674,6 +2675,7 @@ model Party {
   residents             Resident[]
   users                 User[]             @relation("UserParty")
   assemblyAttendances   AssemblyAttendee[]
+  perRollamBallots      PerRollamBallot[]
 
   @@index([tenantId, displayName])
   @@index([tenantId, ic])
@@ -2808,6 +2810,7 @@ model Principal {
   managementContracts   ManagementContract[]
   financialContexts     FinancialContext[]
   assemblyAttendances   AssemblyAttendee[]
+  perRollamBallots      PerRollamBallot[]
 
   @@index([tenantId, partyId])
   @@index([tenantId, displayName])
@@ -3411,4 +3414,131 @@ enum VoteChoice {
   ANO
   NE
   ZDRZET
+}
+
+// ─── PER ROLLAM VOTING ──────────────────────────────────────────────────────
+
+model PerRollamVoting {
+  id                String              @id @default(cuid())
+  tenantId          String
+  propertyId        String
+
+  title             String
+  description       String?
+  votingNumber      Int
+
+  publishedAt       DateTime?
+  deadline          DateTime
+  resultsNotifiedAt DateTime?
+
+  status            PerRollamStatus     @default(DRAFT)
+
+  totalShares       Decimal?            @db.Decimal(12, 6)
+  respondedShares   Decimal?            @db.Decimal(12, 6)
+  isQuorate         Boolean?
+
+  documentIds       String[]
+
+  notes             String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  property          Property            @relation(fields: [propertyId], references: [id])
+  items             PerRollamItem[]
+  ballots           PerRollamBallot[]
+
+  @@index([tenantId])
+  @@index([tenantId, propertyId])
+  @@map("per_rollam_votings")
+}
+
+enum PerRollamStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+  COMPLETED
+  CANCELLED
+}
+
+model PerRollamItem {
+  id              String              @id @default(cuid())
+  votingId        String
+
+  orderNumber     Int
+  title           String
+  description     String?
+  majorityType    MajorityType        @default(NADPOLOVICNI_VSECH)
+
+  result          VoteResult?
+  votesFor        Decimal?            @db.Decimal(12, 6)
+  votesAgainst    Decimal?            @db.Decimal(12, 6)
+  votesAbstain    Decimal?            @db.Decimal(12, 6)
+
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  voting          PerRollamVoting     @relation(fields: [votingId], references: [id], onDelete: Cascade)
+  responses       PerRollamResponse[]
+
+  @@index([votingId])
+  @@map("per_rollam_items")
+}
+
+model PerRollamBallot {
+  id                String              @id @default(cuid())
+  votingId          String
+
+  principalId       String?
+  partyId           String?
+  name              String
+  unitIds           String[]
+  totalShare        Decimal             @db.Decimal(12, 6)
+
+  status            BallotStatus        @default(PENDING)
+  submittedAt       DateTime?
+  submissionMethod  BallotMethod?
+
+  accessToken       String?             @unique
+  tokenExpiresAt    DateTime?
+
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  voting            PerRollamVoting     @relation(fields: [votingId], references: [id], onDelete: Cascade)
+  principal         Principal?          @relation(fields: [principalId], references: [id])
+  party             Party?              @relation(fields: [partyId], references: [id])
+  responses         PerRollamResponse[]
+
+  @@index([votingId])
+  @@index([accessToken])
+  @@map("per_rollam_ballots")
+}
+
+enum BallotStatus {
+  PENDING
+  SUBMITTED
+  MANUAL_ENTRY
+}
+
+enum BallotMethod {
+  ONLINE
+  PAPER_UPLOAD
+  MANUAL
+}
+
+model PerRollamResponse {
+  id              String              @id @default(cuid())
+  itemId          String
+  ballotId        String
+
+  choice          VoteChoice
+  shareWeight     Decimal             @db.Decimal(12, 6)
+
+  createdAt       DateTime            @default(now())
+
+  item            PerRollamItem       @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  ballot          PerRollamBallot     @relation(fields: [ballotId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, ballotId])
+  @@map("per_rollam_responses")
 }
