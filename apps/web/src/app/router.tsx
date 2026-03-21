@@ -54,6 +54,8 @@ const QrResolvePage = lazy(() => import('../modules/asset-qr/QrResolvePage'));
 const PrincipalsPage = lazy(() => import('../modules/principals/PrincipalsPage'));
 const PrincipalDetailPage = lazy(() => import('../modules/principals/PrincipalDetailPage'));
 const OnboardingPage = lazy(() => import('../modules/onboarding/OnboardingPage'));
+const AssemblyListPage = lazy(() => import('../modules/assemblies/AssemblyListPage'));
+const AssemblyDetailPage = lazy(() => import('../modules/assemblies/AssemblyDetailPage'));
 const PartiesPage = lazy(() => import('../modules/parties/PartiesPage'));
 const PartyDetailPage = lazy(() => import('../modules/parties/PartyDetailPage'));
 const SettlementPage = lazy(() => import('../modules/settlement/SettlementPage'));
@@ -109,6 +111,8 @@ export const router = createBrowserRouter([
       { path: 'properties', element: withBoundary('Nemovitosti', PropertiesPage) },
       { path: 'properties/:id', element: withBoundary('Detail nemovitosti', PropertyDetailPage) },
       { path: 'properties/:id/units/:unitId', element: withBoundary('Detail jednotky', UnitDetailPage) },
+      { path: 'properties/:id/assemblies', element: withBoundary('Shromáždění', AssemblyListPage) },
+      { path: 'properties/:id/assemblies/:assemblyId', element: withBoundary('Detail shromáždění', AssemblyDetailPage) },
       { path: 'principals', element: withBoundary('Klienti', PrincipalsPage) },
       { path: 'principals/:principalId', element: withBoundary('Detail klienta', PrincipalDetailPage) },
       { path: 'finance', element: withBoundary('Finance', FinancePage) },

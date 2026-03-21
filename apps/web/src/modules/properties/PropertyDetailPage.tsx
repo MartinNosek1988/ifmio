@@ -54,7 +54,7 @@ export default function PropertyDetailPage() {
   const [fcModal, setFcModal] = useState<{ context?: ApiFinancialContext } | null>(null);
   const [transferModal, setTransferModal] = useState<{ unitId: string; unitName: string; occupancyId: string; ownerName: string; share?: number | null } | null>(null);
 
-  type DetailTab = 'overview' | 'units' | 'owners' | 'groups' | 'meters' | 'components' | 'representatives'
+  type DetailTab = 'overview' | 'units' | 'owners' | 'groups' | 'meters' | 'components' | 'representatives' | 'assemblies'
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
 
   const refetchOwnerships = () => queryClient.invalidateQueries({ queryKey: ['ownerships'] });
@@ -300,6 +300,7 @@ export default function PropertyDetailPage() {
           { key: 'meters' as DetailTab, label: 'Měřidla' },
           { key: 'components' as DetailTab, label: 'Složky předpisu' },
           { key: 'representatives' as DetailTab, label: 'Zástupci' },
+          { key: 'assemblies' as DetailTab, label: 'Shromáždění' },
         ]).map(t => (
           <button key={t.key} className={`tab-btn${detailTab === t.key ? ' active' : ''}`} data-testid={`property-tab-${t.key}`} onClick={() => setDetailTab(t.key)}>
             {t.label}
@@ -460,6 +461,15 @@ export default function PropertyDetailPage() {
           ) : (
             <EmptyState title="Žádní zástupci" description="K nemovitosti nejsou přiřazeny žádné smlouvy o správě." />
           )}
+        </div>
+      )}
+
+      {/* ── SHROMÁŽDĚNÍ TAB ────────────────────────────────── */}
+      {detailTab === 'assemblies' && (
+        <div style={{ textAlign: 'center', padding: 20 }}>
+          <Button variant="primary" onClick={() => navigate(`/properties/${property.id}/assemblies`)}>
+            Otevřít modul Shromáždění
+          </Button>
         </div>
       )}
 
