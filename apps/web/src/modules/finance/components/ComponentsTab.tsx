@@ -344,7 +344,7 @@ function ComponentFormModal({ propertyId, component, onClose, onSuccess }: Compo
         {/* Name */}
         <div>
           <label className="form-label">Název *</label>
-          <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Např. Záloha na teplo" style={inputStyle} />
+          <input data-testid="finance-component-form-name" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Např. Záloha na teplo" style={inputStyle} />
         </div>
         {/* Code */}
         <div>
@@ -354,14 +354,14 @@ function ComponentFormModal({ propertyId, component, onClose, onSuccess }: Compo
         {/* Component type */}
         <div>
           <label className="form-label">Typ</label>
-          <select value={form.componentType} onChange={e => set('componentType', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+          <select data-testid="finance-component-form-type" value={form.componentType} onChange={e => set('componentType', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
             {Object.entries(TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </div>
         {/* Calculation method */}
         <div>
           <label className="form-label">Způsob výpočtu</label>
-          <select value={form.calculationMethod} onChange={e => set('calculationMethod', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+          <select data-testid="finance-component-form-method" value={form.calculationMethod} onChange={e => set('calculationMethod', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
             {Object.entries(METHOD_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
           <div style={{ fontSize: '.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
@@ -385,6 +385,7 @@ function ComponentFormModal({ propertyId, component, onClose, onSuccess }: Compo
               Sazba ({METHOD_SUFFIX[form.calculationMethod] ?? 'Kč'})
             </label>
             <input
+              data-testid="finance-component-form-amount"
               type="number"
               min="0"
               step="0.01"
@@ -433,8 +434,8 @@ function ComponentFormModal({ propertyId, component, onClose, onSuccess }: Compo
       </div>
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-        <Button onClick={onClose}>Zrušit</Button>
-        <Button variant="primary" onClick={handleSubmit} disabled={isPending || !form.name.trim()}>
+        <Button onClick={onClose} data-testid="finance-component-form-cancel">Zrušit</Button>
+        <Button variant="primary" onClick={handleSubmit} disabled={isPending || !form.name.trim()} data-testid="finance-component-form-save">
           {isPending ? 'Ukládám...' : isEdit ? 'Uložit' : 'Vytvořit'}
         </Button>
       </div>
