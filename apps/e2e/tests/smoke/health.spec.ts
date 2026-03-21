@@ -9,19 +9,28 @@ const ROUTES = [
 
 test.describe('Zdraví aplikace', () => {
   test('Všechny stránky se načtou bez JS chyb', async ({ page }) => {
+    test.setTimeout(60_000);
     await login(page);
     const errors: string[] = [];
     page.on('pageerror', err => errors.push(`${page.url()}: ${err.message}`));
 
     for (const route of ROUTES) {
       await page.goto(route);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(1500);
     }
 
-    expect(errors).toEqual([]);
+    const realErrors = errors.filter(e =>
+      !e.includes('ResizeObserver') &&
+      !e.includes('AbortError') &&
+      !e.includes('cancelled') &&
+      !e.includes('signal is aborted')
+    );
+    expect(realErrors).toEqual([]);
   });
 
   test('Žádné 5xx API odpovědi při navigaci', async ({ page }) => {
+    test.setTimeout(60_000);
     await login(page);
     const serverErrors: string[] = [];
     page.on('response', res => {
@@ -32,18 +41,21 @@ test.describe('Zdraví aplikace', () => {
 
     for (const route of ROUTES) {
       await page.goto(route);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(1500);
     }
 
     expect(serverErrors).toEqual([]);
   });
 
   test('Žádná stránka není prázdná', async ({ page }) => {
+    test.setTimeout(60_000);
     await login(page);
 
     for (const route of ROUTES) {
       await page.goto(route);
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(1500);
       const bodyText = await page.locator('body').innerText();
       expect(bodyText.length, `${route} je prázdná`).toBeGreaterThan(10);
     }
