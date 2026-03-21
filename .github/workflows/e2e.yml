@@ -78,7 +78,7 @@ jobs:
       - name: Start API server
         run: |
           cd apps/api
-          node dist/main > /tmp/api.log 2>&1 &
+          node dist/apps/api/src/main.js > /tmp/api.log 2>&1 &
           echo $! > /tmp/api.pid
 
       - name: Start Web server
