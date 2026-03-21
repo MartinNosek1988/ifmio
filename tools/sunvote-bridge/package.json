@@ -1,0 +1,12 @@
+{
+  "name": "ifmio-sunvote-bridge",
+  "version": "1.0.0",
+  "description": "Bridge agent connecting SunVote M30 keypads to ifmio",
+  "scripts": {
+    "start": "npx tsx bridge.ts",
+    "simulate": "npx tsx simulator.ts"
+  },
+  "dependencies": {
+    "tsx": "^4.0.0"
+  }
+}

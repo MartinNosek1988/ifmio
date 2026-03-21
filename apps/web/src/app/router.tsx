@@ -59,6 +59,7 @@ const AssemblyDetailPage = lazy(() => import('../modules/assemblies/AssemblyDeta
 const PerRollamListPage = lazy(() => import('../modules/assemblies/per-rollam/PerRollamListPage'));
 const PerRollamDetailPage = lazy(() => import('../modules/assemblies/per-rollam/PerRollamDetailPage'));
 const PublicBallotPage = lazy(() => import('../modules/assemblies/per-rollam/PublicBallotPage'));
+const LiveDashboardPage = lazy(() => import('../modules/assemblies/live/LiveDashboardPage'));
 const PartiesPage = lazy(() => import('../modules/parties/PartiesPage'));
 const PartyDetailPage = lazy(() => import('../modules/parties/PartyDetailPage'));
 const SettlementPage = lazy(() => import('../modules/settlement/SettlementPage'));
@@ -117,6 +118,7 @@ export const router = createBrowserRouter([
       { path: 'properties/:id/units/:unitId', element: withBoundary('Detail jednotky', UnitDetailPage) },
       { path: 'properties/:id/assemblies', element: withBoundary('Shromáždění', AssemblyListPage) },
       { path: 'properties/:id/assemblies/:assemblyId', element: withBoundary('Detail shromáždění', AssemblyDetailPage) },
+      { path: 'properties/:id/assemblies/:assemblyId/live', element: withBoundary('Živé hlasování', LiveDashboardPage) },
       { path: 'properties/:id/per-rollam', element: withBoundary('Per rollam', PerRollamListPage) },
       { path: 'properties/:id/per-rollam/:votingId', element: withBoundary('Detail per rollam', PerRollamDetailPage) },
       { path: 'principals', element: withBoundary('Klienti', PrincipalsPage) },

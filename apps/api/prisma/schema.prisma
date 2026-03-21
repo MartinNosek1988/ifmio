@@ -3297,6 +3297,7 @@ model Assembly {
   property        Property       @relation(fields: [propertyId], references: [id])
   agendaItems     AssemblyAgendaItem[]
   attendees       AssemblyAttendee[]
+  hardwareSession HardwareVotingSession?
 
   @@index([tenantId])
   @@index([tenantId, propertyId])
@@ -3541,4 +3542,37 @@ model PerRollamResponse {
 
   @@unique([itemId, ballotId])
   @@map("per_rollam_responses")
+}
+
+// ─── HARDWARE VOTING SESSION ─────────────────────────────────────────────────
+
+model HardwareVotingSession {
+  id              String              @id @default(cuid())
+  assemblyId      String              @unique
+  tenantId        String
+
+  bridgeApiKey    String              @unique @default(cuid())
+  channelId       Int                 @default(1)
+  receiverMode    ReceiverMode        @default(USB)
+
+  isActive        Boolean             @default(false)
+  currentItemId   String?
+  votingOpen      Boolean             @default(false)
+
+  connectedKeypads Int                @default(0)
+  lastPingAt      DateTime?
+
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  assembly        Assembly            @relation(fields: [assemblyId], references: [id])
+
+  @@index([tenantId])
+  @@index([bridgeApiKey])
+  @@map("hardware_voting_sessions")
+}
+
+enum ReceiverMode {
+  USB
+  TCP_IP
 }
