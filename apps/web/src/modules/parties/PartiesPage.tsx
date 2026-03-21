@@ -48,19 +48,19 @@ export default function PartiesPage() {
   ]
 
   return (
-    <div>
+    <div data-testid="party-list-page">
       <div className="page-header">
         <div>
           <h1 className="page-title">Adresář</h1>
           <p className="text-muted text-sm">{data?.total ?? 0} subjektů</p>
         </div>
-        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)}>
+        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)} data-testid="party-add-btn">
           Nový subjekt
         </Button>
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-        <input placeholder="Hledat subjekt..." value={search} onChange={e => setSearch(e.target.value)} style={inputStyle} />
+        <input data-testid="party-search-input" placeholder="Hledat subjekt..." value={search} onChange={e => setSearch(e.target.value)} style={inputStyle} />
         <div style={{ display: 'flex', gap: 4 }}>
           {filters.map(f => (
             <button
@@ -104,6 +104,7 @@ export default function PartiesPage() {
                 return (
                   <tr
                     key={p.id}
+                    data-testid={`party-row-${p.id}`}
                     onClick={() => setDetailId(p.id)}
                     style={{ cursor: 'pointer' }}
                   >
@@ -156,10 +157,10 @@ export default function PartiesPage() {
           subtitle={deleteParty.displayName}
           footer={
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <Button onClick={() => setDeleteParty(null)}>Zrušit</Button>
+              <Button onClick={() => setDeleteParty(null)} data-testid="party-delete-cancel">Zrušit</Button>
               <Button variant="danger" onClick={() => {
                 deleteMutation.mutate(deleteParty.id, { onSuccess: () => setDeleteParty(null) })
-              }} disabled={deleteMutation.isPending}>
+              }} disabled={deleteMutation.isPending} data-testid="party-delete-confirm">
                 {deleteMutation.isPending ? 'Deaktivuji...' : 'Deaktivovat'}
               </Button>
             </div>
@@ -216,8 +217,8 @@ function PartyDetailModal({
       subtitle={t.label}
       footer={
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <Button onClick={() => onDelete(party)} variant="danger">Deaktivovat</Button>
-          <Button onClick={() => onEdit(party)} variant="primary">Upravit</Button>
+          <Button onClick={() => onDelete(party)} variant="danger" data-testid="party-detail-modal-delete">Deaktivovat</Button>
+          <Button onClick={() => onEdit(party)} variant="primary" data-testid="party-detail-modal-edit">Upravit</Button>
         </div>
       }
     >

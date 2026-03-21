@@ -129,8 +129,8 @@ export default function ResidentForm({ resident, onClose }: Props) {
     <Modal open onClose={onClose} title={isEdit ? 'Upravit bydlícího' : 'Nový bydlící'}
       footer={
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <Button onClick={onClose}>Zrušit</Button>
-          <Button variant="primary" onClick={handleSubmit(onSubmit)} disabled={isLoading || isSubmitting || !isDirty}>
+          <Button onClick={onClose} data-testid="resident-form-cancel">Zrušit</Button>
+          <Button variant="primary" onClick={handleSubmit(onSubmit)} disabled={isLoading || isSubmitting || !isDirty} data-testid="resident-form-save">
             {isSubmitting || isLoading ? 'Ukládám...' : isEdit ? 'Uložit' : 'Vytvořit'}
           </Button>
         </div>
@@ -156,18 +156,18 @@ export default function ResidentForm({ resident, onClose }: Props) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
               <div>
                 <label className="form-label">Jméno *</label>
-                <input {...register('firstName')} style={inputStyle(!!errors.firstName)} placeholder="Jan" disabled={isLoading} />
+                <input {...register('firstName')} data-testid="resident-form-firstName" style={inputStyle(!!errors.firstName)} placeholder="Jan" disabled={isLoading} />
                 <FieldError message={errors.firstName?.message} />
               </div>
               <div>
                 <label className="form-label">Příjmení *</label>
-                <input {...register('lastName')} style={inputStyle(!!errors.lastName)} placeholder="Novák" disabled={isLoading} />
+                <input {...register('lastName')} data-testid="resident-form-lastName" style={inputStyle(!!errors.lastName)} placeholder="Novák" disabled={isLoading} />
                 <FieldError message={errors.lastName?.message} />
               </div>
             </div>
             <div style={{ marginBottom: 14 }}>
               <label className="form-label">Datum narození</label>
-              <input type="date" {...register('birthDate')} style={inputStyle(false)} disabled={isLoading} />
+              <input type="date" {...register('birthDate')} data-testid="resident-form-birthDate" style={inputStyle(false)} disabled={isLoading} />
             </div>
           </>
         )}
@@ -217,12 +217,12 @@ export default function ResidentForm({ resident, onClose }: Props) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
           <div>
             <label className="form-label">Email</label>
-            <input {...register('email')} type="email" style={inputStyle(!!errors.email)} placeholder="jan@email.cz" disabled={isLoading} />
+            <input {...register('email')} data-testid="resident-form-email" type="email" style={inputStyle(!!errors.email)} placeholder="jan@email.cz" disabled={isLoading} />
             <FieldError message={errors.email?.message} />
           </div>
           <div>
             <label className="form-label">Telefon</label>
-            <input {...register('phone')} type="tel" style={inputStyle(!!errors.phone)} placeholder="+420 777 123 456" disabled={isLoading} />
+            <input {...register('phone')} data-testid="resident-form-phone" type="tel" style={inputStyle(!!errors.phone)} placeholder="+420 777 123 456" disabled={isLoading} />
             <FieldError message={errors.phone?.message} />
           </div>
         </div>
@@ -232,7 +232,7 @@ export default function ResidentForm({ resident, onClose }: Props) {
           <div>
             <label className="form-label">Role *</label>
             <Controller name="role" control={control} render={({ field }) => (
-              <select {...field} style={{ ...inputStyle(!!errors.role), cursor: 'pointer' }} disabled={isLoading}>
+              <select {...field} data-testid="resident-form-role" style={{ ...inputStyle(!!errors.role), cursor: 'pointer' }} disabled={isLoading}>
                 <option value="tenant">Nájemce</option>
                 <option value="owner">Vlastník</option>
                 <option value="member">Člen</option>
@@ -244,7 +244,7 @@ export default function ResidentForm({ resident, onClose }: Props) {
           <div>
             <label className="form-label">Nemovitost</label>
             <Controller name="propertyId" control={control} render={({ field }) => (
-              <select {...field} style={{ ...inputStyle(false), cursor: 'pointer' }} disabled={isLoading}>
+              <select {...field} data-testid="resident-form-property" style={{ ...inputStyle(false), cursor: 'pointer' }} disabled={isLoading}>
                 <option value="">-- Vyberte --</option>
                 {properties.map((p: { id: string; name: string }) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>

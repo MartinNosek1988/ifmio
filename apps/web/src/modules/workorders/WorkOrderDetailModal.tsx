@@ -165,8 +165,8 @@ export default function WorkOrderDetailModal({ workOrder, onClose, onUpdated }: 
       footer={<div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}><Button onClick={onClose}>Zavřít</Button></div>}>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-        <Badge variant={STATUS_COLOR[workOrder.status] || 'muted'}>{label(WO_STATUS_LABELS, workOrder.status)}</Badge>
-        <Badge variant={PRIO_COLOR[workOrder.priority] || 'muted'}>{label(WO_PRIORITY_LABELS, workOrder.priority)}</Badge>
+        <span data-testid="wo-detail-status"><Badge variant={STATUS_COLOR[workOrder.status] || 'muted'}>{label(WO_STATUS_LABELS, workOrder.status)}</Badge></span>
+        <span data-testid="wo-detail-priority"><Badge variant={PRIO_COLOR[workOrder.priority] || 'muted'}>{label(WO_PRIORITY_LABELS, workOrder.priority)}</Badge></span>
         <div style={{ flex: 1, minWidth: 120 }}>
           <SlaProgressBar created={workOrder.createdAt} deadline={workOrder.deadline || ''} status={workOrder.status} />
         </div>
@@ -174,7 +174,7 @@ export default function WorkOrderDetailModal({ workOrder, onClose, onUpdated }: 
 
       <div className="tabs" style={{ marginBottom: 16 }}>
         {tabItems.map(t => (
-          <button key={t.key} className={`tab-btn${tab === t.key ? ' active' : ''}`} onClick={() => setTab(t.key)}>{t.label}</button>
+          <button key={t.key} className={`tab-btn${tab === t.key ? ' active' : ''}`} data-testid={`wo-tab-${t.key}`} onClick={() => setTab(t.key)}>{t.label}</button>
         ))}
       </div>
 
@@ -186,7 +186,7 @@ export default function WorkOrderDetailModal({ workOrder, onClose, onUpdated }: 
               <div className="text-muted" style={{ fontSize: '0.8rem', marginBottom: 6 }}>Změnit stav:</div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {transitions.map(t => (
-                  <Button key={t.status} size="sm" variant={t.variant} onClick={() => handleTransition(t.status)} disabled={changeStatusMutation.isPending}>
+                  <Button key={t.status} size="sm" variant={t.variant} onClick={() => handleTransition(t.status)} disabled={changeStatusMutation.isPending} data-testid={`wo-status-${t.status}`}>
                     {t.label}
                   </Button>
                 ))}

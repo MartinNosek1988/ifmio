@@ -160,15 +160,15 @@ export default function PartyFormModal({ party, onClose, onSuccess }: Props) {
       subtitle={isEdit ? party!.displayName : undefined}
       footer={
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <Button onClick={onClose}>Zrušit</Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={isPending}>
+          <Button onClick={onClose} data-testid="party-form-cancel">Zrušit</Button>
+          <Button variant="primary" onClick={handleSubmit} disabled={isPending} data-testid="party-form-save">
             {isPending ? 'Ukládám...' : isEdit ? 'Uložit' : 'Vytvořit'}
           </Button>
         </div>
       }
     >
       {error && (
-        <div style={{ background: 'rgba(239,68,68,.1)', border: '1px solid var(--danger)', borderRadius: 6, padding: '8px 12px', fontSize: '.85rem', color: 'var(--danger)', marginBottom: 12 }}>
+        <div data-testid="party-form-error" style={{ background: 'rgba(239,68,68,.1)', border: '1px solid var(--danger)', borderRadius: 6, padding: '8px 12px', fontSize: '.85rem', color: 'var(--danger)', marginBottom: 12 }}>
           {error}
         </div>
       )}
@@ -180,6 +180,7 @@ export default function PartyFormModal({ party, onClose, onSuccess }: Props) {
           {TYPE_OPTIONS.map(opt => (
             <button
               key={opt.value}
+              data-testid={`party-form-type-${opt.value}`}
               onClick={() => setType(opt.value)}
               style={{
                 padding: '5px 14px', borderRadius: 6, fontSize: '.82rem', fontWeight: 500, cursor: 'pointer',
@@ -199,17 +200,17 @@ export default function PartyFormModal({ party, onClose, onSuccess }: Props) {
         <div style={rowStyle}>
           <div>
             <label style={labelStyle}>Příjmení</label>
-            <input value={lastName} onChange={e => setLastName(e.target.value)} style={inputStyle} placeholder="Novák" />
+            <input data-testid="party-form-lastName" value={lastName} onChange={e => setLastName(e.target.value)} style={inputStyle} placeholder="Novák" />
           </div>
           <div>
             <label style={labelStyle}>Jméno</label>
-            <input value={firstName} onChange={e => setFirstName(e.target.value)} style={inputStyle} placeholder="Jan" />
+            <input data-testid="party-form-firstName" value={firstName} onChange={e => setFirstName(e.target.value)} style={inputStyle} placeholder="Jan" />
           </div>
         </div>
       ) : (
         <div style={{ marginBottom: 12 }}>
           <label style={labelStyle}>{type === 'hoa' ? 'Název SVJ' : 'Název firmy'}</label>
-          <input value={companyName} onChange={e => setCompanyName(e.target.value)} style={inputStyle} placeholder={type === 'hoa' ? 'SVJ Lipová 12' : 'Firma s.r.o.'} />
+          <input data-testid="party-form-companyName" value={companyName} onChange={e => setCompanyName(e.target.value)} style={inputStyle} placeholder={type === 'hoa' ? 'SVJ Lipová 12' : 'Firma s.r.o.'} />
         </div>
       )}
 
@@ -217,6 +218,7 @@ export default function PartyFormModal({ party, onClose, onSuccess }: Props) {
       <div style={{ marginBottom: 12 }}>
         <label style={labelStyle}>Zobrazovaný název *</label>
         <input
+          data-testid="party-form-displayName"
           value={displayName}
           onChange={e => { setDisplayName(e.target.value); setDisplayNameManual(true) }}
           style={inputStyle}
@@ -229,7 +231,7 @@ export default function PartyFormModal({ party, onClose, onSuccess }: Props) {
         <div>
           <label style={labelStyle}>IČ</label>
           <div style={{ display: 'flex', gap: 6 }}>
-            <input value={ic} onChange={e => setIc(e.target.value)} style={{ ...inputStyle, flex: 1 }} maxLength={20} />
+            <input data-testid="party-form-ic" value={ic} onChange={e => setIc(e.target.value)} style={{ ...inputStyle, flex: 1 }} maxLength={20} />
             <button type="button" onClick={handleAres} disabled={aresLoading || isPending}
               style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: '.78rem', whiteSpace: 'nowrap' }}>
               <Search size={13} /> {aresLoading ? '...' : 'ARES'}
@@ -239,7 +241,7 @@ export default function PartyFormModal({ party, onClose, onSuccess }: Props) {
         </div>
         <div>
           <label style={labelStyle}>DIČ</label>
-          <input value={dic} onChange={e => setDic(e.target.value)} style={inputStyle} maxLength={20} />
+          <input data-testid="party-form-dic" value={dic} onChange={e => setDic(e.target.value)} style={inputStyle} maxLength={20} />
         </div>
       </div>
 
@@ -266,7 +268,7 @@ export default function PartyFormModal({ party, onClose, onSuccess }: Props) {
       <div style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8, marginTop: 16 }}>Adresa</div>
       <div style={{ marginBottom: 12 }}>
         <label style={labelStyle}>Ulice</label>
-        <input value={street} onChange={e => setStreet(e.target.value)} style={inputStyle} />
+        <input data-testid="party-form-street" value={street} onChange={e => setStreet(e.target.value)} style={inputStyle} />
       </div>
       <div style={{ marginBottom: 12 }}>
         <label style={labelStyle}>Ulice 2</label>
@@ -275,11 +277,11 @@ export default function PartyFormModal({ party, onClose, onSuccess }: Props) {
       <div style={rowStyle}>
         <div>
           <label style={labelStyle}>Město</label>
-          <input value={city} onChange={e => setCity(e.target.value)} style={inputStyle} />
+          <input data-testid="party-form-city" value={city} onChange={e => setCity(e.target.value)} style={inputStyle} />
         </div>
         <div>
           <label style={labelStyle}>PSČ</label>
-          <input value={postalCode} onChange={e => setPostalCode(e.target.value)} style={inputStyle} />
+          <input data-testid="party-form-postalCode" value={postalCode} onChange={e => setPostalCode(e.target.value)} style={inputStyle} />
         </div>
       </div>
       <div style={rowStyle}>
@@ -302,11 +304,11 @@ export default function PartyFormModal({ party, onClose, onSuccess }: Props) {
       <div style={rowStyle}>
         <div>
           <label style={labelStyle}>E-mail</label>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} />
+          <input data-testid="party-form-email" type="email" value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} />
         </div>
         <div>
           <label style={labelStyle}>Telefon</label>
-          <input value={phone} onChange={e => setPhone(e.target.value)} style={inputStyle} />
+          <input data-testid="party-form-phone" value={phone} onChange={e => setPhone(e.target.value)} style={inputStyle} />
         </div>
       </div>
       <div style={rowStyle}>

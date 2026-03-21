@@ -31,7 +31,7 @@ export default function PartyDetailPage() {
   ]
 
   return (
-    <div>
+    <div data-testid="party-detail-page">
       {/* Breadcrumb */}
       <div style={{ marginBottom: 8, fontSize: '.82rem', color: 'var(--text-muted)' }}>
         <button onClick={() => navigate('/parties')} style={{ background: 'none', border: 'none', color: 'var(--primary, #6366f1)', cursor: 'pointer', padding: 0, fontSize: '.82rem' }}>
@@ -44,13 +44,13 @@ export default function PartyDetailPage() {
       {/* Action bar */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
         <Button size="sm" icon={<ArrowLeft size={14} />} onClick={() => navigate('/parties')}>Zavřít</Button>
-        <Button size="sm" icon={<Pencil size={13} />}>Upravit</Button>
-        <Button size="sm" icon={<Trash2 size={13} />} style={{ color: 'var(--danger)' }}>Smazat</Button>
+        <Button size="sm" icon={<Pencil size={13} />} data-testid="party-detail-edit-btn">Upravit</Button>
+        <Button size="sm" icon={<Trash2 size={13} />} style={{ color: 'var(--danger)' }} data-testid="party-detail-delete-btn">Smazat</Button>
       </div>
 
       {/* Header */}
       <div style={{ marginBottom: 16 }}>
-        <h1 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0 }}>{displayName}</h1>
+        <h1 data-testid="party-detail-name" style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0 }}>{displayName}</h1>
         <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center', flexWrap: 'wrap' }}>
           <Badge variant={party.type === 'company' ? 'yellow' : party.type === 'hoa' ? 'purple' : 'blue'}>
             {party.type === 'company' ? 'Firma' : party.type === 'hoa' ? 'SVJ' : 'Osoba'}
@@ -63,7 +63,7 @@ export default function PartyDetailPage() {
       {/* Tabs */}
       <div className="tabs" style={{ marginBottom: 16 }}>
         {TABS.map(t => (
-          <button key={t.key} className={`tab-btn${tab === t.key ? ' active' : ''}`} onClick={() => setTab(t.key)}>
+          <button key={t.key} className={`tab-btn${tab === t.key ? ' active' : ''}`} data-testid={`party-tab-${t.key}`} onClick={() => setTab(t.key)}>
             {t.label}
           </button>
         ))}

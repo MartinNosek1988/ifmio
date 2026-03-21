@@ -65,7 +65,7 @@ export default function WorkOrdersPage() {
   ];
 
   return (
-    <div>
+    <div data-testid="wo-list-page">
       <div className="page-header">
         <div>
           <h1 className="page-title">Pracovní úkoly</h1>
@@ -82,8 +82,8 @@ export default function WorkOrdersPage() {
       </div>
 
       <div className="flex-bar" style={{ marginBottom: 16 }}>
-        <SearchBar placeholder="Hledat work orders..." onSearch={setSearch} />
-        <select className="btn" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+        <SearchBar placeholder="Hledat work orders..." onSearch={setSearch} data-testid="wo-search-input" />
+        <select className="btn" value={filterStatus} onChange={e => setFilterStatus(e.target.value)} data-testid="wo-filter-status">
           <option value="all">Vse</option>
           {Object.entries(WO_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
@@ -122,8 +122,8 @@ export default function WorkOrdersPage() {
               Opravdu chcete smazat work order <strong>{deleteTarget.title}</strong>? Tuto akci nelze vratit.
             </p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <Button onClick={() => setDeleteTarget(null)}>Zrusit</Button>
-              <Button variant="primary" onClick={handleDelete}
+              <Button onClick={() => setDeleteTarget(null)} data-testid="wo-delete-cancel">Zrusit</Button>
+              <Button variant="primary" onClick={handleDelete} data-testid="wo-delete-confirm"
                 style={{ background: 'var(--danger)', borderColor: 'var(--danger)' }}>
                 Smazat
               </Button>
