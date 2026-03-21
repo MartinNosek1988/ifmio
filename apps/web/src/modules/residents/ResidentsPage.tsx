@@ -110,7 +110,7 @@ export default function ResidentsPage() {
   };
 
   return (
-    <div>
+    <div data-testid="resident-list-page">
       <div className="page-header">
         <div>
           <h1 className="page-title">Bydlící</h1>
@@ -118,7 +118,7 @@ export default function ResidentsPage() {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <Button icon={<Upload size={15} />} onClick={() => setShowImport(true)}>Import</Button>
-          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)}>Nový bydlící</Button>
+          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)} data-testid="resident-add-btn">Nový bydlící</Button>
         </div>
       </div>
 
@@ -130,7 +130,7 @@ export default function ResidentsPage() {
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <div style={{ flex: 1 }}><SearchBar placeholder="Hledat bydlící..." onSearch={setSearch} /></div>
+        <div style={{ flex: 1 }}><SearchBar placeholder="Hledat bydlící..." onSearch={setSearch} data-testid="resident-search-input" /></div>
         <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)}
           style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}>
           <option value="all">Všechny role</option>
@@ -147,6 +147,7 @@ export default function ResidentsPage() {
         rowKey={(r) => r.id}
         onRowClick={(r) => setSelectedResident(r)}
         emptyText="Žádní bydlící"
+        data-testid="resident-list"
       />
 
       {selectedResident && (
@@ -185,11 +186,12 @@ export default function ResidentsPage() {
           subtitle={`${deleteResident.firstName} ${deleteResident.lastName}`}
           footer={
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <Button onClick={() => setDeleteResident(null)}>Zrušit</Button>
+              <Button onClick={() => setDeleteResident(null)} data-testid="resident-delete-cancel">Zrušit</Button>
               <Button
                 variant="danger"
                 onClick={handleDeleteConfirm}
                 disabled={deleteMutation.isPending}
+                data-testid="resident-delete-confirm"
               >
                 {deleteMutation.isPending ? 'Mažu...' : 'Smazat'}
               </Button>

@@ -51,7 +51,7 @@ export default function ResidentDetailModal({ resident, onClose, onUpdated, onDe
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <div>
               {onDelete && (
-                <Button variant="danger" onClick={onDelete}>Smazat</Button>
+                <Button variant="danger" onClick={onDelete} data-testid="resident-detail-delete-btn">Smazat</Button>
               )}
             </div>
             <Button onClick={onClose}>Zavřít</Button>
@@ -70,14 +70,14 @@ export default function ResidentDetailModal({ resident, onClose, onUpdated, onDe
                 {initials}
               </div>
               <div>
-                <h2 style={{ margin: 0, fontSize: '1.25rem' }}>{fullName}</h2>
+                <h2 data-testid="resident-detail-name" style={{ margin: 0, fontSize: '1.25rem' }}>{fullName}</h2>
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: 2 }}>
                   {resident.property?.name ?? '—'}
                   {resident.unit ? ` · Jednotka ${resident.unit.name}` : ''}
                 </div>
               </div>
             </div>
-            <Button size="sm" onClick={() => setShowEdit(true)}>Upravit</Button>
+            <Button size="sm" onClick={() => setShowEdit(true)} data-testid="resident-detail-edit-btn">Upravit</Button>
           </div>
 
           <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
