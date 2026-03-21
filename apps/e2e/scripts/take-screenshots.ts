@@ -45,13 +45,32 @@ async function main() {
   });
   const page = await context.newPage();
 
-  // Login
+  // Login via API (avoids rate limiting)
   console.log('Logging in...');
   await page.goto(`${BASE_URL}/login`);
-  await page.locator('input[type="email"]').fill(EMAIL);
-  await page.locator('input[type="password"]').fill(PASSWORD);
-  await page.locator('button[type="submit"]').click();
-  await page.waitForURL(/\/(dashboard|portal)/, { timeout: 15_000 });
+  await page.waitForLoadState('domcontentloaded');
+  const loginResp = await page.evaluate(
+    async ({ url, email, password }) => {
+      const res = await fetch(`${url}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      return res.json();
+    },
+    { url: BASE_URL, email: EMAIL, password: PASSWORD },
+  );
+  if (!loginResp.accessToken) {
+    console.error('Login failed:', loginResp.message || JSON.stringify(loginResp));
+    process.exit(1);
+  }
+  await page.evaluate((data: any) => {
+    sessionStorage.setItem('ifmio:access_token', data.accessToken);
+    sessionStorage.setItem('ifmio:refresh_token', data.refreshToken);
+    sessionStorage.setItem('ifmio:user', JSON.stringify(data.user));
+  }, loginResp);
+  await page.goto(`${BASE_URL}/dashboard`);
+  await page.waitForLoadState('networkidle');
   console.log('Login OK');
 
   // Screenshot each page

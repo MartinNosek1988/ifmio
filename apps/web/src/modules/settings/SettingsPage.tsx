@@ -18,10 +18,10 @@ const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
   { key: 'firma', label: 'Firma & Branding', icon: <Building2 size={15} /> },
   { key: 'email', label: 'Email & Notifikace', icon: <Mail size={15} /> },
   { key: 'fakturace', label: 'Fakturace', icon: <FileText size={15} /> },
-  { key: 'upominky', label: 'Upominky', icon: <Bell size={15} /> },
+  { key: 'upominky', label: 'Upomínky', icon: <Bell size={15} /> },
   { key: 'vzhled', label: 'Vzhled', icon: <Palette size={15} /> },
   { key: 'mio', label: 'Mio Governance', icon: <Bot size={15} /> },
-  { key: 'export', label: 'Zaloha dat', icon: <Download size={15} /> },
+  { key: 'export', label: 'Záloha dat', icon: <Download size={15} /> },
 ];
 
 export default function SettingsPage() {
@@ -30,8 +30,8 @@ export default function SettingsPage() {
   const [tab, setTab] = useState<TabKey>('firma');
   const [saved, setSaved] = useState(false);
 
-  if (isLoading) return <LoadingState text="Nacitam nastaveni..." />;
-  if (error) return <ErrorState message="Nepodarilo se nacist nastaveni." />;
+  if (isLoading) return <LoadingState text="Načítám nastavení..." />;
+  if (error) return <ErrorState message="Nepodařilo se načíst nastavení." />;
 
   const showSaved = () => {
     setSaved(true);
@@ -61,7 +61,7 @@ export default function SettingsPage() {
       <div>
         {saved && (
           <div className="settings-saved-toast">
-            <Check size={14} /> Ulozeno
+            <Check size={14} /> Uloženo
           </div>
         )}
 
@@ -126,7 +126,7 @@ function FirmaTab({ settings, onSave, saving }: TabProps) {
   const handleLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { alert('Logo musi byt mensi nez 2 MB'); return; }
+    if (file.size > 2 * 1024 * 1024) { alert('Logo musí být menší než 2 MB'); return; }
     const reader = new FileReader();
     reader.onload = () => setLogo(reader.result as string);
     reader.readAsDataURL(file);
@@ -136,11 +136,11 @@ function FirmaTab({ settings, onSave, saving }: TabProps) {
 
   return (
     <div>
-      <SectionCard title="Firemni udaje">
+      <SectionCard title="Firemní údaje">
         <div className="settings-grid">
-          <FormField label="Nazev organizace *" value={form.orgName} onChange={set('orgName')} />
+          <FormField label="Název organizace *" value={form.orgName} onChange={set('orgName')} />
           <div>
-            <label className="settings-label">ICO</label>
+            <label className="settings-label">IČO</label>
             <div style={{ display: 'flex', gap: 6 }}>
               <input className="settings-input" value={form.companyNumber} onChange={set('companyNumber')} style={{ flex: 1 }} />
               <button type="button" onClick={handleAres} disabled={aresLoading}
@@ -150,21 +150,21 @@ function FirmaTab({ settings, onSave, saving }: TabProps) {
             </div>
             {aresError && <div style={{ color: 'var(--danger, #ef4444)', fontSize: '0.78rem', marginTop: 2 }}>{aresError}</div>}
           </div>
-          <FormField label="DIC" value={form.vatNumber} onChange={set('vatNumber')} />
+          <FormField label="DIČ" value={form.vatNumber} onChange={set('vatNumber')} />
           <FormField label="Email" value={form.orgEmail} onChange={set('orgEmail')} type="email" />
           <FormField label="Telefon" value={form.orgPhone} onChange={set('orgPhone')} />
           <FormField label="Web" value={form.orgWeb} onChange={set('orgWeb')} />
         </div>
       </SectionCard>
 
-      <SectionCard title="Adresa sidla">
+      <SectionCard title="Adresa sídla">
         <div className="settings-grid">
           <div style={{ gridColumn: '1 / -1' }}>
-            <FormField label="Ulice a cislo" value={form.orgStreet} onChange={set('orgStreet')} />
+            <FormField label="Ulice a číslo" value={form.orgStreet} onChange={set('orgStreet')} />
           </div>
-          <FormField label="Mesto" value={form.orgCity} onChange={set('orgCity')} />
-          <FormField label="PSC" value={form.orgZip} onChange={set('orgZip')} />
-          <FormField label="Stat" value={form.orgCountry} onChange={set('orgCountry')} />
+          <FormField label="Město" value={form.orgCity} onChange={set('orgCity')} />
+          <FormField label="PSČ" value={form.orgZip} onChange={set('orgZip')} />
+          <FormField label="Stát" value={form.orgCountry} onChange={set('orgCountry')} />
         </div>
       </SectionCard>
 
@@ -220,9 +220,9 @@ function EmailTab({ settings, onSave, saving }: TabProps) {
 
   return (
     <div>
-      <SectionCard title="Odchozi email">
+      <SectionCard title="Odchozí email">
         <div className="settings-grid">
-          <FormField label="Odesilatel (From)" value={form.emailFrom} onChange={setField('emailFrom')} placeholder="noreply@example.com" />
+          <FormField label="Odesílatel (From)" value={form.emailFrom} onChange={setField('emailFrom')} placeholder="noreply@example.com" />
           <FormField label="Reply-To" value={form.emailReplyTo} onChange={setField('emailReplyTo')} placeholder="info@example.com" />
         </div>
         <div style={{ marginTop: 12 }}>
@@ -232,19 +232,19 @@ function EmailTab({ settings, onSave, saving }: TabProps) {
             rows={3}
             value={form.emailSignature}
             onChange={setField('emailSignature')}
-            placeholder="S pozdravem, Vase sprava nemovitosti"
+            placeholder="S pozdravem, Vaše správa nemovitostí"
           />
         </div>
       </SectionCard>
 
       <SectionCard title="Notifikace">
         <p style={{ fontSize: '.78rem', color: 'var(--text-muted)', marginBottom: 12 }}>
-          Zapnete/vypnete emailove notifikace pro jednotlive udalosti.
+          Zapněte/vypněte emailové notifikace pro jednotlivé události.
         </p>
         <ToggleRow label="Nový Helpdesk požadavek" checked={form.notifNewTicket} onToggle={toggle('notifNewTicket')} />
         <ToggleRow label="Přiřazení pracovního úkolu" checked={form.notifWoAssigned} onToggle={toggle('notifWoAssigned')} />
         <ToggleRow label="Expirace smlouvy" checked={form.notifContractExp} onToggle={toggle('notifContractExp')} />
-        <ToggleRow label="Kalibrace meridla" checked={form.notifMeterDue} onToggle={toggle('notifMeterDue')} />
+        <ToggleRow label="Kalibrace měřidla" checked={form.notifMeterDue} onToggle={toggle('notifMeterDue')} />
         <ToggleRow label="Splatnost platby" checked={form.notifPaymentDue} onToggle={toggle('notifPaymentDue')} />
       </SectionCard>
 
@@ -275,36 +275,36 @@ function FakturaceTab({ settings, onSave, saving }: TabProps) {
 
   return (
     <div>
-      <SectionCard title="Cislovaci rady">
+      <SectionCard title="Číslovací řady">
         <div className="settings-grid">
           <FormField label="Prefix faktur" value={form.invoicePrefix} onChange={set('invoicePrefix')} placeholder="FV" />
           <FormField label="Prefix smluv" value={form.contractPrefix} onChange={set('contractPrefix')} placeholder="SM" />
         </div>
       </SectionCard>
 
-      <SectionCard title="Financni parametry">
+      <SectionCard title="Finanční parametry">
         <div className="settings-grid">
           <div>
             <label className="settings-label">Splatnost (dny)</label>
             <input className="settings-input" type="number" min={1} max={90} value={form.invoiceDueDays} onChange={setNum('invoiceDueDays')} />
           </div>
           <div>
-            <label className="settings-label">Vychozi DPH (%)</label>
+            <label className="settings-label">Výchozí DPH (%)</label>
             <input className="settings-input" type="number" min={0} max={100} value={form.defaultVat} onChange={setNum('defaultVat')} />
           </div>
           <div>
-            <label className="settings-label">Mena</label>
+            <label className="settings-label">Měna</label>
             <select className="settings-input" value={form.currency} onChange={set('currency')}>
-              <option value="CZK">CZK - Ceska koruna</option>
+              <option value="CZK">CZK - Česká koruna</option>
               <option value="EUR">EUR - Euro</option>
               <option value="USD">USD - Dolar</option>
             </select>
           </div>
-          <FormField label="Bankovni ucet" value={form.bankAccount} onChange={set('bankAccount')} placeholder="12345678/0100" />
+          <FormField label="Bankovní účet" value={form.bankAccount} onChange={set('bankAccount')} placeholder="12345678/0100" />
         </div>
         <div style={{ marginTop: 12 }}>
-          <label className="settings-label">Paticka faktury</label>
-          <textarea className="settings-textarea" rows={2} value={form.invoiceFooter} onChange={set('invoiceFooter')} placeholder="Dekujeme za vcasnou platbu." />
+          <label className="settings-label">Patička faktury</label>
+          <textarea className="settings-textarea" rows={2} value={form.invoiceFooter} onChange={set('invoiceFooter')} placeholder="Děkujeme za včasnou platbu." />
         </div>
       </SectionCard>
 
@@ -319,15 +319,15 @@ function UpominkyTab({ settings, onSave, saving }: TabProps) {
   const s = settings ?? {};
   const [form, setForm] = useState({
     reminderDaysBefore: s.reminderDaysBefore ?? 7,
-    reminderText1: s.reminderText1 ?? 'Vazeny najemniku, upozornujeme Vas na blizici se splatnost platby.',
-    reminderText2: s.reminderText2 ?? 'Druha upominka: Vase platba je po splatnosti. Prosime o neprodlene uhrazeni.',
+    reminderText1: s.reminderText1 ?? 'Vážený nájemníku, upozorňujeme Vás na blížící se splatnost platby.',
+    reminderText2: s.reminderText2 ?? 'Druhá upomínka: Vaše platba je po splatnosti. Prosíme o neprodlené uhrazení.',
   });
 
   return (
     <div>
-      <SectionCard title="Nastaveni upominek">
+      <SectionCard title="Nastavení upomínek">
         <div style={{ maxWidth: 400 }}>
-          <label className="settings-label">Pocet dnu pred splatnosti</label>
+          <label className="settings-label">Počet dnů před splatností</label>
           <input
             className="settings-input"
             type="number"
@@ -339,7 +339,7 @@ function UpominkyTab({ settings, onSave, saving }: TabProps) {
         </div>
       </SectionCard>
 
-      <SectionCard title="Text 1. upominky">
+      <SectionCard title="Text 1. upomínky">
         <textarea
           className="settings-textarea"
           rows={3}
@@ -348,7 +348,7 @@ function UpominkyTab({ settings, onSave, saving }: TabProps) {
         />
       </SectionCard>
 
-      <SectionCard title="Text 2. upominky">
+      <SectionCard title="Text 2. upomínky">
         <textarea
           className="settings-textarea"
           rows={3}
@@ -373,16 +373,16 @@ function VzhledTab({ settings, onSave, saving }: TabProps) {
 
   const presets = [
     { label: 'Indigo', color: '#6366f1' },
-    { label: 'Zelena', color: '#22c55e' },
-    { label: 'Modra', color: '#3b82f6' },
-    { label: 'Cervena', color: '#ef4444' },
-    { label: 'Oranzova', color: '#f97316' },
-    { label: 'Fialova', color: '#a855f7' },
+    { label: 'Zelená', color: '#22c55e' },
+    { label: 'Modrá', color: '#3b82f6' },
+    { label: 'Červená', color: '#ef4444' },
+    { label: 'Oranžová', color: '#f97316' },
+    { label: 'Fialová', color: '#a855f7' },
   ];
 
   return (
     <div>
-      <SectionCard title="Primarni barva">
+      <SectionCard title="Primární barva">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
           <div
             style={{
@@ -420,7 +420,7 @@ function VzhledTab({ settings, onSave, saving }: TabProps) {
         </div>
       </SectionCard>
 
-      <SectionCard title="Tema">
+      <SectionCard title="Téma">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {(['light', 'dark', 'system'] as const).map((m) => (
             <label key={m} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '.85rem' }}>
@@ -430,7 +430,7 @@ function VzhledTab({ settings, onSave, saving }: TabProps) {
                 checked={form.themeMode === m}
                 onChange={() => setForm((p) => ({ ...p, themeMode: m }))}
               />
-              {{ light: 'Svetly', dark: 'Tmavy', system: 'Dle systemu' }[m]}
+              {{ light: 'Světlý', dark: 'Tmavý', system: 'Dle systému' }[m]}
             </label>
           ))}
         </div>
@@ -468,25 +468,25 @@ function ExportTab() {
     <div>
       <SectionCard title="Export dat">
         <p style={{ fontSize: '.82rem', color: 'var(--text-muted)', marginBottom: 16 }}>
-          Exportujte vsechna data Vasi organizace do JSON souboru. Export obsahuje nemovitosti,
-          najemniky, smlouvy, work ordery, meridla, transakce, dokumenty a udalosti kalendare.
+          Exportujte všechna data Vaší organizace do JSON souboru. Export obsahuje nemovitosti,
+          nájemníky, smlouvy, work ordery, měřidla, transakce, dokumenty a události kalendáře.
         </p>
         <Button onClick={handleExport} disabled={exporting}>
           <Download size={15} />
-          {exporting ? 'Exportuji...' : 'Stahnout JSON export'}
+          {exporting ? 'Exportuji...' : 'Stáhnout JSON export'}
         </Button>
       </SectionCard>
 
       <div className="settings-danger-zone">
-        <h4>Nebezpecna zona</h4>
+        <h4>Nebezpečná zóna</h4>
         <p style={{ fontSize: '.78rem', color: 'var(--text-muted)', marginBottom: 12 }}>
-          Pred jakoukoli destruktivni akci si vzdy vytvorte zalohu.
+          Před jakoukoli destruktivní akcí si vždy vytvořte zálohu.
         </p>
         <button
           className="btn btn--danger"
-          onClick={() => alert('Smazani dat neni v teto verzi k dispozici. Kontaktujte podporu.')}
+          onClick={() => alert('Smazání dat není v této verzi k dispozici. Kontaktujte podporu.')}
         >
-          Smazat vsechna data
+          Smazat všechna data
         </button>
       </div>
     </div>
@@ -914,7 +914,7 @@ function SaveFooter({ saving, onSave }: { saving: boolean; onSave: () => void })
     <div className="settings-footer">
       <Button onClick={onSave} disabled={saving}>
         <Save size={15} />
-        {saving ? 'Ukladam...' : 'Ulozit zmeny'}
+        {saving ? 'Ukládám...' : 'Uložit změny'}
       </Button>
     </div>
   );

@@ -93,7 +93,7 @@ export default function DocumentsPage() {
       </div>
 
       {items.length === 0 ? (
-        <EmptyState title="Zadne dokumenty" description="Nahrajte prvni dokument." />
+        <EmptyState title="Žádné dokumenty" description="Nahrajte první dokument." />
       ) : (
         <Table data={items} columns={columns} rowKey={d => d.id} onRowClick={d => setSelected(d)} />
       )}

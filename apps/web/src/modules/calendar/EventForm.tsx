@@ -42,8 +42,8 @@ export default function EventForm({ event, defaultDate, onClose }: Props) {
 
   const validate = () => {
     const errs: Record<string, string> = {};
-    if (!form.title.trim()) errs.title = 'Nazev je povinny';
-    if (!form.date) errs.date = 'Datum je povinne';
+    if (!form.title.trim()) errs.title = 'Název je povinný';
+    if (!form.date) errs.date = 'Datum je povinné';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -78,17 +78,17 @@ export default function EventForm({ event, defaultDate, onClose }: Props) {
   });
 
   return (
-    <Modal open onClose={onClose} title={isEdit ? 'Upravit udalost' : 'Nova udalost'}
+    <Modal open onClose={onClose} title={isEdit ? 'Upravit událost' : 'Nová událost'}
       footer={
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <Button onClick={onClose}>Zrusit</Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={isPending}>{isEdit ? 'Ulozit' : 'Vytvorit'}</Button>
+          <Button onClick={onClose}>Zrušit</Button>
+          <Button variant="primary" onClick={handleSubmit} disabled={isPending}>{isEdit ? 'Uložit' : 'Vytvořit'}</Button>
         </div>
       }>
 
       <div style={{ marginBottom: 14 }}>
-        <label className="form-label">Nazev udalosti *</label>
-        <input value={form.title} onChange={e => set('title', e.target.value)} style={inputStyle('title')} placeholder="Schuze SVJ, Revize vytahu..." />
+        <label className="form-label">Název události *</label>
+        <input value={form.title} onChange={e => set('title', e.target.value)} style={inputStyle('title')} placeholder="Schůze SVJ, Revize výtahu..." />
         {errors.title && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.title}</div>}
       </div>
 
@@ -102,7 +102,7 @@ export default function EventForm({ event, defaultDate, onClose }: Props) {
         <div>
           <label className="form-label">Nemovitost</label>
           <select value={form.propertyId} onChange={e => set('propertyId', e.target.value)} style={inputStyle()}>
-            <option value="">-- Obecna --</option>
+            <option value="">-- Obecná --</option>
             {(properties ?? []).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </div>
@@ -115,18 +115,18 @@ export default function EventForm({ event, defaultDate, onClose }: Props) {
           {errors.date && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.date}</div>}
         </div>
         <div>
-          <label className="form-label">Cas od</label>
+          <label className="form-label">Čas od</label>
           <input type="time" value={form.timeFrom} onChange={e => set('timeFrom', e.target.value)} style={inputStyle()} />
         </div>
         <div>
-          <label className="form-label">Cas do</label>
+          <label className="form-label">Čas do</label>
           <input type="time" value={form.timeTo} onChange={e => set('timeTo', e.target.value)} style={inputStyle()} />
         </div>
       </div>
 
       <div style={{ marginBottom: 14 }}>
-        <label className="form-label">Misto</label>
-        <input value={form.location} onChange={e => set('location', e.target.value)} style={inputStyle()} placeholder="Spolecenska mistnost, Online..." />
+        <label className="form-label">Místo</label>
+        <input value={form.location} onChange={e => set('location', e.target.value)} style={inputStyle()} placeholder="Společenská místnost, Online..." />
       </div>
 
       <div style={{ marginBottom: 14 }}>
@@ -136,9 +136,9 @@ export default function EventForm({ event, defaultDate, onClose }: Props) {
       </div>
 
       <div>
-        <label className="form-label">Ucastnici (oddelte carkou)</label>
+        <label className="form-label">Účastníci (oddělte čárkou)</label>
         <input value={form.attendees} onChange={e => set('attendees', e.target.value)}
-          placeholder="Jan Novak, Marie Kralova..." style={inputStyle()} />
+          placeholder="Jan Novák, Marie Králová..." style={inputStyle()} />
       </div>
     </Modal>
   );

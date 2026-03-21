@@ -50,7 +50,7 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
   const { success, error } = useToast()
   const navigate = useNavigate()
 
-  const stepLabels = ['Vitejte', 'Nemovitost', 'Jednotka', 'Hotovo']
+  const stepLabels = ['Vítejte', 'Nemovitost', 'Jednotka', 'Hotovo']
 
 
   const overlay: React.CSSProperties = {
@@ -89,12 +89,12 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
           <ProgressBar steps={stepLabels} current={0} />
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>&#127970;</div>
-            <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>Vitejte v ifmio!</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>Vítejte v ifmio!</h1>
             <p style={{ color: 'var(--text-muted, #6b7280)', marginBottom: 32, lineHeight: 1.6 }}>
-              Nastaveni zabere mene nez 2 minuty. Pridame vasi prvni nemovitost a jednotku.
+              Nastavení zabere méně než 2 minuty. Přidáme vaši první nemovitost a jednotku.
             </p>
             <button style={btnPrimary} onClick={() => setStep('property')}>
-              Zacit nastaveni &rarr;
+              Začít nastavení &rarr;
             </button>
           </div>
         </div>
@@ -105,17 +105,17 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
   if (step === 'property') {
     const handleCreate = async () => {
       if (!form.name || !form.address) {
-        error('Vyplnte nazev a adresu')
+        error('Vyplňte název a adresu')
         return
       }
       try {
         const res = await apiClient.post('/properties', form)
         setPropertyId(res.data.id)
         setPropertyName(res.data.name)
-        success(`Nemovitost "${res.data.name}" vytvorena`)
+        success(`Nemovitost "${res.data.name}" vytvořena`)
         setStep('unit')
       } catch {
-        error('Vytvoreni nemovitosti selhalo')
+        error('Vytvoření nemovitosti selhalo')
       }
     }
 
@@ -123,19 +123,19 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
       <div style={overlay}>
         <div style={card}>
           <ProgressBar steps={stepLabels} current={1} />
-          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Pridejte prvni nemovitost</h2>
+          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Přidejte první nemovitost</h2>
           <p style={{ color: 'var(--text-muted)', marginBottom: 20, fontSize: 14 }}>
-            Bytovy dum, rodinny dum nebo kancelarska budova.
+            Bytový dům, rodinný dům nebo kancelářská budova.
           </p>
-          <label style={labelStyle}>Nazev nemovitosti *</label>
-          <input style={input} placeholder="napr. Bytovy dum Hlavni 12" value={form.name}
+          <label style={labelStyle}>Název nemovitosti *</label>
+          <input style={input} placeholder="např. Bytový dům Hlavní 12" value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
           <label style={labelStyle}>Adresa *</label>
-          <input style={input} placeholder="Hlavni 12" value={form.address}
+          <input style={input} placeholder="Hlavní 12" value={form.address}
             onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} />
           <div style={{ display: 'flex', gap: 12 }}>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Mesto</label>
+              <label style={labelStyle}>Město</label>
               <input style={input} placeholder="Praha" value={form.city}
                 onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))} />
             </div>
@@ -148,13 +148,13 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
           <label style={labelStyle}>Typ nemovitosti</label>
           <select style={{ ...input, cursor: 'pointer' }} value={form.type}
             onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}>
-            <option value="bytdum">Bytovy dum</option>
-            <option value="roddum">Rodinny dum</option>
-            <option value="komer">Komercni objekt</option>
+            <option value="bytdum">Bytový dům</option>
+            <option value="roddum">Rodinný dům</option>
+            <option value="komer">Komerční objekt</option>
           </select>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
-            <button style={btnSecondary} onClick={() => setStep('welcome')}>&larr; Zpet</button>
-            <button style={btnPrimary} onClick={handleCreate}>Vytvorit nemovitost &rarr;</button>
+            <button style={btnSecondary} onClick={() => setStep('welcome')}>&larr; Zpět</button>
+            <button style={btnPrimary} onClick={handleCreate}>Vytvořit nemovitost &rarr;</button>
           </div>
         </div>
       </div>
@@ -164,7 +164,7 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
   if (step === 'unit') {
     const handleCreate = async () => {
       if (!unitForm.name) {
-        error('Zadejte oznaceni jednotky')
+        error('Zadejte označení jednotky')
         return
       }
       try {
@@ -173,10 +173,10 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
           floor: unitForm.floor ? parseInt(unitForm.floor) : 0,
           area: unitForm.area ? parseFloat(unitForm.area) : null,
         })
-        success(`Jednotka "${unitForm.name}" vytvorena`)
+        success(`Jednotka "${unitForm.name}" vytvořena`)
         setStep('done')
       } catch {
-        error('Vytvoreni jednotky selhalo')
+        error('Vytvoření jednotky selhalo')
       }
     }
 
@@ -184,12 +184,12 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
       <div style={overlay}>
         <div style={card}>
           <ProgressBar steps={stepLabels} current={2} />
-          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Pridejte prvni jednotku</h2>
+          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Přidejte první jednotku</h2>
           <p style={{ color: 'var(--text-muted)', marginBottom: 20, fontSize: 14 }}>
             Jednotka v nemovitosti <strong>{propertyName}</strong>.
           </p>
-          <label style={labelStyle}>Oznaceni jednotky *</label>
-          <input style={input} placeholder="napr. Byt 2+1, Byt c. 12" value={unitForm.name}
+          <label style={labelStyle}>Označení jednotky *</label>
+          <input style={input} placeholder="např. Byt 2+1, Byt č. 12" value={unitForm.name}
             onChange={(e) => setUnitForm((f) => ({ ...f, name: e.target.value }))} />
           <div style={{ display: 'flex', gap: 12 }}>
             <div style={{ flex: 1 }}>
@@ -204,10 +204,10 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
             </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
-            <button style={btnSecondary} onClick={() => setStep('property')}>&larr; Zpet</button>
+            <button style={btnSecondary} onClick={() => setStep('property')}>&larr; Zpět</button>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button style={btnSecondary} onClick={() => setStep('done')}>Preskocit</button>
-              <button style={btnPrimary} onClick={handleCreate}>Vytvorit jednotku &rarr;</button>
+              <button style={btnSecondary} onClick={() => setStep('done')}>Přeskočit</button>
+              <button style={btnPrimary} onClick={handleCreate}>Vytvořit jednotku &rarr;</button>
             </div>
           </div>
         </div>
@@ -221,14 +221,14 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
       <div style={{ ...card, textAlign: 'center' }}>
         <ProgressBar steps={stepLabels} current={3} />
         <div style={{ fontSize: 56, marginBottom: 16 }}>&#127881;</div>
-        <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Hotovo! ifmio je pripraveno.</h2>
+        <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Hotovo! ifmio je připraveno.</h2>
         <p style={{ color: 'var(--text-muted)', marginBottom: 32, lineHeight: 1.6 }}>
-          Nemovitost a jednotka byly vytvoreny. Nyni muzete pridat najemniky a nastavit predpisy.
+          Nemovitost a jednotka byly vytvořeny. Nyní můžete přidat nájemníky a nastavit předpisy.
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-          <button style={btnSecondary} onClick={onComplete}>Prejit na dashboard</button>
+          <button style={btnSecondary} onClick={onComplete}>Přejít na dashboard</button>
           <button style={btnPrimary} onClick={() => { onComplete(); navigate('/residents') }}>
-            Pridat najemniky &rarr;
+            Přidat nájemníky &rarr;
           </button>
         </div>
       </div>

@@ -104,7 +104,7 @@ export class PdfController {
       templateSubject: reminder.template?.subject ?? 'Upominka',
       templateBody:
         reminder.template?.body ??
-        'Vazeny/a {{jmeno}}, evidujeme dluznou castku {{castka}} se splatnosti {{splatnost}}.',
+        'Vážený/á {{jmeno}}, evidujeme dlužnou částku {{castka}} se splatností {{splatnost}}.',
     });
 
     const filename = `upominka-${reminder.id.slice(0, 8)}.pdf`;

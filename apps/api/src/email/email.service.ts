@@ -85,9 +85,9 @@ export class EmailService {
     level:       string
   }): Promise<boolean> {
     const levelLabel =
-      params.level === 'first'  ? '1. upominka' :
-      params.level === 'second' ? '2. upominka' :
-      '3. upominka (predzalobni)'
+      params.level === 'first'  ? '1. upomínka' :
+      params.level === 'second' ? '2. upomínka' :
+      '3. upomínka (předžalobní)'
 
     const html = this.reminderHtml(params)
 
@@ -113,16 +113,16 @@ export class EmailService {
     <h1 style="color: #fff; margin: 0; font-size: 24px;">ifmio</h1>
   </div>
   <div style="border: 1px solid #e5e7eb; border-top: none; padding: 32px; border-radius: 0 0 8px 8px;">
-    <h2 style="color: #111827;">Vitejte, ${escapeHtml(params.name)}!</h2>
-    <p>Byl vam vytvoren pristup do systemu ${escapeHtml(params.tenantName)}.</p>
+    <h2 style="color: #111827;">Vítejte, ${escapeHtml(params.name)}!</h2>
+    <p>Byl vám vytvořen přístup do systému ${escapeHtml(params.tenantName)}.</p>
     <a href="${encodeURI(params.loginUrl)}"
        style="display: inline-block; background: #6366f1; color: #fff;
               padding: 12px 24px; border-radius: 6px; text-decoration: none;
               font-weight: 600; margin: 16px 0;">
-      Prihlasit se
+      Přihlásit se
     </a>
     <p style="color: #6b7280; font-size: 13px; margin-top: 24px;">
-      Pokud jste tento email neocekavali, ignorujte jej.
+      Pokud jste tento email neočekávali, ignorujte jej.
     </p>
   </div>
 </body>
@@ -166,7 +166,7 @@ export class EmailService {
     <div style="background: #fef3c7; border: 1px solid #fcd34d;
                 border-radius: 8px; padding: 16px 20px; margin: 24px 0;">
       <div style="font-size: 18px; font-weight: 700; color: #92400e;">
-        Dluzna castka: ${amountFmt} Kc
+        Dlužná částka: ${amountFmt} Kč
       </div>
       <div style="color: #92400e; margin-top: 4px;">
         Splatnost: ${dueFmt}

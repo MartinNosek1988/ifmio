@@ -170,8 +170,8 @@ export default function LeaseDetailModal({ lease, onClose, onUpdated }: Props) {
 
             {/* Contract details */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-              <InfoCell label="Vypovedni lhuta" value={`${lease.noticePeriod} mesicu`} />
-              <InfoCell label="Prodlouzeni" value={RENEWAL_LABEL[lease.renewalType] || lease.renewalType} />
+              <InfoCell label="Výpovědní lhůta" value={`${lease.noticePeriod} měsíců`} />
+              <InfoCell label="Prodloužení" value={RENEWAL_LABEL[lease.renewalType] || lease.renewalType} />
             </div>
 
             {/* Note */}
@@ -225,7 +225,7 @@ export default function LeaseDetailModal({ lease, onClose, onUpdated }: Props) {
 
         {tab === 'historie' && (
           <div>
-            <TimelineItem date={formatCzDate(lease.createdAt)} title="Smlouva vytvorena" desc={`${lease.contractNumber || ''} · ${formatKc(lease.monthlyRent)}/mes`} />
+            <TimelineItem date={formatCzDate(lease.createdAt)} title="Smlouva vytvořena" desc={`${lease.contractNumber || ''} · ${formatKc(lease.monthlyRent)}/měs`} />
             <TimelineItem date={formatCzDate(lease.startDate)} title="Platnost zahjena" desc={`Najemnik: ${residentName}`} />
             {lease.status === 'ukoncena' && lease.terminatedAt && (
               <TimelineItem date={formatCzDate(lease.terminatedAt)} title="Smlouva ukoncena" desc={lease.terminationNote || ''} />

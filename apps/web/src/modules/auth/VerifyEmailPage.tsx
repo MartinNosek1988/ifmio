@@ -50,7 +50,7 @@ export default function VerifyEmailPage() {
                 borderRadius: 8, fontWeight: 600, textDecoration: 'none',
               }}
             >
-              Prihlasit se
+              Přihlásit se
             </Link>
           </>
         )}
