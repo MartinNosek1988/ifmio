@@ -238,14 +238,14 @@ export default function PropertyDetailPage() {
   ];
 
   return (
-    <div>
+    <div data-testid="property-detail-page">
       <div style={{ marginBottom: 16 }}>
         <Button icon={<ArrowLeft size={15} />} onClick={() => navigate('/properties')}>Zpět</Button>
       </div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">{property.name}</h1>
-          <p className="page-subtitle">
+          <h1 className="page-title" data-testid="property-detail-name">{property.name}</h1>
+          <p className="page-subtitle" data-testid="property-detail-address">
             {[property.address, property.city].filter(Boolean).join(', ')}
           </p>
           {/* P0 info strip */}
@@ -271,7 +271,7 @@ export default function PropertyDetailPage() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <Button icon={<Pencil size={15} />} onClick={() => setShowEditProp(true)}>Upravit</Button>
+          <Button icon={<Pencil size={15} />} onClick={() => setShowEditProp(true)} data-testid="property-detail-edit-btn">Upravit</Button>
           <Button icon={<Layers size={15} />} onClick={() => setShowBulk(true)}>Hromadné</Button>
           <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowAddUnit(true)}>
             Nová jednotka

@@ -24,7 +24,7 @@ export default defineConfig({
       name: 'chromium',
       use: { browserName: 'chromium', viewport: { width: 1440, height: 900 } },
       dependencies: ['setup'],
-      testMatch: /smoke\/.+\.spec\.ts/,
+      testMatch: /(?:smoke|deep)\/.+\.spec\.ts/,
     },
   ],
 });
