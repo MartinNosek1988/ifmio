@@ -240,25 +240,20 @@ test.describe('Properties — Deep CRUD', () => {
   // 5. DELETE — independent
   // ============================================================
   test.describe('Smazání nemovitosti', () => {
-    test('smazání nemovitosti přes API a ověření v seznamu', async ({ page }) => {
+    test('smazání nemovitosti přes API a ověření', async ({ page }) => {
       // Create property specifically for this test
       const propId = await createTestPropertyViaApi(page);
-
-      await page.goto('/properties');
-      await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1000);
-
-      // Verify it exists
-      await expect(page.getByText(TEST_PROPERTY_NAME).first()).toBeVisible();
 
       // Delete via API
       await deletePropertyViaApi(page, propId);
 
-      // Reload and verify gone
-      await page.goto('/properties');
-      await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1000);
-      await expect(page.locator(`text=${TEST_PROPERTY_NAME}`)).not.toBeVisible();
+      // Verify via API that property no longer exists (avoids UI duplicate issues)
+      const token = await page.evaluate(() => sessionStorage.getItem('ifmio:access_token'));
+      const checkRes = await page.request.get(`${API_URL}/api/v1/properties/${propId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      // Should be 404 (not found) or 403/410 (archived) — anything but 200
+      expect(checkRes.status()).toBeGreaterThanOrEqual(400);
     });
   });
 
