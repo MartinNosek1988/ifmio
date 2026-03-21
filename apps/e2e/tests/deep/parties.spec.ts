@@ -50,9 +50,9 @@ test.describe('Parties — Deep CRUD', () => {
       expect(rowsAfter).toBeLessThanOrEqual(rowsBefore);
       expect(rowsAfter).toBeGreaterThanOrEqual(1);
 
-      // Clear search
+      // Clear search — React Query may serve cached result without new API call
       await searchInput.fill('');
-      await page.waitForResponse((r) => r.url().includes('/api/v1/parties') && r.status() === 200);
+      await page.waitForTimeout(1000);
     });
   });
 
