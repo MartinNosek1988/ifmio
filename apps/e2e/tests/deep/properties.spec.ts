@@ -244,16 +244,22 @@ test.describe('Properties — Deep CRUD', () => {
       // Create property specifically for this test
       const propId = await createTestPropertyViaApi(page);
 
-      // Delete via API
-      await deletePropertyViaApi(page, propId);
-
-      // Verify via API that property no longer exists (avoids UI duplicate issues)
+      // Delete via API (soft delete — archives the property)
       const token = await page.evaluate(() => sessionStorage.getItem('ifmio:access_token'));
-      const checkRes = await page.request.get(`${API_URL}/api/v1/properties/${propId}`, {
+      const deleteRes = await page.request.delete(`${API_URL}/api/v1/properties/${propId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      // Should be 404 (not found) or 403/410 (archived) — anything but 200
-      expect(checkRes.status()).toBeGreaterThanOrEqual(400);
+      expect(deleteRes.status()).toBeLessThan(300);
+
+      // Verify property no longer appears in the active list
+      // (soft-deleted/archived properties are excluded from findAll)
+      const listRes = await page.request.get(`${API_URL}/api/v1/properties`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const list = await listRes.json();
+      const items = Array.isArray(list) ? list : list.data ?? [];
+      const found = items.find((p: any) => p.id === propId);
+      expect(found).toBeFalsy();
     });
   });
 
