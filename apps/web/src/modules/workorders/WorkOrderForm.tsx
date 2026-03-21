@@ -90,8 +90,8 @@ export default function WorkOrderForm({ onClose }: Props) {
     <Modal open onClose={onClose} title="Nový pracovní úkol" wide
       footer={
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <Button onClick={onClose}>Zrušit</Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={createMutation.isPending}>
+          <Button onClick={onClose} data-testid="wo-form-cancel">Zrušit</Button>
+          <Button variant="primary" onClick={handleSubmit} disabled={createMutation.isPending} data-testid="wo-form-save">
             {createMutation.isPending ? 'Vytvářím...' : 'Vytvořit'}
           </Button>
         </div>
@@ -99,27 +99,27 @@ export default function WorkOrderForm({ onClose }: Props) {
 
       <div style={{ marginBottom: 14 }}>
         <label className="form-label">Název úkolu *</label>
-        <input value={form.title} onChange={e => set('title', e.target.value)} style={inputStyle('title')} placeholder="Stručný popis práce" />
-        {errors.title && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.title}</div>}
+        <input data-testid="wo-form-title" value={form.title} onChange={e => set('title', e.target.value)} style={inputStyle('title')} placeholder="Stručný popis práce" />
+        {errors.title && <div data-testid="wo-form-error-title" style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.title}</div>}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div>
           <label className="form-label">Priorita</label>
-          <select value={form.priority} onChange={e => set('priority', e.target.value)} style={inputStyle()}>
+          <select data-testid="wo-form-priority" value={form.priority} onChange={e => set('priority', e.target.value)} style={inputStyle()}>
             {Object.entries(WO_PRIORITY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </div>
         <div>
           <label className="form-label">Termín realizace</label>
-          <input type="date" value={form.deadline} onChange={e => set('deadline', e.target.value)} style={inputStyle()} />
+          <input data-testid="wo-form-deadline" type="date" value={form.deadline} onChange={e => set('deadline', e.target.value)} style={inputStyle()} />
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div>
           <label className="form-label">Nemovitost</label>
-          <select value={form.propertyId} onChange={e => { set('propertyId', e.target.value); set('unitId', ''); }} style={inputStyle()}>
+          <select data-testid="wo-form-property" value={form.propertyId} onChange={e => { set('propertyId', e.target.value); set('unitId', ''); }} style={inputStyle()}>
             <option value="">— vyberte —</option>
             {(properties ?? []).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
@@ -137,7 +137,7 @@ export default function WorkOrderForm({ onClose }: Props) {
 
       <div style={{ marginBottom: 14 }}>
         <label className="form-label">Zařízení</label>
-        <select value={form.assetId} onChange={e => set('assetId', e.target.value)} style={inputStyle()}>
+        <select data-testid="wo-form-asset" value={form.assetId} onChange={e => set('assetId', e.target.value)} style={inputStyle()}>
           <option value="">— bez zařízení —</option>
           {assets.map(a => <option key={a.id} value={a.id}>{a.name}{a.location ? ` (${a.location})` : ''}</option>)}
         </select>
@@ -146,7 +146,7 @@ export default function WorkOrderForm({ onClose }: Props) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div>
           <label className="form-label">Řešitel úkolu</label>
-          <select value={form.assigneeUserId} onChange={e => set('assigneeUserId', e.target.value)} style={inputStyle()}>
+          <select data-testid="wo-form-assignee" value={form.assigneeUserId} onChange={e => set('assigneeUserId', e.target.value)} style={inputStyle()}>
             <option value="">— bez řešitele —</option>
             {activeUsers.map((u: TenantUser) => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
@@ -177,7 +177,7 @@ export default function WorkOrderForm({ onClose }: Props) {
 
       <div>
         <label className="form-label">Popis</label>
-        <textarea value={form.description} onChange={e => set('description', e.target.value)}
+        <textarea data-testid="wo-form-description" value={form.description} onChange={e => set('description', e.target.value)}
           rows={3} style={{ ...inputStyle(), resize: 'vertical' as const }} placeholder="Podrobný popis práce..." />
       </div>
     </Modal>
