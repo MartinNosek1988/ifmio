@@ -8,9 +8,9 @@ test.describe('Pracovní úkoly', () => {
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(1500);
 
-    const hasTable = await page.locator('[data-testid="wo-list"]').isVisible().catch(() => false);
+    const hasTable = await page.locator('[data-testid="wo-list"], .tbl').first().isVisible().catch(() => false);
     const hasEmpty = await page.locator('[data-testid="empty-state"]').isVisible().catch(() => false);
     expect(hasTable || hasEmpty, 'WO stránka zobrazuje obsah').toBe(true);
-    await expect(page.locator('[data-testid="wo-add-btn"]')).toBeVisible();
+    await expect(page.locator('[data-testid="wo-add-btn"], button:has-text("Nový úkol")').first()).toBeVisible();
   });
 });

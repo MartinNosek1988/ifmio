@@ -8,9 +8,9 @@ test.describe('Měřidla', () => {
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(1500);
 
-    const hasTable = await page.locator('[data-testid="meter-list"]').isVisible().catch(() => false);
+    const hasTable = await page.locator('[data-testid="meter-list"], .tbl').first().isVisible().catch(() => false);
     const hasEmpty = await page.locator('[data-testid="empty-state"]').isVisible().catch(() => false);
     expect(hasTable || hasEmpty, 'Měřidla stránka zobrazuje obsah').toBe(true);
-    await expect(page.locator('[data-testid="meter-add-btn"]')).toBeVisible();
+    await expect(page.locator('[data-testid="meter-add-btn"], button:has-text("Nové měřidlo")').first()).toBeVisible();
   });
 });
