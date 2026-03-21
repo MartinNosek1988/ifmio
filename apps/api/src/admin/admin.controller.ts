@@ -1,11 +1,10 @@
 import {
   Controller, Get, Put, Post, Patch, Delete,
-  Body, Param, UseGuards, HttpCode, HttpStatus,
+  Body, Param, HttpCode, HttpStatus,
 } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { AdminService }  from './admin.service'
 import { EmailService }  from '../email/email.service'
-import { JwtAuthGuard }  from '../common/guards/jwt-auth.guard'
 import { Roles }         from '../common/decorators/roles.decorator'
 import { CurrentUser }   from '../common/decorators/current-user.decorator'
 import { AuditAction }   from '../common/decorators/audit.decorator'
@@ -15,7 +14,6 @@ import type { AuthUser } from '@ifmio/shared-types'
 
 @ApiTags('Admin')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('admin')
 export class AdminController {
   constructor(
