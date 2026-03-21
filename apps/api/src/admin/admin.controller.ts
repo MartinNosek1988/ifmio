@@ -29,6 +29,20 @@ export class AdminController {
     return this.service.getOnboardingStatus(user)
   }
 
+  @Post('onboarding/skip/:step')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Přeskočit krok onboardingu' })
+  skipOnboardingStep(@CurrentUser() user: AuthUser, @Param('step') step: string) {
+    return this.service.skipOnboardingStep(user, step)
+  }
+
+  @Post('onboarding/dismiss')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Zavřít onboarding průvodce' })
+  dismissOnboarding(@CurrentUser() user: AuthUser) {
+    return this.service.dismissOnboarding(user)
+  }
+
   @Get('tenant')
   @ApiOperation({ summary: 'Info o tenantovi' })
   getTenantInfo(@CurrentUser() user: AuthUser) {

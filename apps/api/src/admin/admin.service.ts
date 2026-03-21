@@ -220,40 +220,198 @@ export class AdminService {
   // ─── ONBOARDING ──────────────────────────────────────────────
 
   async getOnboardingStatus(user: AuthUser) {
-    const [propertiesCount, usersCount] = await Promise.all([
-      this.prisma.property.count({
-        where: { tenantId: user.tenantId, status: 'active' },
+    const tenantId = user.tenantId
+
+    // Fetch settings first for skipped steps
+    const settings = await this.prisma.tenantSettings.findUnique({
+      where: { tenantId },
+      select: { onboardingDismissed: true, onboardingSkippedSteps: true },
+    }).catch(() => null)
+
+    const dismissed = settings?.onboardingDismissed === true
+    const skippedSteps: string[] = Array.isArray(settings?.onboardingSkippedSteps)
+      ? (settings.onboardingSkippedSteps as string[])
+      : []
+
+    const [
+      propertiesCount, unitsCount, residentsCount, componentsCount,
+      bankAccountsCount, prescriptionsCount, bankTransactionsCount,
+      usersCount, ownerAccountsWithBalance, totalOwnerAccounts,
+      firstProperty, firstBankAccount,
+      residentsWithEmail, ownersCount,
+    ] = await Promise.all([
+      this.prisma.property.count({ where: { tenantId, status: 'active' } }),
+      this.prisma.unit.count({ where: { property: { tenantId } } }),
+      this.prisma.resident.count({ where: { tenantId, isActive: true } }),
+      this.prisma.prescriptionComponent.count({ where: { tenantId, isActive: true } }),
+      this.prisma.bankAccount.count({ where: { tenantId, isActive: true } }),
+      this.prisma.prescription.count({ where: { tenantId, status: 'active' } }),
+      this.prisma.bankTransaction.count({ where: { tenantId } }),
+      this.prisma.user.count({ where: { tenantId, isActive: true } }),
+      this.prisma.ownerAccount.count({ where: { tenantId, openingBalanceSet: true } }),
+      this.prisma.ownerAccount.count({ where: { tenantId } }),
+      this.prisma.property.findFirst({
+        where: { tenantId, status: 'active' },
+        select: { id: true, name: true },
+        orderBy: { createdAt: 'asc' },
       }),
-      this.prisma.user.count({
-        where: { tenantId: user.tenantId, isActive: true },
+      this.prisma.bankAccount.findFirst({
+        where: { tenantId, isActive: true },
+        select: { accountNumber: true },
+        orderBy: { createdAt: 'asc' },
       }),
+      this.prisma.resident.count({ where: { tenantId, isActive: true, email: { not: null } } }),
+      this.prisma.resident.count({ where: { tenantId, isActive: true, role: 'owner' } }),
     ])
 
+    const steps = [
+      {
+        id: 'property',
+        label: 'Založení nemovitosti',
+        description: 'Přidejte bytový dům, budovu nebo objekt, který spravujete.',
+        completed: propertiesCount > 0,
+        skipped: skippedSteps.includes('property'),
+        link: '/properties',
+        count: propertiesCount,
+        detail: firstProperty
+          ? { propertyName: firstProperty.name, propertyId: firstProperty.id, unitCount: unitsCount }
+          : null,
+      },
+      {
+        id: 'units',
+        label: 'Jednotky a vlastníci',
+        description: 'Vytvořte jednotky (byty, nebytové prostory) a přiřaďte vlastníky.',
+        completed: unitsCount > 0 && ownersCount > 0,
+        skipped: skippedSteps.includes('units'),
+        link: firstProperty ? `/properties/${firstProperty.id}` : null,
+        count: unitsCount,
+        dependsOn: 'property',
+        detail: { unitCount: unitsCount, ownerCount: ownersCount },
+      },
+      {
+        id: 'contacts',
+        label: 'Kontaktní údaje osob',
+        description: 'Doplňte emailové adresy a telefony vlastníků pro komunikaci a portál.',
+        completed: residentsWithEmail > 0,
+        skipped: skippedSteps.includes('contacts'),
+        link: '/residents',
+        count: residentsWithEmail,
+        dependsOn: 'units',
+        optional: true,
+        detail: { withEmail: residentsWithEmail, total: residentsCount },
+      },
+      {
+        id: 'components',
+        label: 'Složky předpisu',
+        description: 'Složky předpisu definují co a kolik se platí. Typické: fond oprav, správa, vodné, teplo.',
+        completed: componentsCount > 0,
+        skipped: skippedSteps.includes('components'),
+        link: '/finance?tab=components',
+        count: componentsCount,
+        dependsOn: 'property',
+        detail: { componentCount: componentsCount },
+      },
+      {
+        id: 'bank',
+        label: 'Bankovní účet',
+        description: 'Pro automatický import plateb doporučujeme připojit Fio API.',
+        completed: bankAccountsCount > 0,
+        skipped: skippedSteps.includes('bank'),
+        link: '/finance?tab=bank',
+        count: bankAccountsCount,
+        optional: true,
+        dependsOn: 'property',
+        detail: { accountNumber: firstBankAccount?.accountNumber ?? null },
+      },
+      {
+        id: 'balances',
+        label: 'Počáteční stavy kont',
+        description: 'Zadejte zůstatky kont vlastníků k datu přechodu. Kdo kolik dluží nebo má přeplatek.',
+        completed: ownerAccountsWithBalance > 0,
+        skipped: skippedSteps.includes('balances'),
+        link: '/finance?tab=konto',
+        count: ownerAccountsWithBalance,
+        optional: true,
+        dependsOn: 'units',
+        detail: { setCount: ownerAccountsWithBalance, totalAccounts: totalOwnerAccounts },
+      },
+      {
+        id: 'prescriptions',
+        label: 'Vygenerovat předpisy',
+        description: 'Předpisy se generují ze složek předpisu. Zkontrolujte náhled a potvrďte.',
+        completed: prescriptionsCount > 0,
+        skipped: skippedSteps.includes('prescriptions'),
+        link: '/finance?tab=prescriptions',
+        count: prescriptionsCount,
+        dependsOn: 'components',
+        detail: { prescriptionCount: prescriptionsCount },
+      },
+      {
+        id: 'import',
+        label: 'Import bankovních výpisů',
+        description: 'Importujte bankovní výpisy za poslední 3–6 měsíců a spárujte je s předpisy.',
+        completed: bankTransactionsCount > 0,
+        skipped: skippedSteps.includes('import'),
+        link: '/finance?tab=bank',
+        count: bankTransactionsCount,
+        optional: true,
+        dependsOn: 'bank',
+        detail: { transactionCount: bankTransactionsCount },
+      },
+    ]
+
+    const isStepDone = (s: typeof steps[number]) => s.completed || s.skipped
+    const requiredSteps = steps.filter(s => !s.optional)
+    const allRequiredDone = requiredSteps.every(isStepDone)
+    const completedCount = steps.filter(isStepDone).length
+
     return {
-      completed: propertiesCount > 0,
-      hasProperties: propertiesCount > 0,
+      completed: allRequiredDone || dismissed,
+      dismissed,
+      progress: { done: completedCount, total: steps.length },
+      percentComplete: Math.round((completedCount / steps.length) * 100),
       propertiesCount,
       hasMultipleUsers: usersCount > 1,
       usersCount,
-      steps: [
-        {
-          id: 'property',
-          label: 'Přidejte první nemovitost',
-          completed: propertiesCount > 0,
-        },
-        {
-          id: 'unit',
-          label: 'Přidejte jednotku',
-          completed: propertiesCount > 0,
-        },
-        {
-          id: 'invite',
-          label: 'Pozvěte dalšího uživatele (volitelné)',
-          completed: usersCount > 1,
-          optional: true,
-        },
-      ],
+      steps,
     }
+  }
+
+  async skipOnboardingStep(user: AuthUser, stepId: string) {
+    const validSteps = ['property', 'units', 'contacts', 'components', 'bank', 'balances', 'prescriptions', 'import']
+    if (!validSteps.includes(stepId)) {
+      throw new NotFoundException(`Neznámý krok: ${stepId}`)
+    }
+
+    const settings = await this.prisma.tenantSettings.findUnique({
+      where: { tenantId: user.tenantId },
+      select: { onboardingSkippedSteps: true },
+    })
+
+    const current: string[] = Array.isArray(settings?.onboardingSkippedSteps)
+      ? (settings.onboardingSkippedSteps as string[])
+      : []
+
+    if (!current.includes(stepId)) {
+      current.push(stepId)
+    }
+
+    await this.prisma.tenantSettings.upsert({
+      where: { tenantId: user.tenantId },
+      update: { onboardingSkippedSteps: current },
+      create: { tenantId: user.tenantId, onboardingSkippedSteps: current },
+    })
+
+    return { ok: true, skippedSteps: current }
+  }
+
+  async dismissOnboarding(user: AuthUser) {
+    await this.prisma.tenantSettings.upsert({
+      where: { tenantId: user.tenantId },
+      update: { onboardingDismissed: true },
+      create: { tenantId: user.tenantId, onboardingDismissed: true },
+    })
+    return { ok: true }
   }
 
   // ─── TENANT INFO ──────────────────────────────────────────────
