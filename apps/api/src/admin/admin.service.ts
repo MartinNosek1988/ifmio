@@ -24,12 +24,23 @@ export class AdminService {
   // ─── TENANT SETTINGS ──────────────────────────────────────────
 
   async getSettings(user: AuthUser) {
-    return this.prisma.tenantSettings.upsert({
-      where:  { tenantId: user.tenantId },
-      update: {},
-      create: { tenantId: user.tenantId },
-      include: { tenant: { select: { id: true, name: true, slug: true, plan: true } } },
-    })
+    try {
+      return await this.prisma.tenantSettings.upsert({
+        where:  { tenantId: user.tenantId },
+        update: {},
+        create: { tenantId: user.tenantId },
+        include: { tenant: { select: { id: true, name: true, slug: true, plan: true } } },
+      })
+    } catch (err) {
+      this.logger.error(`getSettings failed for tenant ${user.tenantId}: ${err}`)
+      // Fallback: try simple findUnique without upsert
+      const existing = await this.prisma.tenantSettings.findUnique({
+        where: { tenantId: user.tenantId },
+        include: { tenant: { select: { id: true, name: true, slug: true, plan: true } } },
+      })
+      if (existing) return existing
+      throw err
+    }
   }
 
   async updateSettings(user: AuthUser, dto: object) {

@@ -31,6 +31,11 @@ export class E2eSeedService {
         },
       })
 
+      // 2b. TenantSettings (prevents 500 on first GET /admin/settings)
+      await tx.tenantSettings.create({
+        data: { tenantId: tenant.id },
+      })
+
       // 3. Property
       const property = await tx.property.create({
         data: {
