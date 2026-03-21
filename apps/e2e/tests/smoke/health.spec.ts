@@ -7,8 +7,8 @@ const ROUTES = [
   '/calendar', '/assets', '/kanban', '/settings', '/team', '/audit',
 ];
 
-test.describe('Health check — all pages', () => {
-  test('all main pages load without JS errors', async ({ page }) => {
+test.describe('Zdraví aplikace', () => {
+  test('Všechny stránky se načtou bez JS chyb', async ({ page }) => {
     await login(page);
     const errors: string[] = [];
     page.on('pageerror', err => errors.push(`${page.url()}: ${err.message}`));
@@ -21,7 +21,7 @@ test.describe('Health check — all pages', () => {
     expect(errors).toEqual([]);
   });
 
-  test('no 5xx API responses during navigation', async ({ page }) => {
+  test('Žádné 5xx API odpovědi při navigaci', async ({ page }) => {
     await login(page);
     const serverErrors: string[] = [];
     page.on('response', res => {
@@ -36,5 +36,16 @@ test.describe('Health check — all pages', () => {
     }
 
     expect(serverErrors).toEqual([]);
+  });
+
+  test('Žádná stránka není prázdná', async ({ page }) => {
+    await login(page);
+
+    for (const route of ROUTES) {
+      await page.goto(route);
+      await page.waitForLoadState('networkidle');
+      const bodyText = await page.locator('body').innerText();
+      expect(bodyText.length, `${route} je prázdná`).toBeGreaterThan(10);
+    }
   });
 });

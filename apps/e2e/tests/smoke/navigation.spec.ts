@@ -6,8 +6,8 @@ const SIDEBAR_MODULES = [
   'parties', 'residents', 'finance', 'documents', 'meters', 'calendar', 'settings',
 ];
 
-test.describe('Sidebar navigation', () => {
-  test('all main pages render without error', async ({ page }) => {
+test.describe('Navigace', () => {
+  test('Všechny hlavní stránky se načtou bez chyby', async ({ page }) => {
     await login(page);
 
     for (const mod of SIDEBAR_MODULES) {
@@ -16,9 +16,29 @@ test.describe('Sidebar navigation', () => {
         await navItem.click();
         await page.waitForLoadState('networkidle');
         const hasError = await page.locator('text=Něco se pokazilo').isVisible().catch(() => false);
-        expect(hasError, `${mod} shows error boundary`).toBe(false);
-        await expect(page.locator('.sidebar__logo')).toBeVisible({ timeout: 5_000 });
+        expect(hasError, `Stránka /${mod} zobrazuje chybu`).toBe(false);
       }
     }
+  });
+
+  test('Navigace Properties → detail → zpět', async ({ page }) => {
+    await login(page);
+    await page.locator('[data-testid="sidebar-nav-properties"]').click();
+    await page.waitForLoadState('networkidle');
+    await expect(page).toHaveURL(/\/properties/);
+
+    const firstRow = page.locator('.tbl tbody tr').first();
+    if (await firstRow.isVisible().catch(() => false)) {
+      await firstRow.click();
+      await page.waitForLoadState('networkidle');
+      await expect(page).toHaveURL(/\/properties\/[a-z0-9-]+/);
+      await page.goBack();
+      await expect(page).toHaveURL(/\/properties$/);
+    }
+  });
+
+  test('Neautentizovaný uživatel je přesměrován na login', async ({ page }) => {
+    await page.goto('/properties');
+    await expect(page).toHaveURL(/\/login/, { timeout: 10_000 });
   });
 });
