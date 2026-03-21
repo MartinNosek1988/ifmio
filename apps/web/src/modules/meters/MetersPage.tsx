@@ -83,7 +83,7 @@ export default function MetersPage() {
           <h1 className="page-title">Měřidla & Energie</h1>
           <p className="page-subtitle">{stats?.total ?? 0} měřidel</p>
         </div>
-        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)}>Nové měřidlo</Button>
+        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)} data-testid="meter-add-btn">Nové měřidlo</Button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
@@ -104,7 +104,7 @@ export default function MetersPage() {
       {items.length === 0 ? (
         <EmptyState title="Žádná měřidla" description="Přidejte první měřidlo." />
       ) : (
-        <Table data={items} columns={columns} rowKey={m => m.id} onRowClick={m => setSelected(m)} />
+        <Table data={items} columns={columns} rowKey={m => m.id} onRowClick={m => setSelected(m)} data-testid="meter-list" />
       )}
 
       {selected && (

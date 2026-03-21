@@ -71,7 +71,7 @@ export default function WorkOrdersPage() {
           <h1 className="page-title">Pracovní úkoly</h1>
           <p className="page-subtitle">{stats?.open ?? 0} otevřených z {stats?.total ?? 0}</p>
         </div>
-        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)}>Nový úkol</Button>
+        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)} data-testid="wo-add-btn">Nový úkol</Button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
@@ -92,7 +92,7 @@ export default function WorkOrdersPage() {
       {items.length === 0 ? (
         <EmptyState title="Žádné pracovní úkoly" description="Vytvořte nový pracovní úkol." />
       ) : (
-        <Table data={items} columns={columns} rowKey={w => w.id} onRowClick={w => setSelectedWO(w)} />
+        <Table data={items} columns={columns} rowKey={w => w.id} onRowClick={w => setSelectedWO(w)} data-testid="wo-list" />
       )}
 
       {selectedWO && (

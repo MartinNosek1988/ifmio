@@ -216,6 +216,7 @@ export default function FinancePage() {
       <div className="tabs">
         {TABS.map(t => (
           <button key={t.key} className={`tab-btn${tab === t.key ? ' active' : ''}`}
+            data-testid={`finance-tab-${t.key}`}
             onClick={() => { setParams({ tab: t.key }); setSearch(''); }}>
             {t.label}
           </button>

@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 async function globalSetup() {
-  const baseUrl = process.env.BASE_URL || 'https://ifmio.com';
+  const baseUrl = process.env.API_URL || process.env.BASE_URL || 'https://ifmio.com';
   const seedEnabled = process.env.E2E_SEED_ENABLED === 'true';
 
   if (!seedEnabled) {

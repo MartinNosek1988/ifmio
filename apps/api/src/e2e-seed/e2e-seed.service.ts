@@ -101,17 +101,54 @@ export class E2eSeedService {
         },
       })
 
-      // 7. Meter
-      const meter = await tx.meter.create({
+      // 7. Meters
+      const meter1 = await tx.meter.create({
         data: {
-          tenantId: tenant.id,
-          propertyId: property.id,
-          unitId: unit1.id,
-          name: 'Vodoměr SV - Byt 1',
-          serialNumber: 'E2E-VOD-001',
-          meterType: 'voda_studena',
-          unit: 'm³',
-          isActive: true,
+          tenantId: tenant.id, propertyId: property.id, unitId: unit1.id,
+          name: 'Vodoměr SV - Byt 1', serialNumber: 'E2E-VOD-001',
+          meterType: 'voda_studena', unit: 'm³', isActive: true,
+        },
+      })
+      const meter2 = await tx.meter.create({
+        data: {
+          tenantId: tenant.id, propertyId: property.id, unitId: unit2.id,
+          name: 'Elektroměr Byt 2', serialNumber: 'E2E-ELE-001',
+          meterType: 'elektrina', unit: 'kWh', isActive: true,
+        },
+      })
+
+      // 8. Meter readings
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000)
+      await tx.meterReading.create({
+        data: { meterId: meter1.id, readingDate: thirtyDaysAgo, value: 1000 },
+      })
+      await tx.meterReading.create({
+        data: { meterId: meter1.id, readingDate: new Date(), value: 1050, consumption: 50 },
+      })
+
+      // 9. Work orders
+      const wo1 = await tx.workOrder.create({
+        data: {
+          tenantId: tenant.id, propertyId: property.id,
+          title: 'Oprava výtahu', description: 'Výtah nejede do 3. patra',
+          priority: 'vysoka', status: 'nova',
+        },
+      })
+      const wo2 = await tx.workOrder.create({
+        data: {
+          tenantId: tenant.id, propertyId: property.id,
+          title: 'Revize hasicích přístrojů',
+          priority: 'normalni', status: 'v_reseni',
+        },
+      })
+
+      // 10. Invoice
+      const invoice = await tx.invoice.create({
+        data: {
+          tenantId: tenant.id, propertyId: property.id,
+          number: 'E2E-2026-001', type: 'received',
+          supplierName: 'Energo s.r.o.', amountTotal: 15000,
+          issueDate: new Date(), dueDate: new Date(Date.now() + 30 * 86_400_000),
         },
       })
 
@@ -122,7 +159,9 @@ export class E2eSeedService {
         propertyId: property.id,
         unitIds: [unit1.id, unit2.id, unit3.id],
         partyIds: [party1.id, party2.id],
-        meterId: meter.id,
+        meterIds: [meter1.id, meter2.id],
+        workOrderIds: [wo1.id, wo2.id],
+        invoiceId: invoice.id,
         message: 'E2E seed data created successfully',
       }
     })
