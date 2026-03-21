@@ -274,7 +274,7 @@ test.describe('Properties — Deep CRUD', () => {
       await page.waitForLoadState('domcontentloaded');
 
       // Updated name should be in the list
-      await expect(page.locator('text=Upravený Dům E2E')).toBeVisible();
+      await expect(page.getByText('Upravený Dům E2E').first()).toBeVisible();
       // Old name should NOT be there
       await expect(page.locator('text=Testovací Dům E2E')).not.toBeVisible();
     });
@@ -292,7 +292,7 @@ test.describe('Properties — Deep CRUD', () => {
       await page.waitForLoadState('domcontentloaded');
 
       // Find the test property and navigate to its detail to get the ID
-      await page.locator('text=Upravený Dům E2E').click();
+      await page.getByText('Upravený Dům E2E').first().click();
       await page.waitForLoadState('domcontentloaded');
 
       // Extract property ID from URL
@@ -315,5 +315,33 @@ test.describe('Properties — Deep CRUD', () => {
       await page.waitForTimeout(1000);
       await expect(page.locator('text=Upravený Dům E2E')).not.toBeVisible();
     });
+  });
+
+  // ============================================================
+  // CLEANUP — delete leftover test properties from previous runs
+  // ============================================================
+  test('úklid — smazání zbylých testovacích nemovitostí', async ({ page }) => {
+    await page.goto('/properties');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(1000);
+
+    const token = await page.evaluate(() => sessionStorage.getItem('ifmio:access_token'));
+    const apiUrl = process.env.API_URL || 'http://localhost:3000';
+
+    // Fetch all properties and delete any matching test names
+    const listRes = await page.request.get(`${apiUrl}/api/v1/properties`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (listRes.ok()) {
+      const properties = await listRes.json();
+      const testNames = ['Testovací Dům E2E', 'Upravený Dům E2E'];
+      for (const prop of properties) {
+        if (testNames.includes(prop.name)) {
+          await page.request.delete(`${apiUrl}/api/v1/properties/${prop.id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        }
+      }
+    }
   });
 });
