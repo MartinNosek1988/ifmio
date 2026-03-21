@@ -53,6 +53,7 @@ const SuperAdminPage = lazy(() => import('../modules/super-admin/SuperAdminPage'
 const QrResolvePage = lazy(() => import('../modules/asset-qr/QrResolvePage'));
 const PrincipalsPage = lazy(() => import('../modules/principals/PrincipalsPage'));
 const PrincipalDetailPage = lazy(() => import('../modules/principals/PrincipalDetailPage'));
+const OnboardingPage = lazy(() => import('../modules/onboarding/OnboardingPage'));
 const PartiesPage = lazy(() => import('../modules/parties/PartiesPage'));
 const PartyDetailPage = lazy(() => import('../modules/parties/PartyDetailPage'));
 const SettlementPage = lazy(() => import('../modules/settlement/SettlementPage'));
@@ -95,6 +96,7 @@ export const router = createBrowserRouter([
     path: '/',
     element: <AppShell />,
     children: [
+      { path: 'onboarding', element: withBoundary('Onboarding', OnboardingPage) },
       { path: 'dashboard', element: withBoundary('Dashboard', DashboardPage) },
       { path: 'portal', element: withBoundary('Klientský portál', PortalPage) },
       { path: 'portal/units', element: withBoundary('Moje jednotky', MyUnitsPage) },

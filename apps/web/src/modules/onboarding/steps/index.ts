@@ -1,0 +1,8 @@
+export { PropertyStep } from './PropertyStep'
+export { UnitsStep } from './UnitsStep'
+export { ContactsStep } from './ContactsStep'
+export { ComponentsStep } from './ComponentsStep'
+export { BankAccountStep } from './BankAccountStep'
+export { OpeningBalancesStep } from './OpeningBalancesStep'
+export { PrescriptionsStep } from './PrescriptionsStep'
+export { BankTransactionsStep } from './BankTransactionsStep'

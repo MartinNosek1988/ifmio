@@ -1933,6 +1933,10 @@ model TenantSettings {
   // Mio Governance
   mioConfig Json? // structured JSON for Mio rule toggles, thresholds, visibility
 
+  // Onboarding
+  onboardingDismissed    Boolean @default(false)
+  onboardingSkippedSteps Json?   @default("[]") // array of step IDs that were manually skipped
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

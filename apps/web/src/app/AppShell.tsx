@@ -14,7 +14,7 @@ import { GlobalSearch } from '../modules/search/GlobalSearch';
 import { PropertyPicker } from '../core/components/PropertyPicker';
 import { MioPanel } from '../modules/ai/MioPanel';
 import { NotificationCenter } from '../modules/notifications/NotificationCenter';
-import { OnboardingWizard } from '../modules/onboarding/OnboardingWizard';
+// OnboardingWizard removed — onboarding now handled by /onboarding route
 import { useKeyboardShortcuts } from '../shared/hooks/useKeyboardShortcuts';
 import { useRoleUX, type UXRole } from '../shared/hooks/useRoleUX';
 import { apiClient } from '../core/api/client';
@@ -117,6 +117,7 @@ const NAV_SECTIONS: NavSection[] = [
 ];
 
 const PAGE_TITLES: Record<string, string> = {
+  '/onboarding': 'Průvodce nastavením',
   '/dashboard': 'Dashboard',
   '/properties': 'Nemovitosti',
   '/contacts': 'Adresář',
@@ -166,7 +167,6 @@ export default function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const pageTitle = getPageTitle(location.pathname);
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showPropertyPicker, setShowPropertyPicker] = useState(false);
@@ -203,7 +203,7 @@ export default function AppShell() {
   const { data: onboardingData } = useQuery({
     queryKey: ['admin', 'onboarding'],
     queryFn: () => apiClient.get('/admin/onboarding').then((r) => r.data),
-    staleTime: Infinity,
+    staleTime: 30_000,
   });
 
   // Consolidated badge counts — single API call replaces 4 separate queries
@@ -245,11 +245,10 @@ export default function AppShell() {
     return days > 0 ? days : null;
   })();
 
-  useEffect(() => {
-    if (onboardingData && !onboardingData.completed) {
-      setShowOnboarding(true);
-    }
-  }, [onboardingData]);
+  const showOnboardingBanner = onboardingData
+    && !onboardingData.completed
+    && !onboardingData.dismissed
+    && location.pathname !== '/onboarding';
 
   const uxRole = useRoleUX();
 
@@ -405,16 +404,41 @@ export default function AppShell() {
       </div>
 
       <main className="main-content">
+        {showOnboardingBanner && (
+          <div
+            data-testid="onboarding-banner"
+            style={{
+              margin: '0 0 16px', padding: '12px 20px',
+              background: 'linear-gradient(135deg, #6366f1 0%, #818cf8 100%)',
+              borderRadius: 10,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              flexWrap: 'wrap', gap: 8,
+              color: '#fff',
+            }}
+          >
+            <span style={{ fontSize: 14, fontWeight: 500 }}>
+              Dokončete nastavení nemovitosti — {onboardingData.progress.done}/{onboardingData.progress.total} kroků hotovo
+            </span>
+            <button
+              onClick={() => navigate('/onboarding')}
+              style={{
+                padding: '6px 16px', borderRadius: 6,
+                border: '1px solid rgba(255,255,255,0.3)',
+                background: 'rgba(255,255,255,0.15)',
+                color: '#fff', fontWeight: 600, fontSize: 13,
+                cursor: 'pointer',
+              }}
+            >
+              Pokračovat
+            </button>
+          </div>
+        )}
         <Suspense fallback={<LoadingSpinner />}>
           <Outlet />
         </Suspense>
       </main>
 
       <MioPanel />
-
-      {showOnboarding && (
-        <OnboardingWizard onComplete={() => setShowOnboarding(false)} />
-      )}
 
       <PropertyPicker open={showPropertyPicker} onClose={() => setShowPropertyPicker(false)} />
     </div>
