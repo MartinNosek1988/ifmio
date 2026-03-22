@@ -5,7 +5,7 @@ import { KpiCard, Button, Modal } from '../../shared/components';
 import { formatKc } from '../../shared/utils/format';
 import type { FinTransaction, FinPrescription } from './types';
 import { useToast } from '../../shared/components/toast/Toast';
-import { useBankAccounts, useTransactions, useImportTransactions, usePrescriptions, useGeneratePrescriptions, useMatchTransactions, useMatchSingle, useFinanceSummary, useDeletePrescription, useDeleteTransaction } from './api/finance.queries';
+import { useBankAccounts, useTransactions, useImportTransactions, usePrescriptions, useMatchTransactions, useMatchSingle, useFinanceSummary, useDeletePrescription, useDeleteTransaction, useAutoMatch, useMatchAll } from './api/finance.queries';
 import { mapAccount, mapTransaction, mapPrescription } from './api/finance.mappers';
 import { useProperties } from '../properties/use-properties';
 import { useResidents } from '../residents/api/residents.queries';
@@ -27,6 +27,8 @@ import ComponentsTab from './components/ComponentsTab';
 import { PredpisDetail } from './components/PredpisDetail';
 import { ParovaniPicker } from './components/ParovaniTab';
 import { PrescriptionForm } from './components/PrescriptionForm';
+import GenerateFromComponentsWizard from './components/GenerateFromComponentsWizard';
+import MatchingModal from './components/MatchingModal';
 
 const TABS = [
   { key: 'components', label: 'Složky předpisu' },
@@ -70,7 +72,7 @@ export default function FinancePage() {
     limit: 200,
   });
   const prescriptions = useMemo(() => (presData?.data ?? []).map(mapPrescription), [presData]);
-  const generateMutation = useGeneratePrescriptions();
+
 
   // TAB 4: matching mutation
   const matchMutation = useMatchTransactions();
@@ -85,11 +87,15 @@ export default function FinancePage() {
   // New prescription form
   const [showPrescriptionForm, setShowPrescriptionForm] = useState(false);
 
-  // Generate modal
+  // Generate modal — property picker then components wizard
   const [showGen, setShowGen] = useState(false);
   const [genPropId, setGenPropId] = useState('');
-  const [genMesic, setGenMesic] = useState(new Date().toISOString().slice(0, 7));
-  const [genResult, setGenResult] = useState<string | null>(null);
+
+  // Enhanced matching
+  const autoMatchMut = useAutoMatch();
+  const matchAllMut = useMatchAll();
+  const [autoMatchResult, setAutoMatchResult] = useState<any>(null);
+  const [matchingTx, setMatchingTx] = useState<FinTransaction | null>(null);
 
   // Auto-parovani result
   const [autoResult, setAutoResult] = useState<string | null>(null);
@@ -124,21 +130,39 @@ export default function FinancePage() {
 
   // ── Handlers ──────────────────────────────────────────────────────────
 
-  const handleGenerate = () => {
-    if (!genPropId || !genMesic) return;
-    generateMutation.mutate(
-      { propertyId: genPropId, month: genMesic },
-      {
-        onSuccess: (res: { created?: number; skipped?: number }) => {
-          setGenResult(
-            (res.created ?? 0) > 0
-              ? `Vygenerováno ${res.created} předpisů pro ${genMesic}`
-              : `Žádné nové předpisy — buď již existují, nebo nejsou obsazené jednotky`,
-          );
-        },
-        onError: () => setGenResult('Chyba při generování předpisů'),
+  const handleEnhancedAutoMatch = () => {
+    autoMatchMut.mutate({}, {
+      onSuccess: (res) => {
+        setAutoMatchResult(res);
+        toast.success(`Auto-párování: ${res.matched} spárováno, ${res.unmatched} nespárováno`);
       },
-    );
+      onError: () => toast.error('Auto-párování selhalo'),
+    });
+  };
+
+  const handleMatchAll = () => {
+    if (properties.length === 0) return;
+    // Match all for all properties
+    matchAllMut.mutate(properties[0]?.id ?? '', {
+      onSuccess: (res) => {
+        setAutoMatchResult(res);
+        toast.success(res.summary);
+      },
+      onError: () => toast.error('Párování selhalo'),
+    });
+  };
+
+  const handleTxClick = (tx: FinTransaction) => {
+    if (tab === 'bank') {
+      setMatchingTx(tx);
+    } else {
+      setParTx(tx);
+    }
+  };
+
+  const handleGenerateClose = () => {
+    setShowGen(false);
+    setGenPropId('');
   };
 
   const handleAutoParovat = () => {
@@ -192,10 +216,10 @@ export default function FinancePage() {
           <h1 className="page-title">Finance</h1>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowPrescriptionForm(true)}>Nový předpis</Button>
-          <Button icon={<Calculator size={15} />} onClick={() => setShowCalc(true)}>Kalkulačka</Button>
-          <Button icon={<Zap size={15} />} onClick={() => setShowGen(true)}>Generovat předpisy</Button>
-          <Button icon={<Link2 size={15} />} onClick={handleAutoParovat}>Auto-párovat</Button>
+          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowPrescriptionForm(true)} data-testid="finance-new-prescription-btn">Nový předpis</Button>
+          <Button icon={<Calculator size={15} />} onClick={() => setShowCalc(true)} data-testid="finance-calc-btn">Kalkulačka</Button>
+          <Button icon={<Zap size={15} />} onClick={() => setShowGen(true)} data-testid="finance-generate-btn">Generovat předpisy</Button>
+          <Button icon={<Link2 size={15} />} onClick={handleAutoParovat} data-testid="finance-auto-match-btn">Auto-párovat</Button>
         </div>
       </div>
 
@@ -255,10 +279,16 @@ export default function FinancePage() {
           importMsg={importMsg}
           setImportMsg={setImportMsg}
           onImport={handleImport}
-          onSelectTx={setParTx}
+          onSelectTx={handleTxClick}
           filterType={filterTxType}
           onFilterType={setFilterTxType}
           onDelete={setDeleteTx}
+          onAutoMatch={handleEnhancedAutoMatch}
+          onMatchAll={handleMatchAll}
+          autoMatchResult={autoMatchResult}
+          onDismissAutoResult={() => setAutoMatchResult(null)}
+          isAutoMatching={autoMatchMut.isPending}
+          isMatchingAll={matchAllMut.isPending}
         />
       )}
 
@@ -291,34 +321,41 @@ export default function FinancePage() {
       {/* ── TAB: UPOMÍNKY ─────────────────────────────────────────── */}
       {tab === 'reminders' && <RemindersTab />}
 
-      {/* ── MODAL: GENEROVAT ──────────────────────────────────────── */}
-      <Modal open={showGen} onClose={() => { setShowGen(false); setGenResult(null); }} title="Generovat předpisy"
-        subtitle="Vygeneruje předpisy nájemného pro obsazené jednotky"
-        footer={
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <Button onClick={() => { setShowGen(false); setGenResult(null); }}>Zavřít</Button>
-            <Button variant="primary" onClick={handleGenerate} disabled={!genPropId}>Generovat</Button>
+      {/* ── MODAL: GENEROVAT — property picker then components wizard */}
+      {showGen && !genPropId && (
+        <Modal open onClose={handleGenerateClose} title="Generovat předpisy ze složek"
+          subtitle="Vyberte nemovitost, pro kterou chcete vygenerovat předpisy"
+          data-testid="generate-property-picker"
+          footer={
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <Button onClick={handleGenerateClose}>Zrušit</Button>
+            </div>
+          }>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {properties.map(p => (
+              <button key={p.id} onClick={() => setGenPropId(p.id)}
+                data-testid={`generate-pick-property-${p.id}`}
+                style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '12px 16px', borderRadius: 8, cursor: 'pointer', textAlign: 'left',
+                  border: '1px solid var(--border)', background: 'var(--surface)',
+                  color: 'var(--text)', fontSize: '0.9rem',
+                }}>
+                <span style={{ fontWeight: 500 }}>{p.name}</span>
+                <span className="text-muted text-sm">{p.address || ''}</span>
+              </button>
+            ))}
+            {properties.length === 0 && (
+              <div className="text-muted" style={{ textAlign: 'center', padding: 24 }}>
+                Nemáte žádné nemovitosti. Nejdřív vytvořte nemovitost.
+              </div>
+            )}
           </div>
-        }>
-        <div style={{ marginBottom: 16 }}>
-          <label className="form-label">Nemovitost</label>
-          <select value={genPropId} onChange={e => setGenPropId(e.target.value)}
-            style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}>
-            <option value="">-- Vyber nemovitost --</option>
-            {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-        </div>
-        <div style={{ marginBottom: 16 }}>
-          <label className="form-label">Měsíc</label>
-          <input type="month" value={genMesic} onChange={e => setGenMesic(e.target.value)}
-            style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', boxSizing: 'border-box' }} />
-        </div>
-        {genResult && (
-          <div style={{ padding: '8px 12px', borderRadius: 6, background: 'var(--surface-2)', fontSize: '0.875rem' }}>
-            {genResult}
-          </div>
-        )}
-      </Modal>
+        </Modal>
+      )}
+      {showGen && genPropId && (
+        <GenerateFromComponentsWizard propertyId={genPropId} onClose={handleGenerateClose} />
+      )}
 
       {/* ── MODAL: DETAIL PŘEDPISU ────────────────────────────────── */}
       <Modal open={!!detailPredpis} onClose={() => setDetailPredpis(null)}
@@ -412,6 +449,14 @@ export default function FinancePage() {
         <PrescriptionForm
           properties={properties as ApiProperty[]}
           onClose={() => setShowPrescriptionForm(false)}
+        />
+      )}
+
+      {/* ── MODAL: MATCHING (enhanced) ──────────────────────────── */}
+      {matchingTx && (
+        <MatchingModal
+          tx={matchingTx}
+          onClose={() => setMatchingTx(null)}
         />
       )}
     </div>

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { financeApi } from './finance.api';
+import type { MatchTarget } from './finance.api';
 
 export const financeKeys = {
   summary: (pid?: string) => ['finance', 'summary', pid] as const,
@@ -159,6 +160,69 @@ export function useMatchSingle() {
       qc.invalidateQueries({ queryKey: ['finance', 'prescriptions'] });
       qc.invalidateQueries({ queryKey: ['finance', 'summary'] });
     },
+  });
+}
+
+// ─── ENHANCED MATCHING ────────────────────────────────────────────
+
+export function useAutoMatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: { propertyId?: string; bankAccountId?: string }) =>
+      financeApi.matching.auto(dto),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['finance', 'transactions'] });
+      qc.invalidateQueries({ queryKey: ['finance', 'prescriptions'] });
+      qc.invalidateQueries({ queryKey: ['finance', 'summary'] });
+    },
+  });
+}
+
+export function useMatchAll() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (propertyId: string) =>
+      financeApi.matching.matchAll(propertyId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['finance', 'transactions'] });
+      qc.invalidateQueries({ queryKey: ['finance', 'prescriptions'] });
+      qc.invalidateQueries({ queryKey: ['finance', 'summary'] });
+    },
+  });
+}
+
+export function useManualMatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ txId, dto }: { txId: string; dto: { target: MatchTarget; entityId?: string; amount?: number; note?: string } }) =>
+      financeApi.matching.manualMatch(txId, dto),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['finance', 'transactions'] });
+      qc.invalidateQueries({ queryKey: ['finance', 'prescriptions'] });
+      qc.invalidateQueries({ queryKey: ['finance', 'summary'] });
+      qc.invalidateQueries({ queryKey: ['finance', 'invoices'] });
+    },
+  });
+}
+
+export function useUnmatchTransaction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (txId: string) =>
+      financeApi.matching.unmatch(txId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['finance', 'transactions'] });
+      qc.invalidateQueries({ queryKey: ['finance', 'prescriptions'] });
+      qc.invalidateQueries({ queryKey: ['finance', 'summary'] });
+    },
+  });
+}
+
+export function useMatchSuggestions(txId: string | null) {
+  return useQuery({
+    queryKey: ['finance', 'match-suggestions', txId],
+    queryFn: () => financeApi.matching.suggestions(txId!),
+    enabled: !!txId,
   });
 }
 

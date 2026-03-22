@@ -43,9 +43,17 @@ export function PrescriptionsTab({ prescriptions, search, onSearch, onSelect, ge
     border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)',
   };
 
+  const fmtPeriod = (p: FinPrescription) => {
+    if (!p.validFrom) return '—';
+    const d = new Date(p.validFrom);
+    return `${d.getMonth() + 1}/${d.getFullYear()}`;
+  };
+
   const columns: Column<FinPrescription>[] = [
-    { key: 'datum', label: 'Datum', render: (p) => <span className="text-muted text-sm">{formatCzDate(p.datum)}</span> },
+    { key: 'period', label: 'Období', render: (p) => <span className="text-muted text-sm">{fmtPeriod(p)}</span> },
     { key: 'popis', label: 'Popis', render: (p) => <span style={{ fontWeight: 500 }}>{p.popis}</span> },
+    { key: 'unit', label: 'Jednotka', render: (p) => <span className="text-sm">{p.unitName || '—'}</span> },
+    { key: 'resident', label: 'Plátce', render: (p) => <span className="text-sm">{p.residentName || '—'}</span> },
     { key: 'typ', label: 'Typ', render: (p) => (
       <span style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
         <Badge variant="blue">{PRES_TYPE_LABELS[p.typ] || p.typ}</Badge>
@@ -55,6 +63,7 @@ export function PrescriptionsTab({ prescriptions, search, onSearch, onSelect, ge
       </span>
     )},
     { key: 'propId', label: 'Nemovitost', render: (p) => <span className="text-sm">{getPropName(p.propId)}</span> },
+    { key: 'vs', label: 'VS', render: (p) => <span className="text-muted text-sm" style={{ fontFamily: 'monospace' }}>{p.vs || '—'}</span> },
     { key: 'status', label: 'Status', render: (p) => <Badge variant={statusColor[p.status] || 'muted'}>{label(FIN_STATUS_LABELS, p.status)}</Badge> },
     { key: 'castka', label: 'Částka', align: 'right', render: (p) => <span className="font-semibold">{formatKc(p.castka)}</span> },
     { key: 'kUhrade', label: 'K úhradě', align: 'right', render: (p) => (
@@ -68,6 +77,7 @@ export function PrescriptionsTab({ prescriptions, search, onSearch, onSelect, ge
     }},
     { key: 'actions', label: '', render: (p) => (
       <button onClick={(e) => { e.stopPropagation(); onDelete(p); }}
+        data-testid="prescription-delete-btn"
         style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: '0.8rem' }}>
         Smazat
       </button>
@@ -75,9 +85,9 @@ export function PrescriptionsTab({ prescriptions, search, onSearch, onSelect, ge
   ];
 
   return (
-    <div>
+    <div data-testid="prescriptions-tab">
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <div style={{ flex: 1 }}><SearchBar placeholder="Hledat předpisy..." onSearch={onSearch} /></div>
+        <div style={{ flex: 1 }}><SearchBar placeholder="Hledat předpisy..." onSearch={onSearch} data-testid="prescription-search" /></div>
         <select value={filterType} onChange={(e) => onFilterType(e.target.value)} style={selectStyle}>
           <option value="">Všechny typy</option>
           {Object.entries(PRES_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -87,7 +97,7 @@ export function PrescriptionsTab({ prescriptions, search, onSearch, onSelect, ge
           {Object.entries(PRES_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
       </div>
-      <Table data={filtered} columns={columns} rowKey={p => p.id} onRowClick={onSelect} emptyText="Žádné předpisy. Klikni na Generovat předpisy." />
+      <Table data={filtered} columns={columns} rowKey={p => p.id} onRowClick={onSelect} emptyText="Žádné předpisy. Klikni na Generovat předpisy." data-testid="prescriptions-table" />
     </div>
   );
 }

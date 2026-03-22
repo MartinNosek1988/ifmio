@@ -70,10 +70,11 @@ export function PrescriptionForm({ properties, onClose }: {
       open
       onClose={onClose}
       title="Nový předpis"
+      data-testid="prescription-form"
       footer={
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <Button onClick={onClose}>Zrušit</Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={createMutation.isPending}>
+          <Button variant="primary" onClick={handleSubmit} disabled={createMutation.isPending} data-testid="prescription-form-save">
             {createMutation.isPending ? 'Vytvářím...' : 'Vytvořit'}
           </Button>
         </div>

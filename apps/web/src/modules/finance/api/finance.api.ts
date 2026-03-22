@@ -15,20 +15,29 @@ export interface ApiBankAccount {
   _count?: { transactions: number };
 }
 
+export type MatchTarget = 'KONTO' | 'INVOICE' | 'COMPONENT' | 'NO_EFFECT' | 'UNSPECIFIED';
+
 export interface ApiBankTransaction {
   id: string;
   tenantId: string;
   bankAccountId: string;
   amount: number;
   type: 'credit' | 'debit';
-  status: 'unmatched' | 'matched' | 'partially_matched';
+  status: 'unmatched' | 'matched' | 'partially_matched' | 'ignored';
   date: string;
   counterparty?: string;
   variableSymbol?: string;
   description?: string;
+  matchTarget?: MatchTarget | null;
+  matchedEntityId?: string | null;
+  matchedEntityType?: string | null;
+  matchedAt?: string | null;
+  matchedBy?: string | null;
+  matchNote?: string | null;
+  splitParentId?: string | null;
   createdAt: string;
   updatedAt: string;
-  bankAccount?: { id: string; name: string };
+  bankAccount?: { id: string; name: string; propertyId?: string };
   prescription?: { id: string; description: string; variableSymbol?: string };
   resident?: { id: string; firstName: string; lastName: string };
 }
@@ -136,6 +145,36 @@ export interface InvoiceStats {
   totalAmount: number;
 }
 
+export interface MatchSuggestion {
+  entityId: string;
+  entityType: 'prescription' | 'invoice';
+  label: string;
+  amount: number;
+  vs?: string;
+  confidence: 'exact' | 'vs_match' | 'amount_match' | 'none';
+  period?: string;
+  residentName?: string;
+  outstanding?: number;
+}
+
+export interface AutoMatchResponse {
+  total: number;
+  matched: number;
+  unmatched: number;
+  results: Array<{
+    txId: string;
+    matchedTo: string | null;
+    confidence: string;
+    target: MatchTarget | null;
+    amount: number;
+  }>;
+}
+
+export interface MatchAllResponse extends AutoMatchResponse {
+  feesMarked: number;
+  summary: string;
+}
+
 interface Paginated<T> {
   data: T[];
   total: number;
@@ -194,6 +233,21 @@ export const financeApi = {
     apiClient
       .post('/finance/match', { bankAccountId })
       .then((r) => r.data),
+
+  matching: {
+    auto: (dto: { propertyId?: string; bankAccountId?: string }) =>
+      apiClient.post<AutoMatchResponse>('/finance/matching/auto', dto).then((r) => r.data),
+    matchAll: (propertyId: string) =>
+      apiClient.post<MatchAllResponse>('/finance/matching/match-all', { propertyId }).then((r) => r.data),
+    manualMatch: (txId: string, dto: { target: MatchTarget; entityId?: string; amount?: number; note?: string }) =>
+      apiClient.post<ApiBankTransaction>(`/finance/matching/${txId}/match`, dto).then((r) => r.data),
+    unmatch: (txId: string) =>
+      apiClient.patch(`/finance/matching/${txId}/unmatch`).then((r) => r.data),
+    unmatched: (params?: Record<string, unknown>) =>
+      apiClient.get<Paginated<ApiBankTransaction>>('/finance/matching/unmatched', { params }).then((r) => r.data),
+    suggestions: (txId: string) =>
+      apiClient.get<MatchSuggestion[]>(`/finance/matching/${txId}/suggestions`).then((r) => r.data),
+  },
 
   generatePrescriptions: (dto: {
     propertyId: string
