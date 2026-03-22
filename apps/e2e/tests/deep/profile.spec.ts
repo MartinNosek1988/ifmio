@@ -16,13 +16,14 @@ test.describe('Profile — Zobrazení', () => {
   test('stránka se načte a zobrazí profil', async ({ page }) => {
     await page.goto('/profile');
     await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('[data-testid="profile-page"]')).toBeVisible();
+    // Wait for profile API to load (loading state renders before profile-page testid)
+    await expect(page.locator('[data-testid="profile-page"]')).toBeVisible({ timeout: 15000 });
   });
 
   test('zobrazí jméno aktuálního uživatele', async ({ page }) => {
     await page.goto('/profile');
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(500);
+    await expect(page.locator('[data-testid="profile-page"]')).toBeVisible({ timeout: 15000 });
 
     // Profile should show the user's name somewhere
     const token = await getToken(page);
@@ -37,7 +38,7 @@ test.describe('Profile — Zobrazení', () => {
   test('zobrazí email aktuálního uživatele', async ({ page }) => {
     await page.goto('/profile');
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(500);
+    await expect(page.locator('[data-testid="profile-page"]')).toBeVisible({ timeout: 15000 });
 
     const token = await getToken(page);
     const meRes = await page.request.get(`${API_URL}/api/v1/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
@@ -70,9 +71,10 @@ test.describe('Profile — Deep', () => {
   test('profil má taby (osobní, zabezpečení, předvolby)', async ({ page }) => {
     await page.goto('/profile');
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(500);
 
-    // Profile tabs should exist
+    // Wait for profile to load (loading state shows first)
+    await expect(page.locator('[data-testid="profile-page"]')).toBeVisible({ timeout: 15000 });
+
     const personalTab = await page.getByText('Osobní údaje').first().isVisible().catch(() => false)
       || await page.locator('.profile-tab').first().isVisible().catch(() => false);
     expect(personalTab).toBe(true);
