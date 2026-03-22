@@ -310,7 +310,7 @@ export default function FinancePage() {
       )}
 
       {/* ── TAB: ÚČTY ─────────────────────────────────────────────── */}
-      {tab === 'accounts' && <AccountsTab accounts={accounts} />}
+      {tab === 'accounts' && <AccountsTab />}
 
       {/* ── TAB: KONTO ────────────────────────────────────────────── */}
       {tab === 'konto' && <KontoTab />}

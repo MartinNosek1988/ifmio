@@ -50,8 +50,25 @@ export function useBillingPeriods(propertyId?: string) {
 export function useCreateBankAccount() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (dto: { name: string; accountNumber: string; iban?: string; bankCode?: string; currency?: string; propertyId?: string }) =>
+    mutationFn: (dto: { name: string; accountNumber: string; bankCode: string; iban?: string; currency?: string; propertyId?: string; accountType?: string; isDefault?: boolean }) =>
       financeApi.bankAccounts.create(dto),
+    onSuccess: () => qc.invalidateQueries({ queryKey: financeKeys.bankAccounts() }),
+  });
+}
+
+export function useUpdateBankAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, dto }: { id: string; dto: { name?: string; accountNumber?: string; bankCode?: string; iban?: string; currency?: string; accountType?: string; isDefault?: boolean; isActive?: boolean } }) =>
+      financeApi.bankAccounts.update(id, dto),
+    onSuccess: () => qc.invalidateQueries({ queryKey: financeKeys.bankAccounts() }),
+  });
+}
+
+export function useDeleteBankAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => financeApi.bankAccounts.remove(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: financeKeys.bankAccounts() }),
   });
 }
