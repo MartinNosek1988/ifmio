@@ -10,9 +10,34 @@ export interface ApiBankAccount {
   bankCode?: string;
   currency: string;
   isActive: boolean;
+  isDefault: boolean;
+  accountType?: string | null;
   createdAt: string;
   updatedAt: string;
   _count?: { transactions: number };
+  property?: { id: string; name: string } | null;
+}
+
+export interface CreateBankAccountDto {
+  name: string;
+  accountNumber: string;
+  bankCode: string;
+  iban?: string;
+  currency?: string;
+  propertyId?: string;
+  accountType?: string;
+  isDefault?: boolean;
+}
+
+export interface UpdateBankAccountDto {
+  name?: string;
+  accountNumber?: string;
+  bankCode?: string;
+  iban?: string;
+  currency?: string;
+  accountType?: string;
+  isDefault?: boolean;
+  isActive?: boolean;
 }
 
 export type MatchTarget = 'KONTO' | 'INVOICE' | 'COMPONENT' | 'NO_EFFECT' | 'UNSPECIFIED';
@@ -190,8 +215,14 @@ export const financeApi = {
   bankAccounts: {
     list: () =>
       apiClient.get<ApiBankAccount[]>('/finance/bank-accounts').then((r) => r.data),
-    create: (dto: { name: string; accountNumber: string; iban?: string; bankCode?: string; currency?: string; propertyId?: string }) =>
+    get: (id: string) =>
+      apiClient.get<ApiBankAccount>(`/finance/bank-accounts/${id}`).then((r) => r.data),
+    create: (dto: CreateBankAccountDto) =>
       apiClient.post<ApiBankAccount>('/finance/bank-accounts', dto).then((r) => r.data),
+    update: (id: string, dto: UpdateBankAccountDto) =>
+      apiClient.patch<ApiBankAccount>(`/finance/bank-accounts/${id}`, dto).then((r) => r.data),
+    remove: (id: string) =>
+      apiClient.delete(`/finance/bank-accounts/${id}`).then((r) => r.data),
   },
 
   transactions: {

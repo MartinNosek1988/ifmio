@@ -50,6 +50,43 @@ export class FinanceController {
     return this.service.createBankAccount(user, dto);
   }
 
+  @Get('bank-accounts/:id')
+  @ApiOperation({ summary: 'Detail bankovního účtu' })
+  getBankAccount(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ) {
+    return this.service.getBankAccount(user, id);
+  }
+
+  @Patch('bank-accounts/:id')
+  @Roles(...ROLES_FINANCE)
+  @AuditAction('bankAccount', 'update')
+  @ApiOperation({ summary: 'Upravit bankovní účet' })
+  updateBankAccount(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: {
+      name?: string; accountNumber?: string; bankCode?: string;
+      iban?: string; currency?: string; isDefault?: boolean;
+      accountType?: string; isActive?: boolean;
+    },
+  ) {
+    return this.service.updateBankAccount(user, id, dto);
+  }
+
+  @Delete('bank-accounts/:id')
+  @Roles(...ROLES_FINANCE)
+  @AuditAction('bankAccount', 'delete')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Smazat bankovní účet' })
+  deleteBankAccount(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ) {
+    return this.service.deleteBankAccount(user, id);
+  }
+
   @Get('transactions')
   @ApiOperation({ summary: 'Bankovní transakce' })
   listTransactions(@CurrentUser() user: AuthUser, @Query() query: {

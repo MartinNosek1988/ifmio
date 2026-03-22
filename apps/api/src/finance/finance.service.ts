@@ -104,6 +104,87 @@ export class FinanceService {
     });
   }
 
+  async getBankAccount(user: AuthUser, id: string) {
+    const account = await this.prisma.bankAccount.findFirst({
+      where: { id, tenantId: user.tenantId },
+      include: {
+        _count: { select: { transactions: true } },
+        property: { select: { id: true, name: true } },
+      },
+    })
+    if (!account) throw new NotFoundException('Bankovní účet nenalezen')
+    const { apiToken: _, ...safe } = account
+    return safe
+  }
+
+  async updateBankAccount(user: AuthUser, id: string, dto: {
+    name?: string; accountNumber?: string; bankCode?: string;
+    iban?: string; currency?: string; isDefault?: boolean;
+    accountType?: string; isActive?: boolean;
+  }) {
+    const account = await this.prisma.bankAccount.findFirst({
+      where: { id, tenantId: user.tenantId },
+    })
+    if (!account) throw new NotFoundException('Bankovní účet nenalezen')
+
+    if (account.propertyId) {
+      await this.scope.verifyPropertyAccess(user, account.propertyId)
+    }
+
+    // If setting as default, unset other defaults for this property
+    if (dto.isDefault === true && account.propertyId) {
+      await this.prisma.bankAccount.updateMany({
+        where: {
+          tenantId: user.tenantId,
+          propertyId: account.propertyId,
+          id: { not: id },
+          isDefault: true,
+        },
+        data: { isDefault: false },
+      })
+    }
+
+    const updated = await this.prisma.bankAccount.update({
+      where: { id },
+      data: {
+        ...(dto.name !== undefined ? { name: dto.name } : {}),
+        ...(dto.accountNumber !== undefined ? { accountNumber: dto.accountNumber } : {}),
+        ...(dto.bankCode !== undefined ? { bankCode: dto.bankCode } : {}),
+        ...(dto.iban !== undefined ? { iban: dto.iban } : {}),
+        ...(dto.currency !== undefined ? { currency: dto.currency } : {}),
+        ...(dto.isDefault !== undefined ? { isDefault: dto.isDefault } : {}),
+        ...(dto.accountType !== undefined ? { accountType: dto.accountType as any } : {}),
+        ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
+      },
+      include: { _count: { select: { transactions: true } } },
+    })
+    const { apiToken: _, ...safe } = updated
+    return safe
+  }
+
+  async deleteBankAccount(user: AuthUser, id: string) {
+    const account = await this.prisma.bankAccount.findFirst({
+      where: { id, tenantId: user.tenantId },
+      include: { _count: { select: { transactions: true } } },
+    })
+    if (!account) throw new NotFoundException('Bankovní účet nenalezen')
+
+    if (account.propertyId) {
+      await this.scope.verifyPropertyAccess(user, account.propertyId)
+    }
+
+    if (account._count.transactions > 0) {
+      // Soft delete — has transactions, preserve audit trail
+      await this.prisma.bankAccount.update({
+        where: { id },
+        data: { isActive: false, isDefault: false },
+      })
+    } else {
+      // Hard delete — no transactions linked
+      await this.prisma.bankAccount.delete({ where: { id } })
+    }
+  }
+
   // ─── TRANSACTIONS ─────────────────────────────────────────────
 
   async listTransactions(
