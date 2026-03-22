@@ -75,13 +75,13 @@ export default function TeamPage() {
   if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
-    <div>
+    <div data-testid="team-list-page">
       <div className="page-header">
         <div>
           <h1 className="page-title">Uživatelé & Tým</h1>
           <p className="page-subtitle">{total} uživatelů, {active} aktivních</p>
         </div>
-        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowInvite(true)}>Pozvat uživatele</Button>
+        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowInvite(true)} data-testid="team-add-btn">Pozvat uživatele</Button>
       </div>
 
       {/* KPI */}

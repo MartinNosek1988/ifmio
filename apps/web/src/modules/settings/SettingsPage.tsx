@@ -44,12 +44,13 @@ export default function SettingsPage() {
   };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 20, alignItems: 'start' }}>
+    <div data-testid="settings-page" style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 20, alignItems: 'start' }}>
       <nav className="settings-sidenav">
         {TABS.map((t) => (
           <button
             key={t.key}
             className={`settings-sidenav__item${tab === t.key ? ' active' : ''}`}
+            data-testid={`settings-tab-${t.key}`}
             onClick={() => setTab(t.key)}
           >
             {t.icon}

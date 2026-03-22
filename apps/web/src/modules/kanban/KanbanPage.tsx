@@ -58,7 +58,7 @@ export default function KanbanPage() {
   }
 
   return (
-    <div>
+    <div data-testid="kanban-page">
       {/* Filters */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
         {['my', 'team'].map(v => (
