@@ -4,8 +4,10 @@
   "scripts": {
     "test": "playwright test",
     "test:smoke": "playwright test tests/smoke/",
+    "test:smoke-production": "playwright test --config=playwright.production.config.ts",
     "screenshots": "npx tsx scripts/take-screenshots.ts",
-    "report": "playwright show-report"
+    "report": "playwright show-report",
+    "report:production": "playwright show-report playwright-report-production"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.0",
