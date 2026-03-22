@@ -123,13 +123,65 @@ export class MioController {
   }
 
   @Post('chat')
-  @ApiOperation({ summary: 'Mio AI chat' })
+  @ApiOperation({ summary: 'Mio AI chat (with conversation persistence)' })
   async chat(
     @CurrentUser() user: AuthUser,
-    @Body() dto: { messages: { role: 'user' | 'assistant'; content: string }[] },
+    @Body() dto: {
+      messages: { role: 'user' | 'assistant'; content: string }[]
+      conversationId?: string
+      context?: Record<string, unknown>
+    },
   ) {
-    const response = await this.service.chat(user, dto.messages ?? [])
-    return { response }
+    return this.service.chatWithPersistence(user, dto.messages ?? [], dto.conversationId, dto.context)
+  }
+
+  // ─── Conversations ────────────────────────────────────────────
+
+  @Get('conversations')
+  @ApiOperation({ summary: 'Seznam konverzací uživatele' })
+  listConversations(
+    @CurrentUser() user: AuthUser,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.service.listConversations(user, Number(page) || 1, Number(limit) || 20)
+  }
+
+  @Post('conversations')
+  @ApiOperation({ summary: 'Vytvořit novou konverzaci' })
+  createConversation(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: { title?: string; context?: Record<string, unknown> },
+  ) {
+    return this.service.createConversation(user, dto.title, dto.context)
+  }
+
+  @Get('conversations/:id')
+  @ApiOperation({ summary: 'Detail konverzace se zprávami' })
+  getConversation(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.service.getConversation(user, id)
+  }
+
+  @Delete('conversations/:id')
+  @ApiOperation({ summary: 'Smazat konverzaci' })
+  deleteConversation(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.service.deleteConversation(user, id)
+  }
+
+  @Put('conversations/:id')
+  @ApiOperation({ summary: 'Upravit konverzaci (titulek, hvězdička)' })
+  updateConversation(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: { title?: string; starred?: boolean },
+  ) {
+    return this.service.updateConversation(user, id, dto)
+  }
+
+  @Get('quick-actions')
+  @ApiOperation({ summary: 'Kontextové rychlé akce pro Mio' })
+  quickActions(@CurrentUser() user: AuthUser) {
+    return this.service.getQuickActions(user)
   }
 
   // ─── Insights (unified) ─────────────────────────────────────

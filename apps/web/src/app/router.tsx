@@ -36,6 +36,7 @@ const OperationalReportsPage = lazy(() => import('../modules/reporting/Operation
 const ReportsPage = lazy(() => import('../modules/reports/ReportsPage'));
 const AuditPage = lazy(() => import('../modules/audit/AuditPage'));
 const MioInsightsPage = lazy(() => import('../modules/mio-insights/MioInsightsPage'));
+const MioChatPage = lazy(() => import('../modules/mio/MioChatPage'));
 const MioAdminPage = lazy(() => import('../modules/mio/MioAdminPage'));
 const MioWebhooksPage = lazy(() => import('../modules/mio/MioWebhooksPage'));
 const TeamPage = lazy(() => import('../modules/team/TeamPage'));
@@ -145,6 +146,8 @@ export const router = createBrowserRouter([
       { path: 'reporting', element: withBoundary('Reporting', ReportingPage) },
       { path: 'reporting/operations', element: withBoundary('Provozní reporty', OperationalReportsPage) },
       { path: 'mio/insights', element: withBoundary('Mio Insights', MioInsightsPage) },
+      { path: 'mio', element: withBoundary('Mio AI', MioChatPage) },
+      { path: 'mio/:conversationId', element: withBoundary('Mio AI', MioChatPage) },
       { path: 'mio/admin', element: withBoundary('Mio Admin', MioAdminPage) },
       { path: 'mio/webhooks', element: withBoundary('Mio Webhooky', MioWebhooksPage) },
       { path: 'reports', element: withBoundary('Výkazy', ReportsPage) },

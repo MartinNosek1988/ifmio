@@ -7,7 +7,7 @@ import {
   Wallet, AlertTriangle, TrendingUp,
   MessageSquare, Mail, Settings, BarChart3,
   ClipboardList, ClipboardCheck, ScrollText, UsersRound, FileCheck2, Columns3,
-  User as UserIcon, LogOut, Shield, Menu, X, ChevronDown,
+  User as UserIcon, LogOut, Shield, Menu, X, ChevronDown, Sparkles,
 } from 'lucide-react';
 import { LoadingSpinner } from '../shared/components';
 import { GlobalSearch } from '../modules/search/GlobalSearch';
@@ -96,6 +96,7 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/reports', label: 'Výkazy', icon: <ClipboardList size={17} /> },
       { to: '/team', label: 'Uživatelé & Tým', icon: <UsersRound size={17} /> },
       { to: '/asset-types', label: 'Typy zařízení', icon: <ClipboardList size={17} /> },
+      { to: '/mio', label: 'Mio AI', icon: <Sparkles size={17} /> },
       { to: '/mio/insights', label: 'Mio Insights', icon: <AlertTriangle size={17} />, roles: ['fm', 'owner'] },
       { to: '/audit', label: 'Audit log', icon: <ScrollText size={17} /> },
       { to: '/settings', label: 'Nastavení', icon: <Settings size={17} /> },

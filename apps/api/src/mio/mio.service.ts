@@ -488,4 +488,204 @@ export class MioService {
         return { _status: 'error', message: 'Nepodařilo se zpracovat požadavek.' }
     }
   }
+
+  // ─── CONVERSATION PERSISTENCE ──────────────────────────────────
+
+  async chatWithPersistence(
+    user: AuthUser,
+    messages: { role: 'user' | 'assistant'; content: string }[],
+    conversationId?: string,
+    context?: Record<string, unknown>,
+  ) {
+    // Get or create conversation
+    let convId = conversationId
+    if (!convId) {
+      const firstMsg = messages.find(m => m.role === 'user')?.content ?? ''
+      const title = firstMsg.length > 60 ? firstMsg.slice(0, 57) + '...' : firstMsg || 'Nová konverzace'
+      const conv = await this.prisma.mioConversation.create({
+        data: {
+          tenantId: user.tenantId,
+          userId: user.id,
+          title,
+          context: (context ?? undefined) as any,
+        },
+      })
+      convId = conv.id
+    }
+
+    // Save user message
+    const lastUserMsg = messages[messages.length - 1]
+    if (lastUserMsg?.role === 'user') {
+      await this.prisma.mioMessage.create({
+        data: {
+          conversationId: convId,
+          role: 'user',
+          content: lastUserMsg.content,
+        },
+      })
+    }
+
+    // Run AI chat
+    const toolsUsed: string[] = []
+    const response = await this.chatInternal(user, messages, toolsUsed)
+
+    // Save assistant response
+    await this.prisma.mioMessage.create({
+      data: {
+        conversationId: convId,
+        role: 'assistant',
+        content: response,
+        toolCalls: toolsUsed.length > 0 ? toolsUsed : undefined,
+      },
+    })
+
+    // Update conversation timestamp
+    await this.prisma.mioConversation.update({
+      where: { id: convId },
+      data: { updatedAt: new Date() },
+    })
+
+    return { response, conversationId: convId, toolsUsed }
+  }
+
+  /** Internal chat that also tracks toolsUsed */
+  private async chatInternal(
+    user: AuthUser,
+    messages: { role: 'user' | 'assistant'; content: string }[],
+    toolsUsed: string[],
+  ): Promise<string> {
+    if (!this.client) {
+      return 'AI asistent není momentálně k dispozici. Kontaktujte administrátora.'
+    }
+
+    try {
+      const apiMessages: Anthropic.MessageParam[] = messages.map(m => ({
+        role: m.role, content: m.content,
+      }))
+
+      let response = await this.client.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2048,
+        system: SYSTEM_PROMPT,
+        tools: TOOLS,
+        messages: apiMessages,
+      })
+
+      let iterations = 0
+      while (response.stop_reason === 'tool_use' && iterations < 5) {
+        iterations++
+        const toolUseBlocks = response.content.filter(b => b.type === 'tool_use')
+        for (const b of toolUseBlocks) {
+          if (b.type === 'tool_use') toolsUsed.push(b.name)
+        }
+
+        const toolResults: Anthropic.MessageParam = {
+          role: 'user',
+          content: await Promise.all(
+            toolUseBlocks.map(async (block) => {
+              if (block.type !== 'tool_use') return { type: 'text' as const, text: '' }
+              const result = await this.executeTool(user, block.name, block.input as Record<string, unknown>)
+              return {
+                type: 'tool_result' as const,
+                tool_use_id: block.id,
+                content: JSON.stringify(result),
+              }
+            }),
+          ),
+        }
+
+        apiMessages.push(
+          { role: 'assistant', content: response.content },
+          toolResults,
+        )
+
+        response = await this.client.messages.create({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 2048,
+          system: SYSTEM_PROMPT,
+          tools: TOOLS,
+          messages: apiMessages,
+        })
+      }
+
+      const textBlock = response.content.find(b => b.type === 'text')
+      return textBlock?.text ?? 'Omlouvám se, nepodařilo se vygenerovat odpověď.'
+    } catch (err) {
+      this.logger.error(`Mio chat failed for user ${user.id}: ${err}`)
+      return 'Omlouvám se, došlo k chybě. Zkuste to prosím znovu.'
+    }
+  }
+
+  async listConversations(user: AuthUser, page = 1, limit = 20) {
+    const where = { tenantId: user.tenantId, userId: user.id }
+    const [data, total] = await Promise.all([
+      this.prisma.mioConversation.findMany({
+        where,
+        orderBy: [{ starred: 'desc' }, { updatedAt: 'desc' }],
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          messages: { orderBy: { createdAt: 'desc' }, take: 1, select: { content: true, role: true } },
+        },
+      }),
+      this.prisma.mioConversation.count({ where }),
+    ])
+    return { data, total, page, limit }
+  }
+
+  async createConversation(user: AuthUser, title?: string, context?: Record<string, unknown>) {
+    return this.prisma.mioConversation.create({
+      data: {
+        tenantId: user.tenantId,
+        userId: user.id,
+        title: title || 'Nová konverzace',
+        context: (context ?? undefined) as any,
+      },
+    })
+  }
+
+  async getConversation(user: AuthUser, id: string) {
+    const conv = await this.prisma.mioConversation.findFirst({
+      where: { id, tenantId: user.tenantId, userId: user.id },
+      include: {
+        messages: { orderBy: { createdAt: 'asc' }, take: 50 },
+      },
+    })
+    if (!conv) throw new Error('Konverzace nenalezena')
+    return conv
+  }
+
+  async deleteConversation(user: AuthUser, id: string) {
+    const conv = await this.prisma.mioConversation.findFirst({
+      where: { id, tenantId: user.tenantId, userId: user.id },
+    })
+    if (!conv) throw new Error('Konverzace nenalezena')
+    await this.prisma.mioConversation.delete({ where: { id } })
+    return { deleted: true }
+  }
+
+  async updateConversation(user: AuthUser, id: string, dto: { title?: string; starred?: boolean }) {
+    const conv = await this.prisma.mioConversation.findFirst({
+      where: { id, tenantId: user.tenantId, userId: user.id },
+    })
+    if (!conv) throw new Error('Konverzace nenalezena')
+    return this.prisma.mioConversation.update({
+      where: { id },
+      data: {
+        ...(dto.title !== undefined ? { title: dto.title } : {}),
+        ...(dto.starred !== undefined ? { starred: dto.starred } : {}),
+      },
+    })
+  }
+
+  async getQuickActions(_user: AuthUser) {
+    return [
+      { id: 'agenda', label: 'Co bych měl dnes řešit?', prompt: 'Co bych měl dnes řešit jako správce?' },
+      { id: 'tickets', label: 'Otevřené tickety', prompt: 'Jaké jsou otevřené tickety v helpdesku?' },
+      { id: 'workorders', label: 'Stav pracovních úkolů', prompt: 'Jaký je stav pracovních úkolů?' },
+      { id: 'overdue', label: 'Co je po termínu?', prompt: 'Co všechno je po termínu — revize, úkoly, plány?' },
+      { id: 'report', label: 'Měsíční report', prompt: 'Generuj shrnutí provozu za tento měsíc.' },
+      { id: 'assets', label: 'Stav zařízení', prompt: 'Jaký je stav zařízení a technologií?' },
+    ]
+  }
 }

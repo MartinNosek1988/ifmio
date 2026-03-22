@@ -1929,6 +1929,41 @@ model MioWebhookOutbox {
   @@map("mio_webhook_outbox")
 }
 
+// ─── MIO CONVERSATIONS ──────────────────────────────────────────────
+
+model MioConversation {
+  id          String       @id @default(cuid())
+  tenantId    String
+  userId      String
+  title       String?
+  context     Json?        // { propertyId?, entityType?, entityId? }
+  starred     Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  messages    MioMessage[]
+
+  @@index([tenantId, userId])
+  @@index([tenantId, updatedAt])
+  @@map("mio_conversations")
+}
+
+model MioMessage {
+  id              String          @id @default(cuid())
+  conversationId  String
+  role            String          // 'user' | 'assistant' | 'system'
+  content         String          @db.Text
+  toolCalls       Json?
+  toolResults     Json?
+  tokens          Int?
+  createdAt       DateTime        @default(now())
+
+  conversation    MioConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("mio_messages")
+}
+
 enum ReportType {
   daily_digest
   mio_digest
