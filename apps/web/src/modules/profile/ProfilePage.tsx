@@ -66,7 +66,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div style={{ maxWidth: 820, margin: '0 auto' }}>
+    <div data-testid="profile-page" style={{ maxWidth: 820, margin: '0 auto' }}>
       {/* Header with avatar */}
       <ProfileHeader profile={profile} onUpdate={(d) => updateMut.mutate(d)} />
 

@@ -81,21 +81,21 @@ export default function MeterForm({ onClose }: Props) {
     <Modal open onClose={onClose} title="Nové měřidlo"
       footer={
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <Button onClick={onClose}>Zrušit</Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={createMutation.isPending}>Vytvořit</Button>
+          <Button onClick={onClose} data-testid="meter-form-cancel">Zrušit</Button>
+          <Button variant="primary" onClick={handleSubmit} disabled={createMutation.isPending} data-testid="meter-form-save">Vytvořit</Button>
         </div>
       }>
 
       <div style={{ marginBottom: 14 }}>
         <label className="form-label">Název měřidla *</label>
-        <input value={form.name} onChange={e => set('name', e.target.value)} style={inputStyle('name')} placeholder="např. Hlavní elektroměr" />
-        {errors.name && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.name}</div>}
+        <input data-testid="meter-form-name" value={form.name} onChange={e => set('name', e.target.value)} style={inputStyle('name')} placeholder="např. Hlavní elektroměr" />
+        {errors.name && <div data-testid="meter-form-error-name" style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.name}</div>}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div>
           <label className="form-label">Výrobní číslo *</label>
-          <input value={form.serialNumber} onChange={e => set('serialNumber', e.target.value)} style={inputStyle('serialNumber')} placeholder="SN-12345" />
+          <input data-testid="meter-form-serialNumber" value={form.serialNumber} onChange={e => set('serialNumber', e.target.value)} style={inputStyle('serialNumber')} placeholder="SN-12345" />
           {errors.serialNumber && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.serialNumber}</div>}
         </div>
         <div>

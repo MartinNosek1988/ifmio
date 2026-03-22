@@ -25,7 +25,7 @@ export default function PortalPage() {
   }
 
   return (
-    <div>
+    <div data-testid="portal-page">
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0 }}>
           Dobrý den{user?.name ? `, ${user.name}` : ''}

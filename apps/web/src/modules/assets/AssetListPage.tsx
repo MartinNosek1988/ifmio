@@ -129,7 +129,7 @@ export default function AssetListPage() {
   ];
 
   return (
-    <div>
+    <div data-testid="asset-list-page">
       <div className="page-header">
         <div>
           <h1 className="page-title">Pasportizace</h1>
@@ -137,7 +137,7 @@ export default function AssetListPage() {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <Button icon={<Download size={15} />} onClick={handleExport}>CSV</Button>
-          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)}>Nové zařízení</Button>
+          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)} data-testid="asset-add-btn">Nové zařízení</Button>
         </div>
       </div>
 

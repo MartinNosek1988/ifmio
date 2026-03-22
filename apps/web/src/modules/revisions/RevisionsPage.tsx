@@ -118,7 +118,7 @@ export default function RevisionsPage() {
   }
 
   return (
-    <div>
+    <div data-testid="revisions-page">
       <div className="page-header">
         <div>
           <h1 className="page-title">Plán činností</h1>

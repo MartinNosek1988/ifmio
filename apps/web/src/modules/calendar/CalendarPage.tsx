@@ -161,13 +161,13 @@ export default function CalendarPage() {
   if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
-    <div>
+    <div data-testid="calendar-page">
       <div className="page-header">
         <div>
           <h1 className="page-title">Kalendář</h1>
           <p className="page-subtitle">{stats?.upcoming ?? 0} nadcházejících událostí</p>
         </div>
-        <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setFormDefaultDate(''); setShowForm(true); }}>Nová událost</Button>
+        <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setFormDefaultDate(''); setShowForm(true); }} data-testid="calendar-add-btn">Nová událost</Button>
       </div>
 
       {/* KPI */}

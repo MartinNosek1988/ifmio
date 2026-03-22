@@ -116,7 +116,7 @@ export default function UnitForm({ propertyId, unit, onClose, onSuccess }: Props
       title={isEdit ? `Upravit — ${unit!.name}` : 'Nová jednotka'}
       footer={
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <Button onClick={onClose}>Zrušit</Button>
+          <Button onClick={onClose} data-testid="unit-form-cancel">Zrušit</Button>
           <Button variant="primary" onClick={handleSubmit} disabled={mutation.isPending} data-testid="unit-form-save">
             {mutation.isPending ? 'Ukládám...' : isEdit ? 'Uložit' : 'Vytvořit'}
           </Button>
@@ -133,7 +133,7 @@ export default function UnitForm({ propertyId, unit, onClose, onSuccess }: Props
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
         <div>
           <label className="form-label">KN označení</label>
-          <input value={form.knDesignation} onChange={(e) => set('knDesignation', e.target.value)} placeholder="např. 123/45" maxLength={30} style={inputStyle()} />
+          <input data-testid="unit-form-knDesignation" value={form.knDesignation} onChange={(e) => set('knDesignation', e.target.value)} placeholder="např. 123/45" maxLength={30} style={inputStyle()} />
           <div style={hintStyle}>Z katastru nemovitostí</div>
         </div>
         <div>
@@ -145,7 +145,7 @@ export default function UnitForm({ propertyId, unit, onClose, onSuccess }: Props
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
         <div>
           <label className="form-label">Typ prostoru</label>
-          <select value={form.spaceType} onChange={(e) => set('spaceType', e.target.value)} style={inputStyle()}>
+          <select data-testid="unit-form-spaceType" value={form.spaceType} onChange={(e) => set('spaceType', e.target.value)} style={inputStyle()}>
             {SPACE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
         </div>
@@ -176,7 +176,7 @@ export default function UnitForm({ propertyId, unit, onClose, onSuccess }: Props
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
             <label className="form-label">Podíl na spol. částech (%)</label>
-            <input type="number" step="0.0001" min="0" max="100" value={form.commonAreaShare} onChange={(e) => set('commonAreaShare', e.target.value)} placeholder="3.4567" style={inputStyle('commonAreaShare')} />
+            <input data-testid="unit-form-commonAreaShare" type="number" step="0.0001" min="0" max="100" value={form.commonAreaShare} onChange={(e) => set('commonAreaShare', e.target.value)} placeholder="3.4567" style={inputStyle('commonAreaShare')} />
             {errors.commonAreaShare && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.commonAreaShare}</div>}
             <div style={hintStyle}>Z prohlášení vlastníka nebo katastru</div>
           </div>

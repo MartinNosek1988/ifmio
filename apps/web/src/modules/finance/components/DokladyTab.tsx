@@ -200,7 +200,7 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
           <FileText size={15} /> Import ISDOC
           <input ref={isdocRef} type="file" accept=".isdoc,.isdocx,.xml" onChange={handleIsdocImport} style={{ display: 'none' }} />
         </label>
-        <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setEditInvoice(null); setShowForm(true); }}>Nový doklad</Button>
+        <Button variant="primary" icon={<Plus size={15} />} data-testid="finance-doklady-add-btn" onClick={() => { setEditInvoice(null); setShowForm(true); }}>Nový doklad</Button>
       </div>
 
       {importIsdocMut.isSuccess && (

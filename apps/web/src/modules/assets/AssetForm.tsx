@@ -84,8 +84,8 @@ export default function AssetForm({ onClose }: Props) {
     <Modal open onClose={onClose} title="Nové zařízení"
       footer={
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <Button onClick={onClose}>Zrušit</Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={createMut.isPending}>
+          <Button onClick={onClose} data-testid="asset-form-cancel">Zrušit</Button>
+          <Button variant="primary" onClick={handleSubmit} disabled={createMut.isPending} data-testid="asset-form-save">
             {createMut.isPending ? 'Ukládám...' : 'Vytvořit'}
           </Button>
         </div>
@@ -99,14 +99,14 @@ export default function AssetForm({ onClose }: Props) {
 
       <div style={{ marginBottom: 14 }}>
         <label className="form-label">Název zařízení *</label>
-        <input value={form.name} onChange={(e) => set('name', e.target.value)} style={inputStyle('name')} placeholder="např. Hlavní kotel" />
-        {errors.name && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.name}</div>}
+        <input data-testid="asset-form-name" value={form.name} onChange={(e) => set('name', e.target.value)} style={inputStyle('name')} placeholder="např. Hlavní kotel" />
+        {errors.name && <div data-testid="asset-form-error-name" style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.name}</div>}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div>
           <label className="form-label">Kategorie</label>
-          <select value={form.category} onChange={(e) => set('category', e.target.value)} style={inputStyle()}>
+          <select data-testid="asset-form-category" value={form.category} onChange={(e) => set('category', e.target.value)} style={inputStyle()}>
             {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
           </select>
         </div>

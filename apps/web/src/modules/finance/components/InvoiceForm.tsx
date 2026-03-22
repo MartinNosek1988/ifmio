@@ -170,8 +170,8 @@ export function InvoiceForm({ invoice, transactions, onClose }: {
     <Modal open onClose={onClose} title={isEdit ? 'Upravit doklad' : 'Nový doklad'} wide
       footer={
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <Button onClick={onClose}>Zrušit</Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={isPending}>
+          <Button onClick={onClose} data-testid="finance-doklad-form-cancel">Zrušit</Button>
+          <Button variant="primary" onClick={handleSubmit} disabled={isPending} data-testid="finance-doklad-form-save">
             {isPending ? 'Ukládám...' : isEdit ? 'Uložit' : 'Vytvořit'}
           </Button>
         </div>
@@ -181,12 +181,12 @@ export function InvoiceForm({ invoice, transactions, onClose }: {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div>
           <label className="form-label">Číslo dokladu *</label>
-          <input value={form.number} onChange={e => set('number', e.target.value)} style={inputStyle('number')} />
+          <input data-testid="finance-doklad-form-number" value={form.number} onChange={e => set('number', e.target.value)} style={inputStyle('number')} />
           {errors.number && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.number}</div>}
         </div>
         <div>
           <label className="form-label">Typ</label>
-          <select value={form.type} onChange={e => set('type', e.target.value)} style={inputStyle()}>
+          <select data-testid="finance-doklad-form-type" value={form.type} onChange={e => set('type', e.target.value)} style={inputStyle()}>
             {Object.entries(INVOICE_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </div>
@@ -267,7 +267,7 @@ export function InvoiceForm({ invoice, transactions, onClose }: {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div>
           <label className="form-label">Základ (Kč) *</label>
-          <input type="number" value={form.amountBase} onChange={e => recalcVat(e.target.value, form.vatRate)} style={inputStyle('amountBase')} placeholder="0" />
+          <input data-testid="finance-doklad-form-amount" type="number" value={form.amountBase} onChange={e => recalcVat(e.target.value, form.vatRate)} style={inputStyle('amountBase')} placeholder="0" />
           {errors.amountBase && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.amountBase}</div>}
         </div>
         <div>
@@ -292,7 +292,7 @@ export function InvoiceForm({ invoice, transactions, onClose }: {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div>
           <label className="form-label">Datum vystavení *</label>
-          <input type="date" value={form.issueDate} onChange={e => set('issueDate', e.target.value)} style={inputStyle('issueDate')} />
+          <input data-testid="finance-doklad-form-issueDate" type="date" value={form.issueDate} onChange={e => set('issueDate', e.target.value)} style={inputStyle('issueDate')} />
           {errors.issueDate && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.issueDate}</div>}
         </div>
         <div>

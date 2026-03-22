@@ -109,13 +109,13 @@ export default function ContractsPage() {
   ];
 
   return (
-    <div>
+    <div data-testid="contract-list-page">
       <div className="page-header">
         <div>
           <h1 className="page-title">Najemni smlouvy</h1>
           <p className="page-subtitle">{stats?.active ?? 0} aktivních smluv</p>
         </div>
-        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)}>Nova smlouva</Button>
+        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)} data-testid="contract-add-btn">Nova smlouva</Button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>

@@ -61,7 +61,7 @@ export default function AssetTypesPage() {
   }
 
   return (
-    <div>
+    <div data-testid="asset-types-page">
       <div className="page-header">
         <div>
           <h1 className="page-title">Typy zařízení</h1>

@@ -77,7 +77,7 @@ export default function MetersPage() {
   ];
 
   return (
-    <div>
+    <div data-testid="meter-list-page">
       <div className="page-header">
         <div>
           <h1 className="page-title">Měřidla & Energie</h1>

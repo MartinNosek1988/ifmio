@@ -273,7 +273,7 @@ export default function PropertyDetailPage() {
         <div style={{ display: 'flex', gap: 8 }}>
           <Button icon={<Pencil size={15} />} onClick={() => setShowEditProp(true)} data-testid="property-detail-edit-btn">Upravit</Button>
           <Button icon={<Layers size={15} />} onClick={() => setShowBulk(true)}>Hromadné</Button>
-          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowAddUnit(true)}>
+          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowAddUnit(true)} data-testid="unit-add-btn">
             Nová jednotka
           </Button>
         </div>
@@ -526,11 +526,12 @@ export default function PropertyDetailPage() {
           subtitle={deleteUnit.name}
           footer={
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <Button onClick={() => setDeleteUnit(null)}>Zrušit</Button>
+              <Button onClick={() => setDeleteUnit(null)} data-testid="unit-delete-cancel">Zrušit</Button>
               <Button
                 variant="danger"
                 onClick={() => deleteMutation.mutate(deleteUnit.id)}
                 disabled={deleteMutation.isPending}
+                data-testid="unit-delete-confirm"
               >
                 {deleteMutation.isPending ? 'Mažu...' : 'Smazat'}
               </Button>

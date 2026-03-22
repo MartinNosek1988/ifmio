@@ -94,8 +94,8 @@ export default function LeaseForm({ lease, onClose }: Props) {
     <Modal open onClose={onClose} title={isEdit ? 'Upravit smlouvu' : 'Nová nájemní smlouva'}
       footer={
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <Button onClick={onClose}>Zrusit</Button>
-          <Button variant="primary" onClick={handleSubmit}
+          <Button onClick={onClose} data-testid="contract-form-cancel">Zrusit</Button>
+          <Button variant="primary" onClick={handleSubmit} data-testid="contract-form-save"
             disabled={createMutation.isPending || updateMutation.isPending}>
             {isEdit ? 'Ulozit' : 'Vytvorit'}
           </Button>
