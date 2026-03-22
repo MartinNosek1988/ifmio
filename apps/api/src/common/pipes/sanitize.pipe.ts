@@ -11,6 +11,10 @@ const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
   allowedTags: [],
   allowedAttributes: {},
   disallowedTagsMode: 'discard',
+  // Do NOT encode HTML entities on input — React escapes on output automatically.
+  // Without this, & becomes &amp; in the DB, causing double-encoding on display.
+  parseStyleAttributes: false,
+  textFilter: (text: string) => text,
 }
 
 /**
@@ -30,7 +34,15 @@ export class SanitizePipe implements PipeTransform {
   }
 
   private sanitizeString(str: string): string {
+    // sanitize-html strips tags but also HTML-encodes entities by default.
+    // We decode them back — React handles output escaping, so storing
+    // encoded entities in DB causes double-encoding (&amp;amp;).
     return sanitize(str, SANITIZE_OPTIONS)
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#x27;/g, "'")
   }
 
   private sanitizeObject(obj: Record<string, unknown>): Record<string, unknown> {

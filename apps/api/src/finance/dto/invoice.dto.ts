@@ -1,6 +1,6 @@
 import {
   IsString, IsOptional, IsNumber, IsBoolean, IsDateString,
-  IsEnum, IsArray, ValidateNested, Min,
+  IsEnum, IsArray, ValidateNested, Min, IsNotEmpty,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -29,6 +29,7 @@ export class InvoiceLineDto {
 
 export class CreateInvoiceDto {
   @IsString()
+  @IsNotEmpty({ message: 'Číslo dokladu je povinné' })
   number!: string;
 
   @IsOptional() @IsEnum(['received', 'issued'])

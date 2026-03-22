@@ -2,10 +2,10 @@ import { IsString, IsEnum, IsNotEmpty, IsOptional, IsBoolean, IsDateString, MaxL
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreatePropertyDto {
-  @ApiProperty() @IsString() @IsNotEmpty() name!: string;
-  @ApiProperty() @IsString() @IsNotEmpty() address!: string;
-  @ApiProperty() @IsString() @IsNotEmpty() city!: string;
-  @ApiProperty() @IsString() @IsNotEmpty() postalCode!: string;
+  @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(255) name!: string;
+  @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(500) address!: string;
+  @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(255) city!: string;
+  @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(20) postalCode!: string;
   @ApiProperty({ enum: ['bytdum', 'roddum', 'komer', 'prumysl', 'pozemek', 'garaz'] })
   @IsEnum(['bytdum', 'roddum', 'komer', 'prumysl', 'pozemek', 'garaz'])
   type!: string;
