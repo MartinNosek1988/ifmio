@@ -34,6 +34,7 @@ export class KontoRemindersService {
 
     const now = new Date()
     const created: any[] = []
+    const GRACE_PERIOD_DAYS = 7
 
     for (const acc of accounts) {
       // Check oldest debit date
@@ -41,6 +42,17 @@ export class KontoRemindersService {
       if (!oldestDebit) continue
       const daysOverdue = Math.floor((now.getTime() - oldestDebit.postingDate.getTime()) / 86_400_000)
       if (daysOverdue < minDays) continue
+
+      // Grace period: skip if there was a recent CREDIT that reduced balance
+      const recentCredit = await this.prisma.ledgerEntry.findFirst({
+        where: {
+          accountId: acc.id,
+          type: 'CREDIT',
+          postingDate: { gte: new Date(now.getTime() - GRACE_PERIOD_DAYS * 86_400_000) },
+        },
+        orderBy: { postingDate: 'desc' },
+      })
+      if (recentCredit) continue // Recently paid — grace period active
 
       // Check for existing active reminder (DRAFT or SENT)
       const existingActive = await this.prisma.kontoReminder.findFirst({
@@ -118,6 +130,43 @@ export class KontoRemindersService {
       return `Vážený/á ${residentName},\n\nopětovně Vás upozorňujeme na neuhrazený nedoplatek ve výši ${fmtAmount} Kč na Vašem kontě pro jednotku ${unitName} v objektu ${propertyName}.\n\nNejstarší neuhrazený předpis je ze dne ${fmtOldest}.\n\nUpozorňujeme, že v případě dalšího prodlení může být dluh navýšen o úrok z prodlení. Prosíme o úhradu nejpozději do ${fmtDue}.\n\nS pozdravem,\nspráva objektu`
     }
     return `Vážený/á ${residentName},\n\nTOTO JE POSLEDNÍ UPOMÍNKA. Na Vašem kontě pro jednotku ${unitName} v objektu ${propertyName} nadále evidujeme nedoplatek ve výši ${fmtAmount} Kč.\n\nNejstarší neuhrazený předpis je ze dne ${fmtOldest}.\n\nPokud nebude dluh uhrazen do ${fmtDue}, budeme nuceni přistoupit k vymáhání pohledávky právní cestou, včetně uplatnění nákladů řízení.\n\nS pozdravem,\nspráva objektu`
+  }
+
+  /**
+   * Auto-resolve all DRAFT/SENT reminders for an account when balance reaches 0.
+   * Called from matching.service.ts after a successful KONTO match posts credit.
+   */
+  async checkAndAutoResolve(tenantId: string, accountId: string): Promise<number> {
+    const account = await this.prisma.ownerAccount.findFirst({
+      where: { id: accountId, tenantId },
+      select: { currentBalance: true },
+    })
+    if (!account) return 0
+
+    // Only auto-resolve when balance reaches 0 or below (fully paid)
+    if (Number(account.currentBalance) > 0) return 0
+
+    const activeReminders = await this.prisma.kontoReminder.findMany({
+      where: {
+        accountId,
+        tenantId,
+        status: { in: ['DRAFT', 'SENT'] },
+      },
+    })
+
+    if (activeReminders.length === 0) return 0
+
+    await this.prisma.kontoReminder.updateMany({
+      where: {
+        id: { in: activeReminders.map(r => r.id) },
+      },
+      data: {
+        status: 'RESOLVED',
+        note: 'Automaticky vyřešeno — dluh uhrazen',
+      },
+    })
+
+    return activeReminders.length
   }
 
   async markAsSent(tenantId: string, reminderId: string, method: string) {

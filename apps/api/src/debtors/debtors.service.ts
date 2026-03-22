@@ -14,6 +14,8 @@ export interface DebtorSummary {
   daysOverdue: number
   agingBucket: string
   lastPaymentDate: string | null
+  lastPaymentAmount: number | null
+  nextPrescriptionDue: string | null
   reminderCount: number
   lastReminderDate: string | null
 }
@@ -76,7 +78,20 @@ export class DebtorsService {
       const lastCredit = await this.prisma.ledgerEntry.findFirst({
         where: { accountId: acc.id, type: 'CREDIT' },
         orderBy: { postingDate: 'desc' },
-        select: { postingDate: true },
+        select: { postingDate: true, amount: true },
+      })
+
+      // Get next unpaid prescription due date
+      const nextUnpaid = await this.prisma.prescription.findFirst({
+        where: {
+          tenantId,
+          unitId: acc.unitId,
+          residentId: acc.residentId,
+          status: 'active',
+          paymentStatus: { in: ['UNPAID', 'PARTIAL'] },
+        },
+        orderBy: { validFrom: 'asc' },
+        select: { validFrom: true },
       })
 
       // Get last reminder
@@ -108,6 +123,8 @@ export class DebtorsService {
             : 0
         ),
         lastPaymentDate: lastCredit?.postingDate?.toISOString() ?? null,
+        lastPaymentAmount: lastCredit ? Number(lastCredit.amount) : null,
+        nextPrescriptionDue: nextUnpaid?.validFrom?.toISOString() ?? null,
         reminderCount: acc._count.reminders,
         lastReminderDate: lastReminder?.createdAt?.toISOString() ?? null,
       })

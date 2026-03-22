@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Badge, Button, LoadingState, EmptyState, Modal } from '../../../shared/components';
 import { useProperties } from '../../properties/use-properties';
 import { usePropertyDebtors, useDebtorStats } from '../api/debtors.queries';
@@ -15,6 +16,12 @@ function fmtCzk(n: number) {
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('cs-CZ');
+}
+
+function isToday(iso: string) {
+  const d = new Date(iso);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
 }
 
 /* ─── Bucket helpers ──────────────────────────────────────────── */
@@ -62,6 +69,7 @@ const linkBtnStyle: React.CSSProperties = { background: 'none', border: 'none', 
 /* ─── Main Component ──────────────────────────────────────────── */
 
 export default function DebtorsTabV2() {
+  const [, setParams] = useSearchParams();
   const { data: properties = [] } = useProperties();
   const [propertyId, setPropertyId] = useState<string>('');
 
@@ -129,7 +137,7 @@ export default function DebtorsTabV2() {
                 <th style={{ ...thStyle, cursor: 'default' }}>Kategorie</th>
                 <th style={{ ...thStyle, cursor: 'default' }}>Poslední platba</th>
                 <th style={{ ...thStyle, textAlign: 'center', cursor: 'default' }}>Upomínek</th>
-                <th style={{ ...thStyle, cursor: 'default' }}>Akce</th>
+                <th style={{ ...thStyle, cursor: 'default' }}>Navigace</th>
               </tr>
             </thead>
             <tbody>
@@ -143,12 +151,38 @@ export default function DebtorsTabV2() {
                     <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 600, fontFamily: 'monospace', color: '#ef4444' }}>{fmtCzk(d.totalDebt)}</td>
                     <td style={{ ...tdStyle, textAlign: 'right' }}>{d.daysOverdue} dní</td>
                     <td style={tdStyle}><Badge variant={bucketColor as any}>{bucketLabel}</Badge></td>
-                    <td style={tdStyle}>{d.lastPaymentDate ? fmtDate(d.lastPaymentDate) : 'Žádná'}</td>
+                    <td style={tdStyle}>
+                      {d.lastPaymentDate ? (
+                        <div>
+                          <span>{fmtDate(d.lastPaymentDate)}</span>
+                          {d.lastPaymentAmount != null && (
+                            <span className="text-muted text-sm" style={{ marginLeft: 4 }}>
+                              ({fmtCzk(d.lastPaymentAmount)})
+                            </span>
+                          )}
+                          {d.lastPaymentDate && isToday(d.lastPaymentDate) && (
+                            <Badge variant="green">Právě uhrazeno</Badge>
+                          )}
+                        </div>
+                      ) : 'Žádná'}
+                    </td>
                     <td style={{ ...tdStyle, textAlign: 'center' }}>{d.reminderCount}</td>
                     <td style={tdStyle}>
-                      {overpayments.length > 0 && (
-                        <button onClick={() => setShowOffset(d)} style={linkBtnStyle}>Zápočet</button>
-                      )}
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        {overpayments.length > 0 && (
+                          <button onClick={() => setShowOffset(d)} style={linkBtnStyle} data-testid="debtor-offset-btn">Zápočet</button>
+                        )}
+                        <button
+                          onClick={() => setParams({ tab: 'bank' })}
+                          style={linkBtnStyle}
+                          data-testid="debtor-show-payments-btn"
+                        >Platby</button>
+                        <button
+                          onClick={() => setParams({ tab: 'konto' })}
+                          style={linkBtnStyle}
+                          data-testid="debtor-show-konto-btn"
+                        >Konto</button>
+                      </div>
                     </td>
                   </tr>
                 );

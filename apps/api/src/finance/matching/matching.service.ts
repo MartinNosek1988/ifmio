@@ -2,7 +2,9 @@ import { Injectable, Logger, NotFoundException, BadRequestException } from '@nes
 import { PrismaService } from '../../prisma/prisma.service'
 import { PropertyScopeService } from '../../common/services/property-scope.service'
 import { KontoService } from '../../konto/konto.service'
+import { KontoRemindersService } from '../../konto/konto-reminders.service'
 import { Decimal } from '@prisma/client/runtime/library'
+import { recalculatePrescriptionPaymentStatus } from '../prescription-payment.helper'
 import type { MatchTarget, Prescription } from '@prisma/client'
 import type { BankTransaction } from '@prisma/client'
 import type { ManualMatchDto, AutoMatchResponse, MatchResult, MatchSuggestion } from './matching.dto'
@@ -16,6 +18,7 @@ export class MatchingService {
     private prisma: PrismaService,
     private scope: PropertyScopeService,
     private konto: KontoService,
+    private reminders: KontoRemindersService,
   ) {}
 
   // ─── 2A: ENHANCED AUTO-MATCH ──────────────────────────────────
@@ -526,24 +529,10 @@ export class MatchingService {
       },
     })
 
-    // Update prescription payment
-    const prescAmount = Number(prescription.amount)
-    const prevPaid = Number(prescription.paidAmount ?? 0)
-    const newPaid = prevPaid + amount
-    let paymentStatus: 'UNPAID' | 'PARTIAL' | 'PAID' | 'OVERPAID' = 'UNPAID'
-    if (newPaid >= prescAmount) paymentStatus = newPaid > prescAmount + 0.01 ? 'OVERPAID' : 'PAID'
-    else if (newPaid > 0.01) paymentStatus = 'PARTIAL'
+    // Recalculate prescription payment status from all matched transactions
+    await recalculatePrescriptionPaymentStatus(this.prisma, prescription.id)
 
-    await this.prisma.prescription.update({
-      where: { id: prescription.id },
-      data: {
-        paidAmount: new Decimal(newPaid.toFixed(2)),
-        paidAt: paymentStatus === 'PAID' || paymentStatus === 'OVERPAID' ? new Date() : undefined,
-        paymentStatus,
-      },
-    })
-
-    // Post to konto
+    // Post to konto + auto-resolve reminders if debt cleared
     if (prescription.unitId && prescription.residentId) {
       try {
         const account = await this.konto.getOrCreateAccount(
@@ -557,6 +546,13 @@ export class MatchingService {
           where: { id: tx.id },
           data: { ledgerEntryId: entry.id },
         })
+
+        // Auto-resolve reminders if account balance reaches 0
+        try {
+          await this.reminders.checkAndAutoResolve(tenantId, account.id)
+        } catch (err) {
+          this.logger.error(`Auto-resolve reminders for account ${account.id} failed: ${err}`)
+        }
       } catch (err) {
         this.logger.error(`Auto-posting match ${tx.id} to konto failed: ${err}`)
       }
@@ -673,34 +669,6 @@ export class MatchingService {
     prescriptionId: string,
     excludeTransactionId: string,
   ) {
-    const prescription = await this.prisma.prescription.findUnique({
-      where: { id: prescriptionId },
-    })
-    if (!prescription) return
-
-    // Sum all matched transactions for this prescription except the excluded one
-    const matchedTxs = await this.prisma.bankTransaction.findMany({
-      where: {
-        prescriptionId: prescriptionId,
-        status: 'matched',
-        id: { not: excludeTransactionId },
-      },
-    })
-
-    const totalPaid = matchedTxs.reduce((sum, tx) => sum + Number(tx.amount), 0)
-    const prescAmount = Number(prescription.amount)
-
-    let paymentStatus: 'UNPAID' | 'PARTIAL' | 'PAID' | 'OVERPAID' = 'UNPAID'
-    if (totalPaid >= prescAmount) paymentStatus = totalPaid > prescAmount + 0.01 ? 'OVERPAID' : 'PAID'
-    else if (totalPaid > 0.01) paymentStatus = 'PARTIAL'
-
-    await this.prisma.prescription.update({
-      where: { id: prescriptionId },
-      data: {
-        paidAmount: new Decimal(totalPaid.toFixed(2)),
-        paidAt: paymentStatus === 'PAID' || paymentStatus === 'OVERPAID' ? new Date() : null,
-        paymentStatus,
-      },
-    })
+    await recalculatePrescriptionPaymentStatus(this.prisma, prescriptionId, excludeTransactionId)
   }
 }
