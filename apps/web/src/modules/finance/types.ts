@@ -1,6 +1,8 @@
 // Legacy types — used by existing UI pages that read from localStorage
 // For new code, prefer types from '../../shared/schema/finance'
 
+export type MatchTargetType = 'KONTO' | 'INVOICE' | 'COMPONENT' | 'NO_EFFECT' | 'UNSPECIFIED';
+
 export interface FinTransaction {
   id: string;
   propId: number;
@@ -14,7 +16,18 @@ export interface FinTransaction {
   cisloDokladu?: string;
   cil: string;
   parovani: string[];
+  status: 'unmatched' | 'matched' | 'partially_matched' | 'ignored';
   created: string;
+
+  // Enhanced matching
+  matchTarget?: MatchTargetType | null;
+  matchedEntityId?: string | null;
+  matchedEntityType?: string | null;
+  matchedAt?: string | null;
+  matchedBy?: string | null;
+  matchNote?: string | null;
+  splitParentId?: string | null;
+  prescriptionDesc?: string | null;
 
   // P0-4: nájemce/vlastník (replaced tenantId)
   lessee_person_id?: string | null;
@@ -32,10 +45,14 @@ export interface FinPrescription {
   id: string;
   propId: number;
   jednotkaId: string;
+  unitName?: string;
+  residentName?: string;
   castka: number;
   kUhrade: number;
   datum: string;
   splatnost: string;
+  validFrom?: string;
+  validTo?: string;
   status: 'pending' | 'paid' | 'partial' | 'overdue';
   popis: string;
   typ: string;

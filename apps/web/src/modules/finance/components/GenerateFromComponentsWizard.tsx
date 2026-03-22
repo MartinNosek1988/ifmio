@@ -91,6 +91,7 @@ export default function GenerateFromComponentsWizard({ propertyId, onClose }: Pr
       open
       onClose={onClose}
       wide
+      data-testid="generate-wizard"
       title={
         step === 'config'
           ? 'Generovat předpisy ze složek'
@@ -107,6 +108,7 @@ export default function GenerateFromComponentsWizard({ propertyId, onClose }: Pr
                 variant="primary"
                 onClick={handlePreview}
                 disabled={generateMut.isPending}
+                data-testid="generate-preview-btn"
               >
                 {generateMut.isPending ? 'Počítám...' : 'Zobrazit náhled'}
               </Button>
@@ -119,6 +121,7 @@ export default function GenerateFromComponentsWizard({ propertyId, onClose }: Pr
                 variant="primary"
                 onClick={handleGenerate}
                 disabled={generateMut.isPending}
+                data-testid="generate-confirm-btn"
               >
                 {generateMut.isPending
                   ? 'Generuji...'
@@ -127,7 +130,7 @@ export default function GenerateFromComponentsWizard({ propertyId, onClose }: Pr
             </>
           )}
           {step === 'done' && (
-            <Button variant="primary" onClick={onClose}>
+            <Button variant="primary" onClick={onClose} data-testid="generate-done-btn">
               Hotovo
             </Button>
           )}

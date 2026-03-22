@@ -783,6 +783,16 @@ model BankTransaction {
   externalId           String?               // ID z bankovního API pro deduplikaci
   importSource         String?               // 'csv', 'abo', 'fio_api' — odkud transakce přišla
   rawData              Json?                 // surová data z API/importu
+
+  // Enhanced matching fields
+  matchTarget          MatchTarget?          // target type for the match
+  matchedEntityId      String?               // ID of matched entity (prescription/invoice/component)
+  matchedEntityType    String?               // 'prescription' | 'invoice' | 'component'
+  matchedAt            DateTime?             // when matched
+  matchedBy            String?               // 'auto' | 'manual' | userId
+  matchNote            String?               // optional note on match
+  splitParentId        String?               // for split transactions (partial payments)
+
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
 
@@ -794,6 +804,8 @@ model BankTransaction {
   resident         Resident?         @relation(fields: [residentId], references: [id], onDelete: SetNull)
   financialContext FinancialContext?  @relation(fields: [financialContextId], references: [id], onDelete: SetNull)
   invoices         Invoice[]
+  splitParent      BankTransaction?  @relation("SplitTransactions", fields: [splitParentId], references: [id], onDelete: SetNull)
+  splitChildren    BankTransaction[] @relation("SplitTransactions")
   ledgerEntryId    String?           @unique // link to auto-posted LedgerEntry
 
   @@unique([bankAccountId, externalId])
@@ -805,6 +817,7 @@ model BankTransaction {
   @@index([tenantId, bankAccountId, date, amount, variableSymbol])
   @@index([bankAccountId, date])
   @@index([variableSymbol])
+  @@index([splitParentId])
   @@map("bank_transactions")
 }
 
@@ -818,6 +831,14 @@ enum BankTransactionStatus {
   matched
   partially_matched
   ignored
+}
+
+enum MatchTarget {
+  KONTO          // → credits resident's konto account (most common for SVJ)
+  INVOICE        // → pairs with specific invoice (doklad)
+  COMPONENT      // → allocates to specific prescription component (složka)
+  NO_EFFECT      // → recorded but no financial effect (bank fees, interest, internal transfers)
+  UNSPECIFIED    // → imported but not yet classified
 }
 
 model BillingPeriod {
@@ -865,6 +886,12 @@ model Prescription {
   source          String?            // 'COMPONENTS' | 'MANUAL' | 'CALC' — jak předpis vznikl
   validFrom       DateTime
   validTo         DateTime?
+
+  // Payment tracking
+  paidAmount      Decimal?           @default(0) @db.Decimal(12, 2)
+  paidAt          DateTime?
+  paymentStatus   PaymentStatus      @default(UNPAID)
+
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 
@@ -900,6 +927,13 @@ enum PrescriptionStatus {
   active
   inactive
   cancelled
+}
+
+enum PaymentStatus {
+  UNPAID
+  PARTIAL
+  PAID
+  OVERPAID
 }
 
 model PrescriptionItem {
