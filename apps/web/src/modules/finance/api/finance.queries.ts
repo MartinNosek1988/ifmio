@@ -50,8 +50,25 @@ export function useBillingPeriods(propertyId?: string) {
 export function useCreateBankAccount() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (dto: { name: string; accountNumber: string; iban?: string; bankCode?: string; currency?: string; propertyId?: string }) =>
+    mutationFn: (dto: { name: string; accountNumber: string; bankCode: string; iban?: string; currency?: string; propertyId?: string; accountType?: string; isDefault?: boolean }) =>
       financeApi.bankAccounts.create(dto),
+    onSuccess: () => qc.invalidateQueries({ queryKey: financeKeys.bankAccounts() }),
+  });
+}
+
+export function useUpdateBankAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, dto }: { id: string; dto: { name?: string; accountNumber?: string; bankCode?: string; iban?: string; currency?: string; accountType?: string; isDefault?: boolean; isActive?: boolean } }) =>
+      financeApi.bankAccounts.update(id, dto),
+    onSuccess: () => qc.invalidateQueries({ queryKey: financeKeys.bankAccounts() }),
+  });
+}
+
+export function useDeleteBankAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => financeApi.bankAccounts.remove(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: financeKeys.bankAccounts() }),
   });
 }
@@ -98,16 +115,24 @@ export function useImportTransactions() {
   });
 }
 
+/** Invalidate all finance-related queries after match/unmatch */
+function invalidateMatchRelated(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ['finance', 'transactions'] });
+  qc.invalidateQueries({ queryKey: ['finance', 'prescriptions'] });
+  qc.invalidateQueries({ queryKey: ['finance', 'summary'] });
+  qc.invalidateQueries({ queryKey: ['finance', 'invoices'] });
+  // Cross-module: debtors, konto, reminders
+  qc.invalidateQueries({ queryKey: ['debtors'] });
+  qc.invalidateQueries({ queryKey: ['konto'] });
+  qc.invalidateQueries({ queryKey: ['konto-reminders'] });
+}
+
 export function useMatchTransactions() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (bankAccountId?: string) =>
       financeApi.matchTransactions(bankAccountId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['finance', 'transactions'] });
-      qc.invalidateQueries({ queryKey: ['finance', 'prescriptions'] });
-      qc.invalidateQueries({ queryKey: ['finance', 'summary'] });
-    },
+    onSuccess: () => invalidateMatchRelated(qc),
   });
 }
 
@@ -155,11 +180,7 @@ export function useMatchSingle() {
       transactionId: string;
       prescriptionId: string;
     }) => financeApi.matchSingle(transactionId, prescriptionId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['finance', 'transactions'] });
-      qc.invalidateQueries({ queryKey: ['finance', 'prescriptions'] });
-      qc.invalidateQueries({ queryKey: ['finance', 'summary'] });
-    },
+    onSuccess: () => invalidateMatchRelated(qc),
   });
 }
 
@@ -170,11 +191,7 @@ export function useAutoMatch() {
   return useMutation({
     mutationFn: (dto: { propertyId?: string; bankAccountId?: string }) =>
       financeApi.matching.auto(dto),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['finance', 'transactions'] });
-      qc.invalidateQueries({ queryKey: ['finance', 'prescriptions'] });
-      qc.invalidateQueries({ queryKey: ['finance', 'summary'] });
-    },
+    onSuccess: () => invalidateMatchRelated(qc),
   });
 }
 
@@ -183,11 +200,7 @@ export function useMatchAll() {
   return useMutation({
     mutationFn: (propertyId: string) =>
       financeApi.matching.matchAll(propertyId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['finance', 'transactions'] });
-      qc.invalidateQueries({ queryKey: ['finance', 'prescriptions'] });
-      qc.invalidateQueries({ queryKey: ['finance', 'summary'] });
-    },
+    onSuccess: () => invalidateMatchRelated(qc),
   });
 }
 
@@ -196,12 +209,7 @@ export function useManualMatch() {
   return useMutation({
     mutationFn: ({ txId, dto }: { txId: string; dto: { target: MatchTarget; entityId?: string; amount?: number; note?: string } }) =>
       financeApi.matching.manualMatch(txId, dto),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['finance', 'transactions'] });
-      qc.invalidateQueries({ queryKey: ['finance', 'prescriptions'] });
-      qc.invalidateQueries({ queryKey: ['finance', 'summary'] });
-      qc.invalidateQueries({ queryKey: ['finance', 'invoices'] });
-    },
+    onSuccess: () => invalidateMatchRelated(qc),
   });
 }
 
@@ -210,11 +218,7 @@ export function useUnmatchTransaction() {
   return useMutation({
     mutationFn: (txId: string) =>
       financeApi.matching.unmatch(txId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['finance', 'transactions'] });
-      qc.invalidateQueries({ queryKey: ['finance', 'prescriptions'] });
-      qc.invalidateQueries({ queryKey: ['finance', 'summary'] });
-    },
+    onSuccess: () => invalidateMatchRelated(qc),
   });
 }
 

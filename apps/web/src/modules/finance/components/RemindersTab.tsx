@@ -273,6 +273,11 @@ export default function RemindersTab() {
                       <Badge variant={statusBadge.variant as any}>
                         {statusBadge.label}
                       </Badge>
+                      {r.status === 'RESOLVED' && r.note?.includes('Automaticky vyřešeno') && (
+                        <div className="text-muted" style={{ fontSize: '.72rem', marginTop: 2 }}>
+                          (automaticky)
+                        </div>
+                      )}
                     </td>
                     <td style={tdStyle}>{fmtDate(r.dueDate)}</td>
                     <td style={tdStyle}>
@@ -328,9 +333,15 @@ export default function RemindersTab() {
                           <button
                             onClick={() => setShowText(r)}
                             style={linkBtnStyle}
+                            data-testid="reminder-show-text-btn"
                           >
                             Text
                           </button>
+                        )}
+                        {r.status === 'RESOLVED' && r.note && (
+                          <span className="text-muted" style={{ fontSize: '.75rem' }} title={r.note}>
+                            {r.note.length > 30 ? r.note.slice(0, 30) + '…' : r.note}
+                          </span>
                         )}
                       </div>
                     </td>

@@ -12,6 +12,8 @@ export interface DebtorSummary {
   daysOverdue: number
   agingBucket: string
   lastPaymentDate: string | null
+  lastPaymentAmount: number | null
+  nextPrescriptionDue: string | null
   reminderCount: number
   lastReminderDate: string | null
 }
