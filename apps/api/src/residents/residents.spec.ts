@@ -139,12 +139,12 @@ describe('Residents (e2e)', () => {
           lastName: 'Novák',
           role: 'tenant',
           phone: '+420 999 888 777',
-          note: 'Aktualizovaný poznámka',
+          note: 'Aktualizovaná poznámka',
         })
         .expect(200)
 
       expect(res.body.phone).toBe('+420 999 888 777')
-      expect(res.body.note).toBe('Aktualizovaný poznámka')
+      expect(res.body.note).toBe('Aktualizovaná poznámka')
     })
 
     it('returns 404 when updating nonexistent resident', async () => {
