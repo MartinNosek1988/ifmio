@@ -74,7 +74,7 @@ export default function AuditPage() {
   const totalPages = data ? Math.ceil(data.total / data.limit) : 1;
 
   return (
-    <div>
+    <div data-testid="audit-page">
       <div className="page-header">
         <div>
           <h1 className="page-title">Audit log</h1>

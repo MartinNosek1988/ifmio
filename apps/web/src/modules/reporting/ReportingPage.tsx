@@ -152,7 +152,7 @@ export default function ReportingPage() {
   ];
 
   return (
-    <div className="print-area">
+    <div className="print-area" data-testid="reporting-page">
       <div className="page-header">
         <div>
           <h1 className="page-title">Reporting & KPI</h1>

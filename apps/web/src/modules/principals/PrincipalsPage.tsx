@@ -22,7 +22,7 @@ export default function PrincipalsPage() {
   const tdStyle: React.CSSProperties = { padding: '10px 12px', borderBottom: '1px solid var(--border)' }
 
   return (
-    <div>
+    <div data-testid="principals-page">
       <div className="page-header">
         <div>
           <h1 className="page-title">Klienti / Vlastníci</h1>

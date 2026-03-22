@@ -116,7 +116,7 @@ export default function ProtocolsPage() {
   }
 
   return (
-    <div>
+    <div data-testid="protocols-page">
       <div className="page-header">
         <div>
           <h1 className="page-title">Protokoly</h1>

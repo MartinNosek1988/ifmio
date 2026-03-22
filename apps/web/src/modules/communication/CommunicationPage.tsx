@@ -58,7 +58,7 @@ export default function CommunicationPage() {
   ]
 
   return (
-    <div>
+    <div data-testid="communication-page">
       <div className="page-header">
         <div>
           <h1 className="page-title">Komunikace</h1>

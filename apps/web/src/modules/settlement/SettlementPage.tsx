@@ -48,7 +48,7 @@ export default function SettlementPage() {
   const years = Array.from({ length: 5 }, (_, i) => String(new Date().getFullYear() - i))
 
   return (
-    <div>
+    <div data-testid="settlements-page">
       <div className="page-header">
         <div>
           <h1 className="page-title">Roční vyúčtování</h1>
