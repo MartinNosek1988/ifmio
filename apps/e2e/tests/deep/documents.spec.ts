@@ -26,9 +26,9 @@ test.describe('Documents — CRUD', () => {
     await page.locator('[data-testid="doc-add-btn"]').click();
     await page.waitForTimeout(500);
 
-    // Modal "Nahrát dokument" should open with form fields
-    await expect(page.getByText('Nahrát dokument').first()).toBeVisible();
-    await expect(page.getByText('Název dokumentu').first()).toBeVisible();
+    // Modal title + fields (without diacritics in this module)
+    await expect(page.getByText('Nahrat dokument').first()).toBeVisible();
+    await expect(page.getByText('Nazev dokumentu').first()).toBeVisible();
     await expect(page.getByText('Kategorie').first()).toBeVisible();
   });
 });
