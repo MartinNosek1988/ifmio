@@ -1,19 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { login, loginViaApi } from '../helpers/auth';
-import fs from 'fs';
-import path from 'path';
+import { login } from '../helpers/auth';
+import { getFreshToken, ensureAuthenticated } from '../helpers/fresh-auth';
 
 const API_URL = process.env.API_URL || 'http://localhost:3000';
-const AUTH_FILE = path.join(__dirname, '..', '.auth', 'tokens.json');
-
-async function getToken(page: any): Promise<string> {
-  const token = await page.evaluate(() => sessionStorage.getItem('ifmio:access_token')).catch(() => null);
-  if (token) return token;
-  try { return JSON.parse(fs.readFileSync(AUTH_FILE, 'utf-8')).accessToken; } catch { return ''; }
-}
 
 async function createWoApi(page: any, data: Record<string, unknown>): Promise<string> {
-  const token = await getToken(page);
+  const token = await getFreshToken(page);
   const res = await page.request.post(`${API_URL}/api/v1/work-orders`, {
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     data: { title: 'Test WO', priority: 'normalni', ...data },
@@ -23,12 +15,12 @@ async function createWoApi(page: any, data: Record<string, unknown>): Promise<st
 }
 
 async function deleteWoApi(page: any, id: string) {
-  const token = await getToken(page);
+  const token = await getFreshToken(page);
   await page.request.delete(`${API_URL}/api/v1/work-orders/${id}`, { headers: { Authorization: `Bearer ${token}` } });
 }
 
 async function changeWoStatus(page: any, id: string, status: string) {
-  const token = await getToken(page);
+  const token = await getFreshToken(page);
   await page.request.put(`${API_URL}/api/v1/work-orders/${id}/status`, {
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     data: { status },
@@ -39,7 +31,7 @@ async function changeWoStatus(page: any, id: string, status: string) {
 // SECTION 1 — VALIDACE POLÍ
 // ================================================================
 test.describe('Work Orders — Validace polí', () => {
-  test.beforeEach(async ({ page }) => { await login(page); if (page.url().includes('/login')) await loginViaApi(page); });
+  test.beforeEach(async ({ page }) => { await login(page); await ensureAuthenticated(page); });
 
   test('název je povinný — UI validace', async ({ page }) => {
     await page.goto('/workorders');
@@ -100,7 +92,7 @@ test.describe('Work Orders — Validace polí', () => {
     const id = await createWoApi(page, { title: 'WO Long Desc E2E', description: longDesc });
     expect(id).toBeTruthy();
 
-    const token = await getToken(page);
+    const token = await getFreshToken(page);
     const res = await page.request.get(`${API_URL}/api/v1/work-orders/${id}`, { headers: { Authorization: `Bearer ${token}` } });
     const body = await res.json();
     expect(body.description?.length).toBe(5000);
@@ -131,10 +123,10 @@ test.describe('Work Orders — Workflow', () => {
     await ctx.close();
   });
 
-  test.beforeEach(async ({ page }) => { await login(page); if (page.url().includes('/login')) await loginViaApi(page); });
+  test.beforeEach(async ({ page }) => { await login(page); await ensureAuthenticated(page); });
 
   test('nový → v řešení → vyřešený → uzavřený (celý průchod)', async ({ page }) => {
-    const token = await getToken(page);
+    const token = await getFreshToken(page);
 
     // Verify initial status
     let res = await page.request.get(`${API_URL}/api/v1/work-orders/${woId}`, { headers: { Authorization: `Bearer ${token}` } });
@@ -164,7 +156,7 @@ test.describe('Work Orders — Workflow', () => {
     const id = await createWoApi(page, { title: 'WO Cancel E2E' });
     await changeWoStatus(page, id, 'zrusena');
 
-    const token = await getToken(page);
+    const token = await getFreshToken(page);
     const res = await page.request.get(`${API_URL}/api/v1/work-orders/${id}`, { headers: { Authorization: `Bearer ${token}` } });
     const body = await res.json();
     expect(body.status).toBe('zrusena');
@@ -177,7 +169,7 @@ test.describe('Work Orders — Workflow', () => {
     await changeWoStatus(page, id, 'zrusena');
     await changeWoStatus(page, id, 'nova');
 
-    const token = await getToken(page);
+    const token = await getFreshToken(page);
     const res = await page.request.get(`${API_URL}/api/v1/work-orders/${id}`, { headers: { Authorization: `Bearer ${token}` } });
     const body = await res.json();
     expect(body.status).toBe('nova');
@@ -218,13 +210,13 @@ test.describe('Work Orders — Workflow', () => {
 // SECTION 3 — RELACE
 // ================================================================
 test.describe('Work Orders — Relace', () => {
-  test.beforeEach(async ({ page }) => { await login(page); if (page.url().includes('/login')) await loginViaApi(page); });
+  test.beforeEach(async ({ page }) => { await login(page); await ensureAuthenticated(page); });
 
   test('WO bez přiřazení — povoleno', async ({ page }) => {
     const id = await createWoApi(page, { title: 'WO No Relations E2E' });
     expect(id).toBeTruthy();
 
-    const token = await getToken(page);
+    const token = await getFreshToken(page);
     const res = await page.request.get(`${API_URL}/api/v1/work-orders/${id}`, { headers: { Authorization: `Bearer ${token}` } });
     const body = await res.json();
     expect(body.propertyId).toBeFalsy();
@@ -237,13 +229,13 @@ test.describe('Work Orders — Relace', () => {
 // SECTION 4 — EDGE CASES
 // ================================================================
 test.describe('Work Orders — Edge Cases', () => {
-  test.beforeEach(async ({ page }) => { await login(page); if (page.url().includes('/login')) await loginViaApi(page); });
+  test.beforeEach(async ({ page }) => { await login(page); await ensureAuthenticated(page); });
 
   test('smazání WO v stavu v_reseni', async ({ page }) => {
     const id = await createWoApi(page, { title: 'WO Delete Active E2E' });
     await changeWoStatus(page, id, 'v_reseni');
 
-    const token = await getToken(page);
+    const token = await getFreshToken(page);
     const res = await page.request.delete(`${API_URL}/api/v1/work-orders/${id}`, { headers: { Authorization: `Bearer ${token}` } });
     // Document: can active WOs be deleted? (no constraint expected)
     expect(res.status()).toBeLessThan(500);
@@ -254,10 +246,10 @@ test.describe('Work Orders — Edge Cases', () => {
 // CLEANUP
 // ================================================================
 test.describe('Work Orders Deep — Cleanup', () => {
-  test.beforeEach(async ({ page }) => { await login(page); if (page.url().includes('/login')) await loginViaApi(page); });
+  test.beforeEach(async ({ page }) => { await login(page); await ensureAuthenticated(page); });
 
   test('úklid', async ({ page }) => {
-    const token = await getToken(page);
+    const token = await getFreshToken(page);
     const testPrefixes = ['WO Bez Popisu', 'WO Past', 'WO Dup', 'WO Long', 'WO Workflow', 'WO Cancel', 'WO Restore', 'WO Badge', 'WO No Relations', 'WO Delete Active'];
     const res = await page.request.get(`${API_URL}/api/v1/work-orders?search=E2E&limit=100`, { headers: { Authorization: `Bearer ${token}` } });
     if (res.ok()) {
