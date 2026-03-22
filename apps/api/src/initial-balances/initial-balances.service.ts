@@ -147,27 +147,72 @@ export class InitialBalancesService {
       tenantId, dto.propertyId, dto.unitId, dto.residentId,
     )
 
-    // Check for existing deposit entry to prevent duplicates
     const existing = await this.prisma.initialBalance.findFirst({
       where: { tenantId, propertyId: dto.propertyId, type: 'DEPOSIT', entityId: dto.unitId },
     })
 
+    const sourceIdBase = `deposit-${account.id}`
+    const note = dto.note || 'Kauce — počáteční stav'
+
     if (!existing) {
+      // First-time setting of deposit — post full opening balance as CREDIT
       try {
         await this.konto.postCredit(
-          account.id, dto.amount, 'OPENING_BALANCE',
-          `deposit-${account.id}`,
-          dto.note || 'Kauce — počáteční stav',
+          account.id,
+          dto.amount,
+          'OPENING_BALANCE',
+          sourceIdBase,
+          note,
           cutoverDate,
         )
       } catch (err) {
-        this.logger.error(`Posting deposit to konto failed: ${err}`)
+        this.logger.error(`Posting initial deposit to konto failed: ${err}`)
+      }
+    } else {
+      // Updating existing deposit — post adjustment for the delta
+      const existingAmount = new Decimal(existing.amount)
+      const newAmount = new Decimal(dto.amount as any)
+      const delta = newAmount.minus(existingAmount)
+
+      if (!delta.isZero()) {
+        try {
+          if (delta.gt(0)) {
+            // Deposit increased: additional CREDIT
+            await this.konto.postCredit(
+              account.id,
+              delta,
+              'OPENING_BALANCE',
+              `${sourceIdBase}-adjust`,
+              note,
+              cutoverDate,
+            )
+          } else {
+            // Deposit decreased: post DEBIT for the absolute delta
+            await this.konto.postDebit(
+              account.id,
+              delta.abs(),
+              'OPENING_BALANCE',
+              `${sourceIdBase}-adjust`,
+              note,
+              cutoverDate,
+            )
+          }
+        } catch (err) {
+          this.logger.error(`Posting deposit adjustment to konto failed: ${err}`)
+        }
       }
     }
 
     return this.upsertInitialBalance(
-      tenantId, dto.propertyId, 'DEPOSIT', dto.unitId, 'unit',
-      dto.amount, cutoverDate, dto.note, userId,
+      tenantId,
+      dto.propertyId,
+      'DEPOSIT',
+      dto.unitId,
+      'unit',
+      dto.amount,
+      cutoverDate,
+      dto.note,
+      userId,
     )
   }
 
