@@ -24,12 +24,12 @@ test.describe('Documents — CRUD', () => {
     await page.goto('/documents');
     await page.waitForLoadState('domcontentloaded');
     await page.locator('[data-testid="doc-add-btn"]').click();
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(500);
 
-    // Should see upload form — name field and file input
-    const hasNameField = await page.locator('text=Název').first().isVisible().catch(() => false);
-    const hasFileInput = await page.locator('input[type="file"]').isVisible().catch(() => false);
-    expect(hasNameField || hasFileInput).toBe(true);
+    // Modal "Nahrát dokument" should open with form fields
+    await expect(page.getByText('Nahrát dokument').first()).toBeVisible();
+    await expect(page.getByText('Název dokumentu').first()).toBeVisible();
+    await expect(page.getByText('Kategorie').first()).toBeVisible();
   });
 });
 
