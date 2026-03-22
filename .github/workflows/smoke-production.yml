@@ -1,0 +1,127 @@
+name: Smoke – Production Visual Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'GitHub issue number to post results to (optional)'
+        required: false
+        type: string
+
+concurrency:
+  group: smoke-production
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Visual smoke test against https://ifmio.com
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright (Chromium only)
+        run: npx playwright install chromium --with-deps
+        working-directory: apps/e2e
+
+      - name: Run production smoke tests
+        id: smoke
+        run: >
+          npx playwright test
+          --config=playwright.production.config.ts
+        working-directory: apps/e2e
+        env:
+          BASE_URL: https://ifmio.com
+          API_URL: https://ifmio.com
+          TEST_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          TEST_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+        continue-on-error: true
+
+      - name: Upload screenshots & HTML report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: production-smoke-report
+          path: |
+            apps/e2e/playwright-report-production/
+            apps/e2e/test-results/production/
+            apps/e2e/production-test-results.json
+          retention-days: 14
+
+      - name: Post results comment to issue
+        if: ${{ inputs.issue_number != '' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const outcome = '${{ steps.smoke.outcome }}';
+
+            let body = `## 🎭 Playwright Visual Smoke Test Results\n\n`;
+            body += `**Run:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\n`;
+            body += `**Target:** https://ifmio.com\n`;
+            body += `**Status:** ${outcome === 'success' ? '✅ All checks passed' : '❌ Some checks failed'}\n\n`;
+
+            // Parse JSON results if available
+            const resultsPath = 'apps/e2e/production-test-results.json';
+            if (fs.existsSync(resultsPath)) {
+              const results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
+              const stats = results.stats || {};
+              body += `### Test summary\n`;
+              body += `| | |\n|---|---|\n`;
+              body += `| ✅ Passed | ${stats.expected ?? 0} |\n`;
+              body += `| ❌ Failed | ${stats.unexpected ?? 0} |\n`;
+              body += `| ⚠️ Flaky  | ${stats.flaky ?? 0} |\n`;
+              body += `| ⏭️ Skipped | ${stats.skipped ?? 0} |\n\n`;
+
+              const suites = results.suites?.[0]?.suites?.[0]?.specs ?? [];
+              const failed = suites.filter(s => s.ok === false);
+              if (failed.length > 0) {
+                body += `### ❌ Failed tests\n\n`;
+                for (const spec of failed) {
+                  body += `- **${spec.title}**\n`;
+                  for (const test of spec.tests ?? []) {
+                    for (const result of test.results ?? []) {
+                      for (const err of result.errors ?? []) {
+                        body += `  \`\`\`\n  ${(err.message ?? '').slice(0, 500)}\n  \`\`\`\n`;
+                      }
+                    }
+                  }
+                }
+                body += `\n`;
+              } else {
+                body += `### ✅ All pages loaded correctly\n\n`;
+                body += `The following modules were verified:\n`;
+                body += `- 🔐 Login page\n`;
+                body += `- 🏠 Dashboard\n`;
+                body += `- 🏢 Properties (Nemovitosti)\n`;
+                body += `- 💰 Finance\n`;
+                body += `- 🔧 Work Orders (Pracovní příkazy)\n`;
+                body += `- 👤 Contacts (Kontakty)\n\n`;
+              }
+            }
+
+            body += `### 📸 Screenshots\n\n`;
+            body += `Screenshots and the full HTML report are available as workflow artifacts:\n`;
+            body += `👉 [Download \`production-smoke-report\`](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\n`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number('${{ inputs.issue_number }}'),
+              body,
+            });
+
+      - name: Fail the job if tests failed
+        if: steps.smoke.outcome == 'failure'
+        run: exit 1
