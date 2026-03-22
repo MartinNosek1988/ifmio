@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { login } from '../helpers/auth';
+import { login, loginViaApi } from '../helpers/auth';
 import fs from 'fs';
 import path from 'path';
 
@@ -16,9 +16,10 @@ async function createWoApi(page: any, data: Record<string, unknown>): Promise<st
   const token = await getToken(page);
   const res = await page.request.post(`${API_URL}/api/v1/work-orders`, {
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    data,
+    data: { title: 'Test WO', priority: 'normalni', ...data },
   });
-  return (await res.json()).id;
+  const body = await res.json();
+  return body?.id ?? '';
 }
 
 async function deleteWoApi(page: any, id: string) {
@@ -38,7 +39,7 @@ async function changeWoStatus(page: any, id: string, status: string) {
 // SECTION 1 — VALIDACE POLÍ
 // ================================================================
 test.describe('Work Orders — Validace polí', () => {
-  test.beforeEach(async ({ page }) => { await login(page); });
+  test.beforeEach(async ({ page }) => { await login(page); if (page.url().includes('/login')) await loginViaApi(page); });
 
   test('název je povinný — UI validace', async ({ page }) => {
     await page.goto('/workorders');
@@ -130,7 +131,7 @@ test.describe('Work Orders — Workflow', () => {
     await ctx.close();
   });
 
-  test.beforeEach(async ({ page }) => { await login(page); });
+  test.beforeEach(async ({ page }) => { await login(page); if (page.url().includes('/login')) await loginViaApi(page); });
 
   test('nový → v řešení → vyřešený → uzavřený (celý průchod)', async ({ page }) => {
     const token = await getToken(page);
@@ -217,7 +218,7 @@ test.describe('Work Orders — Workflow', () => {
 // SECTION 3 — RELACE
 // ================================================================
 test.describe('Work Orders — Relace', () => {
-  test.beforeEach(async ({ page }) => { await login(page); });
+  test.beforeEach(async ({ page }) => { await login(page); if (page.url().includes('/login')) await loginViaApi(page); });
 
   test('WO bez přiřazení — povoleno', async ({ page }) => {
     const id = await createWoApi(page, { title: 'WO No Relations E2E' });
@@ -236,7 +237,7 @@ test.describe('Work Orders — Relace', () => {
 // SECTION 4 — EDGE CASES
 // ================================================================
 test.describe('Work Orders — Edge Cases', () => {
-  test.beforeEach(async ({ page }) => { await login(page); });
+  test.beforeEach(async ({ page }) => { await login(page); if (page.url().includes('/login')) await loginViaApi(page); });
 
   test('smazání WO v stavu v_reseni', async ({ page }) => {
     const id = await createWoApi(page, { title: 'WO Delete Active E2E' });
@@ -253,7 +254,7 @@ test.describe('Work Orders — Edge Cases', () => {
 // CLEANUP
 // ================================================================
 test.describe('Work Orders Deep — Cleanup', () => {
-  test.beforeEach(async ({ page }) => { await login(page); });
+  test.beforeEach(async ({ page }) => { await login(page); if (page.url().includes('/login')) await loginViaApi(page); });
 
   test('úklid', async ({ page }) => {
     const token = await getToken(page);

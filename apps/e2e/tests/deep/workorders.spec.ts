@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { login } from '../helpers/auth';
+import { login, loginViaApi } from '../helpers/auth';
 import fs from 'fs';
 import path from 'path';
 
@@ -11,6 +11,10 @@ function getTokenFromFile(): string {
 test.describe('Work Orders — Deep CRUD', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
+    // If expired token caused redirect to /login, get fresh tokens via API
+    if (page.url().includes('/login')) {
+      await loginViaApi(page);
+    }
   });
 
   // ============================================================
