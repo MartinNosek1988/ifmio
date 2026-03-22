@@ -146,8 +146,8 @@ export default function TicketForm({ onClose }: Props) {
       wide
       footer={
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <Button onClick={onClose}>Zrušit</Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={createMutation.isPending}>
+          <Button onClick={onClose} data-testid="ticket-form-cancel">Zrušit</Button>
+          <Button variant="primary" onClick={handleSubmit} disabled={createMutation.isPending} data-testid="ticket-form-save">
             {createMutation.isPending ? 'Vytvářím...' : 'Vytvořit'}
           </Button>
         </div>
@@ -156,12 +156,13 @@ export default function TicketForm({ onClose }: Props) {
       <div style={{ marginBottom: 14 }}>
         <label className="form-label">Název *</label>
         <input
+          data-testid="ticket-form-title"
           value={form.title}
           onChange={(e) => set('title', e.target.value)}
           placeholder="Stručný popis problému"
           style={inputStyle('title')}
         />
-        {errors.title && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.title}</div>}
+        {errors.title && <div data-testid="ticket-form-error-title" style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.title}</div>}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
@@ -207,13 +208,13 @@ export default function TicketForm({ onClose }: Props) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div>
           <label className="form-label">Kategorie</label>
-          <select value={form.category} onChange={(e) => set('category', e.target.value)} style={inputStyle()}>
+          <select data-testid="ticket-form-category" value={form.category} onChange={(e) => set('category', e.target.value)} style={inputStyle()}>
             {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
           </select>
         </div>
         <div>
           <label className="form-label">Priorita</label>
-          <select value={form.priority} onChange={(e) => set('priority', e.target.value)} style={inputStyle()}>
+          <select data-testid="ticket-form-priority" value={form.priority} onChange={(e) => set('priority', e.target.value)} style={inputStyle()}>
             {PRIORITIES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
           </select>
         </div>

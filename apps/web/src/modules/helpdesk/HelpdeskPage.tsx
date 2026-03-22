@@ -197,7 +197,7 @@ export default function HelpdeskPage() {
   };
 
   return (
-    <div>
+    <div data-testid="ticket-list-page">
       <div className="page-header">
         <div>
           <h1 className="page-title">Helpdesk</h1>
@@ -206,7 +206,7 @@ export default function HelpdeskPage() {
         <div style={{ display: 'flex', gap: 8 }}>
           <Button icon={<BarChart3 size={15} />} onClick={() => navigate('/helpdesk/dashboard')}>Dashboard</Button>
           <Button icon={<Settings size={15} />} onClick={() => navigate('/helpdesk/sla-config')}>SLA</Button>
-          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)}>Nový požadavek</Button>
+          <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)} data-testid="ticket-add-btn">Nový požadavek</Button>
         </div>
       </div>
 
@@ -219,8 +219,8 @@ export default function HelpdeskPage() {
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <div style={{ flex: 1 }}><SearchBar placeholder="Hledat požadavky..." onSearch={setSearch} /></div>
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={selectStyle}>
+        <div style={{ flex: 1 }}><SearchBar placeholder="Hledat požadavky..." onSearch={setSearch} data-testid="ticket-search-input" /></div>
+        <select data-testid="ticket-filter-status" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={selectStyle}>
           <option value="">Všechny stavy</option>
           {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
