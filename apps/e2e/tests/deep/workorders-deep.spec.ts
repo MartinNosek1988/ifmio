@@ -1,10 +1,15 @@
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth';
+import fs from 'fs';
+import path from 'path';
 
 const API_URL = process.env.API_URL || 'http://localhost:3000';
+const AUTH_FILE = path.join(__dirname, '..', '.auth', 'tokens.json');
 
 async function getToken(page: any): Promise<string> {
-  return page.evaluate(() => sessionStorage.getItem('ifmio:access_token'));
+  const token = await page.evaluate(() => sessionStorage.getItem('ifmio:access_token')).catch(() => null);
+  if (token) return token;
+  try { return JSON.parse(fs.readFileSync(AUTH_FILE, 'utf-8')).accessToken; } catch { return ''; }
 }
 
 async function createWoApi(page: any, data: Record<string, unknown>): Promise<string> {

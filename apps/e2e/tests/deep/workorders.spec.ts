@@ -1,5 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth';
+import fs from 'fs';
+import path from 'path';
+
+const AUTH_FILE = path.join(__dirname, '..', '.auth', 'tokens.json');
+function getTokenFromFile(): string {
+  try { return JSON.parse(fs.readFileSync(AUTH_FILE, 'utf-8')).accessToken; } catch { return ''; }
+}
 
 test.describe('Work Orders — Deep CRUD', () => {
   test.beforeEach(async ({ page }) => {
@@ -230,7 +237,7 @@ test.describe('Work Orders — Deep CRUD', () => {
         await expect(page.locator('[data-testid="wo-delete-confirm"]')).not.toBeVisible({ timeout: 5000 });
       } else {
         // Fallback: delete via API
-        const token = await page.evaluate(() => sessionStorage.getItem('ifmio:access_token'));
+        const token = await page.evaluate(() => sessionStorage.getItem('ifmio:access_token')).catch(() => null) || getTokenFromFile();
         const apiUrl = process.env.API_URL || 'http://localhost:3000';
         const listRes = await page.request.get(`${apiUrl}/api/v1/work-orders?search=Testovací WO E2E`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -256,7 +263,7 @@ test.describe('Work Orders — Deep CRUD', () => {
     await page.goto('/workorders');
     await page.waitForLoadState('domcontentloaded');
 
-    const token = await page.evaluate(() => sessionStorage.getItem('ifmio:access_token'));
+    const token = await page.evaluate(() => sessionStorage.getItem('ifmio:access_token')).catch(() => null) || getTokenFromFile();
     const apiUrl = process.env.API_URL || 'http://localhost:3000';
 
     const listRes = await page.request.get(`${apiUrl}/api/v1/work-orders?search=Testovací WO E2E`, {
