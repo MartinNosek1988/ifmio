@@ -1,5 +1,6 @@
--- AlterEnum: add OPENING_BALANCE to LedgerSourceType
-ALTER TYPE "LedgerSourceType" ADD VALUE 'OPENING_BALANCE';
+-- AlterEnum: add OPENING_BALANCE + SETTLEMENT to LedgerSourceType
+ALTER TYPE "LedgerSourceType" ADD VALUE IF NOT EXISTS 'OPENING_BALANCE';
+ALTER TYPE "LedgerSourceType" ADD VALUE IF NOT EXISTS 'SETTLEMENT';
 
 -- AlterTable: OwnerAccount — opening balance fields
 ALTER TABLE "owner_accounts" ADD COLUMN "openingBalanceSet" BOOLEAN NOT NULL DEFAULT false;
