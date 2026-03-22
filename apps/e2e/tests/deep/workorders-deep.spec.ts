@@ -11,6 +11,7 @@ async function createWoApi(page: any, data: Record<string, unknown>): Promise<st
     data: { title: 'Test WO', priority: 'normalni', ...data },
   });
   const body = await res.json();
+  if (!body?.id) console.error('createWoApi failed:', res.status(), JSON.stringify(body).slice(0, 200));
   return body?.id ?? '';
 }
 

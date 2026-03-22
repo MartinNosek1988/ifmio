@@ -57,8 +57,12 @@ export async function getFreshToken(page: any): Promise<string> {
 /**
  * Ensure the page is authenticated. If token expired and page redirected
  * to /login, re-login via API and inject fresh tokens.
+ * Waits briefly for async redirects (React router) before checking URL.
  */
 export async function ensureAuthenticated(page: any): Promise<void> {
+  // Wait for potential async redirect (expired JWT → 401 → React redirect to /login)
+  await page.waitForTimeout(2000);
+
   if (!page.url().includes('/login')) return;
 
   if (!TEST_EMAIL || !TEST_PASSWORD) return;
