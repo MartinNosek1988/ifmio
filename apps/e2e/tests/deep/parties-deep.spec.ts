@@ -61,7 +61,7 @@ test.describe('Parties — Validace polí', () => {
     // Valid IČO (unique displayName to avoid 409 from prior runs)
     const res1 = await page.request.post(`${API_URL}/api/v1/parties`, {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      data: { type: 'company', displayName: `IČO Test ${ts}`, ic: '12345678' },
+      data: { type: 'company', displayName: `IČO Test ${ts}`, ic: String(ts).slice(-8) },
     });
     expect(res1.status()).toBeLessThan(300);
     const p1 = await res1.json();
