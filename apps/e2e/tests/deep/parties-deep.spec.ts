@@ -56,11 +56,12 @@ test.describe('Parties — Validace polí', () => {
 
   test('IČO — API validuje max 20 znaků', async ({ page }) => {
     const token = await getToken(page);
+    const ts = Date.now();
 
-    // Valid IČO
+    // Valid IČO (unique displayName to avoid 409 from prior runs)
     const res1 = await page.request.post(`${API_URL}/api/v1/parties`, {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      data: { type: 'company', displayName: 'IČO Test Valid', ic: '12345678' },
+      data: { type: 'company', displayName: `IČO Test ${ts}`, ic: '12345678' },
     });
     expect(res1.status()).toBeLessThan(300);
     const p1 = await res1.json();
@@ -69,7 +70,7 @@ test.describe('Parties — Validace polí', () => {
     // IČO too long (21 chars) — should fail
     const res2 = await page.request.post(`${API_URL}/api/v1/parties`, {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      data: { type: 'company', displayName: 'IČO Test Long', ic: '123456789012345678901' },
+      data: { type: 'company', displayName: `IČO Long ${ts}`, ic: '123456789012345678901' },
     });
     expect(res2.status()).toBeGreaterThanOrEqual(400);
   });
