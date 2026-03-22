@@ -67,13 +67,13 @@ export default function DocumentsPage() {
   ];
 
   return (
-    <div>
+    <div data-testid="doc-list-page">
       <div className="page-header">
         <div>
           <h1 className="page-title">Dokumenty</h1>
           <p className="page-subtitle">{stats?.total ?? 0} dokumentu</p>
         </div>
-        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)}>Nahrat dokument</Button>
+        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)} data-testid="doc-add-btn">Nahrat dokument</Button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>

@@ -81,15 +81,15 @@ export default function EventForm({ event, defaultDate, onClose }: Props) {
     <Modal open onClose={onClose} title={isEdit ? 'Upravit událost' : 'Nová událost'}
       footer={
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <Button onClick={onClose}>Zrušit</Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={isPending}>{isEdit ? 'Uložit' : 'Vytvořit'}</Button>
+          <Button onClick={onClose} data-testid="calendar-form-cancel">Zrušit</Button>
+          <Button variant="primary" onClick={handleSubmit} disabled={isPending} data-testid="calendar-form-save">{isEdit ? 'Uložit' : 'Vytvořit'}</Button>
         </div>
       }>
 
       <div style={{ marginBottom: 14 }}>
         <label className="form-label">Název události *</label>
-        <input value={form.title} onChange={e => set('title', e.target.value)} style={inputStyle('title')} placeholder="Schůze SVJ, Revize výtahu..." />
-        {errors.title && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.title}</div>}
+        <input data-testid="calendar-form-title" value={form.title} onChange={e => set('title', e.target.value)} style={inputStyle('title')} placeholder="Schůze SVJ, Revize výtahu..." />
+        {errors.title && <div data-testid="calendar-form-error-title" style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.title}</div>}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
