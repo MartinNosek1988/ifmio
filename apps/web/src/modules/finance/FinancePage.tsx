@@ -22,6 +22,7 @@ import DebtorsTabV2 from './components/DebtorsTabV2';
 import KontoTab from './components/KontoTab';
 import RemindersTab from './components/RemindersTab';
 import InitialBalancesTab from './components/InitialBalancesTab';
+import SettlementPage from '../settlement/SettlementPage';
 import ComponentsTab from './components/ComponentsTab';
 
 // Modal components
@@ -42,6 +43,7 @@ const TABS = [
   { key: 'reminders', label: 'Upomínky' },
   { key: 'accounts', label: 'Účty' },
   { key: 'initial', label: 'Počáteční stavy' },
+  { key: 'settlement', label: 'Vyúčtování' },
 ] as const;
 
 type TabKey = typeof TABS[number]['key'];
@@ -325,6 +327,9 @@ export default function FinancePage() {
 
       {/* ── TAB: POČÁTEČNÍ STAVY ─────────────────────────────────── */}
       {tab === 'initial' && <InitialBalancesTab />}
+
+      {/* ── TAB: VYÚČTOVÁNÍ ──────────────────────────────────────── */}
+      {tab === 'settlement' && <SettlementPage />}
 
       {/* ── MODAL: GENEROVAT — property picker then components wizard */}
       {showGen && !genPropId && (

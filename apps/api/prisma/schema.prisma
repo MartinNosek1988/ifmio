@@ -1096,6 +1096,7 @@ enum LedgerSourceType {
   LATE_FEE
   MANUAL_ADJUSTMENT
   OPENING_BALANCE
+  SETTLEMENT
 }
 
 // ─── INITIAL BALANCES (Počáteční stavy) ──────────────────────────

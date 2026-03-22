@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common'
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { SettlementCalcService } from './settlement-calc.service'
-import { PdfService } from '../pdf/pdf.service'
+import { KontoService } from '../konto/konto.service'
 import { EmailService } from '../email/email.service'
 import PDFDocument from 'pdfkit'
 import type { CreateSettlementDto, AddCostDto } from './dto/create-settlement.dto'
@@ -18,6 +18,7 @@ export class SettlementService {
   constructor(
     private prisma: PrismaService,
     private calc: SettlementCalcService,
+    private konto: KontoService,
     private email: EmailService,
   ) {}
 
@@ -152,6 +153,97 @@ export class SettlementService {
     })
     if (!item || item.settlement.tenantId !== tenantId) throw new NotFoundException('Položka vyúčtování nenalezena')
     return item
+  }
+
+  // ─── CLOSE — post results to konto ──────────────────────────────
+
+  async closeSettlement(tenantId: string, id: string) {
+    const settlement = await this.prisma.settlement.findFirst({
+      where: { id, tenantId },
+      include: {
+        items: {
+          include: {
+            unit: {
+              include: { occupancies: { where: { isActive: true, isPrimaryPayer: true }, take: 1 } },
+            },
+          },
+        },
+      },
+    })
+    if (!settlement) throw new NotFoundException('Vyúčtování nenalezeno')
+    if (settlement.status !== 'approved') {
+      throw new BadRequestException('Uzavřít lze pouze schválené vyúčtování')
+    }
+
+    const year = settlement.periodFrom.getFullYear()
+    let posted = 0
+
+    for (const item of settlement.items) {
+      const balance = Number(item.balance)
+      if (Math.abs(balance) < 0.01) continue // zero result, skip
+
+      const occ = item.unit?.occupancies?.[0]
+      if (!occ) continue // no active resident
+
+      try {
+        const account = await this.konto.getOrCreateAccount(
+          tenantId, settlement.propertyId, item.unitId, occ.residentId,
+        )
+
+        if (balance > 0) {
+          // Přeplatek — SVJ owes the owner → CREDIT (reduces owner's balance)
+          await this.konto.postCredit(
+            account.id, balance, 'SETTLEMENT', settlement.id,
+            `Vyúčtování ${year} — přeplatek`, settlement.periodTo,
+          )
+        } else {
+          // Nedoplatek — owner owes SVJ → DEBIT (increases owner's balance)
+          await this.konto.postDebit(
+            account.id, Math.abs(balance), 'SETTLEMENT', settlement.id,
+            `Vyúčtování ${year} — nedoplatek`, settlement.periodTo,
+          )
+        }
+        posted++
+      } catch (err) {
+        this.logger.error(`Settlement konto posting for unit ${item.unitId} failed: ${err}`)
+      }
+    }
+
+    await this.prisma.settlement.update({
+      where: { id },
+      data: { status: 'closed' },
+    })
+
+    return { closed: true, posted, total: settlement.items.length }
+  }
+
+  // ─── REOPEN — only from approved ──────────────────────────────
+
+  async reopenSettlement(tenantId: string, id: string) {
+    const settlement = await this.prisma.settlement.findFirst({ where: { id, tenantId } })
+    if (!settlement) throw new NotFoundException('Vyúčtování nenalezeno')
+    if (settlement.status !== 'approved') {
+      throw new BadRequestException('Znovu otevřít lze pouze schválené vyúčtování')
+    }
+
+    return this.prisma.settlement.update({
+      where: { id },
+      data: { status: 'draft', approvedAt: null, approvedBy: null },
+    })
+  }
+
+  // ─── DELETE — only DRAFT ──────────────────────────────────────
+
+  async deleteSettlement(tenantId: string, id: string) {
+    const settlement = await this.prisma.settlement.findFirst({ where: { id, tenantId } })
+    if (!settlement) throw new NotFoundException('Vyúčtování nenalezeno')
+    if (settlement.status !== 'draft') {
+      throw new BadRequestException('Smazat lze pouze rozpracované vyúčtování')
+    }
+
+    // Cascading delete of items and costs (via onDelete: Cascade)
+    await this.prisma.settlement.delete({ where: { id } })
+    return { deleted: true }
   }
 
   // ─── AUTO-POPULATE COSTS FROM INVOICES ─────────────────────────

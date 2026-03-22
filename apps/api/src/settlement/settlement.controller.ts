@@ -75,6 +75,28 @@ export class SettlementController {
     return this.service.getUnitDetail(user.tenantId, id, unitId)
   }
 
+  @Post(':id/close')
+  @Roles('tenant_owner', 'tenant_admin')
+  @ApiOperation({ summary: 'Uzavřít vyúčtování a zaúčtovat do kont' })
+  close(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.service.closeSettlement(user.tenantId, id)
+  }
+
+  @Post(':id/reopen')
+  @Roles('tenant_owner', 'tenant_admin')
+  @ApiOperation({ summary: 'Znovu otevřít schválené vyúčtování' })
+  reopen(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.service.reopenSettlement(user.tenantId, id)
+  }
+
+  @Delete(':id')
+  @Roles('tenant_owner', 'tenant_admin')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Smazat rozpracované vyúčtování' })
+  remove(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.service.deleteSettlement(user.tenantId, id)
+  }
+
   @Post(':id/populate-costs')
   @Roles('tenant_owner', 'tenant_admin')
   @ApiOperation({ summary: 'Auto-naplnit náklady z dokladů (InvoiceCostAllocation)' })
