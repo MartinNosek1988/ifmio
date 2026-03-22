@@ -54,7 +54,13 @@ export class InitialBalancesService {
     if (account.openingBalanceSet) {
       // Already set — update the InitialBalance record only (konto already posted)
       const type = dto.amount >= 0 ? 'OWNER_DEBT' : 'OWNER_OVERPAYMENT'
-      return this.upsertInitialBalance(tenantId, dto.propertyId, type, dto.unitId, 'unit', dto.amount, cutoverDate, dto.note, userId)
+      const ib = await this.upsertInitialBalance(tenantId, dto.propertyId, type, dto.unitId, 'unit', dto.amount, cutoverDate, dto.note, userId)
+      // Mark as posted (konto was already set in a previous call)
+      await this.prisma.initialBalance.update({
+        where: { id: ib.id },
+        data: { postedToKonto: true },
+      })
+      return { account, initialBalance: ib }
     }
 
     // Delegate to konto service for first-time set
@@ -63,12 +69,21 @@ export class InitialBalancesService {
       dto.amount, cutoverDate, dto.note,
     )
 
-    // Track in InitialBalance
+    // Track in InitialBalance with konto posting info
     const type = dto.amount >= 0 ? 'OWNER_DEBT' : 'OWNER_OVERPAYMENT'
     const ib = await this.upsertInitialBalance(
       tenantId, dto.propertyId, type as any, dto.unitId, 'unit',
       dto.amount, cutoverDate, dto.note, userId,
     )
+
+    // Update with konto tracking
+    await this.prisma.initialBalance.update({
+      where: { id: ib.id },
+      data: {
+        postedToKonto: true,
+        ledgerEntryId: result.entry?.id ?? null,
+      },
+    })
 
     return { account: result.account, entry: result.entry, initialBalance: ib }
   }
@@ -152,23 +167,39 @@ export class InitialBalancesService {
       where: { tenantId, propertyId: dto.propertyId, type: 'DEPOSIT', entityId: dto.unitId },
     })
 
+    let ledgerEntryId: string | null = null
+
     if (!existing) {
       try {
-        await this.konto.postCredit(
+        const entry = await this.konto.postCredit(
           account.id, dto.amount, 'OPENING_BALANCE',
           `deposit-${account.id}`,
           dto.note || 'Kauce — počáteční stav',
           cutoverDate,
         )
+        ledgerEntryId = entry.id
       } catch (err) {
         this.logger.error(`Posting deposit to konto failed: ${err}`)
       }
     }
 
-    return this.upsertInitialBalance(
+    const ib = await this.upsertInitialBalance(
       tenantId, dto.propertyId, 'DEPOSIT', dto.unitId, 'unit',
       dto.amount, cutoverDate, dto.note, userId,
     )
+
+    // Track konto posting
+    if (ledgerEntryId || existing) {
+      await this.prisma.initialBalance.update({
+        where: { id: ib.id },
+        data: {
+          postedToKonto: !!ledgerEntryId || !!existing,
+          ...(ledgerEntryId ? { ledgerEntryId } : {}),
+        },
+      })
+    }
+
+    return ib
   }
 
   // ─── METER READING ──────────────────────────────────────────────
