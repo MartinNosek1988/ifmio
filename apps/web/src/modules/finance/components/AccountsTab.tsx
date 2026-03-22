@@ -125,8 +125,6 @@ export function AccountsTab() {
         bankCode: form.bankCode.trim(),
         iban: form.iban.trim() || undefined,
         currency: form.currency,
-        accountType: form.accountType,
-        isDefault: form.isDefault,
         propertyId: form.propertyId || undefined,
       }, {
         onSuccess: () => { toast.success('Účet vytvořen'); setShowForm(false); },
