@@ -18,7 +18,11 @@ export function Navigation() {
         <a href="#" className="landing-nav__logo">if<span className="landing-nav__logo-accent">mio</span></a>
 
         <button className="landing-nav__hamburger" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} aria-label="Menu">
-          <span /><span /><span />
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <rect x="3" y="6" width="18" height="2" />
+            <rect x="3" y="11" width="18" height="2" />
+            <rect x="3" y="16" width="18" height="2" />
+          </svg>
         </button>
 
         <div className={`landing-nav__links${menuOpen ? ' landing-nav__links--open' : ''}`}>
