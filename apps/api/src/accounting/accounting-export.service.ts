@@ -9,6 +9,8 @@ interface ExportOptions {
   from: string
   to: string
   type: 'invoices' | 'prescriptions' | 'all'
+  includeBankTransactions?: boolean
+  bankAccountId?: string
 }
 
 @Injectable()
@@ -55,25 +57,60 @@ export class AccountingExportService {
     })
   }
 
+  // ─── HELPERS: Load data ──────────────────────────────────────
+
+  private async loadBankTransactions(tenantId: string, opts: ExportOptions) {
+    const where: any = {
+      tenantId,
+      status: { not: 'ignored' },
+      date: { gte: new Date(opts.from), lte: new Date(opts.to) },
+    }
+    if (opts.bankAccountId) where.bankAccountId = opts.bankAccountId
+    else if (opts.propertyId) where.bankAccount = { propertyId: opts.propertyId }
+
+    return this.prisma.bankTransaction.findMany({
+      where,
+      include: { bankAccount: { select: { accountNumber: true, bankCode: true } } },
+      orderBy: { date: 'asc' },
+    })
+  }
+
+  private async getOrganizationIco(tenantId: string): Promise<string> {
+    const settings = await this.prisma.tenantSettings.findUnique({
+      where: { tenantId },
+      select: { companyNumber: true },
+    })
+    return settings?.companyNumber ?? ''
+  }
+
+  private mapVatRate(rate: number): string {
+    if (rate >= 21) return 'high'
+    if (rate >= 12) return 'low'
+    return 'none'
+  }
+
   // ─── POHODA XML ─────────────────────────────────────────────────
 
   async exportPohoda(user: AuthUser, opts: ExportOptions): Promise<Buffer> {
     await this.scope.verifyPropertyAccess(user, opts.propertyId)
-    const [invoices, prescriptions, presets] = await Promise.all([
+    const [invoices, prescriptions, presets, transactions, ico] = await Promise.all([
       opts.type !== 'prescriptions' ? this.loadInvoices(user.tenantId, opts) : Promise.resolve([]),
       opts.type !== 'invoices' ? this.loadPrescriptions(user.tenantId, opts) : Promise.resolve([]),
       this.loadPresets(user.tenantId, opts.propertyId),
+      opts.includeBankTransactions ? this.loadBankTransactions(user.tenantId, opts) : Promise.resolve([]),
+      this.getOrganizationIco(user.tenantId),
     ])
 
     const presetMap = new Map(presets.map(p => [p.transactionType, p]))
 
-    let xml = `<?xml version="1.0" encoding="Windows-1252"?>\n`
-    xml += `<dat:dataPack version="2.0" id="ifmio-export" ico="" application="ifmio" note="Export z ifmio"\n`
+    let xml = `<?xml version="1.0" encoding="Windows-1250"?>\n`
+    xml += `<dat:dataPack version="2.0" id="ifmio-export" ico="${this.esc(ico)}" application="ifmio" note="Export z ifmio"\n`
     xml += `  xmlns:dat="http://www.stormware.cz/schema/version_2/data.xsd"\n`
     xml += `  xmlns:inv="http://www.stormware.cz/schema/version_2/invoice.xsd"\n`
-    xml += `  xmlns:typ="http://www.stormware.cz/schema/version_2/type.xsd">\n`
+    xml += `  xmlns:typ="http://www.stormware.cz/schema/version_2/type.xsd"\n`
+    xml += `  xmlns:bnk="http://www.stormware.cz/schema/version_2/bank.xsd">\n`
 
-    // Invoices
+    // ── Invoices ──
     for (const inv of invoices) {
       const isIssued = inv.type === 'issued'
       const preset = presetMap.get(isIssued ? 'invoice_issued' : 'invoice_received')
@@ -82,49 +119,73 @@ export class AccountingExportService {
       xml += `      <inv:invoiceHeader>\n`
       xml += `        <inv:invoiceType>${isIssued ? 'issuedInvoice' : 'receivedInvoice'}</inv:invoiceType>\n`
       xml += `        <inv:number><typ:numberRequested>${this.esc(inv.number)}</typ:numberRequested></inv:number>\n`
-      xml += `        <inv:date>${this.fmtDate(inv.issueDate)}</inv:date>\n`
-      if (inv.dueDate) xml += `        <inv:dateDue>${this.fmtDate(inv.dueDate)}</inv:dateDue>\n`
-      if (preset) xml += `        <inv:accounting><typ:ids>${this.esc(preset.debitAccount)}</typ:ids></inv:accounting>\n`
       if (inv.variableSymbol) xml += `        <inv:symVar>${this.esc(inv.variableSymbol)}</inv:symVar>\n`
+      xml += `        <inv:date>${this.fmtDate(inv.issueDate)}</inv:date>\n`
+      if (inv.duzp) xml += `        <inv:dateTax>${this.fmtDate(inv.duzp)}</inv:dateTax>\n`
+      if (inv.dueDate) xml += `        <inv:dateDue>${this.fmtDate(inv.dueDate)}</inv:dateDue>\n`
+      if (inv.description) xml += `        <inv:text>${this.esc(inv.description)}</inv:text>\n`
+      if (preset) xml += `        <inv:accounting><typ:ids>${this.esc(preset.debitAccount)}</typ:ids></inv:accounting>\n`
       const party = isIssued ? inv.buyerName : inv.supplierName
-      const ico = isIssued ? inv.buyerIco : inv.supplierIco
+      const partyIco = isIssued ? inv.buyerIco : inv.supplierIco
       if (party) {
         xml += `        <inv:partnerIdentity>\n`
         xml += `          <typ:address><typ:company>${this.esc(party)}</typ:company>`
-        if (ico) xml += `<typ:ico>${this.esc(ico)}</typ:ico>`
+        if (partyIco) xml += `<typ:ico>${this.esc(partyIco)}</typ:ico>`
         xml += `</typ:address>\n`
         xml += `        </inv:partnerIdentity>\n`
       }
       xml += `      </inv:invoiceHeader>\n`
       xml += `      <inv:invoiceDetail>\n`
 
+      // Items from cost allocations or fallback to single item
+      let priceNone = 0, priceLow = 0, priceHigh = 0, priceHighVat = 0, priceLowVat = 0
       if (inv.costAllocations && inv.costAllocations.length > 0) {
         for (const alloc of inv.costAllocations) {
+          const amt = Number(alloc.amount)
+          const vr = Number(alloc.vatRate ?? 0)
+          const vatStr = this.mapVatRate(vr)
           xml += `        <inv:invoiceItem>\n`
           xml += `          <inv:text>${this.esc(alloc.component?.name ?? 'Položka')}</inv:text>\n`
-          xml += `          <inv:quantity>1</inv:quantity>\n`
-          xml += `          <inv:rateVAT>${Number(alloc.vatRate ?? 0) > 0 ? 'high' : 'none'}</inv:rateVAT>\n`
-          xml += `          <inv:homeCurrency><typ:unitPrice>${Number(alloc.amount)}</typ:unitPrice></inv:homeCurrency>\n`
-          if (alloc.component?.accountingCode) {
-            xml += `          <inv:accounting><typ:ids>${this.esc(alloc.component.accountingCode)}</typ:ids></inv:accounting>\n`
-          }
+          xml += `          <inv:quantity>1</inv:quantity><inv:unit>ks</inv:unit>\n`
+          xml += `          <inv:rateVAT>${vatStr}</inv:rateVAT>\n`
+          xml += `          <inv:homeCurrency><typ:unitPrice>${amt.toFixed(2)}</typ:unitPrice></inv:homeCurrency>\n`
+          if (alloc.component?.accountingCode) xml += `          <inv:accounting><typ:ids>${this.esc(alloc.component.accountingCode)}</typ:ids></inv:accounting>\n`
           xml += `        </inv:invoiceItem>\n`
+          if (vatStr === 'none') priceNone += amt
+          else if (vatStr === 'low') { priceLow += amt; priceLowVat += amt * 0.12 }
+          else { priceHigh += amt; priceHighVat += amt * 0.21 }
         }
       } else {
+        const amt = Number(inv.amountBase ?? inv.amountTotal)
+        const vr = Number(inv.vatRate ?? 0)
+        const vatStr = this.mapVatRate(vr)
         xml += `        <inv:invoiceItem>\n`
         xml += `          <inv:text>${this.esc(inv.description ?? 'Doklad')}</inv:text>\n`
-        xml += `          <inv:quantity>1</inv:quantity>\n`
-        xml += `          <inv:rateVAT>${Number(inv.vatRate) > 0 ? 'high' : 'none'}</inv:rateVAT>\n`
-        xml += `          <inv:homeCurrency><typ:unitPrice>${Number(inv.amountTotal)}</typ:unitPrice></inv:homeCurrency>\n`
+        xml += `          <inv:quantity>1</inv:quantity><inv:unit>ks</inv:unit>\n`
+        xml += `          <inv:rateVAT>${vatStr}</inv:rateVAT>\n`
+        xml += `          <inv:homeCurrency><typ:unitPrice>${amt.toFixed(2)}</typ:unitPrice></inv:homeCurrency>\n`
         xml += `        </inv:invoiceItem>\n`
+        if (vatStr === 'none') priceNone += amt
+        else if (vatStr === 'low') { priceLow += amt; priceLowVat += Number(inv.vatAmount ?? 0) }
+        else { priceHigh += amt; priceHighVat += Number(inv.vatAmount ?? 0) }
       }
 
       xml += `      </inv:invoiceDetail>\n`
+      xml += `      <inv:invoiceSummary>\n`
+      xml += `        <inv:roundingDocument>math2one</inv:roundingDocument>\n`
+      xml += `        <inv:homeCurrency>\n`
+      xml += `          <typ:priceNone>${priceNone.toFixed(2)}</typ:priceNone>\n`
+      xml += `          <typ:priceLow>${priceLow.toFixed(2)}</typ:priceLow>\n`
+      xml += `          <typ:priceLowVAT>${priceLowVat.toFixed(2)}</typ:priceLowVAT>\n`
+      xml += `          <typ:priceHigh>${priceHigh.toFixed(2)}</typ:priceHigh>\n`
+      xml += `          <typ:priceHighVAT>${priceHighVat.toFixed(2)}</typ:priceHighVAT>\n`
+      xml += `        </inv:homeCurrency>\n`
+      xml += `      </inv:invoiceSummary>\n`
       xml += `    </inv:invoice>\n`
       xml += `  </dat:dataPackItem>\n`
     }
 
-    // Prescriptions as issued invoices
+    // ── Prescriptions as issued invoices ──
     for (const p of prescriptions) {
       const resName = p.resident
         ? (p.resident.isLegalEntity && p.resident.companyName ? p.resident.companyName : `${p.resident.firstName} ${p.resident.lastName}`)
@@ -135,29 +196,90 @@ export class AccountingExportService {
       xml += `      <inv:invoiceHeader>\n`
       xml += `        <inv:invoiceType>issuedInvoice</inv:invoiceType>\n`
       xml += `        <inv:number><typ:numberRequested>${this.esc(p.variableSymbol ?? p.id.slice(0, 8))}</typ:numberRequested></inv:number>\n`
-      xml += `        <inv:date>${this.fmtDate(p.validFrom)}</inv:date>\n`
-      if (preset) xml += `        <inv:accounting><typ:ids>${this.esc(preset.debitAccount)}</typ:ids></inv:accounting>\n`
       if (p.variableSymbol) xml += `        <inv:symVar>${this.esc(p.variableSymbol)}</inv:symVar>\n`
-      if (resName) {
-        xml += `        <inv:partnerIdentity><typ:address><typ:company>${this.esc(resName)}</typ:company></typ:address></inv:partnerIdentity>\n`
-      }
+      xml += `        <inv:date>${this.fmtDate(p.validFrom)}</inv:date>\n`
+      xml += `        <inv:dateTax>${this.fmtDate(p.validFrom)}</inv:dateTax>\n`
+      xml += `        <inv:text>${this.esc(p.description)}</inv:text>\n`
+      if (preset) xml += `        <inv:accounting><typ:ids>${this.esc(preset.debitAccount)}</typ:ids></inv:accounting>\n`
+      if (resName) xml += `        <inv:partnerIdentity><typ:address><typ:company>${this.esc(resName)}</typ:company></typ:address></inv:partnerIdentity>\n`
       xml += `      </inv:invoiceHeader>\n`
       xml += `      <inv:invoiceDetail>\n`
+      let pTotal = 0
       for (const item of p.items) {
+        const amt = Number(item.amount)
         xml += `        <inv:invoiceItem>\n`
         xml += `          <inv:text>${this.esc(item.name)}</inv:text>\n`
-        xml += `          <inv:quantity>1</inv:quantity>\n`
-        xml += `          <inv:rateVAT>${item.vatRate > 0 ? 'high' : 'none'}</inv:rateVAT>\n`
-        xml += `          <inv:homeCurrency><typ:unitPrice>${Number(item.amount)}</typ:unitPrice></inv:homeCurrency>\n`
+        xml += `          <inv:quantity>1</inv:quantity><inv:unit>ks</inv:unit>\n`
+        xml += `          <inv:rateVAT>${this.mapVatRate(item.vatRate)}</inv:rateVAT>\n`
+        xml += `          <inv:homeCurrency><typ:unitPrice>${amt.toFixed(2)}</typ:unitPrice></inv:homeCurrency>\n`
         xml += `        </inv:invoiceItem>\n`
+        pTotal += amt
       }
       xml += `      </inv:invoiceDetail>\n`
+      xml += `      <inv:invoiceSummary>\n`
+      xml += `        <inv:homeCurrency><typ:priceNone>${pTotal.toFixed(2)}</typ:priceNone></inv:homeCurrency>\n`
+      xml += `      </inv:invoiceSummary>\n`
       xml += `    </inv:invoice>\n`
       xml += `  </dat:dataPackItem>\n`
     }
 
+    // ── Bank transactions ──
+    for (const tx of transactions) {
+      const amt = Math.abs(Number(tx.amount))
+      const isReceipt = Number(tx.amount) >= 0
+      xml += `  <dat:dataPackItem version="2.0" id="bnk-${this.esc(tx.id.slice(0, 8))}">\n`
+      xml += `    <bnk:bank version="2.0">\n`
+      xml += `      <bnk:bankHeader>\n`
+      xml += `        <bnk:bankType>${isReceipt ? 'receipt' : 'expense'}</bnk:bankType>\n`
+      if (tx.bankAccount) {
+        xml += `        <bnk:account>\n`
+        xml += `          <typ:accountNo>${this.esc(tx.bankAccount.accountNumber)}</typ:accountNo>\n`
+        if (tx.bankAccount.bankCode) xml += `          <typ:bankCode>${this.esc(tx.bankAccount.bankCode)}</typ:bankCode>\n`
+        xml += `        </bnk:account>\n`
+      }
+      if (tx.variableSymbol) xml += `        <bnk:symVar>${this.esc(tx.variableSymbol)}</bnk:symVar>\n`
+      if (tx.constantSymbol) xml += `        <bnk:symConst>${this.esc(tx.constantSymbol)}</bnk:symConst>\n`
+      if (tx.specificSymbol) xml += `        <bnk:symSpec>${this.esc(tx.specificSymbol)}</bnk:symSpec>\n`
+      xml += `        <bnk:dateStatement>${this.fmtDate(tx.date)}</bnk:dateStatement>\n`
+      xml += `        <bnk:datePayment>${this.fmtDate(tx.bookingDate ?? tx.date)}</bnk:datePayment>\n`
+      if (tx.description) xml += `        <bnk:text>${this.esc(tx.description)}</bnk:text>\n`
+      if (tx.counterparty) {
+        xml += `        <bnk:partnerIdentity><typ:address><typ:company>${this.esc(tx.counterparty)}</typ:company></typ:address></bnk:partnerIdentity>\n`
+      }
+      xml += `        <bnk:homeCurrency><typ:priceNone>${amt.toFixed(2)}</typ:priceNone></bnk:homeCurrency>\n`
+      xml += `      </bnk:bankHeader>\n`
+      xml += `    </bnk:bank>\n`
+      xml += `  </dat:dataPackItem>\n`
+    }
+
     xml += `</dat:dataPack>\n`
-    return iconv.encode(xml, 'win1252')
+    return iconv.encode(xml, 'win1250')
+  }
+
+  // ─── POHODA PREVIEW ──────────────────────────────────────────────
+
+  async previewPohoda(user: AuthUser, opts: ExportOptions) {
+    await this.scope.verifyPropertyAccess(user, opts.propertyId)
+    const [invoices, prescriptions, transactions] = await Promise.all([
+      opts.type !== 'prescriptions' ? this.loadInvoices(user.tenantId, opts) : Promise.resolve([]),
+      opts.type !== 'invoices' ? this.loadPrescriptions(user.tenantId, opts) : Promise.resolve([]),
+      opts.includeBankTransactions ? this.loadBankTransactions(user.tenantId, opts) : Promise.resolve([]),
+    ])
+
+    const invoiceAmount = invoices.reduce((s, i) => s + Number(i.amountTotal), 0)
+    const prescriptionAmount = prescriptions.reduce((s, p) => s + Number(p.amount), 0)
+    const bankAmount = transactions.reduce((s, t) => s + Math.abs(Number(t.amount)), 0)
+
+    return {
+      invoiceCount: invoices.length,
+      prescriptionCount: prescriptions.length,
+      bankTransactionCount: transactions.length,
+      invoiceAmount: Math.round(invoiceAmount * 100) / 100,
+      prescriptionAmount: Math.round(prescriptionAmount * 100) / 100,
+      bankAmount: Math.round(bankAmount * 100) / 100,
+      totalRecords: invoices.length + prescriptions.length + transactions.length,
+      dateRange: `${new Date(opts.from).toLocaleDateString('cs-CZ')} – ${new Date(opts.to).toLocaleDateString('cs-CZ')}`,
+    }
   }
 
   // ─── MONEY S3 XML ──────────────────────────────────────────────
