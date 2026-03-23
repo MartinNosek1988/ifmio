@@ -245,6 +245,83 @@ model PortalMessage {
   @@map("portal_messages")
 }
 
+// ─── SIPO (Soustředěné inkaso plateb obyvatelstva) ──────────────
+
+model SipoConfig {
+  id              String           @id @default(cuid())
+  tenantId        String
+  propertyId      String           @unique
+  recipientNumber String           @db.VarChar(6)   // Číslo Příjemce (6-místné)
+  feeCode         String           @db.VarChar(3)   // Kód poplatku (3-místné)
+  deliveryMode    SipoDeliveryMode @default(FULL_REGISTER)
+  encoding        SipoEncoding     @default(WIN1250)
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  property        Property         @relation(fields: [propertyId], references: [id])
+
+  @@index([tenantId])
+  @@map("sipo_configs")
+}
+
+enum SipoDeliveryMode {
+  FULL_REGISTER    // celý kmen plátců
+  CHANGES_ONLY     // jen změny
+}
+
+enum SipoEncoding {
+  CP852
+  WIN1250
+}
+
+model SipoExport {
+  id              String           @id @default(cuid())
+  tenantId        String
+  propertyId      String
+  period          String           @db.VarChar(6)   // MMRRRR
+  recordCount     Int
+  totalAmount     Decimal          @db.Decimal(12, 2)
+  fileName        String
+  status          SipoExportStatus @default(GENERATED)
+  errorFile       String?          @db.Text
+  createdAt       DateTime         @default(now())
+
+  property        Property         @relation(fields: [propertyId], references: [id])
+
+  @@index([tenantId])
+  @@index([propertyId, period])
+  @@map("sipo_exports")
+}
+
+enum SipoExportStatus {
+  GENERATED
+  SENT
+  ACCEPTED
+  REJECTED
+  PARTIALLY_OK
+}
+
+model SipoPayment {
+  id              String   @id @default(cuid())
+  tenantId        String
+  propertyId      String
+  period          String   @db.VarChar(6)
+  sipoNumber      String   @db.VarChar(10)
+  recipientNumber String   @db.VarChar(6)
+  feeCode         String   @db.VarChar(3)
+  amount          Decimal  @db.Decimal(12, 2)
+  paymentDate     DateTime
+  matchedToKonto  Boolean  @default(false)
+  importedAt      DateTime @default(now())
+
+  property        Property @relation(fields: [propertyId], references: [id])
+
+  @@index([tenantId])
+  @@index([sipoNumber, period])
+  @@map("sipo_payments")
+}
+
 model RefreshToken {
   id         String    @id @default(uuid())
   userId     String
@@ -368,6 +445,9 @@ model Property {
   assemblies                 Assembly[]
   perRollamVotings           PerRollamVoting[]
   initialBalances            InitialBalance[]
+  sipoConfig                 SipoConfig?
+  sipoExports                SipoExport[]
+  sipoPayments               SipoPayment[]
 
   @@index([tenantId])
   @@map("properties")
@@ -576,6 +656,7 @@ model Occupancy {
   personCount     Int?          // počet osob v domácnosti (přepíše unit.personCount)
   isPrimaryPayer  Boolean       @default(true) // kdo dostane předpis
   variableSymbol  String?       // VS přiřazený tomuto vztahu
+  sipoNumber      String?       @db.VarChar(10) // SIPO spojovací číslo plátce
   note            String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -1143,6 +1224,7 @@ enum LedgerSourceType {
   MANUAL_ADJUSTMENT
   OPENING_BALANCE
   SETTLEMENT
+  SIPO
 }
 
 // ─── INITIAL BALANCES (Počáteční stavy) ──────────────────────────

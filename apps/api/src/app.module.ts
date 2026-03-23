@@ -40,6 +40,7 @@ import { RecurringPlansModule } from './recurring-plans/recurring-plans.module';
 import { KontoModule } from './konto/konto.module';
 import { DebtorsModule } from './debtors/debtors.module';
 import { InitialBalancesModule } from './initial-balances/initial-balances.module';
+import { SipoModule } from './sipo/sipo.module';
 import { PartyModule } from './party/party.module';
 import { PrincipalModule } from './principal/principal.module';
 import { ManagementContractModule } from './management-contract/management-contract.module';
@@ -130,6 +131,7 @@ import { FieldEncryptionService } from './common/crypto/field-encryption.service
     KontoModule,
     DebtorsModule,
     InitialBalancesModule,
+    SipoModule,
     PartyModule,
     PrincipalModule,
     ManagementContractModule,

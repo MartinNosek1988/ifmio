@@ -25,7 +25,7 @@ export class KontoService {
 
   async postDebit(
     accountId: string, amount: Decimal | number,
-    sourceType: 'PRESCRIPTION' | 'BANK_TRANSACTION' | 'CREDIT_APPLICATION' | 'LATE_FEE' | 'MANUAL_ADJUSTMENT' | 'OPENING_BALANCE' | 'SETTLEMENT',
+    sourceType: 'PRESCRIPTION' | 'BANK_TRANSACTION' | 'CREDIT_APPLICATION' | 'LATE_FEE' | 'MANUAL_ADJUSTMENT' | 'OPENING_BALANCE' | 'SETTLEMENT' | 'SIPO',
     sourceId: string, description: string, date?: Date,
   ) {
     const decAmount = new Decimal(amount)
@@ -35,7 +35,7 @@ export class KontoService {
 
   async postCredit(
     accountId: string, amount: Decimal | number,
-    sourceType: 'PRESCRIPTION' | 'BANK_TRANSACTION' | 'CREDIT_APPLICATION' | 'LATE_FEE' | 'MANUAL_ADJUSTMENT' | 'OPENING_BALANCE' | 'SETTLEMENT',
+    sourceType: 'PRESCRIPTION' | 'BANK_TRANSACTION' | 'CREDIT_APPLICATION' | 'LATE_FEE' | 'MANUAL_ADJUSTMENT' | 'OPENING_BALANCE' | 'SETTLEMENT' | 'SIPO',
     sourceId: string, description: string, date?: Date,
   ) {
     const decAmount = new Decimal(amount)
@@ -47,7 +47,7 @@ export class KontoService {
     accountId: string,
     type: 'DEBIT' | 'CREDIT' | 'ADJUSTMENT',
     amount: Decimal,
-    sourceType: 'PRESCRIPTION' | 'BANK_TRANSACTION' | 'CREDIT_APPLICATION' | 'LATE_FEE' | 'MANUAL_ADJUSTMENT' | 'OPENING_BALANCE' | 'SETTLEMENT',
+    sourceType: 'PRESCRIPTION' | 'BANK_TRANSACTION' | 'CREDIT_APPLICATION' | 'LATE_FEE' | 'MANUAL_ADJUSTMENT' | 'OPENING_BALANCE' | 'SETTLEMENT' | 'SIPO',
     sourceId: string,
     description: string,
     date: Date,
