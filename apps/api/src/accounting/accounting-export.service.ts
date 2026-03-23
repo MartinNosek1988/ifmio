@@ -152,8 +152,8 @@ export class AccountingExportService {
           if (alloc.component?.accountingCode) xml += `          <inv:accounting><typ:ids>${this.esc(alloc.component.accountingCode)}</typ:ids></inv:accounting>\n`
           xml += `        </inv:invoiceItem>\n`
           if (vatStr === 'none') priceNone += amt
-          else if (vatStr === 'low') { priceLow += amt; priceLowVat += amt * 0.12 }
-          else { priceHigh += amt; priceHighVat += amt * 0.21 }
+          else if (vatStr === 'low') { priceLow += amt; priceLowVat += amt * (vr / 100) }
+          else { priceHigh += amt; priceHighVat += amt * (vr / 100) }
         }
       } else {
         const amt = Number(inv.amountBase ?? inv.amountTotal)

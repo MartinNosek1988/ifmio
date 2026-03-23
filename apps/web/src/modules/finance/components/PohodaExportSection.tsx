@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Download } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { Button, Badge, EmptyState } from '../../../shared/components'
@@ -35,20 +35,33 @@ export default function PohodaExportSection() {
   const [downloading, setDownloading] = useState(false)
 
   // Auto-select first property
-  if (!propertyId && properties.length > 0) setPropertyId(properties[0].id)
+  useEffect(() => {
+    if (!propertyId && properties.length > 0) setPropertyId(properties[0].id)
+  }, [properties, propertyId])
 
-  const exportType = includeInvoices && includePrescriptions ? 'all' : includeInvoices ? 'invoices' : includePrescriptions ? 'prescriptions' : 'all'
+  const exportType =
+    includeInvoices && includePrescriptions
+      ? 'all'
+      : includeInvoices
+        ? 'invoices'
+        : includePrescriptions
+          ? 'prescriptions'
+          : 'none'
 
   const { data: preview, isLoading: previewLoading } = useQuery({
     queryKey: ['pohoda-preview', propertyId, dateFrom, dateTo, exportType, includeBank],
     queryFn: () => apiClient.get(`/properties/${propertyId}/accounting/export/pohoda/preview`, {
       params: { from: dateFrom, to: dateTo, type: exportType, includeBank: String(includeBank) },
     }).then(r => r.data),
-    enabled: !!propertyId && !!dateFrom && !!dateTo,
+    enabled: !!propertyId && !!dateFrom && !!dateTo && exportType !== 'none',
   })
 
   const handleDownload = async () => {
     if (!propertyId) return
+    if (exportType === 'none') {
+      toast.error('Vyberte alespoň jeden typ dokladu pro export')
+      return
+    }
     setDownloading(true)
     try {
       const response = await apiClient.get(`/properties/${propertyId}/accounting/export/pohoda`, {
