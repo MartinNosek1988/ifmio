@@ -1,10 +1,12 @@
 import {
-  Controller, Get, Post, Body, Param, HttpCode, UseGuards,
+  Controller, Get, Post, Delete, Body, Param, HttpCode,
 } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { PortalService } from './portal.service'
+import { PortalAccessService } from './portal-access.service'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
 import { Roles } from '../common/decorators/roles.decorator'
+import { ROLES_MANAGE } from '../common/constants/roles.constants'
 import type { AuthUser } from '@ifmio/shared-types'
 import { CreatePortalTicketDto, SubmitMeterReadingDto } from './dto/portal.dto'
 
@@ -13,7 +15,10 @@ import { CreatePortalTicketDto, SubmitMeterReadingDto } from './dto/portal.dto'
 @Controller('portal')
 @Roles('unit_owner', 'unit_tenant')
 export class PortalController {
-  constructor(private portalService: PortalService) {}
+  constructor(
+    private portalService: PortalService,
+    private accessService: PortalAccessService,
+  ) {}
 
   @Get('my-units')
   @ApiOperation({ summary: 'Jednotky klienta (dle partyId)' })
@@ -73,5 +78,56 @@ export class PortalController {
   @ApiOperation({ summary: 'Stav konta klienta' })
   getMyKonto(@CurrentUser() user: AuthUser) {
     return this.portalService.getMyKonto(user)
+  }
+
+  // ─── ADMIN: Portal Access Management ────────────────────────
+
+  @Post('admin/generate-access')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Vygenerovat přístup do portálu pro vlastníka' })
+  generateAccess(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: { residentId: string; email: string },
+  ) {
+    return this.accessService.generateAccess(user.tenantId, dto.residentId, dto.email)
+  }
+
+  @Post('admin/bulk-generate/:propertyId')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Hromadně vygenerovat přístupy pro nemovitost' })
+  bulkGenerateAccess(
+    @CurrentUser() user: AuthUser,
+    @Param('propertyId') propertyId: string,
+  ) {
+    return this.accessService.bulkGenerateAccess(user.tenantId, propertyId)
+  }
+
+  @Delete('admin/revoke/:id')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Zrušit přístup do portálu' })
+  revokeAccess(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.accessService.revokeAccess(user.tenantId, id)
+  }
+
+  @Post('admin/send-invitation/:accessId')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Odeslat pozvánku do portálu emailem' })
+  sendInvitation(@CurrentUser() user: AuthUser, @Param('accessId') accessId: string) {
+    return this.accessService.sendInvitation(user.tenantId, accessId)
+  }
+
+  @Get('admin/status/:propertyId')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Stav portálových přístupů pro nemovitost' })
+  getPortalStatus(@CurrentUser() user: AuthUser, @Param('propertyId') propertyId: string) {
+    return this.accessService.getPropertyPortalStatus(user.tenantId, propertyId)
+  }
+
+  @Get('admin/messages')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Zprávy z portálu (admin pohled)' })
+  async getAdminMessages(@CurrentUser() user: AuthUser) {
+    const messages = await this.accessService.getUnreadCount(user.tenantId, 'inbound')
+    return { unreadCount: messages }
   }
 }

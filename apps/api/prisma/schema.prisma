@@ -87,6 +87,8 @@ model Tenant {
   apiKeys                     ApiKey[]
   unitGroups                  UnitGroup[]
   accountingPresets           AccountingPreset[]
+  portalAccess               PortalAccess[]
+  portalMessages             PortalMessage[]
 
   @@map("tenants")
 }
@@ -199,6 +201,48 @@ model TenantInvitation {
   @@index([tenantId])
   @@index([token])
   @@map("tenant_invitations")
+}
+
+// ─── OWNER PORTAL (public token-based access) ─────────────────
+
+model PortalAccess {
+  id              String    @id @default(cuid())
+  tenantId        String
+  residentId      String    // link to Resident (owner/tenant)
+  email           String
+  accessToken     String    @unique @default(cuid())
+  pin             String?   // optional PIN for extra security
+  isActive        Boolean   @default(true)
+  lastAccessAt    DateTime?
+  expiresAt       DateTime? // null = never expires
+  createdAt       DateTime  @default(now())
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  resident  Resident @relation(fields: [residentId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, email])
+  @@index([accessToken])
+  @@index([tenantId, residentId])
+  @@map("portal_access")
+}
+
+model PortalMessage {
+  id              String    @id @default(cuid())
+  tenantId        String
+  residentId      String
+  propertyId      String?
+  subject         String
+  body            String    @db.Text
+  direction       String    // 'inbound' (owner→admin) | 'outbound' (admin→owner)
+  isRead          Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  resident  Resident @relation(fields: [residentId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, residentId])
+  @@index([tenantId, direction, isRead])
+  @@map("portal_messages")
 }
 
 model RefreshToken {
@@ -499,6 +543,8 @@ model Resident {
   buyerInvoices    Invoice[]         @relation("InvoiceBuyer")
   ownerAccounts    OwnerAccount[]
   kontoReminders   KontoReminder[]
+  portalAccess     PortalAccess[]
+  portalMessages   PortalMessage[]
 
   @@index([tenantId])
   @@index([tenantId, isActive])

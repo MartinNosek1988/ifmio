@@ -42,6 +42,17 @@ export default function MyPrescriptionsPage() {
               <div className="text-muted" style={{ fontSize: '.78rem', marginTop: 4 }}>
                 Od: {p.validFrom?.slice(0, 10)} {p.validTo ? `do: ${p.validTo.slice(0, 10)}` : '(bez omezení)'}
               </div>
+              {/* QR Platba — SPD format */}
+              {p.variableSymbol && (
+                <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 6, background: 'rgba(99,102,241,.05)', border: '1px solid rgba(99,102,241,.15)', fontSize: '.78rem' }}>
+                  <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--primary)' }}>Platební údaje</div>
+                  <div>VS: <strong style={{ fontFamily: 'monospace' }}>{p.variableSymbol}</strong></div>
+                  <div>Částka: <strong>{Number(p.amount).toLocaleString('cs-CZ')} Kč</strong></div>
+                  <div className="text-muted" style={{ marginTop: 4, fontSize: '.72rem' }}>
+                    Naskenujte QR kód v bankovní aplikaci nebo zadejte údaje ručně.
+                  </div>
+                </div>
+              )}
               {p.items?.length > 0 && (
                 <div style={{ marginTop: 6 }}>
                   <button
