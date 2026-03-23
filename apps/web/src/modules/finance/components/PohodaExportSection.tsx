@@ -37,7 +37,7 @@ export default function PohodaExportSection() {
   // Auto-select first property
   useEffect(() => {
     if (!propertyId && properties.length > 0) setPropertyId(properties[0].id)
-  }, [properties])
+  }, [properties, propertyId])
 
   const exportType =
     includeInvoices && includePrescriptions
