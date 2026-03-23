@@ -24,6 +24,7 @@ import RemindersTab from './components/RemindersTab';
 import InitialBalancesTab from './components/InitialBalancesTab';
 import SettlementPage from '../settlement/SettlementPage';
 import PohodaExportSection from './components/PohodaExportSection';
+import SipoTab from './sipo/SipoTab';
 import ComponentsTab from './components/ComponentsTab';
 
 // Modal components
@@ -46,6 +47,7 @@ const TABS = [
   { key: 'initial', label: 'Počáteční stavy' },
   { key: 'settlement', label: 'Vyúčtování' },
   { key: 'export', label: 'Export' },
+  { key: 'sipo', label: 'SIPO' },
 ] as const;
 
 type TabKey = typeof TABS[number]['key'];
@@ -335,6 +337,9 @@ export default function FinancePage() {
 
       {/* ── TAB: EXPORT ──────────────────────────────────────────── */}
       {tab === 'export' && <PohodaExportSection />}
+
+      {/* ── TAB: SIPO ────────────────────────────────────────────── */}
+      {tab === 'sipo' && <SipoTab />}
 
       {/* ── MODAL: GENEROVAT — property picker then components wizard */}
       {showGen && !genPropId && (

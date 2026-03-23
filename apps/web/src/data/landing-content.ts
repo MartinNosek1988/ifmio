@@ -2,227 +2,180 @@ export const META = {
   title: 'ifmio | AI-native platforma pro správu nemovitostí',
   description: 'Automatizujte správu nemovitostí s AI asistentem Mio. Evidence, předpisy, revize, komunikace a finance — vše v jedné platformě.',
   brandName: 'ifmio',
-  legalEntity: 'Grand Facility s.r.o.',
-} as const;
-
-export const COLORS = {
-  primary: '#0D9488',
-  accent: '#14B8A6',
-  tealLight: '#5EEAD4',
-  teal50: '#E6FFFA',
-  dark: '#0C1222',
-  darkSurface: '#1A2332',
-  white: '#FFFFFF',
-  gray100: '#F3F4F6',
-  gray200: '#E5E7EB',
-  gray400: '#9CA3AF',
-  gray500: '#6B7280',
-  gray600: '#4B5563',
-  gray700: '#374151',
-  gray800: '#1F2937',
-} as const;
+  legalEntity: 'IFMIO Ltd.',
+} as const
 
 export const NAV = {
   logoText: 'ifmio',
   links: [
-    { label: 'Platforma', href: '#platforma' },
-    { label: 'Funkce', href: '#funkce' },
-    { label: 'Ceník', href: '#cenik' },
-    { label: 'Reference', href: '#reference' },
+    { label: 'Ceník', href: '/cenik' },
     { label: 'Kontakt', href: '#kontakt' },
   ],
   ctaPrimary: 'Vyzkoušet demo',
   ctaSecondary: 'Přihlásit se',
-} as const;
+  platformMenu: {
+    title: 'Platforma',
+    columns: [
+      {
+        title: 'SPRÁVA NEMOVITOSTÍ',
+        items: [
+          { icon: '🏠', title: 'Evidence nemovitostí', desc: 'Domy, jednotky, vlastníci' },
+          { icon: '💰', title: 'Finance & doklady', desc: 'Faktury, banka, DPH' },
+          { icon: '📊', title: 'Předpisy plateb', desc: 'Složky, generátor, SIPO' },
+          { icon: '📒', title: 'Konto vlastníků', desc: 'Dluhy, přeplatky, upomínky' },
+          { icon: '📧', title: 'Komunikace', desc: 'E-maily, SMS, nástěnka' },
+        ],
+      },
+      {
+        title: 'TECHNICKÁ SPRÁVA',
+        items: [
+          { icon: '🔧', title: 'Pracovní příkazy', desc: 'Helpdesk, technici, SLA' },
+          { icon: '⚖️', title: 'Revize & TZB', desc: 'Připomínky, kontrolní listy' },
+          { icon: '🔢', title: 'Měřidla & odečty', desc: 'Evidence, výměny, odečty' },
+          { icon: '📄', title: 'Dokumenty', desc: 'Úložiště, kategorie, sdílení' },
+          { icon: '📅', title: 'Vyúčtování', desc: 'Roční zúčtování, vyhláška 269' },
+        ],
+      },
+      {
+        title: 'AI A AUTOMATIZACE',
+        items: [
+          { icon: '🤖', title: 'Mio AI Asistent', desc: 'Chatbot, dokumenty, analýzy' },
+          { icon: '🌐', title: 'Portál vlastníků', desc: 'Self-service, konto, hlášení' },
+          { icon: '📈', title: 'Reporting', desc: 'Dashboardy, grafy, export' },
+          { icon: '🗳️', title: 'Shromáždění SVJ', desc: 'Hlasování, per rollam, zápisy' },
+          { icon: '📱', title: 'Mobilní aplikace', desc: 'iOS a Android pro techniky' },
+        ],
+      },
+    ],
+  },
+  solutionsMenu: {
+    title: 'Řešení',
+    items: [
+      { icon: '🏢', title: 'Pro SVJ', desc: 'Předpisy, konto vlastníků, shromáždění, fond oprav' },
+      { icon: '🔑', title: 'Pro správce', desc: 'Správa portfolia nemovitostí, hromadné operace, reporting' },
+      { icon: '⚙️', title: 'Pro facility management', desc: 'Helpdesk, pracovní příkazy, revize, SLA monitoring' },
+      { icon: '🔧', title: 'Pro údržbu', desc: 'Mobilní appka pro techniky, QR kódy, foto dokumentace' },
+      { icon: '📈', title: 'Pro investory', desc: 'Cash flow přehled, výnosnost, obsazenost, výkonnostní KPI' },
+    ],
+    sidebar: {
+      label: 'Případová studie',
+      quote: '„Od nasazení ifmio nám odpadlo 20 hodin týdně administrativy."',
+      author: 'Jana Nováková, SVJ Sokolská',
+    },
+  },
+  partnersMenu: {
+    title: 'Partneři',
+    columns: [
+      {
+        title: 'HLEDÁM SPRÁVCE',
+        items: [
+          { icon: '🏢', title: 'Najít správce nemovitostí', desc: 'Ověření profesionální správci' },
+          { icon: '🔑', title: 'Najít facility managera', desc: 'Specialisté na FM' },
+        ],
+      },
+      {
+        title: 'HLEDÁM ŘEMESLNÍKA',
+        items: [
+          { icon: '🔧', title: 'Databáze řemeslníků', desc: 'Elektrikáři, instalatéři, zámečníci' },
+          { icon: '⚡', title: 'Revizní technici', desc: 'Certifikovaní pro elektro, plyn, komíny' },
+        ],
+      },
+    ],
+    cta: { label: 'Staňte se partnerem ifmio', link: 'Registrovat se →' },
+  },
+} as const
 
 export const HERO = {
   badges: ['⚡ AI-native platforma', '✅ ISO 41001 ready'],
-  h1: 'Správa nemovitostí bez papírování díky AI',
-  subhead: 'Automatizujte rutinní úkony, získejte okamžitý přehled nad každou jednotkou a nechte Mio řešit opakující se úkoly — méně času na administrativu, více času na rozhodování.',
-  ctaPrimary: {
-    text: 'Vyzkoušet demo zdarma — 15 min',
-    microcopy: 'Demo proběhne online; ukážeme konkrétní scénáře pro vaši správu.',
-  },
+  h1Before: 'Správa nemovitostí bez papírování ',
+  h1Em: 'díky AI',
+  subhead: 'Automatizujte rutinní úkony, získejte okamžitý přehled nad každou jednotkou a nechte Mio AI řešit opakující se úkoly — méně času na administrativu, více na rozhodování.',
+  ctaPrimary: 'Vyzkoušet demo zdarma',
   ctaSecondary: 'Kontaktovat obchod',
-  trustLine: '200+ správců a SVJ v ČR důvěřuje ifmio',
-  aboveFoldLogos: [
-    { name: 'SVJ Sokolská 1883', placeholder: true },
-    { name: 'BD Vinohrady', placeholder: true },
-    { name: 'CPI Residential', placeholder: true },
-  ],
-} as const;
+} as const
 
-export const TRUST_BAR = {
-  label: 'Důvěřuje nám více než 200 správců po celé ČR',
-  logos: [
-    'SVJ Sokolská 1883', 'BD Vinohrady', 'Residomo', 'RPG Byty',
-    'CPI Property Group', 'Heimstaden', 'M&M Reality správa',
-  ],
-  scrollDurationSeconds: 30,
-} as const;
+export const TRUST_LINE = {
+  text: 'Důvěřuje nám více než 5 600 vlastníků a nájemníků',
+} as const
 
 export const FEATURES = [
-  {
-    id: 'mio-ai',
-    icon: '🤖',
-    title: 'Mio AI Asistent',
-    benefit: 'Odpovídá nájemníkům 24/7 a snižuje zátěž podpory.',
-    details: 'Chatbot v přirozeném jazyce, automatické šablony odpovědí, generování dokumentů a předpisů.',
-    kpi: 'Typicky −50 % dotazů na podporu',
-    ctaText: 'Prozkoumat Mio AI →',
-  },
-  {
-    id: 'predpisy',
-    icon: '📊',
-    title: 'Automatické předpisy',
-    benefit: 'Ušetří čas při fakturaci a předpisech bez ručního počítání.',
-    details: 'Generování měsíčních předpisů podle evidence, měření a smluvních podmínek; export do ISDOC.',
-    kpi: 'Až 80 % méně manuálních výpočtů',
-    ctaText: 'Jak to funguje →',
-  },
-  {
-    id: 'work-orders',
-    icon: '🔧',
-    title: 'Chytré pracovní příkazy',
-    benefit: 'Rychlejší vyřízení závad a lepší koordinace techniků.',
-    details: 'Automatické přiřazení techniků, foto dokumentace, stavové notifikace a fakturace opravy.',
-    kpi: 'Typicky 3× rychlejší vyřízení',
-    ctaText: 'Prozkoumat Work Orders →',
-  },
-  {
-    id: 'komunikace',
-    icon: '📧',
-    title: 'Komunikační centrum',
-    benefit: 'Všechny kanály na jednom místě, méně ztracených požadavků.',
-    details: 'E-maily, SMS, datové schránky a nástěnka pro obyvatele; hromadné odesílání a šablony.',
-    kpi: null,
-    ctaText: 'Prozkoumat komunikaci →',
-  },
-  {
-    id: 'compliance',
-    icon: '⚖️',
-    title: 'Revize a compliance (ISO 41001)',
-    benefit: 'Minimalizujte riziko zmeškaných revizí a auditních nedostatků.',
-    details: 'Automatické připomínky revizí, kontrolní listy, auditní stopy a reporty.',
-    kpi: '0 zmeškaných revizních termínů',
-    ctaText: 'Prozkoumat compliance →',
-  },
-  {
-    id: 'finance',
-    icon: '💰',
-    title: 'Finance a reporting',
-    benefit: 'Přehled cash flow a rychlé uzávěrky bez Excelu.',
-    details: 'Faktury, bankovní transakce, DPH, reporting per nemovitost; exporty a integrace účetnictví.',
-    kpi: '100 % přehled v reálném čase',
-    ctaText: 'Prozkoumat finance →',
-  },
-] as const;
+  { id: 'mio-ai', tag: '🤖 Mio AI Asistent', title: 'Váš virtuální správce, který nikdy nespí', desc: 'Odpovídá nájemníkům 24/7, generuje dokumenty, připravuje předpisy a analyzuje spotřebu — vše v přirozeném jazyce.', large: true },
+  { id: 'predpisy', tag: '📊 Automatické předpisy', title: 'Předpisy bez ručního počítání', desc: 'Generuje měsíční předpisy z evidence, měření a smluvních podmínek. Export do ISDOC a hromadné odesílání.' },
+  { id: 'work-orders', tag: '🔧 Pracovní příkazy', title: 'Od nahlášení po fakturaci', desc: 'Automatické přiřazení techniků, foto dokumentace, stavové notifikace. Kompletní lifecycle opravy.' },
+  { id: 'komunikace', tag: '📧 Komunikační centrum', title: 'Všechny kanály na jednom místě', desc: 'E-maily, SMS, datové schránky a nástěnka. Hromadné odesílání a šablony.' },
+  { id: 'compliance', tag: '⚖️ Revize & compliance', title: 'ISO 41001 vestavěný do platformy', desc: 'Automatické připomínky revizí, kontrolní listy a auditní stopy. 0 zmeškaných termínů.' },
+  { id: 'finance', tag: '💰 Finance a reporting', title: 'Přehled cash flow a rychlé uzávěrky bez Excelu', desc: 'Faktury, bankovní transakce, DPH, konto vlastníků, dlužníci, vyúčtování. Pohoda XML export.', wide: true },
+] as const
 
-export const MID_CTA = {
-  headline: 'Připraveni převést správu do digitální éry?',
-  subhead: 'Podívejte se, jak Mio AI může změnit každodenní chod vaší správy nemovitostí.',
-  cta: 'Podívat se na Mio v akci →',
-} as const;
+export const BENTO_STAT = { value: '80%', label: 'administrativy vyřízeno automaticky' } as const
+export const BENTO_QUOTE = {
+  text: '„Od nasazení ifmio nám odpadlo minimálně 20 hodin týdně ručního účtování."',
+  name: 'Jana Nováková',
+  initials: 'JN',
+} as const
 
 export const STATS = [
   { value: 80, suffix: ' %', label: 'méně času na administrativu' },
   { value: 3, suffix: '×', label: 'rychlejší vyřízení požadavků' },
   { value: 100, suffix: ' %', label: 'přehled nad nemovitostmi' },
   { value: 0, suffix: '', label: 'zmeškaných revizních termínů' },
-] as const;
+] as const
 
 export const PLATFORM = {
   sectionLabel: 'PLATFORMA',
   headline: 'Vše, co potřebujete, na jednom místě',
-  bullets: [
-    { icon: '🏠', title: 'Evidence nemovitostí', desc: 'Domy, jednotky, katastrální data včetně vlastnických vztahů a omezení.' },
-    { icon: '💰', title: 'Finance & doklady', desc: 'Faktury, předpisy, bankovní transakce, DPH, ISDOC import. Cash flow v reálném čase.' },
-    { icon: '📅', title: 'Revize & údržba', desc: 'Automatické připomínky revizí TZB, plánovaná údržba. Nikdy nezmeškejte zákonný termín.' },
-    { icon: '📱', title: 'Mobilní aplikace', desc: 'Pracovní příkazy, foto, QR sken měřičů, push notifikace. iOS i Android.' },
+  tabs: ['Vše', 'Pro SVJ', 'Pro majitele', 'Pro správce', 'Pro nájemníky', 'Pro řemeslníky'],
+  tabKeys: ['vse', 'svj', 'majitele', 'spravce', 'najemniky', 'remeslniky'],
+  features: [
+    { icon: '🏠', title: 'Evidence nemovitostí', desc: 'Domy, jednotky, katastrální data.', audiences: ['svj', 'majitele', 'spravce'] },
+    { icon: '💰', title: 'Finance & doklady', desc: 'Faktury, předpisy, transakce, DPH, ISDOC, cash flow.', audiences: ['svj', 'majitele', 'spravce'] },
+    { icon: '📊', title: 'Předpisy plateb', desc: 'Složky předpisu, automatický generátor, SIPO export.', audiences: ['svj', 'majitele', 'spravce'] },
+    { icon: '📒', title: 'Konto vlastníků', desc: 'Pohyby, zůstatky, dlužníci, upomínky, zápočet přeplatků.', audiences: ['svj', 'spravce'] },
+    { icon: '⚖️', title: 'Revize & TZB', desc: 'Automatické připomínky, kontrolní listy, auditní stopy.', audiences: ['svj', 'majitele', 'spravce', 'remeslniky'] },
+    { icon: '🔧', title: 'Pracovní příkazy', desc: 'Helpdesk, přiřazení techniků, SLA, foto dokumentace.', audiences: ['svj', 'majitele', 'spravce', 'remeslniky'] },
+    { icon: '📧', title: 'Komunikace', desc: 'E-maily, SMS, datové schránky, nástěnka, hromadné odesílání.', audiences: ['svj', 'majitele', 'spravce', 'najemniky'] },
+    { icon: '🔢', title: 'Měřidla & odečty', desc: 'Evidence měřidel, výměny, odečty, hromadný import.', audiences: ['svj', 'spravce', 'najemniky'] },
+    { icon: '📅', title: 'Vyúčtování', desc: 'Roční zúčtování záloh dle vyhlášky 269/2015.', audiences: ['svj', 'spravce'] },
+    { icon: '🤖', title: 'Mio AI Asistent', desc: 'Chatbot 24/7, generování dokumentů, analýzy, odpovědi.', audiences: ['svj', 'majitele', 'spravce', 'najemniky'] },
+    { icon: '🌐', title: 'Portál vlastníků', desc: 'Self-service konto, hlášení závad, dokumenty, hlasování.', audiences: ['svj', 'najemniky'] },
+    { icon: '📈', title: 'Reporting', desc: 'Dashboardy, grafy, export CSV/PDF, KPI přehledy.', audiences: ['svj', 'majitele', 'spravce'] },
+    { icon: '🗳️', title: 'Shromáždění SVJ', desc: 'Pozvánky, program, hlasování, per rollam, zápisy.', audiences: ['svj'] },
+    { icon: '📱', title: 'Mobilní aplikace', desc: 'Pracovní příkazy, foto, QR sken, push notifikace.', audiences: ['spravce', 'remeslniky'] },
+    { icon: '🏦', title: 'Bankovní napojení', desc: 'Fio API auto-sync, ABO/CSV import, párování dle VS.', audiences: ['svj', 'majitele', 'spravce'] },
+    { icon: '📄', title: 'Dokumenty', desc: 'Úložiště dokumentů, kategorie, sdílení, vazba na nemovitosti.', audiences: ['svj', 'majitele', 'spravce', 'najemniky'] },
+    { icon: '🔔', title: 'Hlášení závad', desc: 'Nahlášení problému, sledování stavu, notifikace.', audiences: ['najemniky'] },
+    { icon: '📋', title: 'Přehled plateb', desc: 'Historie předpisů, plateb a nedoplatků.', audiences: ['najemniky'] },
+    { icon: '⭐', title: 'Profil řemeslníka', desc: 'Databáze ověřených řemeslníků, hodnocení, certifikace.', audiences: ['remeslniky'] },
+    { icon: '📆', title: 'Kalendář zakázek', desc: 'Plánování práce, příjem příkazů, fakturace.', audiences: ['remeslniky'] },
   ],
-  ctaPrimary: 'Vyzkoušet demo →',
-  ctaSecondary: 'Prozkoumat všechny moduly',
-} as const;
+} as const
 
 export const CASE_STUDIES = [
-  {
-    client: 'SVJ Sokolská 1883',
-    resultHeadline: '−20 hodin/týden administrativy',
-    quote: 'Od nasazení ifmio nám odpadlo minimálně 20 hodin týdně ručního účtování. Předpisy se generují samy a nájemníci mají odpovědi dřív, než stihnu otevřít e-mail.',
-    name: 'Jana Nováková',
-    role: 'Předsedkyně SVJ',
-    logoPlaceholder: true,
-  },
-  {
-    client: 'BD Vinohrady',
-    resultHeadline: '100 % přehled nad financemi',
-    quote: 'Konečně máme jednu platformu místo pěti Excelů. Revize nám neunikají, technici ví co dělat a já vím, kde jsou peníze.',
-    name: 'Martin Dvořák',
-    role: 'Ředitel správy',
-    logoPlaceholder: true,
-  },
-  {
-    client: 'CPI Residential',
-    resultHeadline: '50 % snížení dotazů na podpoře',
-    quote: 'Mio AI nám ušetřil jednoho člověka na podpoře. Nájemníci se ptají chatbota a ten jim odpoví lépe než my přes telefon.',
-    name: 'Petr Šimáček',
-    role: 'Facility Manager',
-    logoPlaceholder: true,
-  },
-] as const;
-
-export const PRICING = {
-  headline: 'Transparentní ceny bez skrytých poplatků',
-  modelSummary: 'Platba za jednotku, ne za uživatele. Od 15 Kč/jednotka/měsíc včetně všech modulů a Mio AI.',
-  tiers: [
-    { name: 'Start', range: 'do 50 jednotek', price: 'Zdarma' },
-    { name: 'Professional', range: '50–500 jednotek', price: '15 Kč/j./měs.' },
-    { name: 'Enterprise', range: '500+ jednotek', price: 'Individuálně' },
-  ],
-  ctaPrimary: 'Zobrazit kompletní ceník →',
-  ctaSecondary: 'Objednat demo',
-} as const;
-
-export const DEMO_FORM = {
-  headline: 'Vyzkoušejte ifmio na vlastní kůži',
-  subhead: 'Ukážeme vám, jak ifmio zjednoduší vaši správu. Demo trvá 15 minut a je zcela nezávazné.',
-  submitButton: 'Objednat demo zdarma →',
-  submitLoading: 'Odesílám…',
-  successMessage: 'Děkujeme! Ozveme se vám do 24 hodin.',
-  errorMessage: 'Něco se nepovedlo. Zkuste to prosím znovu, nebo nám napište na info@ifmio.com.',
-  gdprCheckbox: 'Souhlasím se zpracováním osobních údajů dle Zásad ochrany soukromí.',
-  reassurance: 'Bez závazků · Odpovíme do 24 hodin',
-  benefitSidebar: [
-    '15minutová ukázka přizpůsobená vašim potřebám',
-    'Odpovědi na vaše otázky od produktového specialisty',
-    'Ukázka AI asistenta Mio na reálných datech',
-    'Cenová nabídka na míru',
-  ],
-  unitOptions: ['do 50', '50–200', '200–500', '500+', 'Nevím'],
-} as const;
+  { client: 'SVJ Sokolská', stat: '−20 hodin administrativy týdně', quote: '„Od nasazení ifmio nám odpadlo minimálně 20 hodin týdně ručního účtování. Předpisy se generují samy a Mio AI odpovídá nájemníkům dřív, než stihnu otevřít e-mail. Vyúčtování, které dříve trvalo 3 týdny, máme hotové za 2 dny."', name: 'Jana Nováková', role: 'Předsedkyně SVJ', initials: 'JN' },
+  { client: 'BD Vinohrady', stat: '100% přehled nad 12 domy', quote: '„Konečně máme jednu platformu místo pěti Excelů a tří e-mailových schránek. Revize nám neunikají díky automatickým připomínkám, technici dostávají příkazy rovnou do mobilu a já vidím cash flow všech domů na jednom dashboardu."', name: 'Martin Dvořák', role: 'Ředitel správy', initials: 'MD' },
+  { client: 'CPI Residential', stat: '50% méně dotazů na podpoře', quote: '„Mio AI nám ušetřil kapacitu jednoho plného úvazku na podpoře. Nájemníci se ptají chatbota na stav oprav, předpisy i pravidla domu — a dostávají odpovědi okamžitě. Bez složitých zásahů běží Mio AI samostatně a odlehčuje týmu."', name: 'Petr Šimáček', role: 'Facility Manager', initials: 'PŠ' },
+  { client: 'Správa Letná', stat: '3× rychlejší vyřízení oprav', quote: '„Dříve jsme závady řešili přes telefon a papír — technik často nevěděl, kam jede a co ho čeká. S ifmio dostane příkaz s fotkou, lokací a historií. Průměrná doba vyřízení klesla ze 7 na 2 dny a reklamace se snížily o 40 %."', name: 'Lucie Králová', role: 'Provozní manažerka', initials: 'LK' },
+] as const
 
 export const FINAL_CTA = {
   headline: 'Když vám na správě záleží',
-  cta: 'Začít s ifmio zdarma →',
-} as const;
+  cta: 'Vyzkoušet ifmio zdarma →',
+} as const
 
 export const FOOTER = {
+  desc: 'AI-native platforma pro správu nemovitostí.',
   columns: [
-    { title: 'Platforma', items: ['Evidence nemovitostí', 'Finance & doklady', 'Pracovní příkazy', 'Komunikace', 'Mio AI'] },
-    { title: 'Funkce', items: ['Revize & TZB', 'Měření & odečty', 'Předpisy', 'Dokumenty', 'Reporting'] },
-    { title: 'Společnost', items: ['O nás', 'Blog', 'Ceník', 'Kontakt', 'Kariéra'] },
+    { title: 'Platforma', items: ['Mio AI', 'Evidence', 'Finance', 'Pracovní příkazy', 'Komunikace', 'Portál'] },
+    { title: 'Funkce', items: ['Předpisy', 'Konto', 'Revize', 'Měření', 'Vyúčtování', 'Reporting'] },
+    { title: 'Společnost', items: ['O nás', 'Blog', 'Kariéra', 'Partneři', 'Kontakt', 'Právní dokumenty'] },
   ],
-  contact: {
-    email: 'info@ifmio.com',
-    phone: '+420 XXX XXX XXX',
-    address: 'Praha, Česká republika',
-  },
-  copyright: '© 2026 Grand Facility s.r.o. Všechna práva vyhrazena.',
-  socialLinks: ['LinkedIn', 'X (Twitter)'],
-} as const;
+  contact: { email: 'info@ifmio.com', phone: '+420 XXX XXX XXX', city: 'Praha' },
+  copyright: '© 2026 IFMIO Ltd. Všechna práva vyhrazena.',
+  socialLinks: ['in', '𝕏', 'f'],
+} as const
 
 export const CHAT_WIDGET = {
-  greeting: 'Ahoj! Jsem Mio, váš AI asistent pro správu nemovitostí.',
-  quickReplies: ['Chci demo', 'Kolik to stojí?', 'Jaké moduly máte?'],
-  escalation: 'Chci mluvit s člověkem',
-} as const;
+  greeting: 'Ahoj! Jsem Mio AI, váš asistent pro správu nemovitostí. Jak vám mohu pomoci?',
+  quickReplies: ['Chci demo', 'Kolik to stojí?', 'Jaké moduly máte?', 'Mluvit s člověkem'],
+  powered: 'powered by Mio AI',
+} as const

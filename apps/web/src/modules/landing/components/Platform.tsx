@@ -1,37 +1,46 @@
+import { useState } from 'react'
 import { PLATFORM } from '../../../data/landing-content'
-import { useIntersectionObserver } from '../hooks/useIntersectionObserver'
 
 export function Platform() {
-  const { ref, isIntersecting } = useIntersectionObserver<HTMLElement>()
+  const [activeTab, setActiveTab] = useState(0)
+  const activeKey = PLATFORM.tabKeys[activeTab]
+
+  const filtered = activeKey === 'vse'
+    ? PLATFORM.features
+    : PLATFORM.features.filter(f => (f.audiences as readonly string[]).includes(activeKey))
 
   return (
-    <section ref={ref} className={`section section--gray animate-on-scroll${isIntersecting ? ' visible' : ''}`} id="platforma" aria-label="Platforma">
-      <div className="container platform">
-        <div className="platform__text">
-          <p className="section__label">{PLATFORM.sectionLabel}</p>
-          <h2 className="section__headline">{PLATFORM.headline}</h2>
-          <div className="platform__bullets">
-            {PLATFORM.bullets.map(b => (
-              <div key={b.title} className="platform__bullet">
-                <span className="platform__bullet-icon" aria-hidden="true">{b.icon}</span>
-                <div>
-                  <strong className="platform__bullet-title">{b.title}</strong>
-                  <p className="platform__bullet-desc">{b.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="platform__ctas">
-            <a href="#demo" className="btn btn--primary">{PLATFORM.ctaPrimary}</a>
-            <a href="#funkce" className="btn btn--ghost">{PLATFORM.ctaSecondary}</a>
-          </div>
+    <section className="section section--gray" id="platforma" aria-label="Platforma">
+      <div className="container">
+        <p className="section__label">{PLATFORM.sectionLabel}</p>
+        <h2 className="section__headline">{PLATFORM.headline}</h2>
+
+        <div className="platform-tabs" role="tablist">
+          {PLATFORM.tabs.map((tab, i) => (
+            <button
+              key={tab}
+              role="tab"
+              aria-selected={activeTab === i}
+              className={`platform-tab${activeTab === i ? ' platform-tab--active' : ''}`}
+              onClick={() => setActiveTab(i)}
+            >
+              {tab}
+            </button>
+          ))}
         </div>
-        <div className="platform__visual">
-          <div className="platform__screenshot">
-            <div style={{ padding: 40, textAlign: 'center', color: 'var(--gray-400)', fontSize: '0.9rem' }}>
-              Dashboard screenshot
+
+        <div className="platform-grid">
+          {filtered.map(f => (
+            <div key={f.title} className="platform-card">
+              <span className="platform-card__icon">{f.icon}</span>
+              <h3 className="platform-card__title">{f.title}</h3>
+              <p className="platform-card__desc">{f.desc}</p>
             </div>
-          </div>
+          ))}
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: 40 }}>
+          <a href="#demo" className="btn btn--primary">Vyzkoušet demo →</a>
         </div>
       </div>
     </section>
