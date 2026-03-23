@@ -25,19 +25,19 @@ export function Navigation() {
           </svg>
         </button>
 
-        <div className={`landing-nav__links${menuOpen ? ' landing-nav__links--open' : ''}`}>
+        <div className={`landing-nav__links${menuOpen ? ' is-open' : ''}`}>
           {/* Platform mega-menu */}
           <div className="nav-dropdown" onMouseEnter={() => setActiveDropdown('platform')} onMouseLeave={() => setActiveDropdown(null)}>
             <button className="landing-nav__link">{NAV.platformMenu.title} ▾</button>
             {activeDropdown === 'platform' && (
-              <div className="mega-menu mega-menu--platform">
+              <div className="mega-menu mega-menu--platform is-open">
                 {NAV.platformMenu.columns.map((col, ci) => (
                   <div key={col.title} className={`mega-menu__section${ci === 2 ? ' mega-menu__teal' : ''}`}>
                     <div className="mega-menu__section-title">{col.title}</div>
                     {col.items.map(item => (
                       <a key={item.title} href="#" className="mega-menu__item">
-                        <span className="mega-menu__icon">{item.icon}</span>
-                        <div><div className="mega-menu__item-title">{item.title}</div><div className="mega-menu__item-desc">{item.desc}</div></div>
+                        <span className="mega-menu__item-icon">{item.icon}</span>
+                        <div className="mega-menu__item-text"><div className="mega-menu__item-title">{item.title}</div><div className="mega-menu__item-desc">{item.desc}</div></div>
                       </a>
                     ))}
                   </div>
@@ -50,12 +50,12 @@ export function Navigation() {
           <div className="nav-dropdown" onMouseEnter={() => setActiveDropdown('solutions')} onMouseLeave={() => setActiveDropdown(null)}>
             <button className="landing-nav__link">{NAV.solutionsMenu.title} ▾</button>
             {activeDropdown === 'solutions' && (
-              <div className="mega-menu mega-menu--solutions">
+              <div className="mega-menu mega-menu--solutions is-open">
                 <div className="mega-menu__section">
                   {NAV.solutionsMenu.items.map(item => (
                     <a key={item.title} href="#" className="mega-menu__item">
-                      <span className="mega-menu__icon">{item.icon}</span>
-                      <div><div className="mega-menu__item-title">{item.title}</div><div className="mega-menu__item-desc">{item.desc}</div></div>
+                      <span className="mega-menu__item-icon">{item.icon}</span>
+                      <div className="mega-menu__item-text"><div className="mega-menu__item-title">{item.title}</div><div className="mega-menu__item-desc">{item.desc}</div></div>
                     </a>
                   ))}
                 </div>
@@ -72,14 +72,14 @@ export function Navigation() {
           <div className="nav-dropdown" onMouseEnter={() => setActiveDropdown('partners')} onMouseLeave={() => setActiveDropdown(null)}>
             <button className="landing-nav__link">{NAV.partnersMenu.title} ▾</button>
             {activeDropdown === 'partners' && (
-              <div className="mega-menu mega-menu--partners">
+              <div className="mega-menu mega-menu--partners is-open">
                 {NAV.partnersMenu.columns.map(col => (
                   <div key={col.title} className="mega-menu__section">
                     <div className="mega-menu__section-title">{col.title}</div>
                     {col.items.map(item => (
                       <a key={item.title} href="#" className="mega-menu__item">
-                        <span className="mega-menu__icon">{item.icon}</span>
-                        <div><div className="mega-menu__item-title">{item.title}</div><div className="mega-menu__item-desc">{item.desc}</div></div>
+                        <span className="mega-menu__item-icon">{item.icon}</span>
+                        <div className="mega-menu__item-text"><div className="mega-menu__item-title">{item.title}</div><div className="mega-menu__item-desc">{item.desc}</div></div>
                       </a>
                     ))}
                   </div>

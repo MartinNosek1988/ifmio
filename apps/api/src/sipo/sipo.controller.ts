@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Body, Param, Query, Res, Req } from '@nestjs/common'
+import { Controller, Get, Post, Put, Body, Param, Query, Res, Req, BadRequestException } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import type { FastifyRequest, FastifyReply } from 'fastify'
 import { SipoService } from './sipo.service'
@@ -88,7 +88,7 @@ export class SipoController {
     @Req() request: FastifyRequest,
   ) {
     const data = await request.file()
-    if (!data) return { error: 'Soubor nebyl nahrán' }
+    if (!data) throw new BadRequestException('Soubor nebyl nahrán')
     const chunks: Buffer[] = []
     for await (const chunk of data.file) chunks.push(chunk as Buffer)
     return this.service.importPayments(user.tenantId, propertyId, Buffer.concat(chunks))
@@ -103,7 +103,7 @@ export class SipoController {
     @Req() request: FastifyRequest,
   ) {
     const data = await request.file()
-    if (!data) return { error: 'Soubor nebyl nahrán' }
+    if (!data) throw new BadRequestException('Soubor nebyl nahrán')
     const chunks: Buffer[] = []
     for await (const chunk of data.file) chunks.push(chunk as Buffer)
     return this.service.importErrors(user.tenantId, propertyId, Buffer.concat(chunks))
