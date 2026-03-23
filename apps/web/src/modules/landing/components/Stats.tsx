@@ -5,7 +5,10 @@ import { useCountUp } from '../hooks/useCountUp'
 function StatCard({ value, suffix, label, trigger, delay }: { value: number; suffix: string; label: string; trigger: boolean; delay: number }) {
   const count = useCountUp(value, 2000, trigger)
   return (
-    <div className="stat-card animate-on-scroll visible" style={{ transitionDelay: `${delay}s` }}>
+    <div
+      className={`stat-card animate-on-scroll${trigger ? ' visible' : ''}`}
+      style={trigger ? { transitionDelay: `${delay}s` } : undefined}
+    >
       <div className="stat-card__value">{count}{suffix}</div>
       <div className="stat-card__label">{label}</div>
     </div>
