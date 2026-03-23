@@ -7,11 +7,12 @@ import {
   Wallet, AlertTriangle, TrendingUp,
   MessageSquare, Mail, Settings, BarChart3,
   ClipboardList, ClipboardCheck, ScrollText, UsersRound, FileCheck2, Columns3,
-  User as UserIcon, LogOut, Shield, Menu, X, ChevronDown,
+  User as UserIcon, LogOut, Shield, Menu, X, ChevronDown, Sparkles,
 } from 'lucide-react';
 import { LoadingSpinner } from '../shared/components';
 import { GlobalSearch } from '../modules/search/GlobalSearch';
 import { PropertyPicker } from '../core/components/PropertyPicker';
+import { usePropertyPickerStore } from '../core/stores/property-picker.store';
 import { MioPanel } from '../modules/ai/MioPanel';
 import { NotificationCenter } from '../modules/notifications/NotificationCenter';
 // OnboardingWizard removed — onboarding now handled by /onboarding route
@@ -95,6 +96,7 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/reports', label: 'Výkazy', icon: <ClipboardList size={17} /> },
       { to: '/team', label: 'Uživatelé & Tým', icon: <UsersRound size={17} /> },
       { to: '/asset-types', label: 'Typy zařízení', icon: <ClipboardList size={17} /> },
+      { to: '/mio', label: 'Mio AI', icon: <Sparkles size={17} /> },
       { to: '/mio/insights', label: 'Mio Insights', icon: <AlertTriangle size={17} />, roles: ['fm', 'owner'] },
       { to: '/audit', label: 'Audit log', icon: <ScrollText size={17} /> },
       { to: '/settings', label: 'Nastavení', icon: <Settings size={17} /> },
@@ -170,6 +172,8 @@ export default function AppShell() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showPropertyPicker, setShowPropertyPicker] = useState(false);
+  const globalPropertyId = usePropertyPickerStore(s => s.selectedPropertyId);
+  const clearGlobalProperty = usePropertyPickerStore(s => s.clear);
 
   // Detect active property from URL
   const propertyMatch = location.pathname.match(/^\/properties\/([^/]+)/);
@@ -347,6 +351,29 @@ export default function AppShell() {
             </span>
           )}
         </div>
+        {/* Global property filter indicator */}
+        {globalPropertyId && !activePropertyId && (
+          <div
+            data-testid="global-property-indicator"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              padding: '2px 10px', borderRadius: 16,
+              background: 'rgba(99,102,241,.1)', border: '1px solid rgba(99,102,241,.2)',
+              fontSize: '0.78rem', fontWeight: 500, color: 'var(--primary, #6366f1)',
+              whiteSpace: 'nowrap', maxWidth: 200, overflow: 'hidden',
+            }}
+          >
+            <Building2 size={12} />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Filtr nemovitosti</span>
+            <button
+              onClick={clearGlobalProperty}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)', padding: 0, display: 'flex' }}
+              title="Zrušit filtr"
+            >
+              <X size={12} />
+            </button>
+          </div>
+        )}
         <GlobalSearch />
         <div className="topbar__actions">
           {trialDays !== null && (

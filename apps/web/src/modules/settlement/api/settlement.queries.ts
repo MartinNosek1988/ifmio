@@ -53,3 +53,39 @@ export function useApproveSettlement() {
     onSuccess: (_, id) => qc.invalidateQueries({ queryKey: settlementKeys.detail(id) }),
   })
 }
+
+export function useCloseSettlement() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => settlementApi.close(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: settlementKeys.all })
+      qc.invalidateQueries({ queryKey: ['konto'] })
+      qc.invalidateQueries({ queryKey: ['debtors'] })
+    },
+  })
+}
+
+export function useReopenSettlement() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => settlementApi.reopen(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: settlementKeys.all }),
+  })
+}
+
+export function useDeleteSettlement() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => settlementApi.remove(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: settlementKeys.all }),
+  })
+}
+
+export function usePopulateCosts() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => settlementApi.populateCosts(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: settlementKeys.all }),
+  })
+}

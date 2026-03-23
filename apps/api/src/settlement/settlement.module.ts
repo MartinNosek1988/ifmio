@@ -3,10 +3,11 @@ import { SettlementController } from './settlement.controller'
 import { SettlementService } from './settlement.service'
 import { SettlementCalcService } from './settlement-calc.service'
 import { PrismaModule } from '../prisma/prisma.module'
+import { KontoModule } from '../konto/konto.module'
 import { EmailModule } from '../email/email.module'
 
 @Module({
-  imports: [PrismaModule, EmailModule],
+  imports: [PrismaModule, KontoModule, EmailModule],
   controllers: [SettlementController],
   providers: [SettlementService, SettlementCalcService],
   exports: [SettlementService],

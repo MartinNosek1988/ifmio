@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Plus, Star, Trash2, Pencil } from 'lucide-react';
+import { Plus, Star, Trash2, Pencil, RefreshCw } from 'lucide-react';
 import { Button, Badge, Modal, EmptyState } from '../../../shared/components';
+import { BankSyncConfig } from './BankSyncConfig';
 import { useToast } from '../../../shared/components/toast/Toast';
 import { useBankAccounts, useCreateBankAccount, useUpdateBankAccount, useDeleteBankAccount } from '../api/finance.queries';
 import { useProperties } from '../../properties/use-properties';
@@ -61,6 +62,7 @@ export function AccountsTab() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [deleteTarget, setDeleteTarget] = useState<ApiBankAccount | null>(null);
+  const [syncTarget, setSyncTarget] = useState<ApiBankAccount | null>(null);
 
   const activeAccounts = accounts.filter(a => a.isActive);
 
@@ -196,9 +198,22 @@ export function AccountsTab() {
                       {acc._count.transactions} transakcí
                     </span>
                   )}
+                  {(acc as any).syncEnabled && (
+                    <Badge variant={(acc as any).syncStatus === 'active' ? 'green' : (acc as any).syncStatus === 'error' ? 'red' : 'muted'}>
+                      {(acc as any).syncStatus === 'active' ? '🔄 Auto-sync' : (acc as any).syncStatus === 'error' ? '⚠️ Sync chyba' : 'Sync vypnut'}
+                    </Badge>
+                  )}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  onClick={() => setSyncTarget(acc)}
+                  data-testid={`finance-bank-account-sync-${acc.id}`}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-green, #22c55e)', padding: 4 }}
+                  title="API Sync nastavení"
+                >
+                  <RefreshCw size={16} />
+                </button>
                 <button
                   onClick={() => openEdit(acc)}
                   data-testid={`finance-bank-account-edit-${acc.id}`}
@@ -375,6 +390,15 @@ export function AccountsTab() {
             </div>
           )}
         </Modal>
+      )}
+
+      {/* Sync config modal */}
+      {syncTarget && (
+        <BankSyncConfig
+          bankAccountId={syncTarget.id}
+          bankAccountName={syncTarget.name}
+          onClose={() => setSyncTarget(null)}
+        />
       )}
     </div>
   );

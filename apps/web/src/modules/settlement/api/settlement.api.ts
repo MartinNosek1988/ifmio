@@ -75,4 +75,12 @@ export const settlementApi = {
     apiClient.post<ApiSettlement>(`/settlements/${id}/approve`).then(r => r.data),
   getUnitDetail: (id: string, unitId: string) =>
     apiClient.get<ApiSettlementItem>(`/settlements/${id}/units/${unitId}`).then(r => r.data),
+  close: (id: string) =>
+    apiClient.post(`/settlements/${id}/close`).then(r => r.data),
+  reopen: (id: string) =>
+    apiClient.post(`/settlements/${id}/reopen`).then(r => r.data),
+  remove: (id: string) =>
+    apiClient.delete(`/settlements/${id}`).then(r => r.data),
+  populateCosts: (id: string) =>
+    apiClient.post(`/settlements/${id}/populate-costs`).then(r => r.data),
 }

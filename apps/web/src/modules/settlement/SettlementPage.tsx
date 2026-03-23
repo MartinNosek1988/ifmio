@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Plus, Calculator, CheckCircle } from 'lucide-react'
 import { Badge, Button, LoadingState, EmptyState, Modal } from '../../shared/components'
-import { useSettlements, useSettlement, useCreateSettlement, useAddSettlementCost, useCalculateSettlement, useApproveSettlement } from './api/settlement.queries'
+import { useSettlements, useSettlement, useCreateSettlement, useAddSettlementCost, useCalculateSettlement, useApproveSettlement, useCloseSettlement, useReopenSettlement, useDeleteSettlement, usePopulateCosts } from './api/settlement.queries'
 import { useProperties } from '../properties/use-properties'
 // types used implicitly via hooks
 
@@ -197,6 +197,10 @@ function SettlementDetailModal({ id, onClose }: { id: string; onClose: () => voi
   const { data: settlement, isLoading } = useSettlement(id)
   const calculateMutation = useCalculateSettlement()
   const approveMutation = useApproveSettlement()
+  const closeMutation = useCloseSettlement()
+  const reopenMutation = useReopenSettlement()
+  const deleteMutation = useDeleteSettlement()
+  const populateMutation = usePopulateCosts()
   const addCostMutation = useAddSettlementCost()
   const [showAddCost, setShowAddCost] = useState(false)
   const [unitDetailId, setUnitDetailId] = useState<string | null>(null)
@@ -234,15 +238,36 @@ function SettlementDetailModal({ id, onClose }: { id: string; onClose: () => voi
   return (
     <Modal open onClose={onClose} title={settlement.name} subtitle={`${settlement.property?.name} · ${st.label}`}
       footer={<div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        {settlement.status === 'draft' && (
+          <Button variant="danger" onClick={() => { deleteMutation.mutate(id, { onSuccess: onClose }); }} disabled={deleteMutation.isPending} data-testid="settlement-delete-btn">
+            {deleteMutation.isPending ? 'Mažu...' : 'Smazat'}
+          </Button>
+        )}
+        {settlement.status === 'approved' && (
+          <Button onClick={() => reopenMutation.mutate(id)} disabled={reopenMutation.isPending} data-testid="settlement-reopen-btn">
+            Znovu otevřít
+          </Button>
+        )}
+        <div style={{ flex: 1 }} />
         <Button onClick={onClose}>Zavřít</Button>
+        {settlement.status === 'draft' && costs.length === 0 && (
+          <Button onClick={() => populateMutation.mutate(id)} disabled={populateMutation.isPending}>
+            {populateMutation.isPending ? 'Načítám...' : 'Naplnit z dokladů'}
+          </Button>
+        )}
         {settlement.status === 'draft' && costs.length > 0 && (
-          <Button icon={<Calculator size={14} />} onClick={() => calculateMutation.mutate(id)} disabled={calculateMutation.isPending}>
+          <Button icon={<Calculator size={14} />} onClick={() => calculateMutation.mutate(id)} disabled={calculateMutation.isPending} data-testid="settlement-calculate-btn">
             {calculateMutation.isPending ? 'Počítám...' : 'Vypočítat'}
           </Button>
         )}
         {settlement.status === 'calculated' && (
-          <Button variant="primary" icon={<CheckCircle size={14} />} onClick={() => approveMutation.mutate(id)} disabled={approveMutation.isPending}>
+          <Button variant="primary" icon={<CheckCircle size={14} />} onClick={() => approveMutation.mutate(id)} disabled={approveMutation.isPending} data-testid="settlement-approve-btn">
             Schválit
+          </Button>
+        )}
+        {settlement.status === 'approved' && (
+          <Button variant="primary" onClick={() => closeMutation.mutate(id)} disabled={closeMutation.isPending} data-testid="settlement-close-btn">
+            {closeMutation.isPending ? 'Zaúčtovávám...' : 'Uzavřít a zaúčtovat'}
           </Button>
         )}
       </div>}

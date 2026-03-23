@@ -4,6 +4,7 @@ import { Search, X, Building2, ChevronDown, ChevronRight, UsersRound } from 'luc
 import { useProperties } from '../../modules/properties/use-properties'
 import { useManagementContracts, type ApiManagementContract } from '../../modules/properties/management-contracts-api'
 import type { ApiProperty } from '../../modules/properties/properties-api'
+import { usePropertyPickerStore } from '../stores/property-picker.store'
 
 const MGMT_TYPE_BADGE: Record<string, { label: string; bg: string; fg: string }> = {
   hoa_management: { label: 'SVJ', bg: 'rgba(59,130,246,.15)', fg: '#3b82f6' },
@@ -69,10 +70,13 @@ export function PropertyPicker({ open, onClose }: Props) {
     return () => document.removeEventListener('keydown', handler)
   }, [open, onClose])
 
+  const setGlobalProperty = usePropertyPickerStore(s => s.setProperty)
+
   const handleSelectProperty = useCallback((propertyId: string) => {
+    setGlobalProperty(propertyId)
     navigate(`/properties/${propertyId}`)
     onClose()
-  }, [navigate, onClose])
+  }, [navigate, onClose, setGlobalProperty])
 
   const handleSelectPrincipal = useCallback((principalId: string) => {
     navigate(`/principals/${principalId}`)
@@ -265,6 +269,8 @@ function SearchMode({
   contractsByProperty: Record<string, ApiManagementContract[]>
   onSelect: (id: string) => void
 }) {
+  const { selectedPropertyId, clear } = usePropertyPickerStore()
+
   if (properties.length === 0) {
     return (
       <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
@@ -277,9 +283,29 @@ function SearchMode({
 
   return (
     <>
+      {/* "All properties" option */}
+      {selectedPropertyId && (
+        <div
+          onClick={() => { clear(); }}
+          style={{
+            padding: '10px 14px', cursor: 'pointer',
+            borderBottom: '1px solid var(--border, #e5e7eb)',
+            background: 'var(--surface-2, #f9fafb)',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,.08)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface-2, #f9fafb)' }}
+          data-testid="property-picker-all"
+        >
+          <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--primary, #6366f1)' }}>
+            Všechny nemovitosti
+          </div>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Zrušit filtr nemovitosti</div>
+        </div>
+      )}
       {properties.map(p => {
         const contracts = contractsByProperty[p.id] ?? []
         const unitCount = p.units?.length ?? 0
+        const isSelected = selectedPropertyId === p.id
         return (
           <div
             key={p.id}
@@ -287,6 +313,7 @@ function SearchMode({
             style={{
               padding: '10px 14px', cursor: 'pointer',
               borderBottom: '1px solid var(--border, #e5e7eb)',
+              borderLeft: isSelected ? '3px solid var(--primary, #6366f1)' : '3px solid transparent',
             }}
             onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-2, #f9fafb)' }}
             onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}

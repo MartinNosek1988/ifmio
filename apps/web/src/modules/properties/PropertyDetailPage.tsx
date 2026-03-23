@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Plus, Pencil, Layers, Trash2, UserPlus } from 'lucide-react';
+import { usePropertyPickerStore } from '../../core/stores/property-picker.store';
 import { KpiCard, Table, Badge, Button, Modal, EmptyState, LoadingState, ErrorState } from '../../shared/components';
 import type { Column } from '../../shared/components';
 import { useProperty } from './use-properties';
@@ -37,8 +38,17 @@ export default function PropertyDetailPage() {
   const queryClient = useQueryClient();
   const { data: property, isLoading, error, refetch } = useProperty(id!);
   const { data: contracts = [] } = usePropertyContracts(id!);
-  usePropertyFinancialContexts(id!);
+  const { data: financialContexts = [] } = usePropertyFinancialContexts(id!);
   usePropertyOwnerships(id!);
+  const { selectedFinancialContextId, setFinancialContext } = usePropertyPickerStore();
+
+  // Active financial context: use store selection, or default to first active
+  const activeContext = useMemo(() => {
+    if (selectedFinancialContextId) {
+      return financialContexts.find(fc => fc.id === selectedFinancialContextId) ?? financialContexts.find(fc => fc.isActive) ?? null;
+    }
+    return financialContexts.find(fc => fc.isActive) ?? null;
+  }, [financialContexts, selectedFinancialContextId]);
   const { data: unitOwnerships = [] } = useUnitOwnershipsByProperty(id!);
   const { data: propTenancies = [] } = usePropertyTenancies(id!);
   const [showEditProp, setShowEditProp] = useState(false);
@@ -263,12 +273,57 @@ export default function PropertyDetailPage() {
                 {property.managedTo ? ` – ${new Date(property.managedTo).toLocaleDateString('cs-CZ')}` : ''}
               </span>
             )}
-            {contracts.length > 0 && (
-              <span style={{ color: 'var(--text-muted)' }}>
-                Kontexty správy: <strong>{contracts.length}</strong>
+            {/* Contract badges */}
+            {contracts.map(c => {
+              const badge = MGMT_TYPE_BADGE[c.type] ?? { label: c.type, variant: 'muted' };
+              return (
+                <span
+                  key={c.id}
+                  onClick={() => c.principal?.displayName && navigate(`/principals`)}
+                  style={{ cursor: 'pointer' }}
+                  data-testid={`property-contract-badge-${c.id}`}
+                  title={c.contractNo ? `Smlouva: ${c.contractNo}` : undefined}
+                >
+                  <Badge variant={c.isActive ? (badge.variant as any) : 'muted'}>
+                    {badge.label} · {c.principal?.displayName ?? '—'}
+                    {c.validFrom && <span style={{ marginLeft: 4, opacity: 0.7 }}>({new Date(c.validFrom).getFullYear()}–{c.validTo ? new Date(c.validTo).getFullYear() : '…'})</span>}
+                  </Badge>
+                </span>
+              );
+            })}
+            {contracts.length === 0 && (
+              <span style={{ color: 'var(--text-muted)', fontSize: '.78rem' }}>
+                Žádná smlouva o správě
+                <button onClick={() => setContractModal({})} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '.78rem', marginLeft: 4 }}>+ Přidat</button>
               </span>
             )}
           </div>
+          {/* Financial context switcher */}
+          {financialContexts.length > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: '.82rem' }}>
+              <span className="text-muted">Finanční kontext:</span>
+              <select
+                value={activeContext?.id ?? ''}
+                onChange={e => setFinancialContext(e.target.value || null)}
+                data-testid="property-finance-context-switcher"
+                style={{
+                  padding: '2px 8px', borderRadius: 6, border: '1px solid var(--border)',
+                  background: 'var(--surface)', color: 'var(--text)', fontSize: '.82rem',
+                }}
+              >
+                {financialContexts.map(fc => (
+                  <option key={fc.id} value={fc.id}>
+                    {fc.displayName}{fc.principal ? ` (${fc.principal.displayName})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {financialContexts.length === 1 && activeContext && (
+            <div style={{ marginTop: 4, fontSize: '.78rem', color: 'var(--text-muted)' }}>
+              Finanční kontext: <strong>{activeContext.displayName}</strong>
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <Button icon={<Pencil size={15} />} onClick={() => setShowEditProp(true)} data-testid="property-detail-edit-btn">Upravit</Button>
@@ -338,16 +393,50 @@ export default function PropertyDetailPage() {
       </div>
 
       {/* Stats row */}
-      <div style={{ display: 'flex', gap: 16, marginTop: 16 }}>
+      <div style={{ display: 'flex', gap: 16, marginTop: 16, flexWrap: 'wrap' }}>
         {[
           { label: 'Vlastníků', value: unitOwnerships.filter((o: any) => o.isActive !== false).length },
           { label: 'Správců', value: contracts.length },
+          { label: 'Finančních kontextů', value: financialContexts.length },
         ].map(s => (
           <div key={s.label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 16px', fontSize: '.82rem' }}>
             <span className="text-muted">{s.label}:</span> <strong>{s.value}</strong>
           </div>
         ))}
       </div>
+
+      {/* Finance summary widget */}
+      {activeContext && (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16, marginTop: 16 }} data-testid="property-finance-summary">
+          <div style={{ fontWeight: 600, marginBottom: 10, fontSize: '.9rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Finance</span>
+            <button
+              onClick={() => navigate(`/finance`)}
+              style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '.78rem' }}
+            >
+              Zobrazit vše →
+            </button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, fontSize: '.82rem' }}>
+            <div style={{ textAlign: 'center', padding: 8, background: 'var(--surface-2, #f9fafb)', borderRadius: 8 }}>
+              <div className="text-muted">Kontext</div>
+              <div style={{ fontWeight: 600, fontSize: '.78rem' }}>{activeContext.displayName}</div>
+            </div>
+            <div style={{ textAlign: 'center', padding: 8, background: 'var(--surface-2, #f9fafb)', borderRadius: 8 }}>
+              <div className="text-muted">Měna</div>
+              <div style={{ fontWeight: 600 }}>{activeContext.currency}</div>
+            </div>
+            <div style={{ textAlign: 'center', padding: 8, background: 'var(--surface-2, #f9fafb)', borderRadius: 8 }}>
+              <div className="text-muted">DPH</div>
+              <div style={{ fontWeight: 600 }}>{activeContext.vatPayer ? 'Plátce' : 'Neplátce'}</div>
+            </div>
+            <div style={{ textAlign: 'center', padding: 8, background: 'var(--surface-2, #f9fafb)', borderRadius: 8 }}>
+              <div className="text-muted">Bankovní účty</div>
+              <div style={{ fontWeight: 600 }}>{activeContext._count?.bankAccounts ?? 0}</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       </>}
 
