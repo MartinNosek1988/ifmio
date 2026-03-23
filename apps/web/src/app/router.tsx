@@ -4,6 +4,7 @@ import AppShell from './AppShell';
 import LoginPage from '../modules/auth/LoginPage';
 import RegisterPage from '../modules/auth/RegisterPage';
 const LandingPage = lazy(() => import('../modules/landing/LandingPage'));
+const PricingPage = lazy(() => import('../modules/pricing/PricingPage'));
 
 const VerifyEmailPage = lazy(() => import('../modules/auth/VerifyEmailPage'));
 const ForgotPasswordPage = lazy(() => import('../modules/auth/ForgotPasswordPage'));
@@ -87,6 +88,7 @@ function withBoundary(name: string, Component: React.ComponentType) {
 
 export const router = createBrowserRouter([
   { path: '/', element: <LandingPage /> },
+  { path: '/cenik', element: withBoundary('Ceník', PricingPage) },
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <RegisterPage /> },
   { path: '/verify-email', element: withBoundary('VerifyEmail', VerifyEmailPage) },
