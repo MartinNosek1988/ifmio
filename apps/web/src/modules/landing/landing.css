@@ -298,9 +298,9 @@
   content: '';
   position: absolute;
   top: 100%;
-  left: 0;
-  right: 0;
-  height: 20px;
+  left: -200px;
+  right: -200px;
+  height: 24px;
   display: none;
 }
 .nav-dropdown:hover::after {
@@ -313,27 +313,42 @@
   top: 100%;
   left: 50%;
   transform: translateX(-50%);
-  max-width: 720px;
-  width: 100%;
   background-color: var(--white);
   border: 1px solid var(--gray-200);
   border-radius: 16px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
-  padding-top: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+  padding: 0;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
   overflow: hidden;
   transition: opacity 0.2s ease, visibility 0.2s ease;
-  z-index: 100;
+  z-index: 1000;
   display: grid;
-  grid-template-columns: 1fr 1fr;
 }
 
 .nav-dropdown:hover .mega-menu {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
+}
+
+/* PLATFORMA — 3 columns, 860px */
+.mega-menu--platform {
+  width: 860px;
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+/* ŘEŠENÍ — items + sidebar, 720px */
+.mega-menu--solutions {
+  width: 720px;
+  grid-template-columns: 1fr 240px;
+}
+
+/* PARTNEŘI — 2 columns + CTA row, 720px */
+.mega-menu--partners {
+  width: 720px;
+  grid-template-columns: 1fr 1fr;
 }
 
 .mega-menu__section {
@@ -403,6 +418,58 @@
 
 .mega-menu__teal .mega-menu__item:hover {
   background-color: rgba(13, 148, 136, 0.08);
+}
+
+/* Solutions sidebar */
+.mega-menu__sidebar {
+  background-color: var(--gray-50);
+  border-left: 1px solid var(--gray-100);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.mega-menu__sidebar-label {
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gray-400);
+  margin-bottom: 12px;
+}
+.mega-menu__sidebar-quote {
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--gray-600);
+  line-height: 1.6;
+  margin: 0 0 12px;
+}
+.mega-menu__sidebar-author {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--gray-500);
+}
+
+/* Partners CTA card */
+.mega-menu__cta-card {
+  grid-column: 1 / -1;
+  padding: 16px 24px;
+  background-color: var(--teal-50);
+  border-top: 1px solid var(--gray-100);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+}
+.mega-menu__cta-link {
+  color: var(--teal);
+  font-weight: 600;
+  text-decoration: none;
+  font-family: var(--font-display);
+}
+.mega-menu__cta-link:hover {
+  text-decoration: underline;
 }
 
 /* --- 5. Hero --- */
