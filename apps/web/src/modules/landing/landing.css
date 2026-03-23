@@ -21,7 +21,7 @@
   --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
   --font-body: 'DM Sans', system-ui, sans-serif;
   --max-w: 1200px;
-  --section-py: 96px;
+  --section-py: 72px;
 }
 
 /* --- 1. Layout --- */
@@ -102,7 +102,7 @@
 .btn--ghost {
   background-color: transparent;
   color: var(--gray-700);
-  border: 1px solid var(--gray-200);
+  border: 1.5px solid var(--gray-200);
 }
 
 .btn--ghost:hover {
@@ -122,9 +122,9 @@
 }
 
 .btn--sm {
-  padding: 8px 16px;
+  padding: 10px 24px;
   font-size: 0.8125rem;
-  border-radius: 8px;
+  border-radius: 10px;
 }
 
 .btn--lg {
@@ -527,6 +527,14 @@
   background-color: var(--teal);
   color: var(--white);
   border-color: var(--teal);
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  overflow: visible;
+  min-height: auto;
 }
 
 .bento-stat .bento-card__title {
@@ -537,9 +545,10 @@
   color: rgba(255, 255, 255, 0.8);
 }
 
+.bento-stat__value,
 .bento-stat__number {
   font-family: var(--font-display);
-  font-size: clamp(2.4rem, 4vw, 3.2rem);
+  font-size: clamp(2.5rem, 5vw, 3.5rem);
   font-weight: 800;
   color: var(--white);
   line-height: 1;
@@ -559,17 +568,28 @@
   margin-bottom: 16px;
 }
 
-.bento-quote__avatar {
+.bento-quote__author {
   display: flex;
   align-items: center;
   gap: 10px;
+  margin-top: 16px;
+  font-style: normal;
 }
 
-.bento-quote__avatar img {
-  width: 36px;
-  height: 36px;
+.bento-quote__avatar {
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  object-fit: cover;
+  background: var(--teal-50);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.8rem;
+  color: var(--teal);
+  flex-shrink: 0;
+  font-style: normal;
 }
 
 .bento-quote__avatar-name {
