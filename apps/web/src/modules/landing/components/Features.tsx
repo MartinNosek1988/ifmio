@@ -16,7 +16,7 @@ export function Features() {
             <span className="bento-card__tag">{FEATURES[0].tag}</span>
             <h3 className="bento-card__title">{FEATURES[0].title}</h3>
             <p className="bento-card__desc">{FEATURES[0].desc}</p>
-            <a href="#demo" className="bento-card__link">Prozkoumat →</a>
+            <a href="#demo" className="bento-card__link">Prozkoumat</a>
           </div>
           <div className={`bento-stat animate-on-scroll${isIntersecting ? ' visible' : ''}`} style={{ transitionDelay: '0.08s' }}>
             <div className="bento-stat__value">{BENTO_STAT.value}</div>
@@ -29,7 +29,7 @@ export function Features() {
               <span className="bento-card__tag">{f.tag}</span>
               <h3 className="bento-card__title">{f.title}</h3>
               <p className="bento-card__desc">{f.desc}</p>
-              <a href="#demo" className="bento-card__link">Prozkoumat →</a>
+              <a href="#demo" className="bento-card__link">Prozkoumat</a>
             </div>
           ))}
           <div className={`bento-quote animate-on-scroll${isIntersecting ? ' visible' : ''}`} style={{ transitionDelay: '0.32s' }}>
@@ -46,7 +46,7 @@ export function Features() {
               <span className="bento-card__tag">{f.tag}</span>
               <h3 className="bento-card__title">{f.title}</h3>
               <p className="bento-card__desc">{f.desc}</p>
-              <a href="#demo" className="bento-card__link">Prozkoumat →</a>
+              <a href="#demo" className="bento-card__link">Prozkoumat</a>
             </div>
           ))}
 
@@ -55,7 +55,7 @@ export function Features() {
             <span className="bento-card__tag">{FEATURES[5].tag}</span>
             <h3 className="bento-card__title">{FEATURES[5].title}</h3>
             <p className="bento-card__desc">{FEATURES[5].desc}</p>
-            <a href="#demo" className="bento-card__link">Prozkoumat →</a>
+            <a href="#demo" className="bento-card__link">Prozkoumat</a>
           </div>
         </div>
       </div>
