@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Plus, Pencil, Layers, Trash2, UserPlus } from 'lucide-react';
 import { usePropertyPickerStore } from '../../core/stores/property-picker.store';
 import { KpiCard, Table, Badge, Button, Modal, EmptyState, LoadingState, ErrorState } from '../../shared/components';
+import { useToast } from '../../shared/components/toast/Toast';
 import type { Column } from '../../shared/components';
 import { useProperty } from './use-properties';
 import { propertiesApi } from './properties-api';
@@ -36,6 +37,7 @@ export default function PropertyDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const toast = useToast();
   const { data: property, isLoading, error, refetch } = useProperty(id!);
   const { data: contracts = [] } = usePropertyContracts(id!);
   const { data: financialContexts = [] } = usePropertyFinancialContexts(id!);
@@ -437,6 +439,29 @@ export default function PropertyDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Portal management */}
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16, marginTop: 16 }} data-testid="property-portal-management">
+        <div style={{ fontWeight: 600, marginBottom: 10, fontSize: '.9rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Portál vlastníka</span>
+          <Button
+            size="sm"
+            onClick={async () => {
+              try {
+                const res = await (await import('../../core/api/client')).apiClient.post(`/portal/admin/bulk-generate/${id}`)
+                const d = res.data as any
+                toast.success(`Vygenerováno: ${d.generated}, přeskočeno: ${d.skipped}`)
+              } catch { toast.error('Generování přístupů selhalo') }
+            }}
+            data-testid="portal-bulk-generate-btn"
+          >
+            Hromadně vygenerovat přístupy
+          </Button>
+        </div>
+        <div className="text-muted text-sm">
+          Vlastníci mohou přistupovat k předpisům, kontu a dokumentům bez přihlášení.
+        </div>
+      </div>
 
       </>}
 

@@ -17,19 +17,47 @@ export class AccountingExportController {
 
   @Get('export/pohoda')
   @Roles(...ROLES_FINANCE)
-  @ApiOperation({ summary: 'Export do Pohoda XML (Windows-1252)' })
+  @ApiOperation({ summary: 'Export do Pohoda XML (Windows-1250)' })
   async exportPohoda(
     @CurrentUser() user: AuthUser,
     @Param('propertyId') propertyId: string,
     @Query('from') from: string,
     @Query('to') to: string,
     @Query('type') type: string,
+    @Query('includeBank') includeBank: string,
+    @Query('bankAccountId') bankAccountId: string,
     @Res() reply: FastifyReply,
   ) {
-    const buffer = await this.service.exportPohoda(user, { propertyId, from, to, type: (type as any) ?? 'all' })
-    reply.header('Content-Type', 'application/xml; charset=windows-1252')
-    reply.header('Content-Disposition', 'attachment; filename="ifmio-pohoda-export.xml"')
+    const buffer = await this.service.exportPohoda(user, {
+      propertyId, from, to,
+      type: (type as any) ?? 'all',
+      includeBankTransactions: includeBank === 'true',
+      bankAccountId: bankAccountId || undefined,
+    })
+    const month = from?.slice(0, 7) ?? new Date().toISOString().slice(0, 7)
+    reply.header('Content-Type', 'application/xml; charset=windows-1250')
+    reply.header('Content-Disposition', `attachment; filename="pohoda_export_${month}.xml"`)
     return reply.send(buffer)
+  }
+
+  @Get('export/pohoda/preview')
+  @Roles(...ROLES_FINANCE)
+  @ApiOperation({ summary: 'Náhled Pohoda exportu (počty a částky)' })
+  previewPohoda(
+    @CurrentUser() user: AuthUser,
+    @Param('propertyId') propertyId: string,
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @Query('type') type: string,
+    @Query('includeBank') includeBank: string,
+    @Query('bankAccountId') bankAccountId: string,
+  ) {
+    return this.service.previewPohoda(user, {
+      propertyId, from, to,
+      type: (type as any) ?? 'all',
+      includeBankTransactions: includeBank === 'true',
+      bankAccountId: bankAccountId || undefined,
+    })
   }
 
   @Get('export/money-s3')
