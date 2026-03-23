@@ -37,18 +37,29 @@ export default function PohodaExportSection() {
   // Auto-select first property
   if (!propertyId && properties.length > 0) setPropertyId(properties[0].id)
 
-  const exportType = includeInvoices && includePrescriptions ? 'all' : includeInvoices ? 'invoices' : includePrescriptions ? 'prescriptions' : 'all'
+  const exportType =
+    includeInvoices && includePrescriptions
+      ? 'all'
+      : includeInvoices
+        ? 'invoices'
+        : includePrescriptions
+          ? 'prescriptions'
+          : 'none'
 
   const { data: preview, isLoading: previewLoading } = useQuery({
     queryKey: ['pohoda-preview', propertyId, dateFrom, dateTo, exportType, includeBank],
     queryFn: () => apiClient.get(`/properties/${propertyId}/accounting/export/pohoda/preview`, {
       params: { from: dateFrom, to: dateTo, type: exportType, includeBank: String(includeBank) },
     }).then(r => r.data),
-    enabled: !!propertyId && !!dateFrom && !!dateTo,
+    enabled: !!propertyId && !!dateFrom && !!dateTo && exportType !== 'none',
   })
 
   const handleDownload = async () => {
     if (!propertyId) return
+    if (exportType === 'none') {
+      toast.error('Vyberte alespoň jeden typ dokladu pro export')
+      return
+    }
     setDownloading(true)
     try {
       const response = await apiClient.get(`/properties/${propertyId}/accounting/export/pohoda`, {
