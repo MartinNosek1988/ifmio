@@ -73,7 +73,12 @@ export default function SipoTab() {
         const zmBlob = new Blob([Uint8Array.from(atob(data.changeFile), c => c.charCodeAt(0))], { type: 'text/plain' })
         const opBlob = new Blob([Uint8Array.from(atob(data.coverFile), c => c.charCodeAt(0))], { type: 'text/plain' })
         for (const [blob, name] of [[zmBlob, data.fileName], [opBlob, data.coverFileName]] as const) {
-          const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); URL.revokeObjectURL(a.href)
+          const a = document.createElement('a')
+          const url = URL.createObjectURL(blob)
+          a.href = url
+          a.download = name
+          a.click()
+          setTimeout(() => URL.revokeObjectURL(url), 0)
         }
         toast.success(`Vygenerováno: ${data.recordCount} plátců, ${fmtCzk(data.totalAmount)}`)
       },
