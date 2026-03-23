@@ -20,13 +20,13 @@ export function Footer() {
           {FOOTER.columns.map(col => (
             <div key={col.title} className="landing-footer__column">
               <h4 className="landing-footer__column-title">{col.title}</h4>
-              <ul>{col.items.map(item => <li key={item}><a href="#">{item}</a></li>)}</ul>
+              <ul className="landing-footer__list">{col.items.map(item => <li key={item}><a href="#">{item}</a></li>)}</ul>
             </div>
           ))}
 
           <div className="landing-footer__column">
             <h4 className="landing-footer__column-title">Kontakt</h4>
-            <ul>
+            <ul className="landing-footer__list">
               <li><a href={`mailto:${FOOTER.contact.email}`}>✉ {FOOTER.contact.email}</a></li>
               <li>☎ {FOOTER.contact.phone}</li>
               <li>◎ {FOOTER.contact.city}</li>

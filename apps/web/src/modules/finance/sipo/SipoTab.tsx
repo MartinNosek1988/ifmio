@@ -4,7 +4,7 @@ import { useToast } from '../../../shared/components/toast/Toast'
 import { useProperties } from '../../properties/use-properties'
 import {
   useSipoConfig, useSipoPreview, useSipoHistory, useSipoPayers,
-  useCreateSipoConfig, useGenerateSipo, useImportSipoPayments, useUpdateSipoPayer,
+  useCreateSipoConfig, useUpdateSipoConfig, useGenerateSipo, useImportSipoPayments, useUpdateSipoPayer,
 } from './sipo.queries'
 
 function fmtCzk(n: number) {
@@ -44,6 +44,7 @@ export default function SipoTab() {
   const { data: history = [] } = useSipoHistory(propertyId || undefined)
   const { data: payers = [] } = useSipoPayers(propertyId || undefined)
   const createConfigMut = useCreateSipoConfig()
+  const updateConfigMut = useUpdateSipoConfig()
   const generateMut = useGenerateSipo()
   const importMut = useImportSipoPayments()
   const updatePayerMut = useUpdateSipoPayer()
@@ -60,10 +61,25 @@ export default function SipoTab() {
   const tdStyle: React.CSSProperties = { padding: '8px 12px', borderBottom: '1px solid var(--border)', fontSize: '.85rem' }
 
   const handleSaveConfig = () => {
-    createConfigMut.mutate({ propertyId, ...configForm }, {
-      onSuccess: () => { toast.success('SIPO konfigurace uložena'); setShowConfig(false) },
-      onError: () => toast.error('Chyba při ukládání konfigurace'),
-    })
+    const onSuccess = () => { toast.success('SIPO konfigurace uložena'); setShowConfig(false) }
+    const onError = () => toast.error('Chyba při ukládání konfigurace')
+    if (config) {
+      updateConfigMut.mutate({ id: config.id, ...configForm }, { onSuccess, onError })
+    } else {
+      createConfigMut.mutate({ propertyId, ...configForm }, { onSuccess, onError })
+    }
+  }
+
+  const handleOpenConfigModal = () => {
+    if (config) {
+      setConfigForm({
+        recipientNumber: config.recipientNumber,
+        feeCode: config.feeCode,
+        deliveryMode: config.deliveryMode,
+        encoding: config.encoding,
+      })
+    }
+    setShowConfig(true)
   }
 
   const handleGenerate = () => {
@@ -73,7 +89,12 @@ export default function SipoTab() {
         const zmBlob = new Blob([Uint8Array.from(atob(data.changeFile), c => c.charCodeAt(0))], { type: 'text/plain' })
         const opBlob = new Blob([Uint8Array.from(atob(data.coverFile), c => c.charCodeAt(0))], { type: 'text/plain' })
         for (const [blob, name] of [[zmBlob, data.fileName], [opBlob, data.coverFileName]] as const) {
-          const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); URL.revokeObjectURL(a.href)
+          const a = document.createElement('a')
+          const url = URL.createObjectURL(blob)
+          a.href = url
+          a.download = name
+          a.click()
+          setTimeout(() => URL.revokeObjectURL(url), 0)
         }
         toast.success(`Vygenerováno: ${data.recordCount} plátců, ${fmtCzk(data.totalAmount)}`)
       },
@@ -106,7 +127,7 @@ export default function SipoTab() {
       <div style={sectionStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <div style={{ fontWeight: 600, fontSize: '.95rem' }}>Konfigurace SIPO</div>
-          <Button size="sm" onClick={() => setShowConfig(true)} data-testid="sipo-config-save">
+          <Button size="sm" onClick={handleOpenConfigModal} data-testid="sipo-config-save">
             {config ? 'Upravit' : 'Nastavit'}
           </Button>
         </div>
@@ -268,8 +289,8 @@ export default function SipoTab() {
         <Modal open onClose={() => setShowConfig(false)} title="SIPO konfigurace" data-testid="sipo-config-form"
           footer={<div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <Button onClick={() => setShowConfig(false)}>Zrušit</Button>
-            <Button variant="primary" onClick={handleSaveConfig} disabled={createConfigMut.isPending}>
-              {createConfigMut.isPending ? 'Ukládám...' : 'Uložit'}
+            <Button variant="primary" onClick={handleSaveConfig} disabled={createConfigMut.isPending || updateConfigMut.isPending}>
+              {(createConfigMut.isPending || updateConfigMut.isPending) ? 'Ukládám...' : 'Uložit'}
             </Button>
           </div>}>
           <div style={{ marginBottom: 14 }}>

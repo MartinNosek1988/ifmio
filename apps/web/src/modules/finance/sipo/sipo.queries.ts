@@ -54,6 +54,15 @@ export function useCreateSipoConfig() {
   })
 }
 
+export function useUpdateSipoConfig() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...dto }: { id: string; recipientNumber: string; feeCode: string; deliveryMode?: string; encoding?: string }) =>
+      sipoApi.updateConfig(id, dto),
+    onSuccess: () => invalidateAll(qc),
+  })
+}
+
 export function useGenerateSipo() {
   const qc = useQueryClient()
   return useMutation({
