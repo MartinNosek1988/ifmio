@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Download } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { Button, Badge, EmptyState } from '../../../shared/components'
@@ -35,7 +35,9 @@ export default function PohodaExportSection() {
   const [downloading, setDownloading] = useState(false)
 
   // Auto-select first property
-  if (!propertyId && properties.length > 0) setPropertyId(properties[0].id)
+  useEffect(() => {
+    if (!propertyId && properties.length > 0) setPropertyId(properties[0].id)
+  }, [properties, propertyId])
 
   const exportType =
     includeInvoices && includePrescriptions
