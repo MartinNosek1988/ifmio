@@ -40,6 +40,8 @@ export class SipoService {
     propertyId: string; recipientNumber: string; feeCode: string;
     deliveryMode?: string; encoding?: string;
   }) {
+    const property = await this.prisma.property.findFirst({ where: { id: dto.propertyId, tenantId } })
+    if (!property) throw new NotFoundException('Nemovitost nenalezena')
     this.validateRecipientNumber(dto.recipientNumber)
     this.validateFeeCode(dto.feeCode)
     return this.prisma.sipoConfig.create({
