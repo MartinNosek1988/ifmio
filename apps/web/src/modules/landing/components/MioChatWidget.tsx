@@ -12,6 +12,7 @@ export function MioChatWidget() {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<Array<{ role: 'bot' | 'user'; text: string }>>([])
   const panelRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -31,6 +32,14 @@ export function MioChatWidget() {
     setTimeout(() => {
       setMessages(prev => [...prev, { role: 'bot', text: RESPONSES[reply] ?? 'Díky za dotaz! Zkuste se nás zeptat na něco konkrétnějšího.' }])
     }, 600)
+  }
+
+  const handleSend = () => {
+    const val = inputRef.current?.value.trim()
+    if (val) {
+      handleQuickReply(val)
+      if (inputRef.current) inputRef.current.value = ''
+    }
   }
 
   return (
@@ -67,15 +76,16 @@ export function MioChatWidget() {
           </div>
 
           <div className="mio-chat-panel__footer">
-            <div className="mio-chat-panel__input-row">
-              <input type="text" placeholder="Napište zprávu..." className="mio-chat-panel__input"
+            <div className="mio-chat-panel__input">
+              <input
+                ref={inputRef}
+                type="text"
+                placeholder="Napište zprávu..."
                 onKeyDown={e => {
-                  if (e.key === 'Enter') {
-                    const val = (e.target as HTMLInputElement).value.trim()
-                    if (val) { handleQuickReply(val); (e.target as HTMLInputElement).value = '' }
-                  }
-                }} />
-              <button className="mio-chat-panel__send" aria-label="Odeslat">→</button>
+                  if (e.key === 'Enter') handleSend()
+                }}
+              />
+              <button className="mio-chat-panel__send" aria-label="Odeslat" onClick={handleSend}>→</button>
             </div>
             <div className="mio-chat-panel__powered">{CHAT_WIDGET.powered}</div>
           </div>
