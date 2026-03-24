@@ -1,15 +1,16 @@
 import { LOCALES, LOCALE_CONFIGS, LOCALE_COUNTRY_CODE, ACTIVE_LOCALES, useI18n } from './i18n'
 import type { Locale } from './i18n'
 
-function Flag({ locale }: { locale: string }) {
-  const cc = (LOCALE_COUNTRY_CODE[locale as Locale] ?? locale).toUpperCase()
+function Flag({ locale }: { locale: Locale }) {
+  const cc = (LOCALE_COUNTRY_CODE[locale] ?? locale).toUpperCase()
   return (
     <img
       src={`https://purecatamphetamine.github.io/country-flag-icons/3x2/${cc}.svg`}
-      width={22}
-      height={15}
+      width={21}
+      height={14}
       alt=""
       style={{ borderRadius: 2, objectFit: 'cover', flexShrink: 0 }}
+      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
     />
   )
 }
