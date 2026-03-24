@@ -6,7 +6,7 @@ export function Hero() {
   const h = t.hero
 
   return (
-    <section className="hero" id="hero" aria-label="Hero">
+    <section className="hero" id="hero">
       <div className="container" style={{ textAlign: 'center' }}>
         <div className="hero__badges animate-on-scroll visible" style={{ animationDelay: '0s' }}>
           {h.badges.map(b => <span key={b} className="hero__badge">{b}</span>)}

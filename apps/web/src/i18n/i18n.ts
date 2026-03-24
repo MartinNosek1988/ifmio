@@ -25,6 +25,10 @@ export const LOCALE_CONFIGS: Record<Locale, LocaleConfig> = {
   it: { code: 'it', label: 'Italiano', flag: '🇮🇹', shortLabel: 'IT' },
 }
 
+export const LOCALE_COUNTRY_CODE: Record<Locale, string> = {
+  cs: 'cz', en: 'gb', sk: 'sk', de: 'de', pl: 'pl', uk: 'ua', es: 'es', it: 'it',
+}
+
 // Translation data per locale — use loose typing for cross-locale compatibility
 type TranslationData = typeof cs
 const translations: Record<string, Record<string, unknown>> = { cs, en }
