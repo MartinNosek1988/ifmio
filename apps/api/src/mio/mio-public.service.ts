@@ -48,6 +48,20 @@ export class MioPublicService {
   private readonly logger = new Logger(MioPublicService.name)
   private readonly apiKey: string
 
+  // Global daily budget
+  private dailyRequestCount = 0
+  private dailyResetDate = new Date().toDateString()
+  private readonly DAILY_LIMIT = 500
+
+  // Per-session rate limit
+  private sessionRequests = new Map<string, { count: number; firstRequest: number }>()
+  private readonly SESSION_LIMIT = 20
+  private readonly SESSION_WINDOW = 3600000 // 1 hour
+
+  // Response cache
+  private responseCache = new Map<string, { reply: string; timestamp: number }>()
+  private readonly CACHE_TTL = 3600000 // 1 hour
+
   constructor(private readonly configService: ConfigService) {
     this.apiKey = this.configService.get<string>('ANTHROPIC_API_KEY') || ''
   }
@@ -60,13 +74,62 @@ export class MioPublicService {
   }): Promise<{ reply: string; sessionId: string }> {
     if (!this.apiKey) {
       this.logger.warn('Anthropic API key not configured')
+      return { reply: this.fallback(dto.locale), sessionId: dto.sessionId }
+    }
+
+    // 1. Global daily budget
+    const today = new Date().toDateString()
+    if (today !== this.dailyResetDate) {
+      this.dailyRequestCount = 0
+      this.dailyResetDate = today
+    }
+    if (this.dailyRequestCount >= this.DAILY_LIMIT) {
       return {
         reply: dto.locale === 'cs'
-          ? 'Omlouvám se, momentálně nejsem dostupný. Kontaktujte nás na info@ifmio.com.'
-          : 'Sorry, I\'m currently unavailable. Contact us at info@ifmio.com.',
+          ? 'Mio AI je momentálně přetížený. Zkuste to prosím později nebo nás kontaktujte na info@ifmio.com.'
+          : 'Mio AI is currently overloaded. Please try again later or contact us at info@ifmio.com.',
         sessionId: dto.sessionId,
       }
     }
+
+    // 2. Per-session rate limit
+    const now = Date.now()
+    const session = this.sessionRequests.get(dto.sessionId)
+    if (session) {
+      if (now - session.firstRequest > this.SESSION_WINDOW) {
+        this.sessionRequests.set(dto.sessionId, { count: 1, firstRequest: now })
+      } else if (session.count >= this.SESSION_LIMIT) {
+        return {
+          reply: dto.locale === 'cs'
+            ? 'Dosáhli jste limitu zpráv. Pro další dotazy nás kontaktujte na info@ifmio.com nebo si objednejte demo.'
+            : 'You have reached the message limit. Contact us at info@ifmio.com or book a demo for more.',
+          sessionId: dto.sessionId,
+        }
+      } else {
+        session.count++
+      }
+    } else {
+      this.sessionRequests.set(dto.sessionId, { count: 1, firstRequest: now })
+    }
+
+    // Cleanup old sessions periodically
+    if (this.dailyRequestCount % 100 === 0) {
+      for (const [sid, data] of this.sessionRequests) {
+        if (now - data.firstRequest > this.SESSION_WINDOW * 2) {
+          this.sessionRequests.delete(sid)
+        }
+      }
+    }
+
+    // 3. Response cache — serve identical questions from memory
+    const cacheKey = `${dto.locale}:${dto.message.toLowerCase().trim()}`
+    const cached = this.responseCache.get(cacheKey)
+    if (cached && now - cached.timestamp < this.CACHE_TTL) {
+      return { reply: cached.reply, sessionId: dto.sessionId }
+    }
+
+    // 4. Call Anthropic API
+    this.dailyRequestCount++
 
     try {
       const messages = [
@@ -85,7 +148,7 @@ export class MioPublicService {
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-haiku-4-5-20251001',
           max_tokens: 300,
           system: SYSTEM_PROMPTS[dto.locale] || SYSTEM_PROMPTS.en,
           messages,
@@ -101,15 +164,24 @@ export class MioPublicService {
       const data = await response.json() as { content?: { text?: string }[] }
       const reply = data.content?.[0]?.text || ''
 
+      // Cache the response
+      this.responseCache.set(cacheKey, { reply, timestamp: now })
+      if (this.responseCache.size > 200) {
+        const oldest = [...this.responseCache.entries()]
+          .sort((a, b) => a[1].timestamp - b[1].timestamp)[0]
+        if (oldest) this.responseCache.delete(oldest[0])
+      }
+
       return { reply, sessionId: dto.sessionId }
     } catch (error) {
       this.logger.error('Public chat error', error)
-      return {
-        reply: dto.locale === 'cs'
-          ? 'Omlouvám se, momentálně nejsem dostupný. Kontaktujte nás na info@ifmio.com.'
-          : 'Sorry, I\'m currently unavailable. Contact us at info@ifmio.com.',
-        sessionId: dto.sessionId,
-      }
+      return { reply: this.fallback(dto.locale), sessionId: dto.sessionId }
     }
+  }
+
+  private fallback(locale: string): string {
+    return locale === 'cs'
+      ? 'Omlouvám se, momentálně nejsem dostupný. Kontaktujte nás na info@ifmio.com.'
+      : 'Sorry, I\'m currently unavailable. Contact us at info@ifmio.com.'
   }
 }

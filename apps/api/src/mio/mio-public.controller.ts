@@ -29,6 +29,13 @@ export class MioPublicController {
     if (dto.message.length > 500) {
       throw new BadRequestException('message must be 500 characters or less')
     }
+    const cleaned = dto.message.trim()
+    if (cleaned.length < 2) {
+      throw new BadRequestException('Message too short')
+    }
+    if (/^(.)\1{10,}$/.test(cleaned)) {
+      throw new BadRequestException('Invalid message')
+    }
     if (!dto.sessionId || typeof dto.sessionId !== 'string') {
       throw new BadRequestException('sessionId is required')
     }
