@@ -12,7 +12,7 @@ export default function PricingPage() {
   const audience = AUDIENCES[activeTab]
 
   return (
-    <>
+    <div className="landing-page">
       <Navigation />
 
       <div className="pricing-page">
@@ -98,6 +98,6 @@ export default function PricingPage() {
       </div>
 
       <Footer />
-    </>
+    </div>
   )
 }

@@ -100,11 +100,11 @@ export function Navigation() {
 
           <a href="/cenik" className="landing-nav__link" onClick={() => setMenuOpen(false)}>Ceník</a>
           <a href="/kontakt" className="landing-nav__link" onClick={() => setMenuOpen(false)}>Kontakt</a>
+        </div>
 
-          <div className="landing-nav__ctas">
-            <a href="/login" className="btn btn--ghost btn--sm">{NAV.ctaSecondary}</a>
-            <a href="/demo" className="btn btn--primary btn--sm">{NAV.ctaPrimary}</a>
-          </div>
+        <div className="landing-nav__ctas">
+          <a href="/login" className="btn btn--ghost btn--sm">{NAV.ctaSecondary}</a>
+          <a href="/demo" className="btn btn--primary btn--sm">{NAV.ctaPrimary}</a>
         </div>
       </div>
     </nav>

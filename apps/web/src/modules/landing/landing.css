@@ -6,6 +6,7 @@
 :root {
   --teal: #0D9488;
   --teal-light: #14B8A6;
+  --teal-dark: #0F766E;
   --teal-accent: #5EEAD4;
   --teal-50: #F0FDFA;
   --dark: #0C1222;
@@ -65,69 +66,93 @@
 }
 
 /* --- 2. Buttons --- */
-.btn {
+.landing-page .btn,
+.landing-nav .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 0.9375rem;
+  font-weight: 700;
+  font-size: 0.875rem;
   padding: 12px 24px;
   border-radius: 10px;
   border: none;
   cursor: pointer;
   text-decoration: none;
-  transition: all 0.2s ease;
+  transition: background-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
   line-height: 1.4;
   white-space: nowrap;
 }
 
-.btn:focus-visible {
+.landing-page .btn:focus-visible,
+.landing-nav .btn:focus-visible {
   outline: 2px solid var(--teal);
   outline-offset: 2px;
 }
 
-.btn--primary {
+.landing-page .btn--primary,
+.landing-nav .btn--primary {
   background-color: var(--teal);
   color: var(--white);
+  box-shadow: 0 2px 12px rgba(13, 148, 136, 0.25);
 }
 
-.btn--primary:hover {
-  background-color: var(--teal-light);
+.landing-page .btn--primary:hover,
+.landing-nav .btn--primary:hover {
+  background-color: var(--teal-dark);
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(13, 148, 136, 0.35);
+  box-shadow: 0 4px 20px rgba(13, 148, 136, 0.35);
 }
 
-.btn--ghost {
+.landing-page .btn--ghost,
+.landing-nav .btn--ghost {
   background-color: transparent;
-  color: var(--gray-700);
+  color: var(--gray-600);
   border: 1.5px solid var(--gray-200);
 }
 
-.btn--ghost:hover {
-  border-color: var(--gray-400);
-  background-color: var(--gray-50);
+.landing-page .btn--ghost:hover,
+.landing-nav .btn--ghost:hover {
+  border-color: var(--teal);
+  color: var(--teal);
 }
 
-.btn--dark {
+.landing-page .btn--dark,
+.landing-nav .btn--dark {
   background-color: var(--dark);
   color: var(--white);
 }
 
-.btn--dark:hover {
+.landing-page .btn--dark:hover,
+.landing-nav .btn--dark:hover {
   background-color: var(--dark-surface);
   transform: translateY(-1px);
   box-shadow: 0 4px 14px rgba(12, 18, 34, 0.3);
 }
 
-.btn--sm {
+.landing-page .btn--white,
+.landing-nav .btn--white {
+  background-color: var(--white);
+  color: var(--teal);
+  border: none;
+}
+
+.landing-page .btn--white:hover,
+.landing-nav .btn--white:hover {
+  background-color: var(--gray-50);
+  transform: translateY(-1px);
+}
+
+.landing-page .btn--sm,
+.landing-nav .btn--sm {
   padding: 10px 24px;
   font-size: 0.8125rem;
   border-radius: 10px;
 }
 
-.btn--lg {
+.landing-page .btn--lg,
+.landing-nav .btn--lg {
   padding: 16px 32px;
   font-size: 1.0625rem;
   border-radius: 12px;
@@ -288,6 +313,13 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.landing-nav__ctas {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: 16px;
 }
 
 /* Nav dropdown — hover bridge prevents gap disconnect */
