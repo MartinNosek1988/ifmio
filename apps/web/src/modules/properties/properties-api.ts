@@ -175,4 +175,20 @@ export const propertiesApi = {
 
   endOccupancy: (propertyId: string, unitId: string, occupancyId: string) =>
     apiClient.patch<ApiOccupancy>(`/properties/${propertyId}/units/${unitId}/occupancies/${occupancyId}/end`).then((r) => r.data),
+
+  // ── Unit detail sub-resources ──
+  getUnitNav: (propertyId: string, unitId: string) =>
+    apiClient.get<{ total: number; current: number; prevId: string | null; nextId: string | null }>(`/properties/${propertyId}/units/${unitId}/nav`).then(r => r.data),
+
+  listRooms: (propertyId: string, unitId: string) =>
+    apiClient.get<{ id: string; name: string; area: number; coefficient: number; calculatedArea: number | null }[]>(`/properties/${propertyId}/units/${unitId}/rooms`).then(r => r.data),
+
+  listQuantities: (propertyId: string, unitId: string) =>
+    apiClient.get<{ id: string; name: string; value: number; unitLabel: string }[]>(`/properties/${propertyId}/units/${unitId}/quantities`).then(r => r.data),
+
+  listEquipment: (propertyId: string, unitId: string) =>
+    apiClient.get<{ id: string; name: string; status: string; note: string | null }[]>(`/properties/${propertyId}/units/${unitId}/equipment`).then(r => r.data),
+
+  listFees: (propertyId: string, unitId: string) =>
+    apiClient.get<{ id: string; amount: number; calculationType: string; validFrom: string; validTo: string | null }[]>(`/properties/${propertyId}/units/${unitId}/management-fees`).then(r => r.data),
 };

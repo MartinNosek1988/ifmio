@@ -89,6 +89,10 @@ model Tenant {
   accountingPresets           AccountingPreset[]
   portalAccess               PortalAccess[]
   portalMessages             PortalMessage[]
+  unitRooms                  UnitRoom[]
+  unitQuantities             UnitQuantity[]
+  unitEquipment              UnitEquipment[]
+  unitManagementFees         UnitManagementFee[]
 
   @@map("tenants")
 }
@@ -563,8 +567,81 @@ model Unit {
   invitations              TenantInvitation[]
   groupMemberships         UnitGroupMembership[]
 
+  // Unit detail tabs (Domsys parity)
+  rooms          UnitRoom[]
+  quantities     UnitQuantity[]
+  equipment      UnitEquipment[]
+  managementFees UnitManagementFee[]
+
   @@index([propertyId])
   @@map("units")
+}
+
+model UnitRoom {
+  id             String   @id @default(uuid())
+  unitId         String
+  unit           Unit     @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  name           String
+  area           Float
+  coefficient    Float    @default(1.0)
+  calculatedArea Float?
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([tenantId, unitId])
+  @@map("unit_rooms")
+}
+
+model UnitQuantity {
+  id        String @id @default(uuid())
+  unitId    String
+  unit      Unit   @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  name      String
+  value     Float
+  unitLabel String @default("")
+  tenantId  String
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, unitId, name])
+  @@index([tenantId, unitId])
+  @@map("unit_quantities")
+}
+
+model UnitEquipment {
+  id       String  @id @default(uuid())
+  unitId   String
+  unit     Unit    @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  name     String
+  status   String  @default("functional")
+  note     String?
+  tenantId String
+  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, unitId])
+  @@map("unit_equipment")
+}
+
+model UnitManagementFee {
+  id              String    @id @default(uuid())
+  unitId          String
+  unit            Unit      @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  amount          Float
+  calculationType String    @default("flat")
+  validFrom       DateTime
+  validTo         DateTime?
+  tenantId        String
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([tenantId, unitId])
+  @@map("unit_management_fees")
 }
 
 enum SpaceType {

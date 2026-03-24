@@ -53,7 +53,10 @@
       "Bash(npx -w apps/web tsc --noEmit)",
       "Bash(npx -w apps/api tsc --noEmit)",
       "Bash(npx -w apps/web tsc --noEmit --project apps/web/tsconfig.app.json)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(for f:*)",
+      "Bash(do)",
+      "Bash(git pull:*)"
     ]
   }
 }
