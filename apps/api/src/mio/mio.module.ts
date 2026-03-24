@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common'
 import { MioController } from './mio.controller'
+import { MioPublicController } from './mio-public.controller'
 import { MioService } from './mio.service'
+import { MioPublicService } from './mio-public.service'
 import { MioFindingsService } from './mio-findings.service'
 import { MioConfigService } from './mio-config.service'
 import { MioDigestService } from './mio-digest.service'
@@ -20,8 +22,8 @@ import { PropertyScopeModule } from '../common/services/property-scope.module'
     HelpdeskModule, WorkOrdersModule, DashboardModule, RecurringPlansModule,
     CalendarModule, ProtocolsModule, AssetsModule, PropertyScopeModule,
   ],
-  controllers: [MioController],
-  providers: [MioService, MioFindingsService, MioConfigService, MioDigestService, MioObservabilityService, MioWebhookService],
+  controllers: [MioController, MioPublicController],
+  providers: [MioService, MioPublicService, MioFindingsService, MioConfigService, MioDigestService, MioObservabilityService, MioWebhookService],
   exports: [MioFindingsService, MioConfigService, MioDigestService, MioObservabilityService, MioWebhookService],
 })
 export class MioModule {}

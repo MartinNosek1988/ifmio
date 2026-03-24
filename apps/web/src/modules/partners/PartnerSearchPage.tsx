@@ -2,7 +2,7 @@ import { useParams } from 'react-router-dom'
 import { PageLayout } from '../pages/PageLayout'
 import { SeoHead } from '../../i18n/SeoHead'
 import { useI18n } from '../../i18n/i18n'
-import { ROUTE_SLUGS } from '../../i18n/routes'
+import { ROUTE_SLUGS, getSlug, getLocalePair } from '../../i18n/routes'
 import '../pages/pages.css'
 
 const TYPES: Record<string, { title: string; subtitle: string }> = {
@@ -15,12 +15,16 @@ const TYPES: Record<string, { title: string; subtitle: string }> = {
 export default function PartnerSearchPage() {
   const { type } = useParams()
   const { t, locale } = useI18n()
+  const lp = getLocalePair(locale)
   const seo = t.seo.partners
   const data = TYPES[type ?? ''] ?? { title: 'Partneři', subtitle: '' }
+  const canonicalPath = type?.trim()
+    ? `/${lp.canonical}/${getSlug(ROUTE_SLUGS.partners, lp.canonical)}/${type}/`
+    : `/${lp.canonical}/${getSlug(ROUTE_SLUGS.partners, lp.canonical)}/`
 
   return (
     <PageLayout>
-      <SeoHead title={`${data.title} — ${seo.title}`} description={data.subtitle || seo.description} canonicalPath={`/${locale}/${ROUTE_SLUGS.partners[locale]}/${type ?? ''}/`} />
+      <SeoHead title={`${data.title} — ${seo.title}`} description={data.subtitle || seo.description} canonicalPath={canonicalPath} />
       <div className="page-hero">
         <h1 className="page-hero__title" style={{ color: 'var(--dark)' }}>{data.title}</h1>
         <p className="page-hero__subtitle" style={{ color: 'var(--gray-500)' }}>{data.subtitle}</p>

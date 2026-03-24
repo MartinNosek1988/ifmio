@@ -40,6 +40,21 @@ export const PLATFORM_SLUGS: Record<string, Record<string, string>> = {
   banka: { cs: 'banka', en: 'banking' },
 }
 
+export type ActiveLocale = 'cs' | 'en'
+
+export function getSlug(
+  slugMap: Partial<Record<string, string>>,
+  locale: string,
+): string {
+  return slugMap[locale] ?? slugMap['cs'] ?? ''
+}
+
+export function getLocalePair(locale: string): { canonical: ActiveLocale; alternate: ActiveLocale } {
+  const canonical: ActiveLocale = locale === 'en' ? 'en' : 'cs'
+  const alternate: ActiveLocale = canonical === 'cs' ? 'en' : 'cs'
+  return { canonical, alternate }
+}
+
 /** Get localized route path */
 export function getLocalizedPath(routeKey: string, locale: Locale): string {
   const slug = ROUTE_SLUGS[routeKey]

@@ -1,15 +1,16 @@
 import { PageLayout } from './PageLayout'
 import { SeoHead } from '../../i18n/SeoHead'
 import { useI18n } from '../../i18n/i18n'
-import { ROUTE_SLUGS } from '../../i18n/routes'
+import { ROUTE_SLUGS, getSlug, getLocalePair } from '../../i18n/routes'
 import './pages.css'
 
 export default function CareersPage() {
   const { t, locale } = useI18n()
+  const lp = getLocalePair(locale)
   const seo = t.seo.careers
   return (
     <PageLayout>
-      <SeoHead title={seo.title} description={seo.description} canonicalPath={`/${locale}/${ROUTE_SLUGS.careers[locale]}/`} alternatePath={locale === 'cs' ? `/en/${ROUTE_SLUGS.careers.en}/` : `/cs/${ROUTE_SLUGS.careers.cs}/`} />
+      <SeoHead title={seo.title} description={seo.description} canonicalPath={`/${lp.canonical}/${getSlug(ROUTE_SLUGS.careers, lp.canonical)}/`} alternatePath={`/${lp.alternate}/${getSlug(ROUTE_SLUGS.careers, lp.alternate)}/`} />
       <div className="page-hero"><h1 className="page-hero__title" style={{ color: 'var(--dark)' }}>Kariéra v ifmio</h1></div>
       <div className="page-content page-content--narrow" style={{ textAlign: 'center' }}>
         <span className="placeholder-badge">Připravujeme</span>
