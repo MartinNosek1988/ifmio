@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import AppShell from './AppShell';
 import LoginPage from '../modules/auth/LoginPage';
 import RegisterPage from '../modules/auth/RegisterPage';
+import { I18nProvider } from '../i18n/I18nProvider';
 const LandingPage = lazy(() => import('../modules/landing/LandingPage'));
 const PricingPage = lazy(() => import('../modules/pricing/PricingPage'));
 const DemoPage = lazy(() => import('../modules/pages/DemoPage'));
@@ -97,18 +98,46 @@ function withBoundary(name: string, Component: React.ComponentType) {
 }
 
 export const router = createBrowserRouter([
-  { path: '/', element: <LandingPage /> },
-  { path: '/cenik', element: withBoundary('Ceník', PricingPage) },
-  { path: '/demo', element: withBoundary('Demo', DemoPage) },
-  { path: '/kontakt', element: withBoundary('Kontakt', ContactPage) },
-  { path: '/reseni/:slug', element: withBoundary('Řešení', SolutionPage) },
-  { path: '/platforma/:slug', element: withBoundary('Platforma', PlatformModulePage) },
-  { path: '/partneri/registrace', element: withBoundary('Registrace partnera', PartnerRegisterPage) },
-  { path: '/partneri/:type', element: withBoundary('Partneři', PartnerSearchPage) },
-  { path: '/o-nas', element: withBoundary('O nás', AboutPage) },
-  { path: '/kariera', element: withBoundary('Kariéra', CareersPage) },
-  { path: '/blog', element: withBoundary('Blog', BlogPage) },
-  { path: '/pravni-dokumenty', element: withBoundary('Právní dokumenty', LegalDocsPage) },
+  // Root → redirect to /cs/
+  { path: '/', element: <Navigate to="/cs/" replace /> },
+
+  // Old non-prefixed URLs → redirect to /cs/ versions
+  { path: '/cenik', element: <Navigate to="/cs/cenik" replace /> },
+  { path: '/demo', element: <Navigate to="/cs/demo" replace /> },
+  { path: '/kontakt', element: <Navigate to="/cs/kontakt" replace /> },
+
+  // Locale-prefixed public pages
+  {
+    path: '/:locale',
+    element: <I18nProvider />,
+    children: [
+      { index: true, element: <LandingPage /> },
+      // CS slugs
+      { path: 'cenik', element: withBoundary('Ceník', PricingPage) },
+      { path: 'demo', element: withBoundary('Demo', DemoPage) },
+      { path: 'kontakt', element: withBoundary('Kontakt', ContactPage) },
+      { path: 'reseni/:slug', element: withBoundary('Řešení', SolutionPage) },
+      { path: 'platforma/:slug', element: withBoundary('Platforma', PlatformModulePage) },
+      { path: 'partneri/registrace', element: withBoundary('Registrace', PartnerRegisterPage) },
+      { path: 'partneri/:type', element: withBoundary('Partneři', PartnerSearchPage) },
+      { path: 'o-nas', element: withBoundary('O nás', AboutPage) },
+      { path: 'kariera', element: withBoundary('Kariéra', CareersPage) },
+      { path: 'blog', element: withBoundary('Blog', BlogPage) },
+      { path: 'pravni-dokumenty', element: withBoundary('Legal', LegalDocsPage) },
+      // EN slugs (same components, different URL)
+      { path: 'pricing', element: withBoundary('Pricing', PricingPage) },
+      { path: 'contact', element: withBoundary('Contact', ContactPage) },
+      { path: 'solutions/:slug', element: withBoundary('Solutions', SolutionPage) },
+      { path: 'platform/:slug', element: withBoundary('Platform', PlatformModulePage) },
+      { path: 'partners/register', element: withBoundary('Partners', PartnerRegisterPage) },
+      { path: 'partners/:type', element: withBoundary('Partners', PartnerSearchPage) },
+      { path: 'about', element: withBoundary('About', AboutPage) },
+      { path: 'careers', element: withBoundary('Careers', CareersPage) },
+      { path: 'legal', element: withBoundary('Legal', LegalDocsPage) },
+    ],
+  },
+
+  // Auth routes (no locale prefix)
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <RegisterPage /> },
   { path: '/verify-email', element: withBoundary('VerifyEmail', VerifyEmailPage) },

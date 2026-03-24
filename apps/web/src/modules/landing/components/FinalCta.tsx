@@ -1,11 +1,12 @@
-import { FINAL_CTA } from '../../../data/landing-content'
+import { useI18n } from '../../../i18n/i18n'
 
 export function FinalCta() {
+  const { t, localePath } = useI18n()
   return (
-    <section className="final-cta" aria-label="Závěrečná výzva">
+    <section className="final-cta" aria-label="Final CTA">
       <div className="container final-cta__inner">
-        <h2 className="final-cta__headline">{FINAL_CTA.headline}</h2>
-        <a href="#demo" className="btn btn--dark btn--lg">{FINAL_CTA.cta}</a>
+        <h2 className="final-cta__headline">{t.finalCta.headline}</h2>
+        <a href={localePath('/demo')} className="btn btn--dark btn--lg">{t.finalCta.cta}</a>
       </div>
     </section>
   )

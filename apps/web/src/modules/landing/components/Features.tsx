@@ -1,61 +1,64 @@
-import { FEATURES, BENTO_STAT, BENTO_QUOTE } from '../../../data/landing-content'
+import { useI18n } from '../../../i18n/i18n'
 import { useIntersectionObserver } from '../hooks/useIntersectionObserver'
 
 export function Features() {
   const { ref, isIntersecting } = useIntersectionObserver<HTMLElement>({ threshold: 0.05 })
+  const { t, localePath } = useI18n()
+  const f = t.features
+  const cards = f.cards
 
   return (
-    <section ref={ref} className="section" id="funkce" aria-label="Funkce">
+    <section ref={ref} className="section" id="funkce" aria-label="Features">
       <div className="container">
-        <p className="section__label">EFEKTIVITA</p>
-        <h2 className="section__headline">Co ifmio umí pro vaši správu</h2>
+        <p className="section__label">{f.label}</p>
+        <h2 className="section__headline">{f.title}</h2>
 
         <div className="bento-grid">
           {/* Row 1: Mio AI (span 2) + Stat */}
           <div className={`bento-card bento-card--large animate-on-scroll${isIntersecting ? ' visible' : ''}`} style={{ transitionDelay: '0s' }}>
-            <span className="bento-card__tag">{FEATURES[0].tag}</span>
-            <h3 className="bento-card__title">{FEATURES[0].title}</h3>
-            <p className="bento-card__desc">{FEATURES[0].desc}</p>
-            <a href="#demo" className="bento-card__link">Prozkoumat</a>
+            <span className="bento-card__tag">{cards[0].tag}</span>
+            <h3 className="bento-card__title">{cards[0].title}</h3>
+            <p className="bento-card__desc">{cards[0].desc}</p>
+            <a href={localePath('/demo')} className="bento-card__link">{f.explore}</a>
           </div>
           <div className={`bento-stat animate-on-scroll${isIntersecting ? ' visible' : ''}`} style={{ transitionDelay: '0.08s' }}>
-            <div className="bento-stat__value">{BENTO_STAT.value}</div>
-            <div className="bento-stat__label">{BENTO_STAT.label}</div>
+            <div className="bento-stat__value">{f.statValue}</div>
+            <div className="bento-stat__label">{f.statLabel}</div>
           </div>
 
-          {/* Row 2: Predpisy + Work Orders + Quote */}
-          {FEATURES.slice(1, 3).map((f, i) => (
-            <div key={f.id} className={`bento-card animate-on-scroll${isIntersecting ? ' visible' : ''}`} style={{ transitionDelay: `${(i + 2) * 0.08}s` }}>
-              <span className="bento-card__tag">{f.tag}</span>
-              <h3 className="bento-card__title">{f.title}</h3>
-              <p className="bento-card__desc">{f.desc}</p>
-              <a href="#demo" className="bento-card__link">Prozkoumat</a>
+          {/* Row 2 */}
+          {cards.slice(1, 3).map((c, i) => (
+            <div key={i} className={`bento-card animate-on-scroll${isIntersecting ? ' visible' : ''}`} style={{ transitionDelay: `${(i + 2) * 0.08}s` }}>
+              <span className="bento-card__tag">{c.tag}</span>
+              <h3 className="bento-card__title">{c.title}</h3>
+              <p className="bento-card__desc">{c.desc}</p>
+              <a href={localePath('/demo')} className="bento-card__link">{f.explore}</a>
             </div>
           ))}
           <div className={`bento-quote animate-on-scroll${isIntersecting ? ' visible' : ''}`} style={{ transitionDelay: '0.32s' }}>
-            <blockquote>{BENTO_QUOTE.text}</blockquote>
+            <blockquote>{f.quoteText}</blockquote>
             <div className="bento-quote__author">
-              <div className="bento-quote__avatar">{BENTO_QUOTE.initials}</div>
-              <span>{BENTO_QUOTE.name}</span>
+              <div className="bento-quote__avatar">{f.quoteInitials}</div>
+              <span>{f.quoteName}</span>
             </div>
           </div>
 
-          {/* Row 3: Komunikace + Compliance */}
-          {FEATURES.slice(3, 5).map((f, i) => (
-            <div key={f.id} className={`bento-card animate-on-scroll${isIntersecting ? ' visible' : ''}`} style={{ transitionDelay: `${(i + 5) * 0.08}s` }}>
-              <span className="bento-card__tag">{f.tag}</span>
-              <h3 className="bento-card__title">{f.title}</h3>
-              <p className="bento-card__desc">{f.desc}</p>
-              <a href="#demo" className="bento-card__link">Prozkoumat</a>
+          {/* Row 3 */}
+          {cards.slice(3, 5).map((c, i) => (
+            <div key={i} className={`bento-card animate-on-scroll${isIntersecting ? ' visible' : ''}`} style={{ transitionDelay: `${(i + 5) * 0.08}s` }}>
+              <span className="bento-card__tag">{c.tag}</span>
+              <h3 className="bento-card__title">{c.title}</h3>
+              <p className="bento-card__desc">{c.desc}</p>
+              <a href={localePath('/demo')} className="bento-card__link">{f.explore}</a>
             </div>
           ))}
 
-          {/* Row 4: Finance (span 2) */}
+          {/* Row 4 */}
           <div className={`bento-card bento-card--wide animate-on-scroll${isIntersecting ? ' visible' : ''}`} style={{ transitionDelay: '0.56s' }}>
-            <span className="bento-card__tag">{FEATURES[5].tag}</span>
-            <h3 className="bento-card__title">{FEATURES[5].title}</h3>
-            <p className="bento-card__desc">{FEATURES[5].desc}</p>
-            <a href="#demo" className="bento-card__link">Prozkoumat</a>
+            <span className="bento-card__tag">{cards[5].tag}</span>
+            <h3 className="bento-card__title">{cards[5].title}</h3>
+            <p className="bento-card__desc">{cards[5].desc}</p>
+            <a href={localePath('/demo')} className="bento-card__link">{f.explore}</a>
           </div>
         </div>
       </div>
