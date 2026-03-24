@@ -24,10 +24,19 @@ export interface ApiProperty {
   cadastralArea?: string | null;
   landRegistrySheet?: string | null;
   country?: string;
+  contactName?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  website?: string | null;
+  websiteNote?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   createdAt: string;
   updatedAt: string;
   units?: ApiUnit[];
-  _count?: { units?: number; residents?: number };
+  _count?: { units?: number; residents?: number; prescriptions?: number };
+  activePrescriptions?: number;
+  monthlyVolume?: number;
 }
 
 export type SpaceTypeValue = 'RESIDENTIAL' | 'NON_RESIDENTIAL' | 'GARAGE' | 'PARKING' | 'CELLAR' | 'LAND';
@@ -75,6 +84,13 @@ export interface CreatePropertyPayload {
   accountingSystem?: AccountingSystemType | null;
   cadastralArea?: string | null;
   landRegistrySheet?: string | null;
+  contactName?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  website?: string | null;
+  websiteNote?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface UpdatePropertyPayload extends Partial<CreatePropertyPayload> {}
@@ -155,6 +171,9 @@ export const propertiesApi = {
 
   archive: (id: string) =>
     apiClient.delete(`/properties/${id}`),
+
+  getPropertyNav: (id: string) =>
+    apiClient.get<{ total: number; current: number; prevId: string | null; nextId: string | null }>(`/properties/${id}/nav`).then(r => r.data),
 
   // ── Units ──
   createUnit: (propertyId: string, data: CreateUnitPayload) =>

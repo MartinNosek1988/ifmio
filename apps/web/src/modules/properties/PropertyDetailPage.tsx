@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Plus, Pencil, Layers, Trash2, UserPlus } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, Plus, Pencil, Layers, Trash2, UserPlus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { usePropertyPickerStore } from '../../core/stores/property-picker.store';
 import { KpiCard, Table, Badge, Button, Modal, EmptyState, LoadingState, ErrorState } from '../../shared/components';
 import { useToast } from '../../shared/components/toast/Toast';
@@ -66,7 +66,13 @@ export default function PropertyDetailPage() {
   const [fcModal, setFcModal] = useState<{ context?: ApiFinancialContext } | null>(null);
   const [transferModal, setTransferModal] = useState<{ unitId: string; unitName: string; occupancyId: string; ownerName: string; share?: number | null } | null>(null);
 
-  type DetailTab = 'overview' | 'units' | 'owners' | 'groups' | 'meters' | 'components' | 'representatives' | 'assemblies' | 'per-rollam'
+  const { data: propNav } = useQuery({
+    queryKey: ['properties', id, 'nav'],
+    queryFn: () => propertiesApi.getPropertyNav(id!),
+    enabled: !!id,
+  });
+
+  type DetailTab = 'overview' | 'units' | 'owners' | 'groups' | 'meters' | 'components' | 'representatives' | 'assemblies' | 'per-rollam' | 'map' | 'profile'
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
 
   const refetchOwnerships = () => queryClient.invalidateQueries({ queryKey: ['ownerships'] });
@@ -258,7 +264,8 @@ export default function PropertyDetailPage() {
         <div>
           <h1 className="page-title" data-testid="property-detail-name">{property.name}</h1>
           <p className="page-subtitle" data-testid="property-detail-address">
-            {[property.address, property.city].filter(Boolean).join(', ')}
+            {[LEGAL_MODE_LABEL[property.legalMode ?? ''] ?? '', property.address, property.city].filter(Boolean).join(' · ')}
+            {property.ico ? ` · IČ: ${property.ico}` : ''}
           </p>
           {/* P0 info strip */}
           <div style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap', fontSize: '0.82rem' }}>
@@ -327,7 +334,20 @@ export default function PropertyDetailPage() {
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {propNav && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginRight: 12 }}>
+              <button className="btn btn--sm" disabled={!propNav.prevId} onClick={() => propNav.prevId && navigate(`/properties/${propNav.prevId}`)} style={{ padding: '6px 8px' }} aria-label="Předchozí nemovitost">
+                <ChevronLeft size={14} />
+              </button>
+              <span style={{ fontSize: '.82rem', color: 'var(--gray-500)', minWidth: 60, textAlign: 'center' }}>
+                {propNav.current} z {propNav.total}
+              </span>
+              <button className="btn btn--sm" disabled={!propNav.nextId} onClick={() => propNav.nextId && navigate(`/properties/${propNav.nextId}`)} style={{ padding: '6px 8px' }} aria-label="Další nemovitost">
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          )}
           <Button icon={<Pencil size={15} />} onClick={() => setShowEditProp(true)} data-testid="property-detail-edit-btn">Upravit</Button>
           <Button icon={<Layers size={15} />} onClick={() => setShowBulk(true)}>Hromadné</Button>
           <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowAddUnit(true)} data-testid="unit-add-btn">
@@ -359,6 +379,8 @@ export default function PropertyDetailPage() {
           { key: 'representatives' as DetailTab, label: 'Zástupci' },
           { key: 'assemblies' as DetailTab, label: 'Shromáždění' },
           { key: 'per-rollam' as DetailTab, label: 'Per rollam' },
+          { key: 'map' as DetailTab, label: 'Mapa' },
+          { key: 'profile' as DetailTab, label: 'Profil' },
         ]).map(t => (
           <button key={t.key} className={`tab-btn${detailTab === t.key ? ' active' : ''}`} data-testid={`property-tab-${t.key}`} onClick={() => setDetailTab(t.key)}>
             {t.label}
@@ -594,6 +616,119 @@ export default function PropertyDetailPage() {
           <Button variant="primary" onClick={() => navigate(`/properties/${property.id}/per-rollam`)}>
             Otevřít hlasování per rollam
           </Button>
+        </div>
+      )}
+
+      {/* ── MAP TAB ──────────────────────────────────────────── */}
+      {detailTab === 'map' && (
+        <div style={{ background: '#fff', border: '1px solid var(--gray-200, #e5e7eb)', borderRadius: 16, padding: 24, minHeight: 400 }} data-testid="property-map-tab">
+          <div style={{ fontFamily: 'var(--font-display, inherit)', fontWeight: 700, textTransform: 'uppercase', color: 'var(--gray-600, #4b5563)', fontSize: '.78rem', letterSpacing: '.05em', marginBottom: 16 }}>Mapa</div>
+          {property.latitude != null && property.longitude != null ? (
+            <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--gray-200, #e5e7eb)' }}>
+              <iframe
+                title="Mapa nemovitosti"
+                width="100%"
+                height="450"
+                style={{ border: 0, display: 'block' }}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                src={`https://www.openstreetmap.org/export/embed.html?bbox=${property.longitude - 0.005}%2C${property.latitude - 0.003}%2C${property.longitude + 0.005}%2C${property.latitude + 0.003}&layer=mapnik&marker=${property.latitude}%2C${property.longitude}`}
+              />
+              <div style={{ padding: '10px 16px', fontSize: '.82rem', color: 'var(--gray-500, #6b7280)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>{property.address}, {property.city} {property.postalCode}</span>
+                <span style={{ fontFamily: 'monospace', fontSize: '.75rem', color: 'var(--gray-400, #9ca3af)' }}>
+                  {property.latitude.toFixed(6)}, {property.longitude.toFixed(6)}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 300, color: 'var(--gray-400, #9ca3af)' }}>
+              <div style={{ fontSize: '2rem', marginBottom: 8 }}>📍</div>
+              <div style={{ fontStyle: 'italic' }}>Souřadnice nejsou k dispozici</div>
+              <div style={{ fontSize: '.78rem', marginTop: 4 }}>Zadejte GPS souřadnice v nastavení nemovitosti.</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── PROFIL TAB ─────────────────────────────────────────── */}
+      {detailTab === 'profile' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }} data-testid="property-profile-tab">
+          {/* Left column — Summary card */}
+          <div style={{ background: '#fff', border: '1px solid var(--gray-200, #e5e7eb)', borderRadius: 16, padding: 24 }}>
+            <div style={{ fontFamily: 'var(--font-display, inherit)', fontWeight: 700, textTransform: 'uppercase', color: 'var(--gray-600, #4b5563)', fontSize: '.78rem', letterSpacing: '.05em', marginBottom: 20 }}>Souhrn</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {[
+                { label: 'Typ', value: LEGAL_MODE_LABEL[property.legalMode ?? ''] ?? property.legalMode ?? null },
+                { label: 'Název', value: property.name },
+                { label: 'IČ', value: property.ico },
+                { label: 'DIČ', value: property.dic },
+                { label: 'Adresa', value: `${property.address}, ${property.postalCode} ${property.city}` },
+                { label: 'Počet jednotek', value: String(totalUnits) },
+                { label: 'Obsazenost', value: `${occupiedUnits}/${totalUnits}` },
+                { label: 'Ve správě od', value: property.managedFrom ? new Date(property.managedFrom).toLocaleDateString('cs-CZ') : null },
+                { label: 'Aktivní předpisy', value: property.activePrescriptions != null ? String(property.activePrescriptions) : null },
+                { label: 'Měsíční objem', value: property.monthlyVolume != null ? `${property.monthlyVolume.toLocaleString('cs-CZ')} Kč` : null },
+              ].map(row => (
+                <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid var(--gray-100, #f3f4f6)', paddingBottom: 10 }}>
+                  <span style={{ color: 'var(--gray-500, #6b7280)', fontSize: '.85rem' }}>{row.label}</span>
+                  {row.value ? (
+                    <span style={{ fontWeight: 500, color: 'var(--gray-900, #111827)', fontSize: '.85rem' }}>{row.value}</span>
+                  ) : (
+                    <span style={{ color: 'var(--gray-400, #9ca3af)', fontStyle: 'italic', fontSize: '.85rem' }}>neuvedeno</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right column — Contact & additional info */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {/* Contact card */}
+            <div style={{ background: '#fff', border: '1px solid var(--gray-200, #e5e7eb)', borderRadius: 16, padding: 24 }}>
+              <div style={{ fontFamily: 'var(--font-display, inherit)', fontWeight: 700, textTransform: 'uppercase', color: 'var(--gray-600, #4b5563)', fontSize: '.78rem', letterSpacing: '.05em', marginBottom: 20 }}>Kontakt</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {[
+                  { label: 'Kontaktní osoba', value: property.contactName },
+                  { label: 'E-mail', value: property.contactEmail },
+                  { label: 'Telefon', value: property.contactPhone },
+                  { label: 'Web', value: property.website },
+                ].map(row => (
+                  <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid var(--gray-100, #f3f4f6)', paddingBottom: 10 }}>
+                    <span style={{ color: 'var(--gray-500, #6b7280)', fontSize: '.85rem' }}>{row.label}</span>
+                    {row.value ? (
+                      <span style={{ fontWeight: 500, color: 'var(--gray-900, #111827)', fontSize: '.85rem' }}>{row.value}</span>
+                    ) : (
+                      <span style={{ color: 'var(--gray-400, #9ca3af)', fontStyle: 'italic', fontSize: '.85rem' }}>neuvedeno</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Cadastral info card */}
+            <div style={{ background: '#fff', border: '1px solid var(--gray-200, #e5e7eb)', borderRadius: 16, padding: 24 }}>
+              <div style={{ fontFamily: 'var(--font-display, inherit)', fontWeight: 700, textTransform: 'uppercase', color: 'var(--gray-600, #4b5563)', fontSize: '.78rem', letterSpacing: '.05em', marginBottom: 20 }}>Katastr</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {[
+                  { label: 'Katastrální území', value: (property as any).cadastralArea },
+                  { label: 'List vlastnictví', value: (property as any).landRegistrySheet },
+                  { label: 'Parcela', value: (property as any).cadastralData?.parcelNumber },
+                  { label: 'Č.p.', value: (property as any).cadastralData?.buildingNumber },
+                  { label: 'Účetní systém', value: property.accountingSystem && property.accountingSystem !== 'NONE' ? property.accountingSystem : null },
+                ].map(row => (
+                  <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid var(--gray-100, #f3f4f6)', paddingBottom: 10 }}>
+                    <span style={{ color: 'var(--gray-500, #6b7280)', fontSize: '.85rem' }}>{row.label}</span>
+                    {row.value ? (
+                      <span style={{ fontWeight: 500, color: 'var(--gray-900, #111827)', fontSize: '.85rem' }}>{row.value}</span>
+                    ) : (
+                      <span style={{ color: 'var(--gray-400, #9ca3af)', fontStyle: 'italic', fontSize: '.85rem' }}>neuvedeno</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

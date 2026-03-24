@@ -32,6 +32,13 @@ export class PropertiesService {
         managedTo: dto.managedTo ? new Date(dto.managedTo) : undefined,
         cadastralArea: dto.cadastralArea,
         landRegistrySheet: dto.landRegistrySheet,
+        contactName: dto.contactName,
+        contactEmail: dto.contactEmail,
+        contactPhone: dto.contactPhone,
+        website: dto.website,
+        websiteNote: dto.websiteNote,
+        latitude: dto.latitude,
+        longitude: dto.longitude,
       },
       include: { units: true },
     });
@@ -60,10 +67,30 @@ export class PropertiesService {
 
     const property = await this.prisma.property.findFirst({
       where: { id, tenantId: user.tenantId },
-      include: { units: true, _count: { select: { residents: true } } },
+      include: {
+        units: true,
+        _count: { select: { residents: true, prescriptions: true } },
+      },
     });
     if (!property) throw new NotFoundException('Nemovitost nenalezena');
-    return property;
+
+    // Compute active prescriptions count + monthly volume
+    const prescriptionAgg = await this.prisma.prescription.aggregate({
+      where: {
+        propertyId: id,
+        status: 'active',
+        validFrom: { lte: new Date() },
+        OR: [{ validTo: null }, { validTo: { gte: new Date() } }],
+      },
+      _count: true,
+      _sum: { amount: true },
+    });
+
+    return {
+      ...property,
+      activePrescriptions: prescriptionAgg._count,
+      monthlyVolume: prescriptionAgg._sum.amount ? Number(prescriptionAgg._sum.amount) : 0,
+    };
   }
 
   async update(user: AuthUser, id: string, dto: UpdatePropertyDto) {
@@ -86,6 +113,13 @@ export class PropertiesService {
         ...(dto.managedTo !== undefined && { managedTo: dto.managedTo ? new Date(dto.managedTo) : null }),
         ...(dto.cadastralArea !== undefined && { cadastralArea: dto.cadastralArea || null }),
         ...(dto.landRegistrySheet !== undefined && { landRegistrySheet: dto.landRegistrySheet || null }),
+        ...(dto.contactName !== undefined && { contactName: dto.contactName || null }),
+        ...(dto.contactEmail !== undefined && { contactEmail: dto.contactEmail || null }),
+        ...(dto.contactPhone !== undefined && { contactPhone: dto.contactPhone || null }),
+        ...(dto.website !== undefined && { website: dto.website || null }),
+        ...(dto.websiteNote !== undefined && { websiteNote: dto.websiteNote || null }),
+        ...(dto.latitude !== undefined && { latitude: dto.latitude }),
+        ...(dto.longitude !== undefined && { longitude: dto.longitude }),
       },
       include: { units: true },
     });
@@ -97,5 +131,22 @@ export class PropertiesService {
       where: { id },
       data: { status: 'archived' },
     });
+  }
+
+  async getNav(user: AuthUser, id: string) {
+    const scopeWhere = await this.scope.scopeByPropertyId(user)
+    const properties = await this.prisma.property.findMany({
+      where: { tenantId: user.tenantId, status: 'active', ...scopeWhere } as any,
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true },
+    })
+    const idx = properties.findIndex(p => p.id === id)
+    if (idx < 0) throw new NotFoundException('Nemovitost nenalezena')
+    return {
+      total: properties.length,
+      current: idx + 1,
+      prevId: idx > 0 ? properties[idx - 1].id : null,
+      nextId: idx < properties.length - 1 ? properties[idx + 1].id : null,
+    }
   }
 }

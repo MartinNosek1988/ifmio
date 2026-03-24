@@ -410,6 +410,15 @@ model Property {
   landRegistrySheet String?           // list vlastnictví (LV)
   country          String             @default("CZ")
   matchStrategy    MatchStrategy      @default(OLDEST_FIRST)  // Strategie párování plateb
+  // Contact & web
+  contactName      String?
+  contactEmail     String?
+  contactPhone     String?
+  website          String?
+  websiteNote      String?
+  // Geocoding
+  latitude         Float?
+  longitude        Float?
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 
