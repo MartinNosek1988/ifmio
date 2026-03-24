@@ -98,13 +98,8 @@ function withBoundary(name: string, Component: React.ComponentType) {
 }
 
 export const router = createBrowserRouter([
-  // Root → redirect to /cs/
-  { path: '/', element: <Navigate to="/cs/" replace /> },
-
-  // Old non-prefixed URLs → redirect to /cs/ versions
-  { path: '/cenik', element: <Navigate to="/cs/cenik" replace /> },
-  { path: '/demo', element: <Navigate to="/cs/demo" replace /> },
-  { path: '/kontakt', element: <Navigate to="/cs/kontakt" replace /> },
+  // Root + legacy URLs (/, /cenik, /demo, /kontakt, /pricing, /contact)
+  // are handled by nginx 301 redirects — see apps/web/nginx.conf
 
   // Locale-prefixed public pages
   {

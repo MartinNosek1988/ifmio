@@ -3,5 +3,7 @@ Allow: /
 Disallow: /api/
 Disallow: /admin/
 Disallow: /super-admin/
+Disallow: /login
+Disallow: /register
 
 Sitemap: https://ifmio.com/sitemap.xml

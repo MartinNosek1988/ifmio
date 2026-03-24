@@ -1,5 +1,8 @@
 import { useParams } from 'react-router-dom'
 import { PageLayout } from '../pages/PageLayout'
+import { SeoHead } from '../../i18n/SeoHead'
+import { useI18n } from '../../i18n/i18n'
+import { ROUTE_SLUGS } from '../../i18n/routes'
 import '../pages/pages.css'
 
 const TYPES: Record<string, { title: string; subtitle: string }> = {
@@ -11,10 +14,13 @@ const TYPES: Record<string, { title: string; subtitle: string }> = {
 
 export default function PartnerSearchPage() {
   const { type } = useParams()
+  const { t, locale } = useI18n()
+  const seo = t.seo.partners
   const data = TYPES[type ?? ''] ?? { title: 'Partneři', subtitle: '' }
 
   return (
     <PageLayout>
+      <SeoHead title={`${data.title} — ${seo.title}`} description={data.subtitle || seo.description} canonicalPath={`/${locale}/${ROUTE_SLUGS.partners[locale]}/${type ?? ''}/`} />
       <div className="page-hero">
         <h1 className="page-hero__title" style={{ color: 'var(--dark)' }}>{data.title}</h1>
         <p className="page-hero__subtitle" style={{ color: 'var(--gray-500)' }}>{data.subtitle}</p>

@@ -149,4 +149,17 @@ export const cs = {
     ariaSend: 'Odeslat',
     ariaClose: 'Zavřít chat',
   },
+  seo: {
+    landing: { title: 'Správa nemovitostí a FM', description: 'ifmio je AI-native platforma pro správu nemovitostí, SVJ, bytových domů a facility management. Vše na jednom místě.' },
+    pricing: { title: 'Ceník', description: 'Ceník ifmio — zdarma do 50 jednotek. Transparentní ceny pro SVJ, správce a facility management.' },
+    demo: { title: 'Vyzkoušet demo', description: 'Objednejte si nezávazné demo ifmio. 15 minut, které změní způsob, jakým spravujete nemovitosti.' },
+    contact: { title: 'Kontakt', description: 'Kontaktujte tým ifmio. E-mail, telefon, adresa. Rádi vám poradíme s výběrem řešení.' },
+    about: { title: 'O nás', description: 'ifmio — AI-native platforma pro správu nemovitostí. Naše mise, tým a hodnoty.' },
+    careers: { title: 'Kariéra', description: 'Kariéra v ifmio. Přidejte se k týmu, který mění správu nemovitostí v Česku.' },
+    blog: { title: 'Blog', description: 'Blog ifmio — novinky, tipy a trendy ve správě nemovitostí a facility managementu.' },
+    legal: { title: 'Právní dokumenty', description: 'Obchodní podmínky, zásady ochrany osobních údajů a cookies ifmio.' },
+    solutions: { title: 'Řešení', description: 'Řešení ifmio pro SVJ, správce nemovitostí, facility management a investory.' },
+    platform: { title: 'Platforma', description: 'Moduly platformy ifmio — evidence, finance, předpisy, konto, helpdesk, revize a další.' },
+    partners: { title: 'Partneři', description: 'Najděte správce, facility manažery, řemeslníky a revizní techniky v ifmio síti.' },
+  },
 };

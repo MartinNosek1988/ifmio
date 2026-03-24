@@ -1,9 +1,15 @@
 import { PageLayout } from './PageLayout'
+import { SeoHead } from '../../i18n/SeoHead'
+import { useI18n } from '../../i18n/i18n'
+import { ROUTE_SLUGS } from '../../i18n/routes'
 import './pages.css'
 
 export default function AboutPage() {
+  const { t, locale } = useI18n()
+  const seo = t.seo.about
   return (
     <PageLayout>
+      <SeoHead title={seo.title} description={seo.description} canonicalPath={`/${locale}/${ROUTE_SLUGS.about[locale]}/`} alternatePath={locale === 'cs' ? `/en/${ROUTE_SLUGS.about.en}/` : `/cs/${ROUTE_SLUGS.about.cs}/`} />
       <div className="page-hero"><h1 className="page-hero__title" style={{ color: 'var(--dark)' }}>O ifmio</h1></div>
       <div className="page-content page-content--narrow">
         <p style={{ fontSize: '1.05rem', color: 'var(--gray-600)', lineHeight: 1.7, marginBottom: 32 }}>

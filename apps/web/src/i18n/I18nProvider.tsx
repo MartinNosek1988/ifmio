@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useEffect } from 'react'
 import { useParams, useNavigate, useLocation, Outlet, Navigate } from 'react-router-dom'
 import { I18nContext, isValidLocale, DEFAULT_LOCALE, getTranslations } from './i18n'
 import type { Locale } from './i18n'
@@ -21,6 +21,8 @@ export function I18nProvider() {
   const localePath = useCallback((path: string) => `/${locale}${path.startsWith('/') ? path : `/${path}`}`, [locale])
 
   const value = useMemo(() => ({ locale, t, switchLocale, localePath }), [locale, t, switchLocale, localePath])
+
+  useEffect(() => { document.documentElement.lang = locale }, [locale])
 
   if (!isValid) return <Navigate to={`/${DEFAULT_LOCALE}/`} replace />
 
