@@ -1,8 +1,18 @@
 import { LOCALES, LOCALE_CONFIGS, LOCALE_COUNTRY_CODE, ACTIVE_LOCALES, useI18n } from './i18n'
+import type { Locale } from './i18n'
 
-function Flag({ locale, size = 20 }: { locale: string; size?: number }) {
-  const cc = LOCALE_COUNTRY_CODE[locale as keyof typeof LOCALE_COUNTRY_CODE] ?? locale
-  return <img src={`https://flagcdn.com/w${size}/${cc}.png`} srcSet={`https://flagcdn.com/w${size * 2}/${cc}.png 2x`} width={size} height={Math.round(size * 0.75)} alt="" style={{ borderRadius: 2, objectFit: 'cover' }} />
+function Flag({ locale }: { locale: Locale }) {
+  const cc = (LOCALE_COUNTRY_CODE[locale] ?? locale).toUpperCase()
+  return (
+    <img
+      src={`https://purecatamphetamine.github.io/country-flag-icons/3x2/${cc}.svg`}
+      width={21}
+      height={14}
+      alt=""
+      style={{ borderRadius: 2, objectFit: 'cover', flexShrink: 0 }}
+      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+    />
+  )
 }
 
 export function LanguageSwitcher() {
