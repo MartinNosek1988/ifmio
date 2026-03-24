@@ -6,7 +6,7 @@ const SESSION_KEY = 'ifmio_locale_detected'
 
 const BROWSER_LANG_MAP: Record<string, SupportedLocale> = {
   cs: 'cs',
-  sk: 'cs', // Slovak → CS until SK version is ready
+  sk: 'cs',   // Slovak → CS (jazyková příbuznost, dokud není SK verze)
   de: 'de',
   pl: 'pl',
   uk: 'uk',
@@ -19,7 +19,7 @@ export function isSupportedLocale(value: string): value is SupportedLocale {
   return (SUPPORTED_LOCALES as readonly string[]).includes(value)
 }
 
-/** Save explicit user choice (called from language switcher) */
+/** Save explicit user choice — called from language switcher */
 export function saveLocaleChoice(locale: SupportedLocale): void {
   localStorage.setItem(STORAGE_KEY, locale)
 }
@@ -32,8 +32,7 @@ export function getSavedLocale(): SupportedLocale | null {
 
 /**
  * Detect preferred locale for first-time visitors.
- * Priority: localStorage → browser navigator.languages → 'cs' fallback
- * Detection from navigator runs only once per session.
+ * Priority: localStorage → browser navigator.languages → 'en' fallback
  */
 export function detectPreferredLocale(): SupportedLocale {
   // 1. Respect explicit user choice from previous visit
@@ -41,7 +40,7 @@ export function detectPreferredLocale(): SupportedLocale {
   if (saved) return saved
 
   // 2. Already ran browser detection this session — use fallback
-  if (sessionStorage.getItem(SESSION_KEY)) return 'cs'
+  if (sessionStorage.getItem(SESSION_KEY)) return 'en'
 
   // 3. Mark session so we don't re-detect on every render
   sessionStorage.setItem(SESSION_KEY, '1')
@@ -49,7 +48,7 @@ export function detectPreferredLocale(): SupportedLocale {
   // 4. Read browser language preferences
   const langs = navigator.languages?.length
     ? [...navigator.languages]
-    : [navigator.language || 'cs']
+    : [navigator.language || 'en']
 
   for (const lang of langs) {
     const code = lang.toLowerCase().split('-')[0]
@@ -57,5 +56,6 @@ export function detectPreferredLocale(): SupportedLocale {
     if (mapped) return mapped
   }
 
-  return 'cs'
+  // 5. Unknown language → EN (global fallback, .com is English-primary)
+  return 'en'
 }

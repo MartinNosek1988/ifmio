@@ -39,7 +39,7 @@ export function SeoHead({ title, description, canonicalPath, alternatePath }: Pr
 
       {csUrl && <link rel="alternate" hrefLang="cs" href={csUrl} />}
       {enUrl && <link rel="alternate" hrefLang="en" href={enUrl} />}
-      {csUrl && <link rel="alternate" hrefLang="x-default" href={csUrl} />}
+      {enUrl && <link rel="alternate" hrefLang="x-default" href={enUrl} />}
 
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={description} />
