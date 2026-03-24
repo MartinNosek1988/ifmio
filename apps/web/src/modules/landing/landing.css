@@ -619,7 +619,7 @@
 }
 
 .bento-card--wide {
-  grid-column: span 2;
+  grid-column: span 3;
 }
 
 .bento-stat {
@@ -657,6 +657,7 @@
 .bento-quote {
   font-style: italic;
   position: relative;
+  grid-row: span 2;
 }
 
 .bento-quote__text {
