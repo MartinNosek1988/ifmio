@@ -146,5 +146,6 @@ export const cs = {
     ariaOpen: 'Otevřít Mio AI chat',
     ariaDialog: 'Mio AI chat',
     ariaSend: 'Odeslat',
+    ariaClose: 'Zavřít chat',
   },
 };

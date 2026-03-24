@@ -8,11 +8,8 @@ export function I18nProvider() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  if (!isValidLocale(localeParam ?? '')) {
-    return <Navigate to={`/${DEFAULT_LOCALE}/`} replace />
-  }
-
-  const locale = localeParam as Locale
+  const isValid = isValidLocale(localeParam ?? '')
+  const locale: Locale = isValid ? (localeParam as Locale) : DEFAULT_LOCALE
   const t = useMemo(() => getTranslations(locale), [locale])
 
   const switchLocale = useCallback((newLocale: Locale) => {
@@ -21,12 +18,11 @@ export function I18nProvider() {
     navigate(`${parts.join('/') || `/${newLocale}`}${location.search}${location.hash}`)
   }, [navigate, location.pathname, location.search, location.hash])
 
-  const localePath = useCallback((path: string) => {
-    const clean = path.startsWith('/') ? path : `/${path}`
-    return `/${locale}${clean}`
-  }, [locale])
+  const localePath = useCallback((path: string) => `/${locale}${path.startsWith('/') ? path : `/${path}`}`, [locale])
 
   const value = useMemo(() => ({ locale, t, switchLocale, localePath }), [locale, t, switchLocale, localePath])
+
+  if (!isValid) return <Navigate to={`/${DEFAULT_LOCALE}/`} replace />
 
   return <I18nContext.Provider value={value}><Outlet /></I18nContext.Provider>
 }

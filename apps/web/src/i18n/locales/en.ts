@@ -146,5 +146,6 @@ export const en = {
     ariaOpen: 'Open Mio AI chat',
     ariaDialog: 'Mio AI chat',
     ariaSend: 'Send',
+    ariaClose: 'Close chat',
   },
 };

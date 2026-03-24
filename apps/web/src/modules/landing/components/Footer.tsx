@@ -26,7 +26,13 @@ export function Footer() {
   const getLink = (item: string, colIdx: number) => {
     if (colIdx === 0) { const s = PLATFORM_LINKS[item]; return s ? localePath(`/${pSlug}/${s}`) : '#' }
     if (colIdx === 1) { const s = FEATURE_LINKS[item]; return s ? localePath(`/${pSlug}/${s}`) : '#' }
-    const rk = COMPANY_LINKS[item]; if (rk) { const rs = ROUTE_SLUGS[rk]?.[locale]; return rs ? localePath(`/${rs}`) : '#' }
+    const rk = COMPANY_LINKS[item]
+    if (rk === 'partners') {
+      const base = ROUTE_SLUGS.partners?.[locale] ?? 'partneri'
+      const reg = ROUTE_SLUGS.partnerRegister?.[locale] ?? 'registrace'
+      return localePath(`/${base}/${reg}`)
+    }
+    if (rk) { const rs = ROUTE_SLUGS[rk]?.[locale]; return rs ? localePath(`/${rs}`) : '#' }
     return '#'
   }
 

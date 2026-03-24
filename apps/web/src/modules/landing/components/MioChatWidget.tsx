@@ -42,7 +42,7 @@ export function MioChatWidget() {
         <div ref={panelRef} className="mio-chat-panel" role="dialog" aria-label={c.ariaDialog}>
           <div className="mio-chat-panel__header">
             <span style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-display)' }}>if<span style={{ color: 'var(--teal)' }}>mio</span></span>
-            <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', color: 'var(--gray-400)' }}>✕</button>
+            <button onClick={() => setOpen(false)} aria-label={c.ariaClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', color: 'var(--gray-400)' }}>✕</button>
           </div>
           <div className="mio-chat-panel__body">
             {messages.map((msg, i) => (
