@@ -11,6 +11,7 @@ export const ROUTE_SLUGS: Record<string, Record<string, string>> = {
   careers: { cs: 'kariera', en: 'careers' },
   blog: { cs: 'blog', en: 'blog' },
   legal: { cs: 'pravni-dokumenty', en: 'legal' },
+  partnerRegister: { cs: 'registrace', en: 'register' },
 }
 
 export const SOLUTION_SLUGS: Record<string, Record<string, string>> = {
