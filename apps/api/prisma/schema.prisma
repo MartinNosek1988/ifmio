@@ -563,8 +563,79 @@ model Unit {
   invitations              TenantInvitation[]
   groupMemberships         UnitGroupMembership[]
 
+  // Unit detail tabs (Domsys parity)
+  rooms          UnitRoom[]
+  quantities     UnitQuantity[]
+  equipment      UnitEquipment[]
+  managementFees UnitManagementFee[]
+
   @@index([propertyId])
   @@map("units")
+}
+
+// TODO: Run prisma migrate dev to create these tables
+
+model UnitRoom {
+  id             String   @id @default(uuid())
+  unitId         String
+  unit           Unit     @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  name           String
+  area           Float
+  coefficient    Float    @default(1.0)
+  calculatedArea Float?
+  tenantId       String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([unitId])
+  @@map("unit_rooms")
+}
+
+model UnitQuantity {
+  id        String @id @default(uuid())
+  unitId    String
+  unit      Unit   @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  name      String
+  value     Float
+  unitLabel String @default("")
+  tenantId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([unitId, name])
+  @@index([unitId])
+  @@map("unit_quantities")
+}
+
+model UnitEquipment {
+  id       String  @id @default(uuid())
+  unitId   String
+  unit     Unit    @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  name     String
+  status   String  @default("functional")
+  note     String?
+  tenantId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([unitId])
+  @@map("unit_equipment")
+}
+
+model UnitManagementFee {
+  id              String    @id @default(uuid())
+  unitId          String
+  unit            Unit      @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  amount          Float
+  calculationType String    @default("flat")
+  validFrom       DateTime
+  validTo         DateTime?
+  tenantId        String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([unitId])
+  @@map("unit_management_fees")
 }
 
 enum SpaceType {
