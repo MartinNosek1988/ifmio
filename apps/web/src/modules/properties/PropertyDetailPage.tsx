@@ -405,13 +405,13 @@ export default function PropertyDetailPage() {
           {property.managedTo && <div><span className="text-muted">Ve správě do:</span> {new Date(property.managedTo).toLocaleDateString('cs-CZ')}</div>}
           {property.accountingSystem && property.accountingSystem !== 'NONE' && <div><span className="text-muted">Účetní systém:</span> {property.accountingSystem}</div>}
         </div>
-        {((property as any).cadastralData || (property as any).cadastralArea || (property as any).landRegistrySheet) && (
+        {(property.cadastralData || property.cadastralArea || property.landRegistrySheet) && (
           <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, fontSize: '.85rem' }}>
-            {(property as any).cadastralArea && <div><span className="text-muted">K.Ú.:</span> {(property as any).cadastralArea}</div>}
-            {(property as any).landRegistrySheet && <div><span className="text-muted">LV:</span> {(property as any).landRegistrySheet}</div>}
-            {(property as any).cadastralData?.parcelNumber && <div><span className="text-muted">Parcela:</span> {(property as any).cadastralData.parcelNumber}</div>}
-            {!(property as any).cadastralArea && (property as any).cadastralData?.cadastralTerritory && <div><span className="text-muted">K.Ú.:</span> {(property as any).cadastralData.cadastralTerritory}</div>}
-            {(property as any).cadastralData?.buildingNumber && <div><span className="text-muted">Č.p.:</span> {(property as any).cadastralData.buildingNumber}</div>}
+            {property.cadastralArea && <div><span className="text-muted">K.Ú.:</span> {property.cadastralArea}</div>}
+            {property.landRegistrySheet && <div><span className="text-muted">LV:</span> {property.landRegistrySheet}</div>}
+            {property.cadastralData?.parcelNumber && <div><span className="text-muted">Parcela:</span> {property.cadastralData.parcelNumber}</div>}
+            {!property.cadastralArea && property.cadastralData?.cadastralTerritory && <div><span className="text-muted">K.Ú.:</span> {property.cadastralData.cadastralTerritory}</div>}
+            {property.cadastralData?.buildingNumber && <div><span className="text-muted">Č.p.:</span> {property.cadastralData.buildingNumber}</div>}
           </div>
         )}
       </div>
@@ -711,10 +711,10 @@ export default function PropertyDetailPage() {
               <div style={{ fontFamily: 'var(--font-display, inherit)', fontWeight: 700, textTransform: 'uppercase', color: 'var(--gray-600, #4b5563)', fontSize: '.78rem', letterSpacing: '.05em', marginBottom: 20 }}>Katastr</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {[
-                  { label: 'Katastrální území', value: (property as any).cadastralArea },
-                  { label: 'List vlastnictví', value: (property as any).landRegistrySheet },
-                  { label: 'Parcela', value: (property as any).cadastralData?.parcelNumber },
-                  { label: 'Č.p.', value: (property as any).cadastralData?.buildingNumber },
+                  { label: 'Katastrální území', value: property.cadastralArea },
+                  { label: 'List vlastnictví', value: property.landRegistrySheet },
+                  { label: 'Parcela', value: property.cadastralData?.parcelNumber },
+                  { label: 'Č.p.', value: property.cadastralData?.buildingNumber },
                   { label: 'Účetní systém', value: property.accountingSystem && property.accountingSystem !== 'NONE' ? property.accountingSystem : null },
                 ].map(row => (
                   <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid var(--gray-100, #f3f4f6)', paddingBottom: 10 }}>

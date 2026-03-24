@@ -1,16 +1,16 @@
-import { IsString, IsNumber, IsOptional, IsEnum, IsDateString, Min } from 'class-validator'
+import { IsString, IsNumber, IsOptional, IsEnum, IsDateString, Min, ValidateIf } from 'class-validator'
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 
 export class CreateRoomDto {
   @ApiProperty() @IsString() name!: string
   @ApiProperty() @IsNumber() @Min(0) area!: number
-  @ApiPropertyOptional() @IsNumber() @IsOptional() coefficient?: number
+  @ApiPropertyOptional() @IsNumber() @Min(0) @IsOptional() coefficient?: number
 }
 
 export class UpdateRoomDto {
   @ApiPropertyOptional() @IsString() @IsOptional() name?: string
   @ApiPropertyOptional() @IsNumber() @Min(0) @IsOptional() area?: number
-  @ApiPropertyOptional() @IsNumber() @IsOptional() coefficient?: number
+  @ApiPropertyOptional() @IsNumber() @Min(0) @IsOptional() coefficient?: number
 }
 
 export class UpsertQuantityDto {
@@ -32,15 +32,15 @@ export class UpdateEquipmentDto {
 }
 
 export class CreateManagementFeeDto {
-  @ApiProperty() @IsNumber() amount!: number
+  @ApiProperty() @IsNumber() @Min(0) amount!: number
   @ApiPropertyOptional() @IsEnum(['flat', 'per_area', 'per_person']) @IsOptional() calculationType?: string
   @ApiProperty() @IsDateString() validFrom!: string
-  @ApiPropertyOptional() @IsDateString() @IsOptional() validTo?: string
+  @ApiPropertyOptional() @ValidateIf((o) => o.validTo !== null) @IsDateString() @IsOptional() validTo?: string | null
 }
 
 export class UpdateManagementFeeDto {
-  @ApiPropertyOptional() @IsNumber() @IsOptional() amount?: number
+  @ApiPropertyOptional() @IsNumber() @Min(0) @IsOptional() amount?: number
   @ApiPropertyOptional() @IsEnum(['flat', 'per_area', 'per_person']) @IsOptional() calculationType?: string
   @ApiPropertyOptional() @IsDateString() @IsOptional() validFrom?: string
-  @ApiPropertyOptional() @IsDateString() @IsOptional() validTo?: string | null
+  @ApiPropertyOptional() @ValidateIf((o) => o.validTo !== null) @IsDateString() @IsOptional() validTo?: string | null
 }

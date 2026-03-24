@@ -23,6 +23,7 @@ export interface ApiProperty {
   accountingSystem?: AccountingSystemType | null;
   cadastralArea?: string | null;
   landRegistrySheet?: string | null;
+  cadastralData?: { parcelNumber?: string; buildingNumber?: string; cadastralTerritory?: string } | null;
   country?: string;
   contactName?: string | null;
   contactEmail?: string | null;

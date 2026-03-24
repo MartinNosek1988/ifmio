@@ -77,6 +77,7 @@ export class PropertiesService {
     // Compute active prescriptions count + monthly volume
     const prescriptionAgg = await this.prisma.prescription.aggregate({
       where: {
+        tenantId: user.tenantId,
         propertyId: id,
         status: 'active',
         validFrom: { lte: new Date() },
