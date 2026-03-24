@@ -5,6 +5,16 @@ import LoginPage from '../modules/auth/LoginPage';
 import RegisterPage from '../modules/auth/RegisterPage';
 const LandingPage = lazy(() => import('../modules/landing/LandingPage'));
 const PricingPage = lazy(() => import('../modules/pricing/PricingPage'));
+const DemoPage = lazy(() => import('../modules/pages/DemoPage'));
+const ContactPage = lazy(() => import('../modules/pages/ContactPage'));
+const AboutPage = lazy(() => import('../modules/pages/AboutPage'));
+const CareersPage = lazy(() => import('../modules/pages/CareersPage'));
+const BlogPage = lazy(() => import('../modules/pages/BlogPage'));
+const LegalDocsPage = lazy(() => import('../modules/pages/LegalPage'));
+const SolutionPage = lazy(() => import('../modules/solutions/SolutionPage'));
+const PlatformModulePage = lazy(() => import('../modules/platform-modules/PlatformModulePage'));
+const PartnerSearchPage = lazy(() => import('../modules/partners/PartnerSearchPage'));
+const PartnerRegisterPage = lazy(() => import('../modules/partners/PartnerRegisterPage'));
 
 const VerifyEmailPage = lazy(() => import('../modules/auth/VerifyEmailPage'));
 const ForgotPasswordPage = lazy(() => import('../modules/auth/ForgotPasswordPage'));
@@ -89,6 +99,16 @@ function withBoundary(name: string, Component: React.ComponentType) {
 export const router = createBrowserRouter([
   { path: '/', element: <LandingPage /> },
   { path: '/cenik', element: withBoundary('Ceník', PricingPage) },
+  { path: '/demo', element: withBoundary('Demo', DemoPage) },
+  { path: '/kontakt', element: withBoundary('Kontakt', ContactPage) },
+  { path: '/reseni/:slug', element: withBoundary('Řešení', SolutionPage) },
+  { path: '/platforma/:slug', element: withBoundary('Platforma', PlatformModulePage) },
+  { path: '/partneri/registrace', element: withBoundary('Registrace partnera', PartnerRegisterPage) },
+  { path: '/partneri/:type', element: withBoundary('Partneři', PartnerSearchPage) },
+  { path: '/o-nas', element: withBoundary('O nás', AboutPage) },
+  { path: '/kariera', element: withBoundary('Kariéra', CareersPage) },
+  { path: '/blog', element: withBoundary('Blog', BlogPage) },
+  { path: '/pravni-dokumenty', element: withBoundary('Právní dokumenty', LegalDocsPage) },
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <RegisterPage /> },
   { path: '/verify-email', element: withBoundary('VerifyEmail', VerifyEmailPage) },
