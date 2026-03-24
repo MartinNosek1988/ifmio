@@ -66,12 +66,17 @@
   --shadow-lg: 0 8px 28px rgba(0,0,0,0.1);
   --shadow-card: 0 2px 8px rgba(0,0,0,0.04);
 
-  /* Sidebar */
+  /* Sidebar — light */
   --sidebar-width: 240px;
-  --sidebar-bg: #0C1222;
-  --sidebar-text: rgba(255,255,255,0.6);
-  --sidebar-active: rgba(13,148,136,0.15);
-  --sidebar-hover: rgba(255,255,255,0.05);
+  --sidebar-bg: #FFFFFF;
+  --sidebar-border: #E5E7EB;
+  --sidebar-text: #6B7280;
+  --sidebar-text-hover: #374151;
+  --sidebar-text-active: #0D9488;
+  --sidebar-active: #F0FDFA;
+  --sidebar-hover: #F9FAFB;
+  --sidebar-section-label: #9CA3AF;
+  --sidebar-logo-color: #0C1222;
 
   /* Content */
   --content-bg: var(--gray-50);
