@@ -1,25 +1,61 @@
-const SUPPORTED_LOCALES = ['cs', 'en'] as const
-type SupportedLocale = typeof SUPPORTED_LOCALES[number]
-const STORAGE_KEY = 'ifmio_locale_detected'
+const SUPPORTED_LOCALES = ['cs', 'en', 'sk', 'de', 'pl', 'uk', 'es', 'it'] as const
+export type SupportedLocale = typeof SUPPORTED_LOCALES[number]
 
+const STORAGE_KEY = 'ifmio_locale'
+const SESSION_KEY = 'ifmio_locale_detected'
+
+const BROWSER_LANG_MAP: Record<string, SupportedLocale> = {
+  cs: 'cs',
+  sk: 'cs', // Slovak → CS until SK version is ready
+  de: 'de',
+  pl: 'pl',
+  uk: 'uk',
+  es: 'es',
+  it: 'it',
+  en: 'en',
+}
+
+export function isSupportedLocale(value: string): value is SupportedLocale {
+  return (SUPPORTED_LOCALES as readonly string[]).includes(value)
+}
+
+/** Save explicit user choice (called from language switcher) */
+export function saveLocaleChoice(locale: SupportedLocale): void {
+  localStorage.setItem(STORAGE_KEY, locale)
+}
+
+/** Read saved choice, returns null if never set */
+export function getSavedLocale(): SupportedLocale | null {
+  const saved = localStorage.getItem(STORAGE_KEY)
+  return saved && isSupportedLocale(saved) ? saved : null
+}
+
+/**
+ * Detect preferred locale for first-time visitors.
+ * Priority: localStorage → browser navigator.languages → 'cs' fallback
+ * Detection from navigator runs only once per session.
+ */
 export function detectPreferredLocale(): SupportedLocale {
-  // 1. Already visited — skip detection
-  if (sessionStorage.getItem(STORAGE_KEY)) return 'cs'
+  // 1. Respect explicit user choice from previous visit
+  const saved = getSavedLocale()
+  if (saved) return saved
 
-  // 2. Mark as detected for this session
-  sessionStorage.setItem(STORAGE_KEY, '1')
+  // 2. Already ran browser detection this session — use fallback
+  if (sessionStorage.getItem(SESSION_KEY)) return 'cs'
 
-  // 3. Read browser Accept-Language (navigator.languages or navigator.language)
+  // 3. Mark session so we don't re-detect on every render
+  sessionStorage.setItem(SESSION_KEY, '1')
+
+  // 4. Read browser language preferences
   const langs = navigator.languages?.length
     ? [...navigator.languages]
     : [navigator.language || 'cs']
 
   for (const lang of langs) {
     const code = lang.toLowerCase().split('-')[0]
-    if (code === 'cs' || code === 'sk') return 'cs' // Czech + Slovak → CS
-    if (code === 'en') return 'en'
+    const mapped = BROWSER_LANG_MAP[code]
+    if (mapped) return mapped
   }
 
-  // 4. Default fallback
   return 'cs'
 }
