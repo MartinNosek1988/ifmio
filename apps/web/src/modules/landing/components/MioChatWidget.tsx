@@ -43,7 +43,11 @@ export function MioChatWidget() {
         }),
       })
 
+      if (!res.ok) throw new Error(`API error ${res.status}`)
+      const contentType = res.headers.get('content-type') ?? ''
+      if (!contentType.includes('application/json')) throw new Error('Unexpected response format')
       const data = await res.json()
+      if (!data || typeof data.reply !== 'string') throw new Error('Invalid response')
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply }])
     } catch {
       setMessages(prev => [...prev, {

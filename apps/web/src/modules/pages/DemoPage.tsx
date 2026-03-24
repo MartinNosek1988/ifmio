@@ -3,12 +3,13 @@ import { Navigation } from '../landing/components/Navigation'
 import { Footer } from '../landing/components/Footer'
 import { SeoHead } from '../../i18n/SeoHead'
 import { useI18n } from '../../i18n/i18n'
-import { ROUTE_SLUGS } from '../../i18n/routes'
+import { ROUTE_SLUGS, getSlug, getLocalePair } from '../../i18n/routes'
 import '../landing/landing.css'
 import './pages.css'
 
 export default function DemoPage() {
   const { t, locale } = useI18n()
+  const lp = getLocalePair(locale)
   const seo = t.seo.demo
   const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', units: '', gdpr: false })
   const [submitted, setSubmitted] = useState(false)
@@ -22,7 +23,7 @@ export default function DemoPage() {
 
   return (
     <div className="landing-page">
-      <SeoHead title={seo.title} description={seo.description} canonicalPath={`/${locale}/${ROUTE_SLUGS.demo[locale]}/`} alternatePath={locale === 'cs' ? `/en/${ROUTE_SLUGS.demo.en}/` : `/cs/${ROUTE_SLUGS.demo.cs}/`} />
+      <SeoHead title={seo.title} description={seo.description} canonicalPath={`/${lp.canonical}/${getSlug(ROUTE_SLUGS.demo, lp.canonical)}/`} alternatePath={`/${lp.alternate}/${getSlug(ROUTE_SLUGS.demo, lp.alternate)}/`} />
       <Navigation />
       <div className="demo-split">
         <div className="demo-card">

@@ -2,16 +2,17 @@ import { useState } from 'react'
 import { PageLayout } from '../pages/PageLayout'
 import { SeoHead } from '../../i18n/SeoHead'
 import { useI18n } from '../../i18n/i18n'
-import { ROUTE_SLUGS } from '../../i18n/routes'
+import { ROUTE_SLUGS, getSlug, getLocalePair } from '../../i18n/routes'
 import '../pages/pages.css'
 
 export default function PartnerRegisterPage() {
   const { t, locale } = useI18n()
+  const lp = getLocalePair(locale)
   const seo = t.seo.partners
   const [submitted, setSubmitted] = useState(false)
   return (
     <PageLayout>
-      <SeoHead title={seo.title} description={seo.description} canonicalPath={`/${locale}/${ROUTE_SLUGS.partners[locale]}/${ROUTE_SLUGS.partnerRegister[locale]}/`} alternatePath={locale === 'cs' ? `/en/${ROUTE_SLUGS.partners.en}/${ROUTE_SLUGS.partnerRegister.en}/` : `/cs/${ROUTE_SLUGS.partners.cs}/${ROUTE_SLUGS.partnerRegister.cs}/`} />
+      <SeoHead title={seo.title} description={seo.description} canonicalPath={`/${lp.canonical}/${getSlug(ROUTE_SLUGS.partners, lp.canonical)}/${getSlug(ROUTE_SLUGS.partnerRegister, lp.canonical)}/`} alternatePath={`/${lp.alternate}/${getSlug(ROUTE_SLUGS.partners, lp.alternate)}/${getSlug(ROUTE_SLUGS.partnerRegister, lp.alternate)}/`} />
       <div className="page-hero">
         <h1 className="page-hero__title" style={{ color: 'var(--dark)' }}>Staňte se partnerem ifmio</h1>
         <p className="page-hero__subtitle" style={{ color: 'var(--gray-500)' }}>Zaregistrujte se do naší databáze a získejte přístup k zakázkám.</p>

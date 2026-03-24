@@ -2,17 +2,18 @@ import { useState } from 'react'
 import { PageLayout } from './PageLayout'
 import { SeoHead } from '../../i18n/SeoHead'
 import { useI18n } from '../../i18n/i18n'
-import { ROUTE_SLUGS } from '../../i18n/routes'
+import { ROUTE_SLUGS, getSlug, getLocalePair } from '../../i18n/routes'
 import './pages.css'
 
 export default function ContactPage() {
   const { t, locale } = useI18n()
+  const lp = getLocalePair(locale)
   const seo = t.seo.contact
   const [submitted, setSubmitted] = useState(false)
 
   return (
     <PageLayout>
-      <SeoHead title={seo.title} description={seo.description} canonicalPath={`/${locale}/${ROUTE_SLUGS.contact[locale]}/`} alternatePath={locale === 'cs' ? `/en/${ROUTE_SLUGS.contact.en}/` : `/cs/${ROUTE_SLUGS.contact.cs}/`} />
+      <SeoHead title={seo.title} description={seo.description} canonicalPath={`/${lp.canonical}/${getSlug(ROUTE_SLUGS.contact, lp.canonical)}/`} alternatePath={`/${lp.alternate}/${getSlug(ROUTE_SLUGS.contact, lp.alternate)}/`} />
       <div className="page-hero">
         <h1 className="page-hero__title" style={{ color: 'var(--dark)' }}>Kontaktujte nás</h1>
         <p className="page-hero__subtitle" style={{ color: 'var(--gray-500)' }}>Máte dotaz nebo potřebujete poradit? Ozvěte se nám.</p>

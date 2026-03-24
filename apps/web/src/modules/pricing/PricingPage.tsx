@@ -3,13 +3,14 @@ import { Navigation } from '../landing/components/Navigation'
 import { Footer } from '../landing/components/Footer'
 import { SeoHead } from '../../i18n/SeoHead'
 import { useI18n } from '../../i18n/i18n'
-import { ROUTE_SLUGS } from '../../i18n/routes'
+import { ROUTE_SLUGS, getSlug, getLocalePair } from '../../i18n/routes'
 import { PRICING_HEADER, AUDIENCES, FAQ, BOTTOM_CTA } from './pricing-data'
 import '../landing/landing.css'
 import './pricing.css'
 
 export default function PricingPage() {
   const { t, locale } = useI18n()
+  const lp = getLocalePair(locale)
   const seo = t.seo.pricing
   const [activeTab, setActiveTab] = useState(0)
   const [openFaq, setOpenFaq] = useState<number | null>(null)
@@ -18,7 +19,7 @@ export default function PricingPage() {
 
   return (
     <div className="landing-page">
-      <SeoHead title={seo.title} description={seo.description} canonicalPath={`/${locale}/${ROUTE_SLUGS.pricing[locale]}/`} alternatePath={locale === 'cs' ? `/en/${ROUTE_SLUGS.pricing.en}/` : `/cs/${ROUTE_SLUGS.pricing.cs}/`} />
+      <SeoHead title={seo.title} description={seo.description} canonicalPath={`/${lp.canonical}/${getSlug(ROUTE_SLUGS.pricing, lp.canonical)}/`} alternatePath={`/${lp.alternate}/${getSlug(ROUTE_SLUGS.pricing, lp.alternate)}/`} />
       <Navigation />
 
       <div className="pricing-page">

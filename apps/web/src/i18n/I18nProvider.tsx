@@ -24,8 +24,12 @@ export function I18nProvider() {
 
   const value = useMemo(() => ({ locale, t, switchLocale, localePath }), [locale, t, switchLocale, localePath])
 
-  useEffect(() => { document.documentElement.lang = locale }, [locale])
-  useEffect(() => { saveLocaleChoice(locale as SupportedLocale) }, [locale])
+  useEffect(() => {
+    if (isValid) {
+      document.documentElement.lang = locale
+      saveLocaleChoice(locale as SupportedLocale)
+    }
+  }, [locale, isValid])
 
   if (!isValid) {
     const preferred = detectPreferredLocale()

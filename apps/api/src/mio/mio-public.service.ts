@@ -47,6 +47,7 @@ Keep responses short — max 2-3 sentences unless more detail is needed.`,
 export class MioPublicService {
   private readonly logger = new Logger(MioPublicService.name)
   private readonly apiKey: string
+  private readonly model: string
 
   // Global daily budget
   private dailyRequestCount = 0
@@ -64,6 +65,7 @@ export class MioPublicService {
 
   constructor(private readonly configService: ConfigService) {
     this.apiKey = this.configService.get<string>('ANTHROPIC_API_KEY') || ''
+    this.model = this.configService.get<string>('MIO_PUBLIC_MODEL') || 'claude-haiku-4-5-20251001'
   }
 
   async chat(dto: {
@@ -148,7 +150,7 @@ export class MioPublicService {
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
+          model: this.model,
           max_tokens: 300,
           system: SYSTEM_PROMPTS[dto.locale] || SYSTEM_PROMPTS.en,
           messages,
