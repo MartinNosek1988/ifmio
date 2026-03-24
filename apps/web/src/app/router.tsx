@@ -98,13 +98,14 @@ function withBoundary(name: string, Component: React.ComponentType) {
 }
 
 export const router = createBrowserRouter([
-  // Root → redirect to /cs/
-  { path: '/', element: <Navigate to="/cs/" replace /> },
-
-  // Old non-prefixed URLs → redirect to /cs/ versions
+  // Production: handled by nginx 301 — see apps/web/nginx.conf
+  // Development fallback (Vite dev server has no nginx):
+  { path: '/', element: <Navigate to="/en/" replace /> },
   { path: '/cenik', element: <Navigate to="/cs/cenik" replace /> },
   { path: '/demo', element: <Navigate to="/cs/demo" replace /> },
   { path: '/kontakt', element: <Navigate to="/cs/kontakt" replace /> },
+  { path: '/pricing', element: <Navigate to="/en/pricing" replace /> },
+  { path: '/contact', element: <Navigate to="/en/contact" replace /> },
 
   // Locale-prefixed public pages
   {

@@ -149,4 +149,17 @@ export const en = {
     ariaSend: 'Send',
     ariaClose: 'Close chat',
   },
+  seo: {
+    landing: { title: 'Property & Facility Management', description: 'ifmio is an AI-native platform for property management, HOAs, residential buildings and facility management. Everything in one place.' },
+    pricing: { title: 'Pricing', description: 'ifmio pricing — free up to 50 units. Transparent pricing for HOAs, property managers and facility management.' },
+    demo: { title: 'Try Demo', description: 'Book a free ifmio demo. 15 minutes that will change the way you manage properties.' },
+    contact: { title: 'Contact', description: 'Contact the ifmio team. Email, phone, address. We are happy to help you choose the right solution.' },
+    about: { title: 'About Us', description: 'ifmio — AI-native platform for property management. Our mission, team and values.' },
+    careers: { title: 'Careers', description: 'Careers at ifmio. Join the team that is transforming property management.' },
+    blog: { title: 'Blog', description: 'ifmio blog — news, tips and trends in property management and facility management.' },
+    legal: { title: 'Legal', description: 'Terms of service, privacy policy and cookies for ifmio.' },
+    solutions: { title: 'Solutions', description: 'ifmio solutions for HOAs, property managers, facility management and investors.' },
+    platform: { title: 'Platform', description: 'ifmio platform modules — registry, finance, payments, accounts, helpdesk, inspections and more.' },
+    partners: { title: 'Partners', description: 'Find property managers, facility managers, tradespeople and inspection technicians in the ifmio network.' },
+  },
 };

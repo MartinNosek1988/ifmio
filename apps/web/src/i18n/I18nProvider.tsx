@@ -1,7 +1,9 @@
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useEffect } from 'react'
 import { useParams, useNavigate, useLocation, Outlet, Navigate } from 'react-router-dom'
-import { I18nContext, isValidLocale, DEFAULT_LOCALE, getTranslations } from './i18n'
+import { I18nContext, isValidLocale, getTranslations } from './i18n'
 import type { Locale } from './i18n'
+import { detectPreferredLocale, saveLocaleChoice } from './detectLocale'
+import type { SupportedLocale } from './detectLocale'
 
 export function I18nProvider() {
   const { locale: localeParam } = useParams()
@@ -9,7 +11,7 @@ export function I18nProvider() {
   const location = useLocation()
 
   const isValid = isValidLocale(localeParam ?? '')
-  const locale: Locale = isValid ? (localeParam as Locale) : DEFAULT_LOCALE
+  const locale: Locale = isValid ? (localeParam as Locale) : 'cs'
   const t = useMemo(() => getTranslations(locale), [locale])
 
   const switchLocale = useCallback((newLocale: Locale) => {
@@ -22,7 +24,13 @@ export function I18nProvider() {
 
   const value = useMemo(() => ({ locale, t, switchLocale, localePath }), [locale, t, switchLocale, localePath])
 
-  if (!isValid) return <Navigate to={`/${DEFAULT_LOCALE}/`} replace />
+  useEffect(() => { document.documentElement.lang = locale }, [locale])
+  useEffect(() => { saveLocaleChoice(locale as SupportedLocale) }, [locale])
+
+  if (!isValid) {
+    const preferred = detectPreferredLocale()
+    return <Navigate to={`/${preferred}/`} replace />
+  }
 
   return <I18nContext.Provider value={value}><Outlet /></I18nContext.Provider>
 }

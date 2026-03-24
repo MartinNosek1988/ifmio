@@ -1,5 +1,7 @@
 import { LOCALES, LOCALE_CONFIGS, LOCALE_COUNTRY_CODE, ACTIVE_LOCALES, useI18n } from './i18n'
 import type { Locale } from './i18n'
+import { saveLocaleChoice } from './detectLocale'
+import type { SupportedLocale } from './detectLocale'
 
 function Flag({ locale }: { locale: Locale }) {
   const cc = (LOCALE_COUNTRY_CODE[locale] ?? locale).toUpperCase()
@@ -30,7 +32,7 @@ export function LanguageSwitcher() {
           const isActive = (ACTIVE_LOCALES as readonly string[]).includes(code)
           const isCurrent = code === locale
           return (
-            <button key={code} className={`lang-switcher__item${isCurrent ? ' lang-switcher__item--current' : ''}`} onClick={() => isActive && switchLocale(code)} disabled={!isActive}>
+            <button key={code} className={`lang-switcher__item${isCurrent ? ' lang-switcher__item--current' : ''}`} onClick={() => { if (!isActive) return; saveLocaleChoice(code as SupportedLocale); switchLocale(code) }} disabled={!isActive}>
               <Flag locale={code} />
               <span className="lang-switcher__label">{cfg.label}</span>
               {!isActive && <span className="lang-switcher__soon">coming soon</span>}

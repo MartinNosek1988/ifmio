@@ -1,10 +1,15 @@
 import { useState } from 'react'
 import { Navigation } from '../landing/components/Navigation'
 import { Footer } from '../landing/components/Footer'
+import { SeoHead } from '../../i18n/SeoHead'
+import { useI18n } from '../../i18n/i18n'
+import { ROUTE_SLUGS } from '../../i18n/routes'
 import '../landing/landing.css'
 import './pages.css'
 
 export default function DemoPage() {
+  const { t, locale } = useI18n()
+  const seo = t.seo.demo
   const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', units: '', gdpr: false })
   const [submitted, setSubmitted] = useState(false)
   const set = (k: string, v: string | boolean) => setForm(f => ({ ...f, [k]: v }))
@@ -17,6 +22,7 @@ export default function DemoPage() {
 
   return (
     <div className="landing-page">
+      <SeoHead title={seo.title} description={seo.description} canonicalPath={`/${locale}/${ROUTE_SLUGS.demo[locale]}/`} alternatePath={locale === 'cs' ? `/en/${ROUTE_SLUGS.demo.en}/` : `/cs/${ROUTE_SLUGS.demo.cs}/`} />
       <Navigation />
       <div className="demo-split">
         <div className="demo-card">
