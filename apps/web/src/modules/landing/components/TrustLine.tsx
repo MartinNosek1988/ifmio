@@ -1,9 +1,6 @@
-import { TRUST_LINE } from '../../../data/landing-content'
+import { useI18n } from '../../../i18n/i18n'
 
 export function TrustLine() {
-  return (
-    <div className="trust-line">
-      <p>{TRUST_LINE.text}</p>
-    </div>
-  )
+  const { t } = useI18n()
+  return <div className="trust-line"><p>{t.trust.text}</p></div>
 }

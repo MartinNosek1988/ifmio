@@ -1,19 +1,21 @@
-import { CASE_STUDIES } from '../../../data/landing-content'
+import { useI18n } from '../../../i18n/i18n'
 
 export function CaseStudies() {
+  const { t, localePath } = useI18n()
+  const c = t.cases
+
   return (
-    <section className="section" id="reference" aria-label="Reference">
+    <section className="section" id="reference" aria-label="References">
       <div className="container">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 40, flexWrap: 'wrap', gap: 16 }}>
           <div>
-            <p className="section__label">💬 Příběhy klientů</p>
-            <h2 className="section__headline" style={{ marginBottom: 0 }}>Příběhy, které inspirují</h2>
+            <p className="section__label">{c.label}</p>
+            <h2 className="section__headline" style={{ marginBottom: 0 }}>{c.title}</h2>
           </div>
-          <a href="#demo" className="btn btn--primary">Vyzkoušet ifmio →</a>
+          <a href={localePath('/demo')} className="btn btn--primary">{c.cta}</a>
         </div>
-
         <div className="case-studies-grid">
-          {CASE_STUDIES.map(cs => (
+          {c.items.map(cs => (
             <article key={cs.client} className="case-study-card">
               <div className="case-study-card__header">
                 <div className="case-study-card__badge">{cs.client}</div>
@@ -28,7 +30,7 @@ export function CaseStudies() {
                     <div className="case-study-card__role">{cs.role}</div>
                   </div>
                 </div>
-                <a href="#" className="case-study-card__link">Přečíst příběh →</a>
+                <a href="#" className="case-study-card__link">{c.readMore}</a>
               </div>
             </article>
           ))}
