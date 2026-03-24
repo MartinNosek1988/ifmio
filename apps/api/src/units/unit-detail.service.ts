@@ -29,7 +29,7 @@ export class UnitDetailService {
       select: { id: true, name: true },
     })
     const idx = units.findIndex(u => u.id === unitId)
-    if (idx < 0) throw new NotFoundException(`Unit ${unitId} not found in property ${propertyId}`)
+    if (idx < 0) throw new NotFoundException('Jednotka nenalezena')
     return {
       total: units.length,
       current: idx + 1,

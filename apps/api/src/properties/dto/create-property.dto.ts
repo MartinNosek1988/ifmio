@@ -1,4 +1,4 @@
-import { IsString, IsEnum, IsNotEmpty, IsOptional, IsBoolean, IsDateString, MaxLength } from 'class-validator';
+import { IsString, IsEnum, IsNotEmpty, IsOptional, IsBoolean, IsDateString, IsNumber, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreatePropertyDto {
@@ -26,4 +26,15 @@ export class CreatePropertyDto {
   @ApiPropertyOptional() @IsOptional() @IsDateString() managedTo?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) cadastralArea?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(50) landRegistrySheet?: string;
+
+  // Contact & web
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) contactName?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) contactEmail?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(50) contactPhone?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500) website?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500) websiteNote?: string;
+
+  // Geocoding
+  @ApiPropertyOptional() @IsOptional() @IsNumber() latitude?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() longitude?: number;
 }

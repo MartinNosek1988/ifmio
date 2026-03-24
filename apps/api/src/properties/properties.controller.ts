@@ -43,6 +43,12 @@ export class PropertiesController {
     return this.service.findAll(user);
   }
 
+  @Get(':id/nav')
+  @ApiOperation({ summary: 'Property navigation (prev/next/total)' })
+  getNav(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.service.getNav(user, id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Detail nemovitosti' })
   findOne(@CurrentUser() user: AuthUser, @Param('id') id: string) {

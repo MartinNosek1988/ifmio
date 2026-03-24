@@ -249,9 +249,11 @@ export default function AppShell() {
     return days > 0 ? days : null;
   })();
 
+  const [onboardingDismissed, setOnboardingDismissed] = useState(() => localStorage.getItem('onboarding-banner-dismissed') === 'true');
   const showOnboardingBanner = onboardingData
     && !onboardingData.completed
     && !onboardingData.dismissed
+    && !onboardingDismissed
     && location.pathname !== '/onboarding';
 
   const uxRole = useRoleUX();
@@ -436,7 +438,7 @@ export default function AppShell() {
             data-testid="onboarding-banner"
             style={{
               margin: '0 0 16px', padding: '12px 20px',
-              background: 'linear-gradient(135deg, #6366f1 0%, #818cf8 100%)',
+              background: 'linear-gradient(135deg, var(--primary-dark, #0F766E), var(--primary, #0D9488))',
               borderRadius: 10,
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               flexWrap: 'wrap', gap: 8,
@@ -446,18 +448,33 @@ export default function AppShell() {
             <span style={{ fontSize: 14, fontWeight: 500 }}>
               Dokončete nastavení nemovitosti — {onboardingData.progress.done}/{onboardingData.progress.total} kroků hotovo
             </span>
-            <button
-              onClick={() => navigate('/onboarding')}
-              style={{
-                padding: '6px 16px', borderRadius: 6,
-                border: '1px solid rgba(255,255,255,0.3)',
-                background: 'rgba(255,255,255,0.15)',
-                color: '#fff', fontWeight: 600, fontSize: 13,
-                cursor: 'pointer',
-              }}
-            >
-              Pokračovat
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                onClick={() => navigate('/onboarding')}
+                style={{
+                  padding: '6px 16px', borderRadius: 6,
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  background: 'rgba(255,255,255,0.15)',
+                  color: '#fff', fontWeight: 600, fontSize: 13,
+                  cursor: 'pointer',
+                }}
+              >
+                Pokračovat
+              </button>
+              <button
+                onClick={() => { localStorage.setItem('onboarding-banner-dismissed', 'true'); setOnboardingDismissed(true); }}
+                aria-label="Zavřít"
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'rgba(255,255,255,0.7)', padding: '4px 8px',
+                  fontSize: '1.2rem', marginLeft: 8,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}
+              >
+                <X size={20} />
+              </button>
+            </div>
           </div>
         )}
         <Suspense fallback={<LoadingSpinner />}>
