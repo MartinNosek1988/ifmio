@@ -1218,12 +1218,16 @@
 /* Language switcher */
 .lang-switcher { position: relative; }
 .lang-switcher__trigger { font-size: 0.82rem !important; gap: 4px !important; }
-.lang-switcher__menu {
-  width: 200px !important;
-  max-width: 200px !important;
-  display: flex !important;
-  flex-direction: column !important;
-  padding: 8px !important;
+.lang-switcher__menu.mega-menu {
+  width: 200px;
+  max-width: 200px;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  left: auto;
+  right: 0;
+  transform: none;
+  grid-template-columns: 1fr;
 }
 .lang-switcher__item {
   display: flex;
