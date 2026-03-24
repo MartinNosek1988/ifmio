@@ -906,6 +906,7 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
+  align-items: stretch;
 }
 
 .case-study-card {
@@ -914,6 +915,8 @@
   overflow: hidden;
   background-color: var(--white);
   transition: transform 0.25s ease, box-shadow 0.25s ease;
+  display: flex;
+  flex-direction: column;
 }
 
 .case-study-card:hover {
@@ -946,6 +949,9 @@
 
 .case-study-card__body {
   padding: 16px 20px 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .case-study-card__stat {
@@ -970,6 +976,7 @@
   color: var(--gray-600);
   line-height: 1.6;
   margin-bottom: 16px;
+  flex: 1;
   padding-left: 12px;
   border-left: 2px solid var(--gray-200);
 }
