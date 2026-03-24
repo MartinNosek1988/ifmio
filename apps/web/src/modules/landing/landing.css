@@ -1340,17 +1340,20 @@
   color: var(--dark);
 }
 
-.mio-chat-panel__header-close {
+.mio-chat-panel__header-close,
+.mio-chat-panel__close {
   background: none;
   border: none;
   cursor: pointer;
   color: var(--gray-400);
   padding: 4px;
   border-radius: 6px;
+  font-size: 1.1rem;
   transition: background-color 0.15s ease;
 }
 
-.mio-chat-panel__header-close:hover {
+.mio-chat-panel__header-close:hover,
+.mio-chat-panel__close:hover {
   background-color: var(--gray-100);
 }
 
@@ -1421,6 +1424,27 @@
 .mio-chat__quick-btn:hover {
   border-color: var(--teal);
   color: var(--teal);
+}
+
+/* Typing indicator */
+.mio-chat__typing {
+  display: flex;
+  gap: 4px;
+  padding: 12px 16px;
+  align-items: center;
+}
+.mio-chat__typing span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gray-400);
+  animation: typingDot 1.4s infinite;
+}
+.mio-chat__typing span:nth-child(2) { animation-delay: 0.2s; }
+.mio-chat__typing span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typingDot {
+  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-4px); }
 }
 
 /* Footer: input row + powered */
