@@ -1,5 +1,7 @@
 import { useI18n } from '../../../i18n/i18n'
 
+const AVATAR_CLASSES = ['avatar--jn', 'avatar--md', 'avatar--ps', 'avatar--lk']
+
 export function CaseStudies() {
   const { t, localePath } = useI18n()
   const c = t.cases
@@ -15,7 +17,7 @@ export function CaseStudies() {
           <a href={localePath('/demo')} className="btn btn--primary">{c.cta}</a>
         </div>
         <div className="case-studies-grid">
-          {c.items.map(cs => (
+          {c.items.map((cs, i) => (
             <article key={cs.client} className="case-study-card">
               <div className="case-study-card__header">
                 <div className="case-study-card__badge">{cs.client}</div>
@@ -24,7 +26,7 @@ export function CaseStudies() {
               <div className="case-study-card__body">
                 <blockquote className="case-study-card__quote">{cs.quote}</blockquote>
                 <div className="case-study-card__author">
-                  <div className="case-study-card__avatar">{cs.initials}</div>
+                  <div className={`avatar ${AVATAR_CLASSES[i] ?? 'avatar--jn'}`}>{cs.initials}</div>
                   <div>
                     <div className="case-study-card__name">{cs.name}</div>
                     <div className="case-study-card__role">{cs.role}</div>

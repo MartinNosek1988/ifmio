@@ -676,20 +676,41 @@
   font-style: normal;
 }
 
-.bento-quote__avatar {
-  width: 40px;
-  height: 40px;
+/* Gradient avatars */
+.avatar {
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: var(--teal-50);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 0.8rem;
-  color: var(--teal);
+  font-size: 1rem;
+  color: white;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.avatar--jn { background: linear-gradient(135deg, #0D9488, #14B8A6); }
+.avatar--md { background: linear-gradient(135deg, #6366F1, #818CF8); }
+.avatar--ps { background: linear-gradient(135deg, #F59E0B, #FBBF24); }
+.avatar--lk { background: linear-gradient(135deg, #EC4899, #F472B6); }
+
+.bento-quote__avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1rem;
+  color: white;
   flex-shrink: 0;
   font-style: normal;
+  background: linear-gradient(135deg, #0D9488, #14B8A6);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .bento-quote__avatar-name {
