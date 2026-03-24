@@ -1,7 +1,15 @@
 import { Helmet } from 'react-helmet-async'
 import { useI18n } from './i18n'
 
-const BASE_URL = 'https://ifmio.com'
+function getBaseUrl(): string {
+  const env = import.meta.env.VITE_PUBLIC_BASE_URL as string | undefined
+  if (env?.trim()) return env.replace(/\/+$/, '')
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin
+  }
+  return 'https://ifmio.com'
+}
+const BASE_URL = getBaseUrl()
 
 interface Props {
   title: string
@@ -31,7 +39,7 @@ export function SeoHead({ title, description, canonicalPath, alternatePath }: Pr
 
       {csUrl && <link rel="alternate" hrefLang="cs" href={csUrl} />}
       {enUrl && <link rel="alternate" hrefLang="en" href={enUrl} />}
-      {alternatePath && <link rel="alternate" hrefLang="x-default" href={`${BASE_URL}/cs/`} />}
+      {csUrl && <link rel="alternate" hrefLang="x-default" href={csUrl} />}
 
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={description} />

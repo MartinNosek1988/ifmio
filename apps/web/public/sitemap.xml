@@ -24,6 +24,7 @@
     <loc>https://ifmio.com/cs/cenik/</loc>
     <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/cenik/" />
     <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/pricing/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/cenik/" />
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
@@ -31,6 +32,7 @@
     <loc>https://ifmio.com/en/pricing/</loc>
     <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/cenik/" />
     <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/pricing/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/cenik/" />
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
@@ -40,6 +42,7 @@
     <loc>https://ifmio.com/cs/demo/</loc>
     <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/demo/" />
     <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/demo/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/demo/" />
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -47,6 +50,7 @@
     <loc>https://ifmio.com/en/demo/</loc>
     <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/demo/" />
     <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/demo/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/demo/" />
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -56,6 +60,7 @@
     <loc>https://ifmio.com/cs/kontakt/</loc>
     <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/kontakt/" />
     <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/contact/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/kontakt/" />
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -63,6 +68,7 @@
     <loc>https://ifmio.com/en/contact/</loc>
     <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/kontakt/" />
     <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/contact/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/kontakt/" />
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -72,6 +78,7 @@
     <loc>https://ifmio.com/cs/o-nas/</loc>
     <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/o-nas/" />
     <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/about/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/o-nas/" />
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
@@ -79,6 +86,7 @@
     <loc>https://ifmio.com/en/about/</loc>
     <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/o-nas/" />
     <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/about/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/o-nas/" />
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
@@ -88,6 +96,7 @@
     <loc>https://ifmio.com/cs/kariera/</loc>
     <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/kariera/" />
     <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/careers/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/kariera/" />
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
@@ -95,6 +104,7 @@
     <loc>https://ifmio.com/en/careers/</loc>
     <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/kariera/" />
     <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/careers/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/kariera/" />
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
@@ -104,6 +114,7 @@
     <loc>https://ifmio.com/cs/blog/</loc>
     <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/blog/" />
     <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/blog/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/blog/" />
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
@@ -111,6 +122,7 @@
     <loc>https://ifmio.com/en/blog/</loc>
     <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/blog/" />
     <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/blog/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/blog/" />
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
@@ -120,6 +132,7 @@
     <loc>https://ifmio.com/cs/pravni-dokumenty/</loc>
     <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/pravni-dokumenty/" />
     <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/legal/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/pravni-dokumenty/" />
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
@@ -127,53 +140,368 @@
     <loc>https://ifmio.com/en/legal/</loc>
     <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/pravni-dokumenty/" />
     <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/legal/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/pravni-dokumenty/" />
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
 
-  <!-- Solutions -->
-  <url><loc>https://ifmio.com/cs/reseni/svj/</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://ifmio.com/cs/reseni/spravce/</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://ifmio.com/cs/reseni/facility-management/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/cs/reseni/udrzba/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/cs/reseni/investori/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/en/solutions/hoa/</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://ifmio.com/en/solutions/property-managers/</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://ifmio.com/en/solutions/facility-management/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/en/solutions/maintenance/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/en/solutions/investors/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <!-- Solutions: svj ↔ hoa -->
+  <url>
+    <loc>https://ifmio.com/cs/reseni/svj/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/reseni/svj/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/solutions/hoa/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/reseni/svj/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ifmio.com/en/solutions/hoa/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/reseni/svj/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/solutions/hoa/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/reseni/svj/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
 
-  <!-- Platform modules (CS) -->
-  <url><loc>https://ifmio.com/cs/platforma/evidence/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/cs/platforma/finance/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/cs/platforma/predpisy/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/cs/platforma/konto/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/cs/platforma/revize/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/cs/platforma/pracovni-prikazy/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/cs/platforma/komunikace/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/cs/platforma/meridla/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/cs/platforma/vyuctovani/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/cs/platforma/mio-ai/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/cs/platforma/portal/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/cs/platforma/reporting/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/cs/platforma/shromazdeni/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/cs/platforma/mobilni-aplikace/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/cs/platforma/banka/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <!-- Solutions: spravce ↔ property-managers -->
+  <url>
+    <loc>https://ifmio.com/cs/reseni/spravce/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/reseni/spravce/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/solutions/property-managers/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/reseni/spravce/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ifmio.com/en/solutions/property-managers/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/reseni/spravce/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/solutions/property-managers/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/reseni/spravce/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
 
-  <!-- Platform modules (EN) -->
-  <url><loc>https://ifmio.com/en/platform/property-registry/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/en/platform/finance/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/en/platform/payment-orders/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/en/platform/owner-accounts/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/en/platform/inspections/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/en/platform/work-orders/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/en/platform/communication/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/en/platform/meters/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/en/platform/settlement/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/en/platform/mio-ai/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/en/platform/portal/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/en/platform/reporting/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/en/platform/meetings/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/en/platform/mobile-app/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://ifmio.com/en/platform/banking/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <!-- Solutions: facility-management ↔ facility-management -->
+  <url>
+    <loc>https://ifmio.com/cs/reseni/facility-management/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/reseni/facility-management/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/solutions/facility-management/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/reseni/facility-management/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ifmio.com/en/solutions/facility-management/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/reseni/facility-management/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/solutions/facility-management/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/reseni/facility-management/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Solutions: udrzba ↔ maintenance -->
+  <url>
+    <loc>https://ifmio.com/cs/reseni/udrzba/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/reseni/udrzba/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/solutions/maintenance/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/reseni/udrzba/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ifmio.com/en/solutions/maintenance/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/reseni/udrzba/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/solutions/maintenance/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/reseni/udrzba/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Solutions: investori ↔ investors -->
+  <url>
+    <loc>https://ifmio.com/cs/reseni/investori/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/reseni/investori/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/solutions/investors/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/reseni/investori/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ifmio.com/en/solutions/investors/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/reseni/investori/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/solutions/investors/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/reseni/investori/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Platform: evidence ↔ property-registry -->
+  <url>
+    <loc>https://ifmio.com/cs/platforma/evidence/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/evidence/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/property-registry/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/evidence/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ifmio.com/en/platform/property-registry/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/evidence/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/property-registry/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/evidence/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Platform: finance ↔ finance -->
+  <url>
+    <loc>https://ifmio.com/cs/platforma/finance/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/finance/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/finance/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/finance/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ifmio.com/en/platform/finance/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/finance/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/finance/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/finance/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Platform: predpisy ↔ payment-orders -->
+  <url>
+    <loc>https://ifmio.com/cs/platforma/predpisy/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/predpisy/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/payment-orders/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/predpisy/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ifmio.com/en/platform/payment-orders/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/predpisy/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/payment-orders/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/predpisy/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Platform: konto ↔ owner-accounts -->
+  <url>
+    <loc>https://ifmio.com/cs/platforma/konto/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/konto/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/owner-accounts/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/konto/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ifmio.com/en/platform/owner-accounts/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/konto/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/owner-accounts/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/konto/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Platform: revize ↔ inspections -->
+  <url>
+    <loc>https://ifmio.com/cs/platforma/revize/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/revize/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/inspections/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/revize/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ifmio.com/en/platform/inspections/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/revize/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/inspections/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/revize/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Platform: pracovni-prikazy ↔ work-orders -->
+  <url>
+    <loc>https://ifmio.com/cs/platforma/pracovni-prikazy/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/pracovni-prikazy/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/work-orders/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/pracovni-prikazy/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ifmio.com/en/platform/work-orders/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/pracovni-prikazy/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/work-orders/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/pracovni-prikazy/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Platform: komunikace ↔ communication -->
+  <url>
+    <loc>https://ifmio.com/cs/platforma/komunikace/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/komunikace/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/communication/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/komunikace/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ifmio.com/en/platform/communication/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/komunikace/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/communication/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/komunikace/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Platform: meridla ↔ meters -->
+  <url>
+    <loc>https://ifmio.com/cs/platforma/meridla/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/meridla/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/meters/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/meridla/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ifmio.com/en/platform/meters/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/meridla/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/meters/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/meridla/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Platform: vyuctovani ↔ settlement -->
+  <url>
+    <loc>https://ifmio.com/cs/platforma/vyuctovani/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/vyuctovani/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/settlement/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/vyuctovani/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ifmio.com/en/platform/settlement/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/vyuctovani/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/settlement/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/vyuctovani/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Platform: mio-ai ↔ mio-ai -->
+  <url>
+    <loc>https://ifmio.com/cs/platforma/mio-ai/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/mio-ai/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/mio-ai/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/mio-ai/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ifmio.com/en/platform/mio-ai/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/mio-ai/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/mio-ai/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/mio-ai/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Platform: portal ↔ portal -->
+  <url>
+    <loc>https://ifmio.com/cs/platforma/portal/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/portal/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/portal/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/portal/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ifmio.com/en/platform/portal/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/portal/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/portal/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/portal/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Platform: reporting ↔ reporting -->
+  <url>
+    <loc>https://ifmio.com/cs/platforma/reporting/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/reporting/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/reporting/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/reporting/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ifmio.com/en/platform/reporting/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/reporting/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/reporting/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/reporting/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Platform: shromazdeni ↔ meetings -->
+  <url>
+    <loc>https://ifmio.com/cs/platforma/shromazdeni/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/shromazdeni/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/meetings/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/shromazdeni/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ifmio.com/en/platform/meetings/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/shromazdeni/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/meetings/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/shromazdeni/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Platform: mobilni-aplikace ↔ mobile-app -->
+  <url>
+    <loc>https://ifmio.com/cs/platforma/mobilni-aplikace/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/mobilni-aplikace/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/mobile-app/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/mobilni-aplikace/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ifmio.com/en/platform/mobile-app/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/mobilni-aplikace/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/mobile-app/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/mobilni-aplikace/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Platform: banka ↔ banking -->
+  <url>
+    <loc>https://ifmio.com/cs/platforma/banka/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/banka/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/banking/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/banka/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ifmio.com/en/platform/banking/</loc>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/platforma/banka/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/platform/banking/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/cs/platforma/banka/" />
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
 </urlset>
