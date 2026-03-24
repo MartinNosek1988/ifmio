@@ -128,6 +128,7 @@ export const en = {
       { title: 'Company', items: ['About', 'Blog', 'Careers', 'Partners', 'Contact', 'Legal'] },
     ],
     contact: { email: 'info@ifmio.com', phone: '+420 XXX XXX XXX', city: 'Prague' },
+    contactTitle: 'Contact',
     copyright: '© 2026 IFMIO Ltd. All rights reserved.',
     social: ['in', '𝕏', 'f'],
   },
@@ -142,5 +143,9 @@ export const en = {
       'What modules do you have?': 'Registry, finance, payments, accounts, inspections, helpdesk, communication, documents, settlement, owner portal, mobile app and of course me — Mio AI. 🤖',
       'Talk to a person': 'Of course! Email us at info@ifmio.com or call. We\'d love to show you everything.',
     },
+    ariaOpen: 'Open Mio AI chat',
+    ariaDialog: 'Mio AI chat',
+    ariaSend: 'Send',
+    ariaClose: 'Close chat',
   },
 };

@@ -128,6 +128,7 @@ export const cs = {
       { title: 'Společnost', items: ['O nás', 'Blog', 'Kariéra', 'Partneři', 'Kontakt', 'Právní dokumenty'] },
     ],
     contact: { email: 'info@ifmio.com', phone: '+420 XXX XXX XXX', city: 'Praha' },
+    contactTitle: 'Kontakt',
     copyright: '© 2026 IFMIO Ltd. Všechna práva vyhrazena.',
     social: ['in', '𝕏', 'f'],
   },
@@ -142,5 +143,9 @@ export const cs = {
       'Jaké moduly máte?': 'Evidence, finance, předpisy, konto, revize, helpdesk, komunikace, dokumenty, vyúčtování, portál vlastníků, mobilní appka a samozřejmě já — Mio AI. 🤖',
       'Mluvit s člověkem': 'Samozřejmě! Napište nám na info@ifmio.com nebo zavolejte. Rádi vám vše ukážeme.',
     },
+    ariaOpen: 'Otevřít Mio AI chat',
+    ariaDialog: 'Mio AI chat',
+    ariaSend: 'Odeslat',
+    ariaClose: 'Zavřít chat',
   },
 };

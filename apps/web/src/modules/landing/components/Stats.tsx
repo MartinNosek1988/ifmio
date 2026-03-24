@@ -16,7 +16,7 @@ export function Stats() {
   const { ref, isIntersecting } = useIntersectionObserver<HTMLElement>()
   const { t } = useI18n()
   return (
-    <section ref={ref} className="section section--gray" aria-label="Stats">
+    <section ref={ref} className="section section--gray">
       <div className="container">
         <p className="section__label">{t.stats.label}</p>
         <h2 className="section__headline">{t.stats.title}</h2>

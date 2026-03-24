@@ -47,7 +47,7 @@ export function Navigation() {
           <span /><span /><span />
         </button>
 
-        <div className={`landing-nav__links${menuOpen ? ' landing-nav__links--open' : ''}`}>
+        <div className={`landing-nav__links${menuOpen ? ' is-open' : ''}`}>
           {/* Platform */}
           <div className="nav-dropdown">
             <button className="landing-nav__link">{t.nav.platform} ▾</button>
@@ -110,7 +110,7 @@ export function Navigation() {
               ))}
               <div className="mega-menu__cta-card">
                 <strong>{t.nav.partnerCta.title}</strong>
-                <a href={localePath(`/${prSlug}/registrace`)} className="mega-menu__cta-link">{t.nav.partnerCta.link}</a>
+                <a href={localePath(`/${prSlug}/${ROUTE_SLUGS.partnerRegister[locale] ?? 'registrace'}`)} className="mega-menu__cta-link">{t.nav.partnerCta.link}</a>
               </div>
             </div>
           </div>
