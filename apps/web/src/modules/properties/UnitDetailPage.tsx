@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react'
 import { LoadingState, EmptyState, ErrorState } from '../../shared/components'
-import { propertiesApi } from './properties-api'
+import { propertiesApi, type ApiOccupancy } from './properties-api'
 
 type Tab = 'general' | 'rooms' | 'quantities' | 'equipment' | 'owners' | 'prescriptions' | 'meters' | 'fees' | 'profile'
 
@@ -123,7 +123,7 @@ export default function UnitDetailPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
-            <button className="btn btn--sm" onClick={() => navigate(`/properties/${propertyId}`)} style={{ padding: '6px 10px' }}>
+            <button className="btn btn--sm" onClick={() => navigate(`/properties/${propertyId}`)} style={{ padding: '6px 10px' }} aria-label="Zpět na nemovitost">
               <ArrowLeft size={14} />
             </button>
             <h1 style={{ margin: 0 }}>Jednotka {unit.name}</h1>
@@ -135,19 +135,19 @@ export default function UnitDetailPage() {
           {/* Unit navigation */}
           {nav && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginRight: 12 }}>
-              <button className="btn btn--sm" disabled={!nav.prevId} onClick={() => goUnit(nav.prevId)} style={{ padding: '6px 8px' }}>
+              <button className="btn btn--sm" disabled={!nav.prevId} onClick={() => goUnit(nav.prevId)} style={{ padding: '6px 8px' }} aria-label="Předchozí jednotka">
                 <ChevronLeft size={14} />
               </button>
               <span style={{ fontSize: '.82rem', color: 'var(--gray-500)', minWidth: 60, textAlign: 'center' }}>
                 {nav.current} z {nav.total}
               </span>
-              <button className="btn btn--sm" disabled={!nav.nextId} onClick={() => goUnit(nav.nextId)} style={{ padding: '6px 8px' }}>
+              <button className="btn btn--sm" disabled={!nav.nextId} onClick={() => goUnit(nav.nextId)} style={{ padding: '6px 8px' }} aria-label="Další jednotka">
                 <ChevronRight size={14} />
               </button>
             </div>
           )}
-          <button className="btn btn--sm"><Pencil size={14} /> Upravit</button>
-          <button className="btn btn--sm" style={{ color: 'var(--danger)', borderColor: 'var(--danger-light)' }}><Trash2 size={14} /> Smazat</button>
+          <button className="btn btn--sm" disabled><Pencil size={14} /> Upravit</button>
+          <button className="btn btn--sm" disabled style={{ color: 'var(--danger)', borderColor: 'var(--danger-light)' }}><Trash2 size={14} /> Smazat</button>
         </div>
       </div>
 
@@ -170,7 +170,7 @@ export default function UnitDetailPage() {
             {unit.occupancies && unit.occupancies.length > 0 && (
               <>
                 <div style={{ fontWeight: 600, fontSize: '.82rem', color: 'var(--gray-600)', marginTop: 16, marginBottom: 8 }}>Aktuální vlastník</div>
-                {unit.occupancies.filter((o: any) => o.isActive && o.role === 'owner').map((o: any) => (
+                {unit.occupancies.filter((o: ApiOccupancy) => o.isActive && o.role === 'owner').map((o: ApiOccupancy) => (
                   <div key={o.id} style={{ fontSize: '.85rem' }}>
                     {o.resident?.isLegalEntity ? o.resident.companyName : `${o.resident?.firstName} ${o.resident?.lastName}`}
                     {o.ownershipShare != null && <span style={{ color: 'var(--gray-400)', marginLeft: 8 }}>({(o.ownershipShare * 100).toFixed(2)} %)</span>}
@@ -272,7 +272,7 @@ export default function UnitDetailPage() {
             <table className="tbl">
               <thead><tr><th>Vlastník / nájemce</th><th>Role</th><th>Od</th><th>Do</th><th style={{ textAlign: 'right' }}>Podíl</th></tr></thead>
               <tbody>
-                {unit.occupancies.map((o: any) => (
+                {unit.occupancies.map((o: ApiOccupancy) => (
                   <tr key={o.id}>
                     <td style={{ fontWeight: 500 }}>{o.resident?.isLegalEntity ? o.resident.companyName : `${o.resident?.firstName} ${o.resident?.lastName}`}</td>
                     <td><span className={`badge badge--${o.role === 'owner' ? 'blue' : o.role === 'tenant' ? 'green' : 'muted'}`}>{o.role === 'owner' ? 'vlastník' : o.role === 'tenant' ? 'nájemce' : 'člen'}</span></td>

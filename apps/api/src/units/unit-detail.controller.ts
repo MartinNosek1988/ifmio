@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { UnitDetailService } from './unit-detail.service'
+import { CreateRoomDto, UpdateRoomDto, UpsertQuantityDto, CreateEquipmentDto, UpdateEquipmentDto, CreateManagementFeeDto, UpdateManagementFeeDto } from './dto/unit-detail.dto'
 import { Roles } from '../common/decorators/roles.decorator'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
 import { ROLES_WRITE } from '../common/constants/roles.constants'
@@ -38,14 +39,14 @@ export class UnitDetailController {
   @Post('rooms')
   @Roles(...ROLES_WRITE)
   @ApiOperation({ summary: 'Add room' })
-  createRoom(@CurrentUser() user: AuthUser, @Param('propertyId') pid: string, @Param('unitId') uid: string, @Body() dto: { name: string; area: number; coefficient?: number }) {
+  createRoom(@CurrentUser() user: AuthUser, @Param('propertyId') pid: string, @Param('unitId') uid: string, @Body() dto: CreateRoomDto) {
     return this.service.createRoom(user, pid, uid, dto)
   }
 
   @Put('rooms/:roomId')
   @Roles(...ROLES_WRITE)
   @ApiOperation({ summary: 'Update room' })
-  updateRoom(@CurrentUser() user: AuthUser, @Param('propertyId') pid: string, @Param('unitId') uid: string, @Param('roomId') roomId: string, @Body() dto: { name?: string; area?: number; coefficient?: number }) {
+  updateRoom(@CurrentUser() user: AuthUser, @Param('propertyId') pid: string, @Param('unitId') uid: string, @Param('roomId') roomId: string, @Body() dto: UpdateRoomDto) {
     return this.service.updateRoom(user, pid, uid, roomId, dto)
   }
 
@@ -68,7 +69,7 @@ export class UnitDetailController {
   @Post('quantities')
   @Roles(...ROLES_WRITE)
   @ApiOperation({ summary: 'Upsert quantity' })
-  upsertQuantity(@CurrentUser() user: AuthUser, @Param('propertyId') pid: string, @Param('unitId') uid: string, @Body() dto: { name: string; value: number; unitLabel?: string }) {
+  upsertQuantity(@CurrentUser() user: AuthUser, @Param('propertyId') pid: string, @Param('unitId') uid: string, @Body() dto: UpsertQuantityDto) {
     return this.service.upsertQuantity(user, pid, uid, dto)
   }
 
@@ -91,14 +92,14 @@ export class UnitDetailController {
   @Post('equipment')
   @Roles(...ROLES_WRITE)
   @ApiOperation({ summary: 'Add equipment' })
-  createEquipment(@CurrentUser() user: AuthUser, @Param('propertyId') pid: string, @Param('unitId') uid: string, @Body() dto: { name: string; status?: string; note?: string }) {
+  createEquipment(@CurrentUser() user: AuthUser, @Param('propertyId') pid: string, @Param('unitId') uid: string, @Body() dto: CreateEquipmentDto) {
     return this.service.createEquipment(user, pid, uid, dto)
   }
 
   @Put('equipment/:eqId')
   @Roles(...ROLES_WRITE)
   @ApiOperation({ summary: 'Update equipment' })
-  updateEquipment(@CurrentUser() user: AuthUser, @Param('propertyId') pid: string, @Param('unitId') uid: string, @Param('eqId') eqId: string, @Body() dto: { name?: string; status?: string; note?: string }) {
+  updateEquipment(@CurrentUser() user: AuthUser, @Param('propertyId') pid: string, @Param('unitId') uid: string, @Param('eqId') eqId: string, @Body() dto: UpdateEquipmentDto) {
     return this.service.updateEquipment(user, pid, uid, eqId, dto)
   }
 
@@ -121,14 +122,14 @@ export class UnitDetailController {
   @Post('management-fees')
   @Roles(...ROLES_WRITE)
   @ApiOperation({ summary: 'Add management fee' })
-  createFee(@CurrentUser() user: AuthUser, @Param('propertyId') pid: string, @Param('unitId') uid: string, @Body() dto: { amount: number; calculationType?: string; validFrom: string; validTo?: string }) {
+  createFee(@CurrentUser() user: AuthUser, @Param('propertyId') pid: string, @Param('unitId') uid: string, @Body() dto: CreateManagementFeeDto) {
     return this.service.createFee(user, pid, uid, dto)
   }
 
   @Put('management-fees/:feeId')
   @Roles(...ROLES_WRITE)
   @ApiOperation({ summary: 'Update management fee' })
-  updateFee(@CurrentUser() user: AuthUser, @Param('propertyId') pid: string, @Param('unitId') uid: string, @Param('feeId') feeId: string, @Body() dto: { amount?: number; calculationType?: string; validFrom?: string; validTo?: string | null }) {
+  updateFee(@CurrentUser() user: AuthUser, @Param('propertyId') pid: string, @Param('unitId') uid: string, @Param('feeId') feeId: string, @Body() dto: UpdateManagementFeeDto) {
     return this.service.updateFee(user, pid, uid, feeId, dto)
   }
 

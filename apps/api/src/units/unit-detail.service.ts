@@ -29,6 +29,7 @@ export class UnitDetailService {
       select: { id: true, name: true },
     })
     const idx = units.findIndex(u => u.id === unitId)
+    if (idx < 0) throw new NotFoundException(`Unit ${unitId} not found in property ${propertyId}`)
     return {
       total: units.length,
       current: idx + 1,
@@ -94,7 +95,7 @@ export class UnitDetailService {
   async upsertQuantity(user: AuthUser, propertyId: string, unitId: string, dto: { name: string; value: number; unitLabel?: string }) {
     await this.verifyUnit(user, propertyId, unitId)
     return this.prisma.unitQuantity.upsert({
-      where: { unitId_name: { unitId, name: dto.name } },
+      where: { tenantId_unitId_name: { tenantId: user.tenantId, unitId, name: dto.name } },
       create: { unitId, tenantId: user.tenantId, name: dto.name, value: dto.value, unitLabel: dto.unitLabel ?? '' },
       update: { value: dto.value, unitLabel: dto.unitLabel ?? undefined },
     })
