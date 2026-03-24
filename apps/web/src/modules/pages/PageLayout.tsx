@@ -4,10 +4,10 @@ import '../landing/landing.css'
 
 export function PageLayout({ children }: { children: React.ReactNode }) {
   return (
-    <>
+    <div className="landing-page">
       <Navigation />
       <main style={{ paddingTop: 68 }}>{children}</main>
       <Footer />
-    </>
+    </div>
   )
 }

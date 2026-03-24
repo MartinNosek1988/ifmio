@@ -12,7 +12,7 @@ import './landing.css'
 
 export default function LandingPage() {
   return (
-    <>
+    <div className="landing-page">
       <Navigation />
       <Hero />
       <TrustLine />
@@ -23,6 +23,6 @@ export default function LandingPage() {
       <FinalCta />
       <Footer />
       <MioChatWidget />
-    </>
+    </div>
   )
 }

@@ -16,7 +16,7 @@ export default function DemoPage() {
   }
 
   return (
-    <>
+    <div className="landing-page">
       <Navigation />
       <div className="demo-split">
         <div className="demo-card">
@@ -81,6 +81,6 @@ export default function DemoPage() {
         </div>
       </div>
       <Footer />
-    </>
+    </div>
   )
 }
