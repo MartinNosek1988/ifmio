@@ -273,6 +273,17 @@ export class FinanceController {
     return this.service.deletePrescription(user, id)
   }
 
+  @Post('transactions/:id/split')
+  @Roles(...ROLES_FINANCE)
+  @ApiOperation({ summary: 'Rozdělit transakci' })
+  splitTransaction(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() body: { splits: Array<{ amount: number; description?: string; matchTarget?: string; matchedEntityId?: string }> },
+  ) {
+    return this.service.splitTransaction(user, id, body.splits)
+  }
+
   @Delete('transactions/:id')
   @Roles(...ROLES_MANAGE)
   @AuditAction('BankTransaction', 'DELETE')

@@ -997,6 +997,73 @@ export class FinanceService {
     return { unmatched: true, transactionId }
   }
 
+  async splitTransaction(
+    user: AuthUser,
+    id: string,
+    splits: Array<{ amount: number; description?: string; matchTarget?: string; matchedEntityId?: string }>,
+  ) {
+    if (!splits || splits.length < 2) throw new BadRequestException('Minimálně 2 části pro rozdělení')
+
+    const tx = await this.prisma.bankTransaction.findFirst({
+      where: { id, tenantId: user.tenantId },
+      include: { bankAccount: { select: { propertyId: true } } },
+    })
+    if (!tx) throw new NotFoundException('Transakce nenalezena')
+    if (tx.status === 'ignored') throw new BadRequestException('Ignorovanou transakci nelze rozdělit')
+    if (tx.splitParentId) throw new BadRequestException('Již rozdělená transakce nelze rozdělit znovu')
+    await this.scope.verifyEntityAccess(user, tx.bankAccount?.propertyId ?? null)
+
+    const splitSum = splits.reduce((s, sp) => s + sp.amount, 0)
+    const originalAmount = Number(tx.amount)
+    if (Math.abs(splitSum - originalAmount) > 0.01) {
+      throw new BadRequestException(`Součet částí (${splitSum.toFixed(2)}) neodpovídá částce transakce (${originalAmount.toFixed(2)})`)
+    }
+
+    return this.prisma.$transaction(async (ptx) => {
+      // Mark original as ignored (split parent)
+      await ptx.bankTransaction.update({
+        where: { id },
+        data: { status: 'ignored', description: `[Rozděleno na ${splits.length} částí] ${tx.description ?? ''}` },
+      })
+
+      // Create child transactions
+      const children = []
+      for (const sp of splits) {
+        const child = await ptx.bankTransaction.create({
+          data: {
+            tenantId: user.tenantId,
+            bankAccountId: tx.bankAccountId,
+            amount: sp.amount,
+            type: tx.type,
+            date: tx.date,
+            bookingDate: tx.bookingDate,
+            counterparty: tx.counterparty,
+            counterpartyIban: tx.counterpartyIban,
+            counterpartyAccount: tx.counterpartyAccount,
+            counterpartyBankCode: tx.counterpartyBankCode,
+            variableSymbol: tx.variableSymbol,
+            specificSymbol: tx.specificSymbol,
+            constantSymbol: tx.constantSymbol,
+            description: sp.description ?? tx.description,
+            messageForRecipient: tx.messageForRecipient,
+            importSource: tx.importSource,
+            splitParentId: id,
+            status: sp.matchTarget ? 'matched' : 'unmatched',
+            matchTarget: (sp.matchTarget as any) ?? null,
+            matchedEntityId: sp.matchedEntityId ?? null,
+            matchedEntityType: sp.matchedEntityId ? 'prescription' : null,
+            matchedAt: sp.matchTarget ? new Date() : null,
+            matchedBy: sp.matchTarget ? 'manual' : null,
+            financialContextId: tx.financialContextId,
+          },
+        })
+        children.push({ ...child, amount: Number(child.amount) })
+      }
+
+      return { parent: { ...tx, amount: originalAmount, status: 'ignored' }, children }
+    })
+  }
+
   async deleteTransaction(user: AuthUser, id: string) {
     const tx = await this.prisma.bankTransaction.findFirst({
       where: { id, tenantId: user.tenantId },

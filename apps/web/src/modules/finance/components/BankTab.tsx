@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Upload, Zap, CheckCircle2, Download } from 'lucide-react';
+import { Upload, Zap, CheckCircle2, Download, Scissors } from 'lucide-react';
+import { SplitTransactionModal } from './SplitTransactionModal';
 import { SearchBar, Table, Badge, Button } from '../../../shared/components';
 import type { Column } from '../../../shared/components';
 import { formatKc, formatCzDate } from '../../../shared/utils/format';
@@ -78,6 +79,7 @@ export function BankTab({
 }: Props) {
   const [filterMatch, setFilterMatch] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [splitTx, setSplitTx] = useState<FinTransaction | null>(null);
 
   const handleExport = async (fmt: 'csv' | 'xlsx') => {
     setExporting(true)
@@ -146,11 +148,20 @@ export function BankTab({
       return <span className="text-sm">{t.prescriptionDesc || t.matchedEntityType || '—'}</span>;
     }},
     { key: 'actions', label: '', render: t => (
-      <button onClick={(e) => { e.stopPropagation(); onDelete(t); }}
-        data-testid="finance-tx-delete-btn"
-        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: '0.8rem' }}>
-        Smazat
-      </button>
+      <div style={{ display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
+        {t.status !== 'ignored' && !t.splitParentId && (
+          <button onClick={() => setSplitTx(t)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary, #3b82f6)', fontSize: '0.78rem' }}
+            title="Rozdělit transakci">
+            <Scissors size={13} />
+          </button>
+        )}
+        <button onClick={() => onDelete(t)}
+          data-testid="finance-tx-delete-btn"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: '0.8rem' }}>
+          Smazat
+        </button>
+      </div>
     )},
   ];
 
@@ -247,6 +258,14 @@ export function BankTab({
         emptyText="Žádné transakce. Importuj bankovní výpis."
         data-testid="finance-tx-table"
       />
+
+      {splitTx && (
+        <SplitTransactionModal
+          transaction={splitTx}
+          onClose={() => setSplitTx(null)}
+          onSuccess={() => { setSplitTx(null); /* parent refetches via query invalidation */ }}
+        />
+      )}
     </div>
   );
 }
