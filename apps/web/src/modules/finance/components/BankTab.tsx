@@ -56,6 +56,10 @@ interface Props {
   onSelectTx: (tx: FinTransaction) => void;
   filterType: string;
   onFilterType: (v: string) => void;
+  dateFrom: string;
+  onDateFrom: (v: string) => void;
+  dateTo: string;
+  onDateTo: (v: string) => void;
   onDelete: (tx: FinTransaction) => void;
   onAutoMatch?: () => void;
   onMatchAll?: () => void;
@@ -68,7 +72,8 @@ interface Props {
 export function BankTab({
   transactions, accounts, search, onSearch, importRef, importUctId,
   setImportUctId, importMsg, setImportMsg, onImport, onSelectTx,
-  filterType, onFilterType, onDelete, onAutoMatch, onMatchAll,
+  filterType, onFilterType, dateFrom, onDateFrom, dateTo, onDateTo,
+  onDelete, onAutoMatch, onMatchAll,
   autoMatchResult, onDismissAutoResult, isAutoMatching, isMatchingAll,
 }: Props) {
   const [filterMatch, setFilterMatch] = useState('');
@@ -178,6 +183,20 @@ export function BankTab({
         <select value={filterMatch} onChange={(e) => setFilterMatch(e.target.value)} style={selectStyle} data-testid="finance-tx-filter-status">
           {MATCH_FILTER_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '.82rem', color: 'var(--text-muted)' }}>
+          Od
+          <input type="date" value={dateFrom} onChange={e => onDateFrom(e.target.value)} style={{ ...selectStyle, padding: '6px 10px', fontSize: '.84rem' }} />
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '.82rem', color: 'var(--text-muted)' }}>
+          Do
+          <input type="date" value={dateTo} onChange={e => onDateTo(e.target.value)} style={{ ...selectStyle, padding: '6px 10px', fontSize: '.84rem' }} />
+        </label>
+        {(filterMatch || dateFrom || dateTo || filterType) && (
+          <button onClick={() => { setFilterMatch(''); onFilterType(''); onDateFrom(''); onDateTo('') }}
+            style={{ background: 'none', border: 'none', color: 'var(--primary, #3b82f6)', cursor: 'pointer', fontSize: '.82rem', padding: '8px 0' }}>
+            Vymazat filtry
+          </button>
+        )}
         {onAutoMatch && (
           <Button icon={<Zap size={15} />} onClick={onAutoMatch} disabled={isAutoMatching} data-testid="finance-tx-auto-match-btn">
             {isAutoMatching ? 'Párování...' : 'Auto-párovat'}

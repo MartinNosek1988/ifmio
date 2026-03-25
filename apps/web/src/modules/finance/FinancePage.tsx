@@ -65,11 +65,18 @@ export default function FinancePage() {
   const { data: apiBankAccounts = [] } = useBankAccounts();
   const accounts = useMemo(() => apiBankAccounts.map(mapAccount), [apiBankAccounts]);
 
-  // TAB 2: transaction type filter (must be declared before useTransactions)
+  // TAB 2: transaction filters (must be declared before useTransactions)
   const [filterTxType, setFilterTxType] = useState('');
+  const [filterTxDateFrom, setFilterTxDateFrom] = useState('');
+  const [filterTxDateTo, setFilterTxDateTo] = useState('');
 
   // TAB 2: transactions from API
-  const { data: txData } = useTransactions({ page: 1, limit: 500, ...(filterTxType ? { type: filterTxType } : {}) });
+  const { data: txData } = useTransactions({
+    page: 1, limit: 500,
+    ...(filterTxType ? { type: filterTxType } : {}),
+    ...(filterTxDateFrom ? { dateFrom: filterTxDateFrom } : {}),
+    ...(filterTxDateTo ? { dateTo: filterTxDateTo } : {}),
+  });
   const transactions = useMemo(() => (txData?.data ?? []).map(mapTransaction), [txData]);
   const importMutation = useImportTransactions();
 
@@ -293,6 +300,10 @@ export default function FinancePage() {
           onSelectTx={handleTxClick}
           filterType={filterTxType}
           onFilterType={setFilterTxType}
+          dateFrom={filterTxDateFrom}
+          onDateFrom={setFilterTxDateFrom}
+          dateTo={filterTxDateTo}
+          onDateTo={setFilterTxDateTo}
           onDelete={setDeleteTx}
           onAutoMatch={handleEnhancedAutoMatch}
           onMatchAll={handleMatchAll}
