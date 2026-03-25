@@ -507,6 +507,13 @@ export class InvoicesService {
       }
     }
 
+    // TODO: remove debug log
+    console.log('[ISDOC SAVE] parsed fields:', JSON.stringify({
+      number: parsed.number, supplierName: parsed.supplierName, supplierIco: parsed.supplierIco,
+      amountBase: parsed.amountBase, amountTotal: parsed.amountTotal, vatAmount: parsed.vatAmount,
+      variableSymbol: parsed.variableSymbol, dueDate: parsed.dueDate,
+    }))
+
     return this.create(user, {
       ...(parsed as unknown as CreateInvoiceDto),
       isdocXml: xmlContent,
