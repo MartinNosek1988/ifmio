@@ -6,6 +6,7 @@ export const componentKeys = {
   detail: (propertyId: string, componentId: string) => ['components', propertyId, componentId] as const,
   unitPreview: (propertyId: string, unitId: string) => ['components', 'unit-preview', propertyId, unitId] as const,
   propertyPreview: (propertyId: string) => ['components', 'property-preview', propertyId] as const,
+  fundBalance: (propertyId: string, componentId: string) => ['components', 'fund-balance', propertyId, componentId] as const,
 }
 
 export function usePropertyComponents(propertyId: string | undefined, activeOnly = true) {
@@ -79,6 +80,14 @@ export function usePropertyPrescriptionPreview(propertyId: string | undefined) {
     queryKey: componentKeys.propertyPreview(propertyId ?? ''),
     queryFn: () => componentsApi.propertyPreview(propertyId!),
     enabled: !!propertyId,
+  })
+}
+
+export function useFundBalance(propertyId: string | undefined, componentId: string | undefined) {
+  return useQuery({
+    queryKey: componentKeys.fundBalance(propertyId ?? '', componentId ?? ''),
+    queryFn: () => componentsApi.fundBalance(propertyId!, componentId!, new Date().toISOString().slice(0, 10)),
+    enabled: !!propertyId && !!componentId,
   })
 }
 

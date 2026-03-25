@@ -12,6 +12,7 @@ import {
   useRemoveAssignment,
   useUpdateAssignment,
   useComponentDetail,
+  useFundBalance,
 } from '../api/components.queries';
 import type { PrescriptionComponentSummary, ComponentAssignmentRow } from '../api/components.api';
 
@@ -29,8 +30,14 @@ function fmtDate(iso: string) {
 
 const TYPE_LABELS: Record<string, string> = {
   ADVANCE: 'Záloha', FLAT_FEE: 'Paušál', FUND: 'Fond oprav',
-  RENT: 'Nájem', DEPOSIT: 'Kauce', ANNUITY: 'Anuita', OTHER: 'Ostatní',
+  RENT: 'Nájem', DEPOSIT: 'Kauce', ANNUITY: 'Anuita', ACCESSORY: 'Příslušenství', OTHER: 'Ostatní',
 };
+
+const RATE_PERIOD_LABELS: Record<string, string> = {
+  MONTHLY: 'Měsíčně', QUARTERLY: 'Čtvrtletně', YEARLY: 'Ročně', CUSTOM: 'Vlastní měsíce',
+};
+
+const MONTH_LABELS = ['Led', 'Úno', 'Bře', 'Dub', 'Kvě', 'Čvn', 'Čvc', 'Srp', 'Zář', 'Říj', 'Lis', 'Pro'];
 
 const METHOD_LABELS: Record<string, string> = {
   FIXED: 'Pevná částka', PER_AREA: 'Dle plochy (m\u00B2)', PER_HEATING_AREA: 'Dle vyt\u00E1p. plochy',
@@ -59,7 +66,13 @@ const ALLOCATION_LABELS: Record<string, string> = {
 
 const TYPE_BADGE_VARIANT: Record<string, string> = {
   ADVANCE: 'blue', FLAT_FEE: 'purple', FUND: 'green',
-  RENT: 'yellow', DEPOSIT: 'muted', ANNUITY: 'blue', OTHER: 'muted',
+  RENT: 'yellow', DEPOSIT: 'muted', ANNUITY: 'blue', ACCESSORY: 'red', OTHER: 'muted',
+};
+
+// Default includeInSettlement per type
+const SETTLEMENT_DEFAULTS: Record<string, boolean> = {
+  ADVANCE: true, FUND: true, FLAT_FEE: false, RENT: false,
+  DEPOSIT: false, ANNUITY: false, ACCESSORY: false, OTHER: false,
 };
 
 /* ─── Styles ──────────────────────────────────────────────────── */
@@ -69,6 +82,18 @@ const tdStyle: React.CSSProperties = { padding: '8px 12px' };
 const linkBtnStyle: React.CSSProperties = { background: 'none', border: 'none', color: 'var(--primary, #3b82f6)', cursor: 'pointer', fontSize: '.82rem', textDecoration: 'underline', padding: 0 };
 const inputStyle: React.CSSProperties = { width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface-2, var(--surface))', color: 'var(--text)', boxSizing: 'border-box', fontSize: '.85rem' };
 const selectStyle: React.CSSProperties = { padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: '.85rem', marginBottom: 16 };
+
+/* ─── Fund Balance Badge ──────────────────────────────────────── */
+
+function FundBalanceBadge({ propertyId, componentId }: { propertyId: string; componentId: string }) {
+  const { data } = useFundBalance(propertyId, componentId);
+  if (!data) return null;
+  return (
+    <Badge variant={data.balance >= 0 ? 'blue' : 'red'}>
+      Zůstatek: {fmtCzk(data.balance).replace(/\s*CZK\s*/, '')}
+    </Badge>
+  );
+}
 
 /* ─── Main Component ──────────────────────────────────────────── */
 
@@ -174,10 +199,15 @@ export default function ComponentsTab() {
                   <td style={{ ...tdStyle, textAlign: 'right' }}>{c.vatRate}%</td>
                   <td style={{ ...tdStyle, textAlign: 'center' }}>{c._count?.assignments ?? 0}</td>
                   <td style={tdStyle}>
-                    {c.isActive
-                      ? <Badge variant="green">Aktivní</Badge>
-                      : <Badge variant="muted">Archivováno</Badge>
-                    }
+                    <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+                      {c.isActive
+                        ? <Badge variant="green">Aktivní</Badge>
+                        : <Badge variant="muted">Archivováno</Badge>
+                      }
+                      {c.componentType === 'FUND' && c.isActive && (
+                        <FundBalanceBadge propertyId={propertyId} componentId={c.id} />
+                      )}
+                    </div>
                   </td>
                   <td style={tdStyle} onClick={e => e.stopPropagation()}>
                     <div style={{ position: 'relative' }}>
@@ -298,9 +328,22 @@ function ComponentFormModal({ propertyId, component, onClose, onSuccess }: Compo
     sortOrder: component?.sortOrder?.toString() ?? '0',
     effectiveFrom: component?.effectiveFrom ? component.effectiveFrom.slice(0, 10) : new Date().toISOString().slice(0, 10),
     effectiveTo: component?.effectiveTo ? component.effectiveTo.slice(0, 10) : '',
+    initialBalance: component?.initialBalance?.toString() ?? '',
+    includeInSettlement: component?.includeInSettlement ?? SETTLEMENT_DEFAULTS[component?.componentType ?? 'ADVANCE'] ?? true,
+    minimumPayment: component?.minimumPayment?.toString() ?? '',
+    ratePeriod: component?.ratePeriod ?? 'MONTHLY',
+    ratePeriodMonths: component?.ratePeriodMonths ?? [] as number[],
   });
 
   const set = (key: string, value: string) => setForm(f => ({ ...f, [key]: value }));
+
+  const handleTypeChange = (newType: string) => {
+    setForm(f => ({
+      ...f,
+      componentType: newType,
+      includeInSettlement: SETTLEMENT_DEFAULTS[newType] ?? false,
+    }));
+  };
 
   const isManual = form.calculationMethod === 'MANUAL';
 
@@ -320,7 +363,15 @@ function ComponentFormModal({ propertyId, component, onClose, onSuccess }: Compo
       sortOrder: parseInt(form.sortOrder) || 0,
       effectiveFrom: form.effectiveFrom,
       effectiveTo: form.effectiveTo || null,
+      includeInSettlement: form.includeInSettlement,
+      minimumPayment: form.minimumPayment ? parseFloat(form.minimumPayment) : null,
+      ratePeriod: form.ratePeriod,
+      ratePeriodMonths: form.ratePeriod === 'CUSTOM' ? form.ratePeriodMonths : [],
     };
+    // initialBalance only for FUND/DEPOSIT types
+    if (form.componentType === 'FUND' || form.componentType === 'DEPOSIT') {
+      payload.initialBalance = form.initialBalance ? parseFloat(form.initialBalance) : null;
+    }
 
     try {
       if (isEdit && component) {
@@ -354,7 +405,7 @@ function ComponentFormModal({ propertyId, component, onClose, onSuccess }: Compo
         {/* Component type */}
         <div>
           <label className="form-label">Typ</label>
-          <select data-testid="finance-component-form-type" value={form.componentType} onChange={e => set('componentType', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+          <select data-testid="finance-component-form-type" value={form.componentType} onChange={e => handleTypeChange(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
             {Object.entries(TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </div>
@@ -421,6 +472,61 @@ function ComponentFormModal({ propertyId, component, onClose, onSuccess }: Compo
           <input type="date" value={form.effectiveTo} onChange={e => set('effectiveTo', e.target.value)} style={inputStyle} />
         </div>
       </div>
+
+      {/* ── New Domsys fields ───────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+        {/* Rate period */}
+        <div>
+          <label className="form-label">Perioda</label>
+          <select value={form.ratePeriod} onChange={e => set('ratePeriod', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+            {Object.entries(RATE_PERIOD_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        </div>
+        {/* Minimum payment */}
+        <div>
+          <label className="form-label">Minimální platba (Kč)</label>
+          <input type="number" min="0" step="0.01" value={form.minimumPayment} onChange={e => set('minimumPayment', e.target.value)} placeholder="Volitelné" style={inputStyle} />
+        </div>
+        {/* Custom months */}
+        {form.ratePeriod === 'CUSTOM' && (
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label className="form-label">Měsíce předpisu</label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {MONTH_LABELS.map((label, i) => {
+                const month = i + 1;
+                const checked = form.ratePeriodMonths.includes(month);
+                return (
+                  <label key={month} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: '.82rem', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={checked} onChange={() => {
+                      setForm(f => ({
+                        ...f,
+                        ratePeriodMonths: checked ? f.ratePeriodMonths.filter(m => m !== month) : [...f.ratePeriodMonths, month].sort((a, b) => a - b),
+                      }));
+                    }} />
+                    {label}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {/* Include in settlement */}
+        <div>
+          <label className="form-label">Zahrnout do vyúčtování</label>
+          <select value={form.includeInSettlement ? 'true' : 'false'} onChange={e => setForm(f => ({ ...f, includeInSettlement: e.target.value === 'true' }))} style={{ ...inputStyle, cursor: 'pointer' }}>
+            <option value="true">Ano</option>
+            <option value="false">Ne</option>
+          </select>
+        </div>
+        {/* Initial balance — only for FUND/DEPOSIT */}
+        {(form.componentType === 'FUND' || form.componentType === 'DEPOSIT') && (
+          <div>
+            <label className="form-label">Počáteční stav fondu (Kč)</label>
+            <input type="number" step="0.01" value={form.initialBalance} onChange={e => set('initialBalance', e.target.value)} placeholder="0.00" style={inputStyle} />
+          </div>
+        )}
+      </div>
+
       {/* Description */}
       <div style={{ marginBottom: 16 }}>
         <label className="form-label">Popis</label>
