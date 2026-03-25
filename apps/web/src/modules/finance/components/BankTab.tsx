@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Upload, Zap, CheckCircle2, Download, Scissors } from 'lucide-react';
 import { SplitTransactionModal } from './SplitTransactionModal';
-import { SearchBar, Table, Badge, Button } from '../../../shared/components';
+import { SearchBar, Table, Badge, Button, Modal } from '../../../shared/components';
 import type { Column } from '../../../shared/components';
 import { formatKc, formatCzDate } from '../../../shared/utils/format';
 import type { FinTransaction, FinAccount } from '../types';
@@ -80,6 +80,10 @@ export function BankTab({
   const [filterMatch, setFilterMatch] = useState('');
   const [exporting, setExporting] = useState(false);
   const [splitTx, setSplitTx] = useState<FinTransaction | null>(null);
+  const [showStatement, setShowStatement] = useState(false);
+  const [stmtFrom, setStmtFrom] = useState('');
+  const [stmtTo, setStmtTo] = useState(new Date().toISOString().slice(0, 10));
+  const [stmtLoading, setStmtLoading] = useState(false);
 
   const handleExport = async (fmt: 'csv' | 'xlsx') => {
     setExporting(true)
@@ -248,6 +252,11 @@ export function BankTab({
         <Button icon={<Download size={15} />} onClick={() => handleExport('xlsx')} disabled={exporting}>
           XLSX
         </Button>
+        {importUctId && (
+          <Button icon={<Download size={15} />} onClick={() => setShowStatement(true)}>
+            Výpis PDF
+          </Button>
+        )}
       </div>
 
       <Table
@@ -263,8 +272,44 @@ export function BankTab({
         <SplitTransactionModal
           transaction={splitTx}
           onClose={() => setSplitTx(null)}
-          onSuccess={() => { setSplitTx(null); /* parent refetches via query invalidation */ }}
+          onSuccess={() => { setSplitTx(null); }}
         />
+      )}
+
+      {showStatement && (
+        <Modal open onClose={() => setShowStatement(false)} title="Bankovní výpis PDF" footer={
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <Button onClick={() => setShowStatement(false)}>Zrušit</Button>
+            <Button variant="primary" disabled={stmtLoading || !stmtFrom} onClick={async () => {
+              setStmtLoading(true)
+              try {
+                const baseUrl = import.meta.env.VITE_API_URL ?? '/api/v1'
+                const token = sessionStorage.getItem('ifmio:access_token')
+                const res = await fetch(`${baseUrl}/finance/bank-accounts/${importUctId}/statement?dateFrom=${stmtFrom}&dateTo=${stmtTo}&format=pdf`, { headers: { Authorization: `Bearer ${token}` } })
+                if (!res.ok) throw new Error(`HTTP ${res.status}`)
+                const blob = await res.blob()
+                const link = document.createElement('a')
+                link.href = URL.createObjectURL(blob)
+                link.download = `vypis-${stmtFrom}-${stmtTo}.pdf`
+                link.click()
+                URL.revokeObjectURL(link.href)
+                setShowStatement(false)
+              } catch { /* error */ }
+              finally { setStmtLoading(false) }
+            }}>{stmtLoading ? 'Generuji…' : 'Stáhnout PDF'}</Button>
+          </div>
+        }>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <label style={{ fontSize: '.85rem' }}>
+              Období od *
+              <input type="date" value={stmtFrom} onChange={e => setStmtFrom(e.target.value)} style={{ ...selectStyle, display: 'block', marginTop: 4, width: '100%', fontSize: '.84rem' }} />
+            </label>
+            <label style={{ fontSize: '.85rem' }}>
+              Období do
+              <input type="date" value={stmtTo} onChange={e => setStmtTo(e.target.value)} style={{ ...selectStyle, display: 'block', marginTop: 4, width: '100%', fontSize: '.84rem' }} />
+            </label>
+          </div>
+        </Modal>
       )}
     </div>
   );
