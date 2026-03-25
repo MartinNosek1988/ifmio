@@ -16,7 +16,17 @@ export interface PrescriptionComponentSummary {
   effectiveTo: string | null
   description: string | null
   accountingCode: string | null
+  initialBalance: number | null
+  includeInSettlement: boolean
+  minimumPayment: number | null
+  ratePeriod: string
+  ratePeriodMonths: number[]
   _count?: { assignments: number }
+}
+
+export interface FundBalanceResponse {
+  balance: number
+  asOfDate: string
 }
 
 export interface ComponentAssignmentRow {
@@ -110,4 +120,7 @@ export const componentsApi = {
 
   generateFromComponents: (propertyId: string, data: { month: number; year: number; dueDay?: number; dryRun?: boolean }) =>
     apiClient.post<GenerationResult>(`/properties/${propertyId}/components/generate-prescriptions`, data).then(r => r.data),
+
+  fundBalance: (propertyId: string, componentId: string, date?: string) =>
+    apiClient.get<FundBalanceResponse>(`/properties/${propertyId}/components/${componentId}/fund-balance`, { params: { date } }).then(r => r.data),
 }

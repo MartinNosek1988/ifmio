@@ -11,7 +11,7 @@ import { InvoiceDetailModal } from './InvoiceDetailModal';
 import { InvoiceForm } from './InvoiceForm';
 
 export const INVOICE_TYPE_LABELS: Record<string, string> = {
-  received: 'Přijatá', issued: 'Vydaná', proforma: 'Záloha', credit_note: 'Dobropis',
+  received: 'Přijatá', issued: 'Vydaná', proforma: 'Záloha', credit_note: 'Dobropis', internal: 'Interní',
 };
 
 export const APPROVAL_STATUS_LABELS: Record<string, string> = {
@@ -125,6 +125,12 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
       return <Badge variant={APPROVAL_STATUS_VARIANTS[i.approvalStatus] || 'muted'}>
         {APPROVAL_STATUS_LABELS[i.approvalStatus] || i.approvalStatus}
       </Badge>;
+    } },
+    { key: 'allocation', label: 'Alokace', render: (i) => {
+      const st = (i as any).allocationStatus
+      if (st === 'allocated') return <Badge variant="green">Alokováno</Badge>
+      if (st === 'partial') return <Badge variant="yellow">Částečně</Badge>
+      return <Badge variant="red">Nealok.</Badge>
     } },
     { key: 'isPaid', label: 'Platba', render: (i) => {
       if (i.isPaid) return <Badge variant="green">Uhrazeno</Badge>;

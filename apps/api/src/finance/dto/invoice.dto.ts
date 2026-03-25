@@ -27,12 +27,42 @@ export class InvoiceLineDto {
   vatAmount?: number;
 }
 
+export class CreateAllocationDto {
+  @IsString() componentId!: string
+  @IsNumber() @Min(0) amount!: number
+  @IsOptional() @IsNumber() vatRate?: number
+  @IsOptional() @IsNumber() vatAmount?: number
+  @IsOptional() @IsNumber() year?: number
+  @IsOptional() @IsDateString() periodFrom?: string
+  @IsOptional() @IsDateString() periodTo?: string
+  @IsOptional() @IsNumber() consumption?: number
+  @IsOptional() @IsString() consumptionUnit?: string
+  @IsOptional() @IsString() targetOwnerId?: string
+  @IsOptional() @IsArray() @IsString({ each: true }) unitIds?: string[]
+  @IsOptional() @IsString() note?: string
+}
+
+export class UpdateAllocationDto {
+  @IsOptional() @IsString() componentId?: string
+  @IsOptional() @IsNumber() @Min(0) amount?: number
+  @IsOptional() @IsNumber() vatRate?: number
+  @IsOptional() @IsNumber() vatAmount?: number
+  @IsOptional() @IsNumber() year?: number
+  @IsOptional() @IsDateString() periodFrom?: string
+  @IsOptional() @IsDateString() periodTo?: string
+  @IsOptional() @IsNumber() consumption?: number
+  @IsOptional() @IsString() consumptionUnit?: string
+  @IsOptional() @IsString() targetOwnerId?: string
+  @IsOptional() @IsArray() @IsString({ each: true }) unitIds?: string[]
+  @IsOptional() @IsString() note?: string
+}
+
 export class CreateInvoiceDto {
   @IsString()
   @IsNotEmpty({ message: 'Číslo dokladu je povinné' })
   number!: string;
 
-  @IsOptional() @IsEnum(['received', 'issued'])
+  @IsOptional() @IsEnum(['received', 'issued', 'proforma', 'credit_note', 'internal'])
   type?: string;
 
   @IsOptional() @IsString()
@@ -93,6 +123,12 @@ export class CreateInvoiceDto {
   variableSymbol?: string;
 
   @IsOptional() @IsString()
+  constantSymbol?: string;
+
+  @IsOptional() @IsString()
+  specificSymbol?: string;
+
+  @IsOptional() @IsString()
   transactionId?: string;
 
   @IsOptional() @IsString()
@@ -115,7 +151,7 @@ export class UpdateInvoiceDto {
   @IsOptional() @IsString()
   number?: string;
 
-  @IsOptional() @IsEnum(['received', 'issued'])
+  @IsOptional() @IsEnum(['received', 'issued', 'proforma', 'credit_note', 'internal'])
   type?: string;
 
   @IsOptional() @IsString()
@@ -170,6 +206,12 @@ export class UpdateInvoiceDto {
   variableSymbol?: string;
 
   @IsOptional() @IsString()
+  constantSymbol?: string;
+
+  @IsOptional() @IsString()
+  specificSymbol?: string;
+
+  @IsOptional() @IsString()
   transactionId?: string;
 
   @IsOptional() @IsString()
@@ -186,7 +228,7 @@ export class UpdateInvoiceDto {
 }
 
 export class InvoiceListQueryDto {
-  @IsOptional() @IsEnum(['received', 'issued'])
+  @IsOptional() @IsEnum(['received', 'issued', 'proforma', 'credit_note', 'internal'])
   type?: string;
 
   @IsOptional() @IsString()

@@ -3,6 +3,8 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import type { FastifyReply } from 'fastify';
 import { ReportsService } from './reports.service';
 import { ScheduledReportsService } from './scheduled-reports.service';
+import { FundSettlementService } from './fund-settlement.service';
+import { CostsReportService } from './costs-report.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { ROLES_FINANCE_DRAFT, ROLES_MANAGE } from '../common/constants/roles.constants';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -15,6 +17,8 @@ export class ReportsController {
   constructor(
     private service: ReportsService,
     private scheduled: ScheduledReportsService,
+    private fundSettlement: FundSettlementService,
+    private costsReport: CostsReportService,
   ) {}
 
   @Get('monthly')
@@ -191,6 +195,68 @@ export class ReportsController {
       .header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
       .header('Content-Disposition', 'attachment; filename="protokoly-report.xlsx"')
       .send(buffer);
+  }
+
+  // ─── Fund settlement (Vyúčtování fondu) ───────────────────
+
+  @Get('fund-settlement')
+  @Roles(...ROLES_FINANCE_DRAFT)
+  @ApiOperation({ summary: 'Vyúčtování fondu per-vlastník (PDF/JSON)' })
+  async getFundSettlement(
+    @CurrentUser() user: AuthUser,
+    @Query('propertyId') propertyId: string,
+    @Query('componentId') componentId: string,
+    @Query('year') year: string,
+    @Query('unitIds') unitIds?: string,
+    @Query('format') format?: string,
+    @Res() reply?: FastifyReply,
+  ) {
+    const params = {
+      propertyId,
+      componentId,
+      year: parseInt(year, 10),
+      unitIds: unitIds ? unitIds.split(',') : undefined,
+    }
+
+    const data = await this.fundSettlement.generateData(user, params)
+
+    if (format === 'json') {
+      return reply!.send(data)
+    }
+
+    const buffer = await this.fundSettlement.generatePdf(data)
+    reply!
+      .header('Content-Type', 'application/pdf')
+      .header('Content-Disposition', `attachment; filename="vyuctovani-fondu-${params.year}.pdf"`)
+      .send(buffer)
+  }
+
+  // ─── Costs by folder ───────────────────────────────────────
+
+  @Get('costs-by-folder')
+  @Roles(...ROLES_FINANCE_DRAFT)
+  @ApiOperation({ summary: 'Náklady dle složek (PDF/JSON)' })
+  async getCostsByFolder(
+    @CurrentUser() user: AuthUser,
+    @Query('propertyId') propertyId: string,
+    @Query('year') year: string,
+    @Query('format') format?: string,
+    @Res() reply?: FastifyReply,
+  ) {
+    const data = await this.costsReport.generateData(user, {
+      propertyId,
+      year: parseInt(year, 10),
+    })
+
+    if (format === 'json') {
+      return reply!.send(data)
+    }
+
+    const buffer = await this.costsReport.generatePdf(data)
+    reply!
+      .header('Content-Type', 'application/pdf')
+      .header('Content-Disposition', `attachment; filename="naklady-dle-slozek-${year}.pdf"`)
+      .send(buffer)
   }
 
   // ─── Scheduled report subscriptions ────────────────────────

@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNumber, IsInt, IsDateString, IsArray, Min, Max, MinLength } from 'class-validator'
+import { IsString, IsOptional, IsNumber, IsInt, IsBoolean, IsDateString, IsArray, IsEnum, Min, Max, MinLength } from 'class-validator'
 
 export class CreateComponentDto {
   @IsString() @MinLength(1) name!: string
@@ -13,6 +13,12 @@ export class CreateComponentDto {
   @IsOptional() @IsInt() sortOrder?: number
   @IsDateString() effectiveFrom!: string
   @IsOptional() @IsDateString() effectiveTo?: string
+  // Domsys alignment fields
+  @IsOptional() @IsNumber() initialBalance?: number
+  @IsOptional() @IsBoolean() includeInSettlement?: boolean
+  @IsOptional() @IsNumber() @Min(0) minimumPayment?: number
+  @IsOptional() @IsEnum(['MONTHLY', 'QUARTERLY', 'YEARLY', 'CUSTOM']) ratePeriod?: string
+  @IsOptional() @IsArray() @IsInt({ each: true }) ratePeriodMonths?: number[]
 }
 
 export class UpdateComponentDto {
@@ -28,6 +34,12 @@ export class UpdateComponentDto {
   @IsOptional() @IsInt() sortOrder?: number
   @IsOptional() @IsDateString() effectiveFrom?: string
   @IsOptional() @IsDateString() effectiveTo?: string
+  // Domsys alignment fields
+  @IsOptional() @IsNumber() initialBalance?: number | null
+  @IsOptional() @IsBoolean() includeInSettlement?: boolean
+  @IsOptional() @IsNumber() @Min(0) minimumPayment?: number | null
+  @IsOptional() @IsEnum(['MONTHLY', 'QUARTERLY', 'YEARLY', 'CUSTOM']) ratePeriod?: string
+  @IsOptional() @IsArray() @IsInt({ each: true }) ratePeriodMonths?: number[]
 }
 
 export class AssignUnitsDto {

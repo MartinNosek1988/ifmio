@@ -25,6 +25,7 @@ import { FloorPlansTab } from './components/FloorPlansTab';
 import TransferModal from './TransferModal';
 import ManagementContractFormModal from './ManagementContractFormModal';
 import FinancialContextFormModal from './FinancialContextFormModal';
+import FundSettlementModal from '../finance/components/FundSettlementModal';
 
 const MGMT_TYPE_BADGE: Record<string, { label: string; variant: string }> = {
   hoa_management: { label: 'SVJ', variant: 'blue' },
@@ -66,6 +67,7 @@ export default function PropertyDetailPage() {
   const [contractModal, setContractModal] = useState<{ contract?: ApiManagementContract } | null>(null);
   const [fcModal, setFcModal] = useState<{ context?: ApiFinancialContext } | null>(null);
   const [transferModal, setTransferModal] = useState<{ unitId: string; unitName: string; occupancyId: string; ownerName: string; share?: number | null } | null>(null);
+  const [showFundSettlement, setShowFundSettlement] = useState(false);
 
   const { data: propNav } = useQuery({
     queryKey: ['properties', id, 'nav'],
@@ -521,12 +523,17 @@ export default function PropertyDetailPage() {
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <div style={{ fontWeight: 600, fontSize: '.9rem' }}>Vlastníci jednotek ({unitOwnerships.length})</div>
-            <button className="btn btn--sm" onClick={() => {
-              const token = sessionStorage.getItem('ifmio:access_token');
-              window.open(`${import.meta.env.VITE_API_URL ?? '/api/v1'}/pdf/evidencni-listy/property/${id}?year=${new Date().getFullYear()}&token=${token}`, '_blank');
-            }}>
-              Hromadné evidenční listy
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn--sm" onClick={() => setShowFundSettlement(true)}>
+                Vyúčtování fondu
+              </button>
+              <button className="btn btn--sm" onClick={() => {
+                const token = sessionStorage.getItem('ifmio:access_token');
+                window.open(`${import.meta.env.VITE_API_URL ?? '/api/v1'}/pdf/evidencni-listy/property/${id}?year=${new Date().getFullYear()}&token=${token}`, '_blank');
+              }}>
+                Hromadné evidenční listy
+              </button>
+            </div>
           </div>
           {unitOwnerships.length === 0 ? (
             <EmptyState title="Žádní vlastníci" description="Jednotky nemají přiřazené vlastníky." />
@@ -574,6 +581,10 @@ export default function PropertyDetailPage() {
             </div>
           )}
         </div>
+      )}
+
+      {showFundSettlement && id && (
+        <FundSettlementModal propertyId={id} onClose={() => setShowFundSettlement(false)} />
       )}
 
       {/* ── USPOŘÁDÁNÍ TAB ────────────────────────────────────────── */}

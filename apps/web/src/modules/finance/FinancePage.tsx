@@ -26,6 +26,7 @@ import SettlementPage from '../settlement/SettlementPage';
 import PohodaExportSection from './components/PohodaExportSection';
 import SipoTab from './sipo/SipoTab';
 import ComponentsTab from './components/ComponentsTab';
+import EvidenceFoldersTab from './evidence-folders/EvidenceFoldersTab';
 
 // Modal components
 import { PredpisDetail } from './components/PredpisDetail';
@@ -36,6 +37,7 @@ import MatchingModal from './components/MatchingModal';
 
 const TABS = [
   { key: 'components', label: 'Složky předpisu' },
+  { key: 'evidence', label: 'Evidenční složky' },
   { key: 'prescriptions', label: 'Předpisy' },
   { key: 'bank', label: 'Banka' },
   { key: 'doklady', label: 'Doklady' },
@@ -257,6 +259,7 @@ export default function FinancePage() {
 
       {/* ── TAB: SLOŽKY PŘEDPISU ──────────────────────────────────── */}
       {tab === 'components' && <ComponentsTab />}
+      {tab === 'evidence' && <EvidenceFoldersTab />}
 
       {/* ── TAB: PŘEDPISY ─────────────────────────────────────────── */}
       {tab === 'prescriptions' && (

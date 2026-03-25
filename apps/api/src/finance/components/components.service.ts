@@ -25,10 +25,7 @@ export class ComponentsService {
       include: { _count: { select: { assignments: true } } },
     })
 
-    return rows.map((r) => ({
-      ...r,
-      defaultAmount: Number(r.defaultAmount),
-    }))
+    return rows.map((r) => this.serializeComponent(r))
   }
 
   // ─── GET COMPONENT ────────────────────────────────────────────
@@ -47,8 +44,7 @@ export class ComponentsService {
     if (!row) throw new NotFoundException('Složka předpisu nenalezena')
 
     return {
-      ...row,
-      defaultAmount: Number(row.defaultAmount),
+      ...this.serializeComponent(row),
       assignments: row.assignments.map((a) => ({
         ...a,
         overrideAmount: a.overrideAmount != null ? Number(a.overrideAmount) : null,
@@ -63,6 +59,11 @@ export class ComponentsService {
     propertyId: string,
     dto: CreateComponentDto,
   ) {
+    // Default includeInSettlement based on componentType
+    // ADVANCE=true, FUND=true, others=false
+    const settlementTypes = ['ADVANCE', 'FUND']
+    const defaultInclude = dto.includeInSettlement ?? settlementTypes.includes(dto.componentType)
+
     const row = await this.prisma.prescriptionComponent.create({
       data: {
         tenantId,
@@ -79,10 +80,15 @@ export class ComponentsService {
         sortOrder: dto.sortOrder ?? 0,
         effectiveFrom: new Date(dto.effectiveFrom),
         effectiveTo: dto.effectiveTo ? new Date(dto.effectiveTo) : null,
+        initialBalance: dto.initialBalance != null ? new Decimal(dto.initialBalance) : null,
+        includeInSettlement: defaultInclude,
+        minimumPayment: dto.minimumPayment != null ? new Decimal(dto.minimumPayment) : null,
+        ratePeriod: (dto.ratePeriod as never) ?? 'MONTHLY',
+        ratePeriodMonths: dto.ratePeriod === 'CUSTOM' ? (dto.ratePeriodMonths ?? []) : [],
       },
     })
 
-    return { ...row, defaultAmount: Number(row.defaultAmount) }
+    return this.serializeComponent(row)
   }
 
   // ─── UPDATE COMPONENT ─────────────────────────────────────────
@@ -110,13 +116,18 @@ export class ComponentsService {
     if (dto.sortOrder !== undefined) data.sortOrder = dto.sortOrder
     if (dto.effectiveFrom !== undefined) data.effectiveFrom = new Date(dto.effectiveFrom)
     if (dto.effectiveTo !== undefined) data.effectiveTo = new Date(dto.effectiveTo)
+    if (dto.initialBalance !== undefined) data.initialBalance = dto.initialBalance != null ? new Decimal(dto.initialBalance) : null
+    if (dto.includeInSettlement !== undefined) data.includeInSettlement = dto.includeInSettlement
+    if (dto.minimumPayment !== undefined) data.minimumPayment = dto.minimumPayment != null ? new Decimal(dto.minimumPayment) : null
+    if (dto.ratePeriod !== undefined) data.ratePeriod = dto.ratePeriod
+    if (dto.ratePeriodMonths !== undefined) data.ratePeriodMonths = dto.ratePeriodMonths
 
     const row = await this.prisma.prescriptionComponent.update({
       where: { id: componentId },
       data,
     })
 
-    return { ...row, defaultAmount: Number(row.defaultAmount) }
+    return this.serializeComponent(row)
   }
 
   // ─── ARCHIVE COMPONENT ───────────────────────────────────────
@@ -132,7 +143,7 @@ export class ComponentsService {
       data: { isActive: false, effectiveTo: new Date() },
     })
 
-    return { ...row, defaultAmount: Number(row.defaultAmount) }
+    return this.serializeComponent(row)
   }
 
   // ─── ASSIGN TO UNITS ─────────────────────────────────────────
@@ -437,5 +448,86 @@ export class ComponentsService {
     }
 
     return results
+  }
+
+  // ─── FUND BALANCE ──────────────────────────────────────────────
+
+  async calculateFundBalance(componentId: string, asOfDate: Date) {
+    const component = await this.prisma.prescriptionComponent.findFirst({
+      where: { id: componentId },
+    })
+    if (!component) throw new NotFoundException('Složka předpisu nenalezena')
+
+    const initial = component.initialBalance ? Number(component.initialBalance) : 0
+
+    // Income: sum of PrescriptionItem amounts linked to this component
+    const incomeAgg = await this.prisma.prescriptionItem.aggregate({
+      where: {
+        componentId,
+        prescription: { createdAt: { lte: asOfDate } },
+      },
+      _sum: { amount: true },
+    })
+    const income = incomeAgg._sum.amount ? Number(incomeAgg._sum.amount) : 0
+
+    // Expenses: sum of InvoiceCostAllocation amounts linked to this component
+    const expenseAgg = await this.prisma.invoiceCostAllocation.aggregate({
+      where: {
+        componentId,
+        createdAt: { lte: asOfDate },
+      },
+      _sum: { amount: true },
+    })
+    const expenses = expenseAgg._sum.amount ? Number(expenseAgg._sum.amount) : 0
+
+    return initial + income - expenses
+  }
+
+  async getFundSummary(componentId: string, year: number) {
+    const yearStart = new Date(year, 0, 1)
+    const yearEnd = new Date(year, 11, 31, 23, 59, 59, 999)
+    const prevYearEnd = new Date(year - 1, 11, 31, 23, 59, 59, 999)
+
+    const [stavOd, stavDo] = await Promise.all([
+      this.calculateFundBalance(componentId, prevYearEnd),
+      this.calculateFundBalance(componentId, yearEnd),
+    ])
+
+    const incomeAgg = await this.prisma.prescriptionItem.aggregate({
+      where: {
+        componentId,
+        prescription: { createdAt: { gte: yearStart, lte: yearEnd } },
+      },
+      _sum: { amount: true },
+    })
+    const prijmyPredpisy = incomeAgg._sum.amount ? Number(incomeAgg._sum.amount) : 0
+
+    const expenseAgg = await this.prisma.invoiceCostAllocation.aggregate({
+      where: {
+        componentId,
+        createdAt: { gte: yearStart, lte: yearEnd },
+      },
+      _sum: { amount: true },
+    })
+    const vydaje = expenseAgg._sum.amount ? Number(expenseAgg._sum.amount) : 0
+
+    return {
+      stavOd,
+      prijmyPredpisy,
+      prijmyOstatni: 0,
+      vydaje: -vydaje,
+      stavDo,
+    }
+  }
+
+  // ─── SERIALIZATION HELPER ─────────────────────────────────────
+
+  private serializeComponent(row: any) {
+    return {
+      ...row,
+      defaultAmount: Number(row.defaultAmount),
+      initialBalance: row.initialBalance != null ? Number(row.initialBalance) : null,
+      minimumPayment: row.minimumPayment != null ? Number(row.minimumPayment) : null,
+    }
   }
 }

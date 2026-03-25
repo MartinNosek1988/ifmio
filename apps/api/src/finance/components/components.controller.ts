@@ -38,6 +38,18 @@ export class ComponentsController {
     return this.service.getComponent(user.tenantId, componentId)
   }
 
+  @Get(':componentId/fund-balance')
+  @ApiOperation({ summary: 'Zůstatek fondu k datu' })
+  async fundBalance(
+    @CurrentUser() user: AuthUser,
+    @Param('componentId') componentId: string,
+    @Query('date') date?: string,
+  ) {
+    const asOfDate = date ? new Date(date) : new Date()
+    const balance = await this.service.calculateFundBalance(componentId, asOfDate)
+    return { balance, asOfDate: asOfDate.toISOString() }
+  }
+
   @Post()
   @Roles(...ROLES_FINANCE)
   @ApiOperation({ summary: 'Vytvořit složku předpisu' })

@@ -8,7 +8,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuditAction } from '../common/decorators/audit.decorator';
 import { ROLES_MANAGE, ROLES_FINANCE, ROLES_FINANCE_DRAFT } from '../common/constants/roles.constants';
-import { CreateInvoiceDto, UpdateInvoiceDto, InvoiceListQueryDto, MarkPaidDto, ReturnToDraftDto } from './dto/invoice.dto';
+import { CreateInvoiceDto, UpdateInvoiceDto, InvoiceListQueryDto, MarkPaidDto, ReturnToDraftDto, CreateAllocationDto, UpdateAllocationDto } from './dto/invoice.dto';
 import type { FastifyRequest } from 'fastify';
 import type { AuthUser } from '@ifmio/shared-types';
 
@@ -364,6 +364,42 @@ export class FinanceController {
   @ApiOperation({ summary: 'Smazat doklad' })
   deleteInvoice(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.invoicesService.remove(user, id);
+  }
+
+  // ─── INVOICE COST ALLOCATIONS ───────────────────────────────
+
+  @Get('invoices/:id/allocations')
+  @ApiOperation({ summary: 'Seznam alokací dokladu do složek' })
+  getInvoiceAllocations(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.invoicesService.getAllocations(user, id)
+  }
+
+  @Get('invoices/:id/allocation-summary')
+  @ApiOperation({ summary: 'Souhrn alokací dokladu' })
+  getInvoiceAllocationSummary(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.invoicesService.getAllocationSummary(user, id)
+  }
+
+  @Post('invoices/:id/allocations')
+  @Roles(...ROLES_FINANCE)
+  @ApiOperation({ summary: 'Přidat alokaci do složky' })
+  createAllocation(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: CreateAllocationDto) {
+    return this.invoicesService.createAllocation(user, id, dto)
+  }
+
+  @Put('invoices/:id/allocations/:allocationId')
+  @Roles(...ROLES_FINANCE)
+  @ApiOperation({ summary: 'Upravit alokaci' })
+  updateAllocation(@CurrentUser() user: AuthUser, @Param('id') id: string, @Param('allocationId') aid: string, @Body() dto: UpdateAllocationDto) {
+    return this.invoicesService.updateAllocation(user, id, aid, dto)
+  }
+
+  @Delete('invoices/:id/allocations/:allocationId')
+  @Roles(...ROLES_FINANCE)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Smazat alokaci' })
+  deleteAllocation(@CurrentUser() user: AuthUser, @Param('id') id: string, @Param('allocationId') aid: string) {
+    return this.invoicesService.deleteAllocation(user, id, aid)
   }
 
   // ─── HROMADNÉ ODESÍLÁNÍ PŘEDPISŮ ────────────────────────────
