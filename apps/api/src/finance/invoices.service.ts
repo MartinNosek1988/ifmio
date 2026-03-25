@@ -16,7 +16,9 @@ export class InvoicesService {
   ) {}
 
   async list(user: AuthUser, query: InvoiceListQueryDto) {
-    const { type, isPaid, search, approvalStatus, financialContextId } = query;
+    const { type, isPaid, search, approvalStatus, financialContextId,
+      supplier, buyer, number: numFilter, variableSymbol,
+      issueDateFrom, issueDateTo, dueDateFrom, dueDateTo, allocationStatus } = query;
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 50));
     const skip = (page - 1) * limit;
@@ -27,9 +29,18 @@ export class InvoicesService {
       deletedAt: null,
       ...scopeWhere,
       ...(type ? { type } : {}),
-      ...(isPaid !== undefined ? { isPaid: isPaid === 'true' } : {}),
+      ...(isPaid !== undefined && isPaid !== '' ? { isPaid: isPaid === 'true' } : {}),
       ...(approvalStatus ? { approvalStatus } : {}),
       ...(financialContextId ? { financialContextId } : {}),
+      ...(allocationStatus ? { allocationStatus } : {}),
+      ...(supplier ? { supplierName: { contains: supplier, mode: 'insensitive' } } : {}),
+      ...(buyer ? { buyerName: { contains: buyer, mode: 'insensitive' } } : {}),
+      ...(numFilter ? { number: { contains: numFilter, mode: 'insensitive' } } : {}),
+      ...(variableSymbol ? { variableSymbol: { contains: variableSymbol, mode: 'insensitive' } } : {}),
+      ...(issueDateFrom ? { issueDate: { ...(issueDateFrom ? { gte: new Date(issueDateFrom) } : {}), ...(issueDateTo ? { lte: new Date(issueDateTo) } : {}) } } : {}),
+      ...(!issueDateFrom && issueDateTo ? { issueDate: { lte: new Date(issueDateTo) } } : {}),
+      ...(dueDateFrom ? { dueDate: { ...(dueDateFrom ? { gte: new Date(dueDateFrom) } : {}), ...(dueDateTo ? { lte: new Date(dueDateTo) } : {}) } } : {}),
+      ...(!dueDateFrom && dueDateTo ? { dueDate: { lte: new Date(dueDateTo) } } : {}),
       ...(search ? {
         OR: [
           { number: { contains: search, mode: 'insensitive' } },
