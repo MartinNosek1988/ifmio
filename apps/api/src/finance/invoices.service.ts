@@ -401,8 +401,14 @@ export class InvoicesService {
   }
 
   async importIsdoc(user: AuthUser, xmlContent: string) {
+    // TODO: remove debug log
+    console.log('[ISDOC DEBUG] raw XML first 500 chars:', xmlContent.substring(0, 500))
+
     // Parse ISDOC XML to extract invoice data
     const parsed = this.parseIsdocXml(xmlContent);
+
+    // TODO: remove debug log
+    console.log('[ISDOC DEBUG] parsed result:', JSON.stringify(parsed, null, 2).substring(0, 2000))
 
     // Auto-create or find supplier in residents
     const supplierIco = parsed.supplierIco as string;
