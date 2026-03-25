@@ -109,6 +109,7 @@ export class FinanceController {
   listTransactions(@CurrentUser() user: AuthUser, @Query() query: {
     bankAccountId?: string; status?: string; type?: string;
     dateFrom?: string; dateTo?: string;
+    month?: string; matchTarget?: string; componentId?: string;
     financialContextId?: string;
     page?: number; limit?: number;
   }) {

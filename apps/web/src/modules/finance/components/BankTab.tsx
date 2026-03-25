@@ -7,10 +7,6 @@ import { formatKc, formatCzDate } from '../../../shared/utils/format';
 import type { FinTransaction, FinAccount } from '../types';
 import type { AutoMatchResponse } from '../api/finance.api';
 
-const TX_TYPE_LABELS: Record<string, string> = {
-  credit: 'Příjem', debit: 'Výdaj',
-};
-
 const MATCH_TARGET_LABELS: Record<string, string> = {
   KONTO: 'Konto',
   INVOICE: 'Doklad',
@@ -26,6 +22,28 @@ const MATCH_FILTER_OPTIONS = [
   { value: 'partially_matched', label: 'Částečné' },
   { value: 'no_effect', label: 'Bez vlivu' },
 ];
+
+const MATCH_TARGET_OPTIONS = [
+  { value: '', label: 'Cíl: Vše' },
+  { value: 'KONTO', label: 'Konto' },
+  { value: 'INVOICE', label: 'Doklad' },
+  { value: 'COMPONENT', label: 'Složka' },
+  { value: 'NO_EFFECT', label: 'Bez vlivu' },
+  { value: 'UNSPECIFIED', label: 'Neuvedeno' },
+];
+
+function buildMonthOptions(): Array<{ value: string; label: string }> {
+  const opts: Array<{ value: string; label: string }> = [{ value: '', label: 'Měsíc: Vše' }]
+  const now = new Date()
+  for (let i = 0; i < 24; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    const label = `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+    opts.push({ value: val, label })
+  }
+  return opts
+}
+const MONTH_OPTIONS = buildMonthOptions()
 
 function MatchStatusBadge({ tx }: { tx: FinTransaction }) {
   if (tx.status === 'matched') {
@@ -61,6 +79,10 @@ interface Props {
   onDateFrom: (v: string) => void;
   dateTo: string;
   onDateTo: (v: string) => void;
+  month: string;
+  onMonth: (v: string) => void;
+  matchTarget: string;
+  onMatchTarget: (v: string) => void;
   onDelete: (tx: FinTransaction) => void;
   onAutoMatch?: () => void;
   onMatchAll?: () => void;
@@ -74,6 +96,7 @@ export function BankTab({
   transactions, accounts, search, onSearch, importRef, importUctId,
   setImportUctId, importMsg, setImportMsg, onImport, onSelectTx,
   filterType, onFilterType, dateFrom, onDateFrom, dateTo, onDateTo,
+  month, onMonth, matchTarget, onMatchTarget,
   onDelete, onAutoMatch, onMatchAll,
   autoMatchResult, onDismissAutoResult, isAutoMatching, isMatchingAll,
 }: Props) {
@@ -216,22 +239,29 @@ export function BankTab({
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         <div style={{ flex: 1 }}><SearchBar placeholder="Hledat transakce..." onSearch={onSearch} data-testid="finance-tx-search" /></div>
         <select value={filterType} onChange={(e) => onFilterType(e.target.value)} style={selectStyle} data-testid="finance-tx-filter-type">
-          <option value="">Všechny typy</option>
-          {Object.entries(TX_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          <option value="">Směr: Vše</option>
+          <option value="credit">Příjem</option>
+          <option value="debit">Výdaj</option>
         </select>
         <select value={filterMatch} onChange={(e) => setFilterMatch(e.target.value)} style={selectStyle} data-testid="finance-tx-filter-status">
           {MATCH_FILTER_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
+        <select value={matchTarget} onChange={(e) => onMatchTarget(e.target.value)} style={selectStyle}>
+          {MATCH_TARGET_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+        <select value={month} onChange={(e) => { onMonth(e.target.value); if (e.target.value) { onDateFrom(''); onDateTo('') } }} style={selectStyle}>
+          {MONTH_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
         <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '.82rem', color: 'var(--text-muted)' }}>
           Od
-          <input type="date" value={dateFrom} onChange={e => onDateFrom(e.target.value)} style={{ ...selectStyle, padding: '6px 10px', fontSize: '.84rem' }} />
+          <input type="date" value={dateFrom} onChange={e => { onDateFrom(e.target.value); if (e.target.value) onMonth('') }} style={{ ...selectStyle, padding: '6px 10px', fontSize: '.84rem' }} />
         </label>
         <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '.82rem', color: 'var(--text-muted)' }}>
           Do
-          <input type="date" value={dateTo} onChange={e => onDateTo(e.target.value)} style={{ ...selectStyle, padding: '6px 10px', fontSize: '.84rem' }} />
+          <input type="date" value={dateTo} onChange={e => { onDateTo(e.target.value); if (e.target.value) onMonth('') }} style={{ ...selectStyle, padding: '6px 10px', fontSize: '.84rem' }} />
         </label>
-        {(filterMatch || dateFrom || dateTo || filterType) && (
-          <button onClick={() => { setFilterMatch(''); onFilterType(''); onDateFrom(''); onDateTo('') }}
+        {(filterMatch || dateFrom || dateTo || filterType || month || matchTarget) && (
+          <button onClick={() => { setFilterMatch(''); onFilterType(''); onDateFrom(''); onDateTo(''); onMonth(''); onMatchTarget('') }}
             style={{ background: 'none', border: 'none', color: 'var(--primary, #3b82f6)', cursor: 'pointer', fontSize: '.82rem', padding: '8px 0' }}>
             Vymazat filtry
           </button>

@@ -69,6 +69,8 @@ export default function FinancePage() {
   const [filterTxType, setFilterTxType] = useState('');
   const [filterTxDateFrom, setFilterTxDateFrom] = useState('');
   const [filterTxDateTo, setFilterTxDateTo] = useState('');
+  const [filterTxMonth, setFilterTxMonth] = useState('');
+  const [filterTxMatchTarget, setFilterTxMatchTarget] = useState('');
 
   // TAB 2: transactions from API
   const { data: txData } = useTransactions({
@@ -76,6 +78,8 @@ export default function FinancePage() {
     ...(filterTxType ? { type: filterTxType } : {}),
     ...(filterTxDateFrom ? { dateFrom: filterTxDateFrom } : {}),
     ...(filterTxDateTo ? { dateTo: filterTxDateTo } : {}),
+    ...(filterTxMonth ? { month: filterTxMonth } : {}),
+    ...(filterTxMatchTarget ? { matchTarget: filterTxMatchTarget } : {}),
   });
   const transactions = useMemo(() => (txData?.data ?? []).map(mapTransaction), [txData]);
   const importMutation = useImportTransactions();
@@ -304,6 +308,10 @@ export default function FinancePage() {
           onDateFrom={setFilterTxDateFrom}
           dateTo={filterTxDateTo}
           onDateTo={setFilterTxDateTo}
+          month={filterTxMonth}
+          onMonth={setFilterTxMonth}
+          matchTarget={filterTxMatchTarget}
+          onMatchTarget={setFilterTxMatchTarget}
           onDelete={setDeleteTx}
           onAutoMatch={handleEnhancedAutoMatch}
           onMatchAll={handleMatchAll}

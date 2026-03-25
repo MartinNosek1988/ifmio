@@ -195,15 +195,27 @@ export class FinanceService {
       type?: string;
       dateFrom?: string;
       dateTo?: string;
+      month?: string;
+      matchTarget?: string;
+      componentId?: string;
       financialContextId?: string;
       page?: number;
       limit?: number;
     },
   ) {
-    const { bankAccountId, status, type, dateFrom, dateTo, financialContextId } = query;
+    const { bankAccountId, status, type, dateFrom, dateTo, month, matchTarget, componentId, financialContextId } = query;
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 50));
     const skip = (page - 1) * limit;
+
+    // Month filter → date range (overrides dateFrom/dateTo)
+    let effectiveDateFrom = dateFrom ? new Date(dateFrom) : undefined;
+    let effectiveDateTo = dateTo ? new Date(dateTo) : undefined;
+    if (month && /^\d{4}-\d{2}$/.test(month)) {
+      const [y, m] = month.split('-').map(Number);
+      effectiveDateFrom = new Date(y, m - 1, 1);
+      effectiveDateTo = new Date(y, m, 0, 23, 59, 59, 999); // last day of month
+    }
 
     // BankTransaction → bankAccount.propertyId
     const scopeWhere = await this.scope.scopeByRelation(user, 'bankAccount');
@@ -214,12 +226,14 @@ export class FinanceService {
       ...(financialContextId ? { bankAccount: { financialContextId } } : {}),
       ...(status ? { status: status as Prisma.EnumBankTransactionStatusFilter } : {}),
       ...(type ? { type: type as Prisma.EnumBankTransactionTypeFilter } : {}),
-      ...(dateFrom || dateTo ? {
+      ...(effectiveDateFrom || effectiveDateTo ? {
         date: {
-          ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
-          ...(dateTo ? { lte: new Date(dateTo) } : {}),
+          ...(effectiveDateFrom ? { gte: effectiveDateFrom } : {}),
+          ...(effectiveDateTo ? { lte: effectiveDateTo } : {}),
         },
       } : {}),
+      ...(matchTarget ? { matchTarget: matchTarget as any } : {}),
+      ...(componentId ? { matchedEntityId: componentId, matchTarget: 'COMPONENT' as any } : {}),
     };
 
     const [items, total] = await Promise.all([
