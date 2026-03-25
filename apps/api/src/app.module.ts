@@ -59,6 +59,7 @@ import { UnitGroupsModule } from './unit-groups/unit-groups.module';
 import { AccountingModule } from './accounting/accounting.module';
 import { AssembliesModule } from './assemblies/assemblies.module';
 import { PerRollamModule } from './per-rollam/per-rollam.module';
+import { FloorPlansModule } from './floor-plans/floor-plans.module';
 import { E2eSeedModule } from './e2e-seed/e2e-seed.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -150,6 +151,7 @@ import { FieldEncryptionService } from './common/crypto/field-encryption.service
     AccountingModule,
     AssembliesModule,
     PerRollamModule,
+    FloorPlansModule,
     ...(process.env.NODE_ENV === 'test' || process.env.E2E_SEED_ENABLED === 'true' ? [E2eSeedModule] : []),
   ],
   providers: [

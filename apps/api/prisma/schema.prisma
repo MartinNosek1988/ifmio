@@ -461,6 +461,7 @@ model Property {
   sipoConfig                 SipoConfig?
   sipoExports                SipoExport[]
   sipoPayments               SipoPayment[]
+  floorPlans                 FloorPlan[]
 
   @@index([tenantId])
   @@map("properties")
@@ -581,6 +582,7 @@ model Unit {
   quantities     UnitQuantity[]
   equipment      UnitEquipment[]
   managementFees UnitManagementFee[]
+  floorPlanZones FloorPlanZone[]
 
   @@index([propertyId])
   @@map("units")
@@ -3925,4 +3927,54 @@ model AttendeeKeypadAssignment {
   @@unique([attendeeId, keypadId])
   @@index([attendeeId])
   @@map("attendee_keypad_assignments")
+}
+
+// ─── FLOOR PLANS ─────────────────────────────────────────────────────────────
+
+model FloorPlan {
+  id                  String          @id @default(cuid())
+  tenantId            String
+  propertyId          String
+  floor               Int
+  label               String?
+  imageUrl            String
+  imageWidth          Int
+  imageHeight         Int
+  scaleMetersPerPixel Float?
+  sortOrder           Int             @default(0)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  property            Property        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  zones               FloorPlanZone[]
+
+  @@index([tenantId, propertyId])
+  @@map("floor_plans")
+}
+
+model FloorPlanZone {
+  id          String        @id @default(cuid())
+  floorPlanId String
+  unitId      String?
+  label       String?
+  zoneType    FloorZoneType @default(UNIT)
+  polygon     Json
+  color       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  floorPlan   FloorPlan     @relation(fields: [floorPlanId], references: [id], onDelete: Cascade)
+  unit        Unit?         @relation(fields: [unitId], references: [id])
+
+  @@index([floorPlanId])
+  @@map("floor_plan_zones")
+}
+
+enum FloorZoneType {
+  UNIT
+  COMMON_AREA
+  TECHNICAL
+  STORAGE
+  PARKING
+  OTHER
 }
