@@ -149,7 +149,7 @@ export class UnitDetailService {
     })
   }
 
-  async createFee(user: AuthUser, propertyId: string, unitId: string, dto: { amount: number; calculationType?: string; validFrom: string; validTo?: string }) {
+  async createFee(user: AuthUser, propertyId: string, unitId: string, dto: { amount: number; calculationType?: string; validFrom: string; validTo?: string | null }) {
     await this.verifyUnit(user, propertyId, unitId)
     return this.prisma.unitManagementFee.create({
       data: {
