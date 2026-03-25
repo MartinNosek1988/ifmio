@@ -21,6 +21,7 @@ import OwnershipFormModal from './OwnershipFormModal';
 import TenancyFormModal from './TenancyFormModal';
 import TenancyTerminateModal from './TenancyTerminateModal';
 import { UnitGroupsTab } from './UnitGroupsTab';
+import { FloorPlansTab } from './components/FloorPlansTab';
 import TransferModal from './TransferModal';
 import ManagementContractFormModal from './ManagementContractFormModal';
 import FinancialContextFormModal from './FinancialContextFormModal';
@@ -72,7 +73,7 @@ export default function PropertyDetailPage() {
     enabled: !!id,
   });
 
-  type DetailTab = 'overview' | 'units' | 'owners' | 'groups' | 'meters' | 'components' | 'representatives' | 'assemblies' | 'per-rollam' | 'map' | 'profile'
+  type DetailTab = 'overview' | 'units' | 'owners' | 'groups' | 'meters' | 'components' | 'representatives' | 'assemblies' | 'per-rollam' | 'floor-plans' | 'map' | 'profile'
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
 
   const refetchOwnerships = () => queryClient.invalidateQueries({ queryKey: ['ownerships'] });
@@ -379,6 +380,7 @@ export default function PropertyDetailPage() {
           { key: 'representatives' as DetailTab, label: 'Zástupci' },
           { key: 'assemblies' as DetailTab, label: 'Shromáždění' },
           { key: 'per-rollam' as DetailTab, label: 'Per rollam' },
+          { key: 'floor-plans' as DetailTab, label: 'Půdorysy' },
           { key: 'map' as DetailTab, label: 'Mapa' },
           { key: 'profile' as DetailTab, label: 'Profil' },
         ]).map(t => (
@@ -617,6 +619,11 @@ export default function PropertyDetailPage() {
             Otevřít hlasování per rollam
           </Button>
         </div>
+      )}
+
+      {/* ── FLOOR PLANS TAB ────────────────────────────────── */}
+      {detailTab === 'floor-plans' && (
+        <FloorPlansTab propertyId={id!} units={property.units ?? []} />
       )}
 
       {/* ── MAP TAB ──────────────────────────────────────────── */}

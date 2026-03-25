@@ -1,14 +1,14 @@
 -- Property: contact & geocoding fields
-ALTER TABLE "properties" ADD COLUMN "contactName" TEXT;
-ALTER TABLE "properties" ADD COLUMN "contactEmail" TEXT;
-ALTER TABLE "properties" ADD COLUMN "contactPhone" TEXT;
-ALTER TABLE "properties" ADD COLUMN "website" TEXT;
-ALTER TABLE "properties" ADD COLUMN "websiteNote" TEXT;
-ALTER TABLE "properties" ADD COLUMN "latitude" DOUBLE PRECISION;
-ALTER TABLE "properties" ADD COLUMN "longitude" DOUBLE PRECISION;
+ALTER TABLE "properties" ADD COLUMN IF NOT EXISTS "contactName" TEXT;
+ALTER TABLE "properties" ADD COLUMN IF NOT EXISTS "contactEmail" TEXT;
+ALTER TABLE "properties" ADD COLUMN IF NOT EXISTS "contactPhone" TEXT;
+ALTER TABLE "properties" ADD COLUMN IF NOT EXISTS "website" TEXT;
+ALTER TABLE "properties" ADD COLUMN IF NOT EXISTS "websiteNote" TEXT;
+ALTER TABLE "properties" ADD COLUMN IF NOT EXISTS "latitude" DOUBLE PRECISION;
+ALTER TABLE "properties" ADD COLUMN IF NOT EXISTS "longitude" DOUBLE PRECISION;
 
 -- UnitRoom
-CREATE TABLE "unit_rooms" (
+CREATE TABLE IF NOT EXISTS "unit_rooms" (
     "id" TEXT NOT NULL,
     "unitId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -23,7 +23,7 @@ CREATE TABLE "unit_rooms" (
 );
 
 -- UnitQuantity
-CREATE TABLE "unit_quantities" (
+CREATE TABLE IF NOT EXISTS "unit_quantities" (
     "id" TEXT NOT NULL,
     "unitId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -37,7 +37,7 @@ CREATE TABLE "unit_quantities" (
 );
 
 -- UnitEquipment
-CREATE TABLE "unit_equipment" (
+CREATE TABLE IF NOT EXISTS "unit_equipment" (
     "id" TEXT NOT NULL,
     "unitId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -51,7 +51,7 @@ CREATE TABLE "unit_equipment" (
 );
 
 -- UnitManagementFee
-CREATE TABLE "unit_management_fees" (
+CREATE TABLE IF NOT EXISTS "unit_management_fees" (
     "id" TEXT NOT NULL,
     "unitId" TEXT NOT NULL,
     "amount" DOUBLE PRECISION NOT NULL,
@@ -66,21 +66,36 @@ CREATE TABLE "unit_management_fees" (
 );
 
 -- Indexes
-CREATE INDEX "unit_rooms_tenantId_unitId_idx" ON "unit_rooms"("tenantId", "unitId");
-CREATE INDEX "unit_quantities_tenantId_unitId_idx" ON "unit_quantities"("tenantId", "unitId");
-CREATE UNIQUE INDEX "unit_quantities_tenantId_unitId_name_key" ON "unit_quantities"("tenantId", "unitId", "name");
-CREATE INDEX "unit_equipment_tenantId_unitId_idx" ON "unit_equipment"("tenantId", "unitId");
-CREATE INDEX "unit_management_fees_tenantId_unitId_idx" ON "unit_management_fees"("tenantId", "unitId");
+CREATE INDEX IF NOT EXISTS "unit_rooms_tenantId_unitId_idx" ON "unit_rooms"("tenantId", "unitId");
+CREATE INDEX IF NOT EXISTS "unit_quantities_tenantId_unitId_idx" ON "unit_quantities"("tenantId", "unitId");
+CREATE UNIQUE INDEX IF NOT EXISTS "unit_quantities_tenantId_unitId_name_key" ON "unit_quantities"("tenantId", "unitId", "name");
+CREATE INDEX IF NOT EXISTS "unit_equipment_tenantId_unitId_idx" ON "unit_equipment"("tenantId", "unitId");
+CREATE INDEX IF NOT EXISTS "unit_management_fees_tenantId_unitId_idx" ON "unit_management_fees"("tenantId", "unitId");
 
--- Foreign keys
-ALTER TABLE "unit_rooms" ADD CONSTRAINT "unit_rooms_unitId_fkey" FOREIGN KEY ("unitId") REFERENCES "units"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "unit_rooms" ADD CONSTRAINT "unit_rooms_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
-ALTER TABLE "unit_quantities" ADD CONSTRAINT "unit_quantities_unitId_fkey" FOREIGN KEY ("unitId") REFERENCES "units"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "unit_quantities" ADD CONSTRAINT "unit_quantities_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
-ALTER TABLE "unit_equipment" ADD CONSTRAINT "unit_equipment_unitId_fkey" FOREIGN KEY ("unitId") REFERENCES "units"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "unit_equipment" ADD CONSTRAINT "unit_equipment_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
-ALTER TABLE "unit_management_fees" ADD CONSTRAINT "unit_management_fees_unitId_fkey" FOREIGN KEY ("unitId") REFERENCES "units"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "unit_management_fees" ADD CONSTRAINT "unit_management_fees_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+-- Foreign keys (use DO block to skip if already exists)
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'unit_rooms_unitId_fkey') THEN
+    ALTER TABLE "unit_rooms" ADD CONSTRAINT "unit_rooms_unitId_fkey" FOREIGN KEY ("unitId") REFERENCES "units"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'unit_rooms_tenantId_fkey') THEN
+    ALTER TABLE "unit_rooms" ADD CONSTRAINT "unit_rooms_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'unit_quantities_unitId_fkey') THEN
+    ALTER TABLE "unit_quantities" ADD CONSTRAINT "unit_quantities_unitId_fkey" FOREIGN KEY ("unitId") REFERENCES "units"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'unit_quantities_tenantId_fkey') THEN
+    ALTER TABLE "unit_quantities" ADD CONSTRAINT "unit_quantities_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'unit_equipment_unitId_fkey') THEN
+    ALTER TABLE "unit_equipment" ADD CONSTRAINT "unit_equipment_unitId_fkey" FOREIGN KEY ("unitId") REFERENCES "units"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'unit_equipment_tenantId_fkey') THEN
+    ALTER TABLE "unit_equipment" ADD CONSTRAINT "unit_equipment_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'unit_management_fees_unitId_fkey') THEN
+    ALTER TABLE "unit_management_fees" ADD CONSTRAINT "unit_management_fees_unitId_fkey" FOREIGN KEY ("unitId") REFERENCES "units"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'unit_management_fees_tenantId_fkey') THEN
+    ALTER TABLE "unit_management_fees" ADD CONSTRAINT "unit_management_fees_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;

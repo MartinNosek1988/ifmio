@@ -40,6 +40,7 @@
     "exceljs": "^4.4.0",
     "geoip-lite": "^2.0.1",
     "iconv-lite": "^0.7.2",
+    "image-size": "^2.0.2",
     "nestjs-pino": "^4.6.0",
     "nodemailer": "^8.0.1",
     "otplib": "^13.3.0",
