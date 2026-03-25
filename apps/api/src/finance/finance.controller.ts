@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Put, Patch, Delete, Body, Query, Param, Req, Res, HttpCode, HttpStatus,
+  Controller, Get, Post, Put, Patch, Delete, Body, Query, Param, Req, Res, HttpCode, HttpStatus, BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { FinanceService } from './finance.service';
@@ -75,6 +75,23 @@ export class FinanceController {
     return this.service.updateBankAccount(user, id, dto);
   }
 
+  @Get('bank-accounts/:id/statement')
+  @ApiOperation({ summary: 'Bankovní výpis PDF' })
+  async bankStatement(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Query('dateFrom') dateFrom: string,
+    @Query('dateTo') dateTo: string,
+    @Res() reply?: FastifyReply,
+  ) {
+    if (!dateFrom || !dateTo) throw new BadRequestException('dateFrom a dateTo jsou povinné')
+    const buffer = await this.service.generateStatement(user, id, dateFrom, dateTo)
+    reply!
+      .header('Content-Type', 'application/pdf')
+      .header('Content-Disposition', `attachment; filename="vypis-${dateFrom}-${dateTo}.pdf"`)
+      .send(buffer)
+  }
+
   @Delete('bank-accounts/:id')
   @Roles(...ROLES_FINANCE)
   @AuditAction('bankAccount', 'delete')
@@ -92,6 +109,7 @@ export class FinanceController {
   listTransactions(@CurrentUser() user: AuthUser, @Query() query: {
     bankAccountId?: string; status?: string; type?: string;
     dateFrom?: string; dateTo?: string;
+    month?: string; matchTarget?: string; componentId?: string;
     financialContextId?: string;
     page?: number; limit?: number;
   }) {
@@ -271,6 +289,17 @@ export class FinanceController {
     @Param('id') id: string,
   ) {
     return this.service.deletePrescription(user, id)
+  }
+
+  @Post('transactions/:id/split')
+  @Roles(...ROLES_FINANCE)
+  @ApiOperation({ summary: 'Rozdělit transakci' })
+  splitTransaction(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() body: { splits: Array<{ amount: number; description?: string; matchTarget?: string; matchedEntityId?: string }> },
+  ) {
+    return this.service.splitTransaction(user, id, body.splits)
   }
 
   @Delete('transactions/:id')

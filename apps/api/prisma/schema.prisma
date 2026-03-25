@@ -94,6 +94,7 @@ model Tenant {
   unitEquipment              UnitEquipment[]
   unitManagementFees         UnitManagementFee[]
   evidenceFolders            EvidenceFolder[]
+  paymentOrders              PaymentOrder[]
 
   @@map("tenants")
 }
@@ -166,6 +167,7 @@ model User {
   kanbanTasksCreated      KanbanTask[]             @relation("KanbanTaskCreator")
   features                UserFeature[]
   apiKeys                 ApiKey[]
+  paymentOrders           PaymentOrder[]
 
   @@unique([tenantId, email])
   @@unique([oauthProvider, oauthId])
@@ -992,6 +994,7 @@ model BankAccount {
   financialContext FinancialContext  @relation(fields: [financialContextId], references: [id], onDelete: Restrict)
   transactions     BankTransaction[]
   importLogs       ImportLog[]
+  paymentOrders    PaymentOrder[]
 
   @@index([tenantId])
   @@index([financialContextId])
@@ -4020,6 +4023,51 @@ enum FloorZoneType {
   STORAGE
   PARKING
   OTHER
+}
+
+// ─── PAYMENT ORDERS (příkazy k úhradě) ──────────────────────────────────────
+
+model PaymentOrder {
+  id                 String             @id @default(uuid())
+  tenantId           String
+  bankAccountId      String
+  financialContextId String
+  createdById        String
+  status             String             @default("draft") // draft | exported | cancelled
+  exportFormat       String?            // pdf | abo
+  exportedAt         DateTime?
+  note               String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  bankAccount        BankAccount        @relation(fields: [bankAccountId], references: [id])
+  createdBy          User               @relation(fields: [createdById], references: [id])
+  items              PaymentOrderItem[]
+
+  @@index([tenantId])
+  @@map("payment_orders")
+}
+
+model PaymentOrderItem {
+  id                  String       @id @default(uuid())
+  paymentOrderId      String
+  counterpartyName    String?
+  counterpartyAccount String
+  counterpartyBankCode String
+  amount              Decimal      @db.Decimal(12, 2)
+  variableSymbol      String?
+  specificSymbol      String?
+  constantSymbol      String?
+  description         String?
+  invoiceId           String?
+  prescriptionId      String?
+  createdAt           DateTime     @default(now())
+
+  paymentOrder        PaymentOrder @relation(fields: [paymentOrderId], references: [id], onDelete: Cascade)
+
+  @@index([paymentOrderId])
+  @@map("payment_order_items")
 }
 
 // ─── EVIDENCE FOLDERS (evidenční složky — náklady mimo vyúčtování) ───────────

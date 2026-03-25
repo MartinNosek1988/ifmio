@@ -26,6 +26,7 @@ import SettlementPage from '../settlement/SettlementPage';
 import PohodaExportSection from './components/PohodaExportSection';
 import SipoTab from './sipo/SipoTab';
 import ComponentsTab from './components/ComponentsTab';
+import PaymentOrdersTab from './components/PaymentOrdersTab';
 import EvidenceFoldersTab from './evidence-folders/EvidenceFoldersTab';
 
 // Modal components
@@ -33,7 +34,7 @@ import { PredpisDetail } from './components/PredpisDetail';
 import { ParovaniPicker } from './components/ParovaniTab';
 import { PrescriptionForm } from './components/PrescriptionForm';
 import GenerateFromComponentsWizard from './components/GenerateFromComponentsWizard';
-import MatchingModal from './components/MatchingModal';
+import { TransactionDetail } from './components/TransactionDetail';
 
 const TABS = [
   { key: 'components', label: 'Složky předpisu' },
@@ -48,6 +49,7 @@ const TABS = [
   { key: 'accounts', label: 'Účty' },
   { key: 'initial', label: 'Počáteční stavy' },
   { key: 'settlement', label: 'Vyúčtování' },
+  { key: 'payment-orders', label: 'Příkazy' },
   { key: 'export', label: 'Export' },
   { key: 'sipo', label: 'SIPO' },
 ] as const;
@@ -69,6 +71,8 @@ export default function FinancePage() {
   const [filterTxType, setFilterTxType] = useState('');
   const [filterTxDateFrom, setFilterTxDateFrom] = useState('');
   const [filterTxDateTo, setFilterTxDateTo] = useState('');
+  const [filterTxMonth, setFilterTxMonth] = useState('');
+  const [filterTxMatchTarget, setFilterTxMatchTarget] = useState('');
 
   // TAB 2: transactions from API
   const { data: txData } = useTransactions({
@@ -76,6 +80,8 @@ export default function FinancePage() {
     ...(filterTxType ? { type: filterTxType } : {}),
     ...(filterTxDateFrom ? { dateFrom: filterTxDateFrom } : {}),
     ...(filterTxDateTo ? { dateTo: filterTxDateTo } : {}),
+    ...(filterTxMonth ? { month: filterTxMonth } : {}),
+    ...(filterTxMatchTarget ? { matchTarget: filterTxMatchTarget } : {}),
   });
   const transactions = useMemo(() => (txData?.data ?? []).map(mapTransaction), [txData]);
   const importMutation = useImportTransactions();
@@ -304,6 +310,10 @@ export default function FinancePage() {
           onDateFrom={setFilterTxDateFrom}
           dateTo={filterTxDateTo}
           onDateTo={setFilterTxDateTo}
+          month={filterTxMonth}
+          onMonth={setFilterTxMonth}
+          matchTarget={filterTxMatchTarget}
+          onMatchTarget={setFilterTxMatchTarget}
           onDelete={setDeleteTx}
           onAutoMatch={handleEnhancedAutoMatch}
           onMatchAll={handleMatchAll}
@@ -350,6 +360,7 @@ export default function FinancePage() {
       {tab === 'settlement' && <SettlementPage />}
 
       {/* ── TAB: EXPORT ──────────────────────────────────────────── */}
+      {tab === 'payment-orders' && <PaymentOrdersTab />}
       {tab === 'export' && <PohodaExportSection />}
 
       {/* ── TAB: SIPO ────────────────────────────────────────────── */}
@@ -488,9 +499,11 @@ export default function FinancePage() {
 
       {/* ── MODAL: MATCHING (enhanced) ──────────────────────────── */}
       {matchingTx && (
-        <MatchingModal
+        <TransactionDetail
           tx={matchingTx}
+          list={transactions}
           onClose={() => setMatchingTx(null)}
+          onNavigate={(tx) => setMatchingTx(tx)}
         />
       )}
     </div>

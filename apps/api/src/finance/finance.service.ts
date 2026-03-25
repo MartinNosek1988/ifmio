@@ -195,15 +195,27 @@ export class FinanceService {
       type?: string;
       dateFrom?: string;
       dateTo?: string;
+      month?: string;
+      matchTarget?: string;
+      componentId?: string;
       financialContextId?: string;
       page?: number;
       limit?: number;
     },
   ) {
-    const { bankAccountId, status, type, dateFrom, dateTo, financialContextId } = query;
+    const { bankAccountId, status, type, dateFrom, dateTo, month, matchTarget, componentId, financialContextId } = query;
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 50));
     const skip = (page - 1) * limit;
+
+    // Month filter → date range (overrides dateFrom/dateTo)
+    let effectiveDateFrom = dateFrom ? new Date(dateFrom) : undefined;
+    let effectiveDateTo = dateTo ? new Date(dateTo) : undefined;
+    if (month && /^\d{4}-\d{2}$/.test(month)) {
+      const [y, m] = month.split('-').map(Number);
+      effectiveDateFrom = new Date(y, m - 1, 1);
+      effectiveDateTo = new Date(y, m, 0, 23, 59, 59, 999); // last day of month
+    }
 
     // BankTransaction → bankAccount.propertyId
     const scopeWhere = await this.scope.scopeByRelation(user, 'bankAccount');
@@ -214,12 +226,14 @@ export class FinanceService {
       ...(financialContextId ? { bankAccount: { financialContextId } } : {}),
       ...(status ? { status: status as Prisma.EnumBankTransactionStatusFilter } : {}),
       ...(type ? { type: type as Prisma.EnumBankTransactionTypeFilter } : {}),
-      ...(dateFrom || dateTo ? {
+      ...(effectiveDateFrom || effectiveDateTo ? {
         date: {
-          ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
-          ...(dateTo ? { lte: new Date(dateTo) } : {}),
+          ...(effectiveDateFrom ? { gte: effectiveDateFrom } : {}),
+          ...(effectiveDateTo ? { lte: effectiveDateTo } : {}),
         },
       } : {}),
+      ...(matchTarget ? { matchTarget: matchTarget as any } : {}),
+      ...(componentId ? { matchedEntityId: componentId, matchTarget: 'COMPONENT' as any } : {}),
     };
 
     const [items, total] = await Promise.all([
@@ -995,6 +1009,201 @@ export class FinanceService {
     }
 
     return { unmatched: true, transactionId }
+  }
+
+  async generateStatement(
+    user: AuthUser,
+    bankAccountId: string,
+    dateFrom: string,
+    dateTo: string,
+  ): Promise<Buffer> {
+    const account = await this.prisma.bankAccount.findFirst({
+      where: { id: bankAccountId, tenantId: user.tenantId },
+    })
+    if (!account) throw new NotFoundException('Bankovní účet nenalezen')
+    await this.scope.verifyEntityAccess(user, account.propertyId)
+
+    const from = new Date(dateFrom)
+    const to = new Date(dateTo)
+    to.setHours(23, 59, 59, 999)
+
+    // Transactions in range
+    const transactions = await this.prisma.bankTransaction.findMany({
+      where: { bankAccountId, date: { gte: from, lte: to } },
+      orderBy: { date: 'asc' },
+    })
+
+    // Opening balance: sum of all transactions before dateFrom
+    const openingAgg = await this.prisma.bankTransaction.aggregate({
+      where: { bankAccountId, date: { lt: from } },
+      _sum: { amount: true },
+    })
+    const openingBalance = openingAgg._sum.amount ? Number(openingAgg._sum.amount) : 0
+    const hasHistory = await this.prisma.bankTransaction.count({ where: { bankAccountId, date: { lt: from } } }) > 0
+
+    const credits = transactions.filter(t => t.type === 'credit').reduce((s, t) => s + Number(t.amount), 0)
+    const debits = transactions.filter(t => t.type === 'debit').reduce((s, t) => s + Math.abs(Number(t.amount)), 0)
+    const closingBalance = openingBalance + credits - debits
+
+    const fmtD = (d: Date) => `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`
+    const fmtK = (n: number) => new Intl.NumberFormat('cs-CZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n) + ' Kč'
+
+    // Generate PDF
+    const PDFDocument = (await import('pdfkit')).default
+    return new Promise((resolve, reject) => {
+      const doc = new PDFDocument({ size: 'A4', margin: 50, bufferPages: true })
+      const chunks: Buffer[] = []
+      doc.on('data', (c: Buffer) => chunks.push(c))
+      doc.on('end', () => resolve(Buffer.concat(chunks)))
+      doc.on('error', reject)
+
+      const pageW = 595.28 - 100
+      let y = 50
+
+      // Header
+      doc.font('Helvetica-Bold').fontSize(14).text('Bankovní výpis', 50, y)
+      y += 24
+
+      // Account info
+      doc.font('Helvetica').fontSize(9)
+      doc.rect(50, y, pageW, 50).stroke('#ccc')
+      doc.text(`Účet: ${account.name}`, 58, y + 6)
+      doc.text(`Číslo: ${account.accountNumber}${account.iban ? ` / IBAN: ${account.iban}` : ''}`, 58, y + 18)
+      doc.text(`Období: ${fmtD(from)} – ${fmtD(to)}`, 58, y + 30)
+      doc.text(`Měna: ${account.currency}`, 350, y + 6)
+      y += 58
+
+      // Summary
+      doc.font('Helvetica-Bold').fontSize(9)
+      const sumCols = [{ l: 'Poč. zůstatek', v: fmtK(openingBalance) }, { l: 'Příjmy', v: fmtK(credits) }, { l: 'Výdaje', v: fmtK(debits) }, { l: 'Kon. zůstatek', v: fmtK(closingBalance) }]
+      const sw = pageW / 4
+      sumCols.forEach((c, i) => {
+        const cx = 50 + i * sw
+        doc.font('Helvetica').fontSize(8).text(c.l, cx, y)
+        doc.font('Helvetica-Bold').fontSize(10).text(c.v, cx, y + 11)
+      })
+      if (!hasHistory) {
+        y += 26
+        doc.font('Helvetica-Oblique').fontSize(7).text('Počáteční zůstatek neznámý — nejsou k dispozici starší transakce', 50, y)
+      }
+      y += 18
+
+      // Line
+      doc.moveTo(50, y).lineTo(50 + pageW, y).stroke('#ccc')
+      y += 8
+
+      // Transactions table
+      if (transactions.length === 0) {
+        doc.font('Helvetica-Oblique').fontSize(9).text('Žádné transakce v daném období', 50, y)
+      } else {
+        const cols = [55, 100, 60, 170, 75, 55]
+        const colX = cols.reduce((acc: number[], w, i) => { acc.push(i === 0 ? 50 : acc[i - 1] + cols[i - 1]); return acc }, [] as number[])
+        const headers = ['Datum', 'Protistrana', 'VS', 'Popis', 'Částka', 'Stav']
+
+        doc.font('Helvetica-Bold').fontSize(8)
+        headers.forEach((h, i) => doc.text(h, colX[i], y, { width: cols[i], align: i === 4 ? 'right' : 'left' }))
+        y += 12
+        doc.moveTo(50, y).lineTo(50 + pageW, y).stroke('#eee')
+        y += 3
+
+        doc.font('Helvetica').fontSize(8)
+        for (const tx of transactions) {
+          if (y > 730) { doc.addPage(); y = 50 }
+          const amt = Number(tx.amount)
+          const isCredit = tx.type === 'credit'
+          doc.text(fmtD(tx.date), colX[0], y, { width: cols[0] })
+          doc.text((tx.counterparty ?? '').slice(0, 18), colX[1], y, { width: cols[1] })
+          doc.text(tx.variableSymbol ?? '', colX[2], y, { width: cols[2] })
+          doc.text((tx.description ?? '').slice(0, 30), colX[3], y, { width: cols[3] })
+          doc.fillColor(isCredit ? '#0d9488' : '#ef4444')
+            .text(`${isCredit ? '+' : '-'}${fmtK(Math.abs(amt))}`, colX[4], y, { width: cols[4], align: 'right' })
+            .fillColor('#000')
+          doc.text(tx.status === 'matched' ? '✓' : tx.status === 'ignored' ? '—' : '○', colX[5], y, { width: cols[5] })
+          y += 11
+        }
+      }
+
+      // Footer on all pages
+      const totalPages = doc.bufferedPageRange().count
+      for (let i = 0; i < totalPages; i++) {
+        doc.switchToPage(i)
+        const fy = 780
+        doc.font('Helvetica').fontSize(7).fillColor('#999')
+        doc.moveTo(50, fy).lineTo(50 + pageW, fy).stroke('#ddd')
+        doc.text(`Vygenerováno ifmio • ${fmtD(new Date())}`, 50, fy + 4, { continued: true })
+        doc.text(`   Strana ${i + 1} z ${totalPages}`)
+        doc.fillColor('#000')
+      }
+
+      doc.end()
+    })
+  }
+
+  async splitTransaction(
+    user: AuthUser,
+    id: string,
+    splits: Array<{ amount: number; description?: string; matchTarget?: string; matchedEntityId?: string }>,
+  ) {
+    if (!splits || splits.length < 2) throw new BadRequestException('Minimálně 2 části pro rozdělení')
+
+    const tx = await this.prisma.bankTransaction.findFirst({
+      where: { id, tenantId: user.tenantId },
+      include: { bankAccount: { select: { propertyId: true } } },
+    })
+    if (!tx) throw new NotFoundException('Transakce nenalezena')
+    if (tx.status === 'ignored') throw new BadRequestException('Ignorovanou transakci nelze rozdělit')
+    if (tx.splitParentId) throw new BadRequestException('Již rozdělená transakce nelze rozdělit znovu')
+    await this.scope.verifyEntityAccess(user, tx.bankAccount?.propertyId ?? null)
+
+    const splitSum = splits.reduce((s, sp) => s + sp.amount, 0)
+    const originalAmount = Number(tx.amount)
+    if (Math.abs(splitSum - originalAmount) > 0.01) {
+      throw new BadRequestException(`Součet částí (${splitSum.toFixed(2)}) neodpovídá částce transakce (${originalAmount.toFixed(2)})`)
+    }
+
+    return this.prisma.$transaction(async (ptx) => {
+      // Mark original as ignored (split parent)
+      await ptx.bankTransaction.update({
+        where: { id },
+        data: { status: 'ignored', description: `[Rozděleno na ${splits.length} částí] ${tx.description ?? ''}` },
+      })
+
+      // Create child transactions
+      const children = []
+      for (const sp of splits) {
+        const child = await ptx.bankTransaction.create({
+          data: {
+            tenantId: user.tenantId,
+            bankAccountId: tx.bankAccountId,
+            amount: sp.amount,
+            type: tx.type,
+            date: tx.date,
+            bookingDate: tx.bookingDate,
+            counterparty: tx.counterparty,
+            counterpartyIban: tx.counterpartyIban,
+            counterpartyAccount: tx.counterpartyAccount,
+            counterpartyBankCode: tx.counterpartyBankCode,
+            variableSymbol: tx.variableSymbol,
+            specificSymbol: tx.specificSymbol,
+            constantSymbol: tx.constantSymbol,
+            description: sp.description ?? tx.description,
+            messageForRecipient: tx.messageForRecipient,
+            importSource: tx.importSource,
+            splitParentId: id,
+            status: sp.matchTarget ? 'matched' : 'unmatched',
+            matchTarget: (sp.matchTarget as any) ?? null,
+            matchedEntityId: sp.matchedEntityId ?? null,
+            matchedEntityType: sp.matchedEntityId ? 'prescription' : null,
+            matchedAt: sp.matchTarget ? new Date() : null,
+            matchedBy: sp.matchTarget ? 'manual' : null,
+            financialContextId: tx.financialContextId,
+          },
+        })
+        children.push({ ...child, amount: Number(child.amount) })
+      }
+
+      return { parent: { ...tx, amount: originalAmount, status: 'ignored' }, children }
+    })
   }
 
   async deleteTransaction(user: AuthUser, id: string) {

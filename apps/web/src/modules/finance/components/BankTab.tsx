@@ -1,14 +1,11 @@
 import { useMemo, useState } from 'react';
-import { Upload, Zap, CheckCircle2, Download } from 'lucide-react';
-import { SearchBar, Table, Badge, Button } from '../../../shared/components';
+import { Upload, Zap, CheckCircle2, Download, Scissors } from 'lucide-react';
+import { SplitTransactionModal } from './SplitTransactionModal';
+import { SearchBar, Table, Badge, Button, Modal } from '../../../shared/components';
 import type { Column } from '../../../shared/components';
 import { formatKc, formatCzDate } from '../../../shared/utils/format';
 import type { FinTransaction, FinAccount } from '../types';
 import type { AutoMatchResponse } from '../api/finance.api';
-
-const TX_TYPE_LABELS: Record<string, string> = {
-  credit: 'Příjem', debit: 'Výdaj',
-};
 
 const MATCH_TARGET_LABELS: Record<string, string> = {
   KONTO: 'Konto',
@@ -25,6 +22,28 @@ const MATCH_FILTER_OPTIONS = [
   { value: 'partially_matched', label: 'Částečné' },
   { value: 'no_effect', label: 'Bez vlivu' },
 ];
+
+const MATCH_TARGET_OPTIONS = [
+  { value: '', label: 'Cíl: Vše' },
+  { value: 'KONTO', label: 'Konto' },
+  { value: 'INVOICE', label: 'Doklad' },
+  { value: 'COMPONENT', label: 'Složka' },
+  { value: 'NO_EFFECT', label: 'Bez vlivu' },
+  { value: 'UNSPECIFIED', label: 'Neuvedeno' },
+];
+
+function buildMonthOptions(): Array<{ value: string; label: string }> {
+  const opts: Array<{ value: string; label: string }> = [{ value: '', label: 'Měsíc: Vše' }]
+  const now = new Date()
+  for (let i = 0; i < 24; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    const label = `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+    opts.push({ value: val, label })
+  }
+  return opts
+}
+const MONTH_OPTIONS = buildMonthOptions()
 
 function MatchStatusBadge({ tx }: { tx: FinTransaction }) {
   if (tx.status === 'matched') {
@@ -60,6 +79,10 @@ interface Props {
   onDateFrom: (v: string) => void;
   dateTo: string;
   onDateTo: (v: string) => void;
+  month: string;
+  onMonth: (v: string) => void;
+  matchTarget: string;
+  onMatchTarget: (v: string) => void;
   onDelete: (tx: FinTransaction) => void;
   onAutoMatch?: () => void;
   onMatchAll?: () => void;
@@ -73,11 +96,17 @@ export function BankTab({
   transactions, accounts, search, onSearch, importRef, importUctId,
   setImportUctId, importMsg, setImportMsg, onImport, onSelectTx,
   filterType, onFilterType, dateFrom, onDateFrom, dateTo, onDateTo,
+  month, onMonth, matchTarget, onMatchTarget,
   onDelete, onAutoMatch, onMatchAll,
   autoMatchResult, onDismissAutoResult, isAutoMatching, isMatchingAll,
 }: Props) {
   const [filterMatch, setFilterMatch] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [splitTx, setSplitTx] = useState<FinTransaction | null>(null);
+  const [showStatement, setShowStatement] = useState(false);
+  const [stmtFrom, setStmtFrom] = useState('');
+  const [stmtTo, setStmtTo] = useState(new Date().toISOString().slice(0, 10));
+  const [stmtLoading, setStmtLoading] = useState(false);
 
   const handleExport = async (fmt: 'csv' | 'xlsx') => {
     setExporting(true)
@@ -146,11 +175,20 @@ export function BankTab({
       return <span className="text-sm">{t.prescriptionDesc || t.matchedEntityType || '—'}</span>;
     }},
     { key: 'actions', label: '', render: t => (
-      <button onClick={(e) => { e.stopPropagation(); onDelete(t); }}
-        data-testid="finance-tx-delete-btn"
-        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: '0.8rem' }}>
-        Smazat
-      </button>
+      <div style={{ display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
+        {t.status !== 'ignored' && !t.splitParentId && (
+          <button onClick={() => setSplitTx(t)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary, #3b82f6)', fontSize: '0.78rem' }}
+            title="Rozdělit transakci">
+            <Scissors size={13} />
+          </button>
+        )}
+        <button onClick={() => onDelete(t)}
+          data-testid="finance-tx-delete-btn"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: '0.8rem' }}>
+          Smazat
+        </button>
+      </div>
     )},
   ];
 
@@ -201,22 +239,29 @@ export function BankTab({
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         <div style={{ flex: 1 }}><SearchBar placeholder="Hledat transakce..." onSearch={onSearch} data-testid="finance-tx-search" /></div>
         <select value={filterType} onChange={(e) => onFilterType(e.target.value)} style={selectStyle} data-testid="finance-tx-filter-type">
-          <option value="">Všechny typy</option>
-          {Object.entries(TX_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          <option value="">Směr: Vše</option>
+          <option value="credit">Příjem</option>
+          <option value="debit">Výdaj</option>
         </select>
         <select value={filterMatch} onChange={(e) => setFilterMatch(e.target.value)} style={selectStyle} data-testid="finance-tx-filter-status">
           {MATCH_FILTER_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
+        <select value={matchTarget} onChange={(e) => onMatchTarget(e.target.value)} style={selectStyle}>
+          {MATCH_TARGET_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+        <select value={month} onChange={(e) => { onMonth(e.target.value); if (e.target.value) { onDateFrom(''); onDateTo('') } }} style={selectStyle}>
+          {MONTH_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
         <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '.82rem', color: 'var(--text-muted)' }}>
           Od
-          <input type="date" value={dateFrom} onChange={e => onDateFrom(e.target.value)} style={{ ...selectStyle, padding: '6px 10px', fontSize: '.84rem' }} />
+          <input type="date" value={dateFrom} onChange={e => { onDateFrom(e.target.value); if (e.target.value) onMonth('') }} style={{ ...selectStyle, padding: '6px 10px', fontSize: '.84rem' }} />
         </label>
         <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '.82rem', color: 'var(--text-muted)' }}>
           Do
-          <input type="date" value={dateTo} onChange={e => onDateTo(e.target.value)} style={{ ...selectStyle, padding: '6px 10px', fontSize: '.84rem' }} />
+          <input type="date" value={dateTo} onChange={e => { onDateTo(e.target.value); if (e.target.value) onMonth('') }} style={{ ...selectStyle, padding: '6px 10px', fontSize: '.84rem' }} />
         </label>
-        {(filterMatch || dateFrom || dateTo || filterType) && (
-          <button onClick={() => { setFilterMatch(''); onFilterType(''); onDateFrom(''); onDateTo('') }}
+        {(filterMatch || dateFrom || dateTo || filterType || month || matchTarget) && (
+          <button onClick={() => { setFilterMatch(''); onFilterType(''); onDateFrom(''); onDateTo(''); onMonth(''); onMatchTarget('') }}
             style={{ background: 'none', border: 'none', color: 'var(--primary, #3b82f6)', cursor: 'pointer', fontSize: '.82rem', padding: '8px 0' }}>
             Vymazat filtry
           </button>
@@ -237,6 +282,11 @@ export function BankTab({
         <Button icon={<Download size={15} />} onClick={() => handleExport('xlsx')} disabled={exporting}>
           XLSX
         </Button>
+        {importUctId && (
+          <Button icon={<Download size={15} />} onClick={() => setShowStatement(true)}>
+            Výpis PDF
+          </Button>
+        )}
       </div>
 
       <Table
@@ -247,6 +297,50 @@ export function BankTab({
         emptyText="Žádné transakce. Importuj bankovní výpis."
         data-testid="finance-tx-table"
       />
+
+      {splitTx && (
+        <SplitTransactionModal
+          transaction={splitTx}
+          onClose={() => setSplitTx(null)}
+          onSuccess={() => { setSplitTx(null); }}
+        />
+      )}
+
+      {showStatement && (
+        <Modal open onClose={() => setShowStatement(false)} title="Bankovní výpis PDF" footer={
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <Button onClick={() => setShowStatement(false)}>Zrušit</Button>
+            <Button variant="primary" disabled={stmtLoading || !stmtFrom} onClick={async () => {
+              setStmtLoading(true)
+              try {
+                const baseUrl = import.meta.env.VITE_API_URL ?? '/api/v1'
+                const token = sessionStorage.getItem('ifmio:access_token')
+                const res = await fetch(`${baseUrl}/finance/bank-accounts/${importUctId}/statement?dateFrom=${stmtFrom}&dateTo=${stmtTo}&format=pdf`, { headers: { Authorization: `Bearer ${token}` } })
+                if (!res.ok) throw new Error(`HTTP ${res.status}`)
+                const blob = await res.blob()
+                const link = document.createElement('a')
+                link.href = URL.createObjectURL(blob)
+                link.download = `vypis-${stmtFrom}-${stmtTo}.pdf`
+                link.click()
+                URL.revokeObjectURL(link.href)
+                setShowStatement(false)
+              } catch { /* error */ }
+              finally { setStmtLoading(false) }
+            }}>{stmtLoading ? 'Generuji…' : 'Stáhnout PDF'}</Button>
+          </div>
+        }>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <label style={{ fontSize: '.85rem' }}>
+              Období od *
+              <input type="date" value={stmtFrom} onChange={e => setStmtFrom(e.target.value)} style={{ ...selectStyle, display: 'block', marginTop: 4, width: '100%', fontSize: '.84rem' }} />
+            </label>
+            <label style={{ fontSize: '.85rem' }}>
+              Období do
+              <input type="date" value={stmtTo} onChange={e => setStmtTo(e.target.value)} style={{ ...selectStyle, display: 'block', marginTop: 4, width: '100%', fontSize: '.84rem' }} />
+            </label>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
