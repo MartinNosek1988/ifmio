@@ -149,6 +149,7 @@ export interface ApiInvoice {
   constantSymbol?: string | null;
   specificSymbol?: string | null;
   allocationStatus: string;
+  tags: string[];
   transactionId?: string | null;
   supplierId?: string | null;
   buyerId?: string | null;
@@ -348,6 +349,22 @@ export const financeApi = {
       apiClient.post<ApiInvoice>(`/finance/invoices/${id}/approve`).then((r) => r.data),
     returnToDraft: (id: string, reason?: string) =>
       apiClient.post<ApiInvoice>(`/finance/invoices/${id}/return-to-draft`, { reason }).then((r) => r.data),
+
+    // Actions
+    copy: (id: string) =>
+      apiClient.post<ApiInvoice>(`/finance/invoices/${id}/copy`).then(r => r.data),
+    copyRecurring: (id: string, data: { period: 'monthly' | 'quarterly'; count: number }) =>
+      apiClient.post<{ created: ApiInvoice[]; count: number }>(`/finance/invoices/${id}/copy-recurring`, data).then(r => r.data),
+    changeType: (id: string, type: string) =>
+      apiClient.patch<ApiInvoice>(`/finance/invoices/${id}/change-type`, { type }).then(r => r.data),
+    changeNumber: (id: string, number: string) =>
+      apiClient.patch<ApiInvoice>(`/finance/invoices/${id}/change-number`, { number }).then(r => r.data),
+    addTag: (id: string, tag: string) =>
+      apiClient.post<ApiInvoice>(`/finance/invoices/${id}/add-tag`, { tag }).then(r => r.data),
+    removeTag: (id: string, tag: string) =>
+      apiClient.post<ApiInvoice>(`/finance/invoices/${id}/remove-tag`, { tag }).then(r => r.data),
+    getHistory: (id: string) =>
+      apiClient.get<unknown[]>(`/finance/invoices/${id}/history`).then(r => r.data),
 
     // Allocations
     getAllocations: (id: string) =>

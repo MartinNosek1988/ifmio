@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Plus, FileText, Download } from 'lucide-react';
+import { Plus, FileText } from 'lucide-react';
 import { KpiCard, SearchBar, Table, Badge, Button, Modal } from '../../../shared/components';
 import type { Column } from '../../../shared/components';
 import { formatKc, formatCzDate } from '../../../shared/utils/format';
@@ -9,6 +9,7 @@ import { useInvoices, useInvoiceStats, useDeleteInvoice, useMarkInvoicePaid, use
 import { useAuthStore } from '../../../core/auth';
 import { InvoiceDetailModal } from './InvoiceDetailModal';
 import { InvoiceForm } from './InvoiceForm';
+import { InvoiceContextMenu } from './InvoiceContextMenu';
 
 export const INVOICE_TYPE_LABELS: Record<string, string> = {
   received: 'Přijatá', issued: 'Vydaná', proforma: 'Záloha', credit_note: 'Dobropis', internal: 'Interní',
@@ -74,6 +75,7 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
   const [editInvoice, setEditInvoice] = useState<ApiInvoice | null>(null);
   const [detailInvoice, setDetailInvoice] = useState<ApiInvoice | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ApiInvoice | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ invoice: ApiInvoice; position: { x: number; y: number } } | null>(null);
   const userRole = useAuthStore((s) => s.user?.role) ?? 'viewer';
 
   const { data: invData } = useInvoices({
@@ -202,33 +204,17 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
       const canApprove = FINANCE_ROLES.includes(userRole);
       return (
         <div style={{ display: 'flex', gap: 4 }} onClick={(e) => e.stopPropagation()}>
-          {/* Submit: only draft */}
           {i.approvalStatus === 'draft' && !i.isPaid && (
-            <button onClick={() => submitMut.mutate(i.id)} style={{ ...btnStyle, color: 'var(--accent)' }} title="Odeslat ke schválení" disabled={submitMut.isPending}>
-              ▶
-            </button>
+            <button onClick={() => submitMut.mutate(i.id)} style={{ ...btnStyle, color: 'var(--accent)' }} title="Ke schválení" disabled={submitMut.isPending}>▶</button>
           )}
-          {/* Approve: only submitted + finance roles */}
           {i.approvalStatus === 'submitted' && canApprove && (
-            <button onClick={() => approveMut.mutate(i.id)} style={{ ...btnStyle, color: 'var(--success)' }} title="Schválit" disabled={approveMut.isPending}>
-              ✓
-            </button>
+            <button onClick={() => approveMut.mutate(i.id)} style={{ ...btnStyle, color: 'var(--success)' }} title="Schválit" disabled={approveMut.isPending}>✓</button>
           )}
-          {/* Mark paid: only approved + finance roles */}
           {i.approvalStatus === 'approved' && !i.isPaid && canApprove && (
-            <button onClick={() => markPaidMut.mutate({ id: i.id })} style={{ ...btnStyle, color: 'var(--success)' }} title="Uhradit">
-              $
-            </button>
+            <button onClick={() => markPaidMut.mutate({ id: i.id })} style={{ ...btnStyle, color: 'var(--success)' }} title="Uhradit">$</button>
           )}
-          <button onClick={() => handleExport(i)} style={{ ...btnStyle, color: 'var(--text-muted)' }} title="Export ISDOC">
-            <Download size={13} />
-          </button>
-          {/* Delete: only draft */}
-          {i.approvalStatus === 'draft' && (
-            <button onClick={() => setDeleteTarget(i)} style={{ ...btnStyle, color: 'var(--danger)' }}>
-              Smazat
-            </button>
-          )}
+          <button onClick={(e) => { e.stopPropagation(); setContextMenu({ invoice: i, position: { x: e.clientX, y: e.clientY } }) }}
+            style={{ ...btnStyle, fontWeight: 700, fontSize: '1rem', lineHeight: 1, padding: '0 4px' }} title="Akce">⋯</button>
         </div>
       );
     } },
@@ -378,6 +364,18 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
           }>
           <p style={{ fontSize: '0.9rem' }}>Opravdu smazat doklad <strong>{deleteTarget.number}</strong>?</p>
         </Modal>
+      )}
+
+      {/* Context menu */}
+      {contextMenu && (
+        <InvoiceContextMenu
+          invoice={contextMenu.invoice}
+          position={contextMenu.position}
+          onClose={() => setContextMenu(null)}
+          onOpenDetail={() => { setDetailInvoice(contextMenu.invoice); setContextMenu(null) }}
+          onOpenEdit={() => { if (contextMenu.invoice.approvalStatus === 'draft') { setEditInvoice(contextMenu.invoice); setShowForm(true) }; setContextMenu(null) }}
+          onDelete={() => { setDeleteTarget(contextMenu.invoice); setContextMenu(null) }}
+        />
       )}
     </div>
   );

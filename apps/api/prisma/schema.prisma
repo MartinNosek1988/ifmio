@@ -853,6 +853,7 @@ model Invoice {
   lines          Json?
   isdocXml       String?     @db.Text
   note           String?
+  tags           String[]    @default([])
   deletedAt      DateTime?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt

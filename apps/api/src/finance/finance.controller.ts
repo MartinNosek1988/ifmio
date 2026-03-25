@@ -366,6 +366,56 @@ export class FinanceController {
     return this.invoicesService.remove(user, id);
   }
 
+  // ─── INVOICE ACTIONS (copy, type, number, tags, history) ────
+
+  @Post('invoices/:id/copy')
+  @Roles(...ROLES_FINANCE_DRAFT)
+  @ApiOperation({ summary: 'Kopírovat doklad' })
+  copyInvoice(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.invoicesService.copyInvoice(user, id)
+  }
+
+  @Post('invoices/:id/copy-recurring')
+  @Roles(...ROLES_FINANCE_DRAFT)
+  @ApiOperation({ summary: 'Kopírovat opakovaně (měsíčně/čtvrtletně)' })
+  copyRecurring(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: { period: 'monthly' | 'quarterly'; count: number }) {
+    return this.invoicesService.copyRecurring(user, id, body.period, body.count)
+  }
+
+  @Patch('invoices/:id/change-type')
+  @Roles(...ROLES_FINANCE_DRAFT)
+  @ApiOperation({ summary: 'Změnit typ dokladu' })
+  changeType(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: { type: string }) {
+    return this.invoicesService.changeType(user, id, body.type)
+  }
+
+  @Patch('invoices/:id/change-number')
+  @Roles(...ROLES_FINANCE_DRAFT)
+  @ApiOperation({ summary: 'Změnit číslo dokladu' })
+  changeNumber(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: { number: string }) {
+    return this.invoicesService.changeNumber(user, id, body.number)
+  }
+
+  @Post('invoices/:id/add-tag')
+  @Roles(...ROLES_FINANCE_DRAFT)
+  @ApiOperation({ summary: 'Přidat štítek' })
+  addTag(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: { tag: string }) {
+    return this.invoicesService.addTag(user, id, body.tag)
+  }
+
+  @Post('invoices/:id/remove-tag')
+  @Roles(...ROLES_FINANCE_DRAFT)
+  @ApiOperation({ summary: 'Odebrat štítek' })
+  removeTag(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: { tag: string }) {
+    return this.invoicesService.removeTag(user, id, body.tag)
+  }
+
+  @Get('invoices/:id/history')
+  @ApiOperation({ summary: 'Historie změn dokladu' })
+  getHistory(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.invoicesService.getHistory(user, id)
+  }
+
   // ─── INVOICE COST ALLOCATIONS ───────────────────────────────
 
   @Get('invoices/:id/allocations')

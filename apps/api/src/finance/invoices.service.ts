@@ -870,4 +870,124 @@ export class InvoicesService {
       data: { allocationStatus: status },
     })
   }
+
+  // ─── COPY / RECURRING / TYPE / NUMBER / TAGS / HISTORY ────────
+
+  async copyInvoice(user: AuthUser, id: string) {
+    const src = await this.findOneInternal(user, id)
+    const invoice = await this.prisma.invoice.create({
+      data: {
+        tenantId: user.tenantId,
+        propertyId: src.propertyId,
+        number: `${src.number}-COPY`,
+        type: src.type,
+        supplierName: src.supplierName,
+        supplierIco: src.supplierIco,
+        supplierDic: src.supplierDic,
+        buyerName: src.buyerName,
+        buyerIco: src.buyerIco,
+        buyerDic: src.buyerDic,
+        description: src.description,
+        amountBase: src.amountBase,
+        vatRate: src.vatRate,
+        vatAmount: src.vatAmount,
+        amountTotal: src.amountTotal,
+        currency: src.currency,
+        issueDate: src.issueDate,
+        duzp: src.duzp,
+        dueDate: src.dueDate,
+        variableSymbol: src.variableSymbol,
+        constantSymbol: src.constantSymbol,
+        specificSymbol: src.specificSymbol,
+        lines: src.lines as any,
+        note: src.note,
+        tags: src.tags,
+        approvalStatus: 'draft',
+        isPaid: false,
+        supplierId: src.supplierId,
+        buyerId: src.buyerId,
+      },
+    })
+    // Copy allocations
+    const allocs = await this.prisma.invoiceCostAllocation.findMany({ where: { invoiceId: id } })
+    for (const a of allocs) {
+      await this.prisma.invoiceCostAllocation.create({
+        data: { invoiceId: invoice.id, componentId: a.componentId, amount: a.amount, vatRate: a.vatRate, vatAmount: a.vatAmount, year: a.year, periodFrom: a.periodFrom, periodTo: a.periodTo, consumption: a.consumption, consumptionUnit: a.consumptionUnit, targetOwnerId: a.targetOwnerId, unitIds: a.unitIds, note: a.note },
+      })
+    }
+    await this.recalculateAllocationStatus(invoice.id)
+    return this.serializeInvoice(invoice)
+  }
+
+  async copyRecurring(user: AuthUser, id: string, period: 'monthly' | 'quarterly', count: number) {
+    if (count < 1 || count > 12) throw new BadRequestException('Počet opakování musí být 1-12')
+    const src = await this.findOneInternal(user, id)
+    const months = period === 'monthly' ? 1 : 3
+    const created: any[] = []
+
+    for (let i = 1; i <= count; i++) {
+      const offsetMs = months * i
+      const newIssue = new Date(src.issueDate)
+      newIssue.setMonth(newIssue.getMonth() + offsetMs)
+      const newDue = src.dueDate ? new Date(src.dueDate) : null
+      if (newDue) newDue.setMonth(newDue.getMonth() + offsetMs)
+
+      const inv = await this.prisma.invoice.create({
+        data: {
+          tenantId: user.tenantId, propertyId: src.propertyId,
+          number: `${src.number}-${String(i).padStart(2, '0')}`,
+          type: src.type,
+          supplierName: src.supplierName, supplierIco: src.supplierIco, supplierDic: src.supplierDic,
+          buyerName: src.buyerName, buyerIco: src.buyerIco, buyerDic: src.buyerDic,
+          description: src.description, amountBase: src.amountBase, vatRate: src.vatRate,
+          vatAmount: src.vatAmount, amountTotal: src.amountTotal, currency: src.currency,
+          issueDate: newIssue, duzp: newIssue, dueDate: newDue,
+          variableSymbol: src.variableSymbol, constantSymbol: src.constantSymbol,
+          specificSymbol: src.specificSymbol, lines: src.lines as any,
+          note: src.note, tags: src.tags,
+          approvalStatus: 'draft', isPaid: false,
+          supplierId: src.supplierId, buyerId: src.buyerId,
+        },
+      })
+      created.push(this.serializeInvoice(inv))
+    }
+    return { created, count: created.length }
+  }
+
+  async changeType(user: AuthUser, id: string, type: string) {
+    const inv = await this.findOneInternal(user, id)
+    if (inv.approvalStatus !== 'draft') throw new BadRequestException('Typ lze měnit pouze u draft dokladů')
+    const updated = await this.prisma.invoice.update({ where: { id }, data: { type: type as any } })
+    return this.serializeInvoice(updated)
+  }
+
+  async changeNumber(user: AuthUser, id: string, number: string) {
+    const inv = await this.findOneInternal(user, id)
+    if (inv.approvalStatus !== 'draft') throw new BadRequestException('Číslo lze měnit pouze u draft dokladů')
+    const updated = await this.prisma.invoice.update({ where: { id }, data: { number } })
+    return this.serializeInvoice(updated)
+  }
+
+  async addTag(user: AuthUser, id: string, tag: string) {
+    const inv = await this.findOneInternal(user, id)
+    if (inv.tags.length >= 20) throw new BadRequestException('Maximálně 20 štítků na doklad')
+    if (inv.tags.includes(tag)) return this.serializeInvoice(inv)
+    const updated = await this.prisma.invoice.update({ where: { id }, data: { tags: { push: tag } } })
+    return this.serializeInvoice(updated)
+  }
+
+  async removeTag(user: AuthUser, id: string, tag: string) {
+    const inv = await this.findOneInternal(user, id)
+    const updated = await this.prisma.invoice.update({
+      where: { id },
+      data: { tags: { set: inv.tags.filter(t => t !== tag) } },
+    })
+    return this.serializeInvoice(updated)
+  }
+
+  async getHistory(_user: AuthUser, _id: string) {
+    // TODO: implement audit log query when AuditLog model supports entity filtering
+    return []
+  }
+
 }
