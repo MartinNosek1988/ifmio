@@ -3,6 +3,7 @@ import { Badge, Button, Modal, LoadingState, EmptyState } from '../../../shared/
 import { useToast } from '../../../shared/components/toast/Toast';
 import { useProperties, useProperty } from '../../properties/use-properties';
 import GenerateFromComponentsWizard from './GenerateFromComponentsWizard';
+import FundSettlementModal from './FundSettlementModal';
 import {
   usePropertyComponents,
   useCreateComponent,
@@ -108,6 +109,7 @@ export default function ComponentsTab() {
   const [detailComponentId, setDetailComponentId] = useState<string | null>(null);
   const [assignComponentId, setAssignComponentId] = useState<string | null>(null);
   const [actionMenuId, setActionMenuId] = useState<string | null>(null);
+  const [fundSettlementComponentId, setFundSettlementComponentId] = useState<string | null>(null);
 
   const archiveMut = useArchiveComponent(propertyId);
   const toast = useToast();
@@ -236,6 +238,14 @@ export default function ComponentsTab() {
                           >
                             Přiřadit jednotky
                           </button>
+                          {c.componentType === 'FUND' && (
+                            <button
+                              onClick={() => { setFundSettlementComponentId(c.id); setActionMenuId(null); }}
+                              style={menuItemStyle}
+                            >
+                              Vyúčtování fondu
+                            </button>
+                          )}
                           {c.isActive && (
                             <button
                               onClick={() => handleArchive(c)}
@@ -288,6 +298,14 @@ export default function ComponentsTab() {
         <GenerateFromComponentsWizard
           propertyId={propertyId}
           onClose={() => setShowGenerate(false)}
+        />
+      )}
+
+      {fundSettlementComponentId && (
+        <FundSettlementModal
+          propertyId={propertyId}
+          preselectedComponentId={fundSettlementComponentId}
+          onClose={() => setFundSettlementComponentId(null)}
         />
       )}
     </div>
