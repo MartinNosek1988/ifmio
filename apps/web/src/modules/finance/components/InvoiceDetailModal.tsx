@@ -6,6 +6,7 @@ import { formatKc, formatCzDate } from '../../../shared/utils/format';
 import type { ApiInvoice } from '../api/finance.api';
 import type { FinTransaction } from '../types';
 import { InvoiceLinesDetail } from './InvoiceLinesDetail';
+import { AllocationPanel } from './AllocationPanel';
 import { PaymentModal } from './PaymentModal';
 import { PairTransactionModal } from './PairTransactionModal';
 import { INVOICE_TYPE_LABELS, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_VARIANTS } from './DokladyTab';
@@ -181,6 +182,13 @@ export function InvoiceDetailModal({ invoice, transactions, onClose, onEdit, onM
       {invoice.lines && invoice.lines.length > 0 && (
         <InvoiceLinesDetail lines={invoice.lines} />
       )}
+
+      {/* Cost allocations */}
+      <AllocationPanel
+        invoiceId={invoice.id}
+        propertyId={invoice.propertyId}
+        readOnly={invoice.approvalStatus !== 'draft'}
+      />
 
       {invoice.note && (
         <div style={{ marginTop: 10 }}>

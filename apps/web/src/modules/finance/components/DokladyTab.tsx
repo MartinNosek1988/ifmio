@@ -126,6 +126,12 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
         {APPROVAL_STATUS_LABELS[i.approvalStatus] || i.approvalStatus}
       </Badge>;
     } },
+    { key: 'allocation', label: 'Alokace', render: (i) => {
+      const st = (i as any).allocationStatus
+      if (st === 'allocated') return <Badge variant="green">Alokováno</Badge>
+      if (st === 'partial') return <Badge variant="yellow">Částečně</Badge>
+      return <Badge variant="red">Nealok.</Badge>
+    } },
     { key: 'isPaid', label: 'Platba', render: (i) => {
       if (i.isPaid) return <Badge variant="green">Uhrazeno</Badge>;
       const overdue = i.dueDate && i.dueDate < new Date().toISOString().slice(0, 10);

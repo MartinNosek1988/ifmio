@@ -340,6 +340,63 @@ export function useApproveInvoice() {
   });
 }
 
+// ─── INVOICE ALLOCATIONS ──────────────────────────────────────────
+
+export function useInvoiceAllocations(invoiceId: string | undefined) {
+  return useQuery({
+    queryKey: ['finance', 'invoices', invoiceId, 'allocations'],
+    queryFn: () => financeApi.invoices.getAllocations(invoiceId!),
+    enabled: !!invoiceId,
+  })
+}
+
+export function useAllocationSummary(invoiceId: string | undefined) {
+  return useQuery({
+    queryKey: ['finance', 'invoices', invoiceId, 'allocation-summary'],
+    queryFn: () => financeApi.invoices.getAllocationSummary(invoiceId!),
+    enabled: !!invoiceId,
+  })
+}
+
+export function useCreateAllocation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ invoiceId, dto }: { invoiceId: string; dto: Record<string, unknown> }) =>
+      financeApi.invoices.createAllocation(invoiceId, dto),
+    onSuccess: (_r, vars) => {
+      qc.invalidateQueries({ queryKey: ['finance', 'invoices', vars.invoiceId] })
+      qc.invalidateQueries({ queryKey: ['finance', 'invoices'] })
+      qc.invalidateQueries({ queryKey: ['components'] })
+    },
+  })
+}
+
+export function useUpdateAllocation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ invoiceId, allocationId, dto }: { invoiceId: string; allocationId: string; dto: Record<string, unknown> }) =>
+      financeApi.invoices.updateAllocation(invoiceId, allocationId, dto),
+    onSuccess: (_r, vars) => {
+      qc.invalidateQueries({ queryKey: ['finance', 'invoices', vars.invoiceId] })
+      qc.invalidateQueries({ queryKey: ['finance', 'invoices'] })
+      qc.invalidateQueries({ queryKey: ['components'] })
+    },
+  })
+}
+
+export function useDeleteAllocation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ invoiceId, allocationId }: { invoiceId: string; allocationId: string }) =>
+      financeApi.invoices.deleteAllocation(invoiceId, allocationId),
+    onSuccess: (_r, vars) => {
+      qc.invalidateQueries({ queryKey: ['finance', 'invoices', vars.invoiceId] })
+      qc.invalidateQueries({ queryKey: ['finance', 'invoices'] })
+      qc.invalidateQueries({ queryKey: ['components'] })
+    },
+  })
+}
+
 export function useReturnInvoiceToDraft() {
   const qc = useQueryClient();
   return useMutation({

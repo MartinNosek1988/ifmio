@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PropertyScopeService } from '../common/services/property-scope.service';
-import type { CreateInvoiceDto, UpdateInvoiceDto, InvoiceListQueryDto, MarkPaidDto } from './dto/invoice.dto';
+import { Decimal } from '@prisma/client/runtime/library';
+import type { CreateInvoiceDto, UpdateInvoiceDto, InvoiceListQueryDto, MarkPaidDto, CreateAllocationDto, UpdateAllocationDto } from './dto/invoice.dto';
 import type { AuthUser } from '@ifmio/shared-types';
 
 /** Roles allowed to approve invoices */
@@ -681,5 +682,132 @@ export class InvoicesService {
     </Payment>
   </PaymentMeans>
 </Invoice>`;
+  }
+
+  // ─── ALLOCATION CRUD ──────────────────────────────────────────
+
+  async getAllocations(user: AuthUser, invoiceId: string) {
+    const invoice = await this.prisma.invoice.findFirst({ where: { id: invoiceId, tenantId: user.tenantId, deletedAt: null } })
+    if (!invoice) throw new NotFoundException('Doklad nenalezen')
+
+    const rows = await this.prisma.invoiceCostAllocation.findMany({
+      where: { invoiceId },
+      include: { component: { select: { id: true, name: true, componentType: true } } },
+      orderBy: { createdAt: 'asc' },
+    })
+    return rows.map(r => ({
+      ...r,
+      amount: Number(r.amount),
+      vatRate: r.vatRate != null ? Number(r.vatRate) : null,
+      vatAmount: r.vatAmount != null ? Number(r.vatAmount) : null,
+      consumption: r.consumption != null ? Number(r.consumption) : null,
+    }))
+  }
+
+  async getAllocationSummary(user: AuthUser, invoiceId: string) {
+    const invoice = await this.prisma.invoice.findFirst({ where: { id: invoiceId, tenantId: user.tenantId, deletedAt: null } })
+    if (!invoice) throw new NotFoundException('Doklad nenalezen')
+
+    const allocations = await this.getAllocations(user, invoiceId)
+    const allocatedAmount = allocations.reduce((s, a) => s + a.amount, 0)
+    const totalAmount = Number(invoice.amountTotal)
+
+    return {
+      totalAmount,
+      allocatedAmount: Math.round(allocatedAmount * 100) / 100,
+      remainingAmount: Math.round((totalAmount - allocatedAmount) * 100) / 100,
+      allocationStatus: invoice.allocationStatus,
+      allocations,
+    }
+  }
+
+  async createAllocation(user: AuthUser, invoiceId: string, dto: CreateAllocationDto) {
+    const invoice = await this.prisma.invoice.findFirst({ where: { id: invoiceId, tenantId: user.tenantId, deletedAt: null } })
+    if (!invoice) throw new NotFoundException('Doklad nenalezen')
+
+    const row = await this.prisma.invoiceCostAllocation.create({
+      data: {
+        invoiceId,
+        componentId: dto.componentId,
+        amount: new Decimal(dto.amount),
+        vatRate: dto.vatRate != null ? new Decimal(dto.vatRate) : null,
+        vatAmount: dto.vatAmount != null ? new Decimal(dto.vatAmount) : null,
+        year: dto.year,
+        periodFrom: dto.periodFrom ? new Date(dto.periodFrom) : null,
+        periodTo: dto.periodTo ? new Date(dto.periodTo) : null,
+        consumption: dto.consumption != null ? new Decimal(dto.consumption) : null,
+        consumptionUnit: dto.consumptionUnit,
+        targetOwnerId: dto.targetOwnerId,
+        unitIds: dto.unitIds ?? [],
+        note: dto.note,
+      },
+      include: { component: { select: { id: true, name: true, componentType: true } } },
+    })
+
+    await this.recalculateAllocationStatus(invoiceId)
+    return { ...row, amount: Number(row.amount), vatRate: row.vatRate != null ? Number(row.vatRate) : null, vatAmount: row.vatAmount != null ? Number(row.vatAmount) : null, consumption: row.consumption != null ? Number(row.consumption) : null }
+  }
+
+  async updateAllocation(user: AuthUser, invoiceId: string, allocationId: string, dto: UpdateAllocationDto) {
+    const invoice = await this.prisma.invoice.findFirst({ where: { id: invoiceId, tenantId: user.tenantId, deletedAt: null } })
+    if (!invoice) throw new NotFoundException('Doklad nenalezen')
+
+    const existing = await this.prisma.invoiceCostAllocation.findFirst({ where: { id: allocationId, invoiceId } })
+    if (!existing) throw new NotFoundException('Alokace nenalezena')
+
+    const data: Record<string, unknown> = {}
+    if (dto.componentId !== undefined) data.componentId = dto.componentId
+    if (dto.amount !== undefined) data.amount = new Decimal(dto.amount)
+    if (dto.vatRate !== undefined) data.vatRate = dto.vatRate != null ? new Decimal(dto.vatRate) : null
+    if (dto.vatAmount !== undefined) data.vatAmount = dto.vatAmount != null ? new Decimal(dto.vatAmount) : null
+    if (dto.year !== undefined) data.year = dto.year
+    if (dto.periodFrom !== undefined) data.periodFrom = dto.periodFrom ? new Date(dto.periodFrom) : null
+    if (dto.periodTo !== undefined) data.periodTo = dto.periodTo ? new Date(dto.periodTo) : null
+    if (dto.consumption !== undefined) data.consumption = dto.consumption != null ? new Decimal(dto.consumption) : null
+    if (dto.consumptionUnit !== undefined) data.consumptionUnit = dto.consumptionUnit
+    if (dto.targetOwnerId !== undefined) data.targetOwnerId = dto.targetOwnerId
+    if (dto.unitIds !== undefined) data.unitIds = dto.unitIds
+    if (dto.note !== undefined) data.note = dto.note
+
+    const row = await this.prisma.invoiceCostAllocation.update({
+      where: { id: allocationId },
+      data,
+      include: { component: { select: { id: true, name: true, componentType: true } } },
+    })
+
+    await this.recalculateAllocationStatus(invoiceId)
+    return { ...row, amount: Number(row.amount), vatRate: row.vatRate != null ? Number(row.vatRate) : null, vatAmount: row.vatAmount != null ? Number(row.vatAmount) : null, consumption: row.consumption != null ? Number(row.consumption) : null }
+  }
+
+  async deleteAllocation(user: AuthUser, invoiceId: string, allocationId: string) {
+    const invoice = await this.prisma.invoice.findFirst({ where: { id: invoiceId, tenantId: user.tenantId, deletedAt: null } })
+    if (!invoice) throw new NotFoundException('Doklad nenalezen')
+
+    const existing = await this.prisma.invoiceCostAllocation.findFirst({ where: { id: allocationId, invoiceId } })
+    if (!existing) throw new NotFoundException('Alokace nenalezena')
+
+    await this.prisma.invoiceCostAllocation.delete({ where: { id: allocationId } })
+    await this.recalculateAllocationStatus(invoiceId)
+  }
+
+  private async recalculateAllocationStatus(invoiceId: string) {
+    const invoice = await this.prisma.invoice.findFirst({ where: { id: invoiceId } })
+    if (!invoice) return
+
+    const agg = await this.prisma.invoiceCostAllocation.aggregate({
+      where: { invoiceId },
+      _sum: { amount: true },
+    })
+    const allocated = agg._sum.amount ? Number(agg._sum.amount) : 0
+    const total = Number(invoice.amountTotal)
+
+    let status = 'unallocated'
+    if (allocated > 0 && allocated < total) status = 'partial'
+    else if (allocated >= total) status = 'allocated'
+
+    await this.prisma.invoice.update({
+      where: { id: invoiceId },
+      data: { allocationStatus: status },
+    })
   }
 }

@@ -54,6 +54,8 @@ export function InvoiceForm({ invoice, transactions, onClose }: {
     duzp: invoice?.duzp?.slice(0, 10) || '',
     dueDate: invoice?.dueDate?.slice(0, 10) || '',
     variableSymbol: invoice?.variableSymbol || '',
+    constantSymbol: (invoice as any)?.constantSymbol || '',
+    specificSymbol: (invoice as any)?.specificSymbol || '',
     transactionId: invoice?.transactionId || '',
     note: invoice?.note || '',
     isPaid: invoice?.isPaid || false,
@@ -139,6 +141,8 @@ export function InvoiceForm({ invoice, transactions, onClose }: {
       duzp: form.duzp || undefined,
       dueDate: form.dueDate || undefined,
       variableSymbol: form.variableSymbol || undefined,
+      constantSymbol: form.constantSymbol || undefined,
+      specificSymbol: form.specificSymbol || undefined,
       transactionId: form.transactionId || undefined,
       note: form.note || undefined,
       isPaid: form.isPaid,
@@ -306,6 +310,14 @@ export function InvoiceForm({ invoice, transactions, onClose }: {
         <div>
           <label className="form-label">Variabilní symbol</label>
           <input value={form.variableSymbol} onChange={e => set('variableSymbol', e.target.value)} style={inputStyle()} />
+        </div>
+        <div>
+          <label className="form-label">Konstantní symbol</label>
+          <input value={form.constantSymbol} onChange={e => set('constantSymbol', e.target.value)} style={inputStyle()} />
+        </div>
+        <div>
+          <label className="form-label">Specifický symbol</label>
+          <input value={form.specificSymbol} onChange={e => set('specificSymbol', e.target.value)} style={inputStyle()} />
         </div>
       </div>
 

@@ -146,6 +146,9 @@ export interface ApiInvoice {
   paymentMethod?: string | null;
   paidAmount?: number | null;
   variableSymbol?: string;
+  constantSymbol?: string | null;
+  specificSymbol?: string | null;
+  allocationStatus: string;
   transactionId?: string | null;
   supplierId?: string | null;
   buyerId?: string | null;
@@ -206,6 +209,33 @@ interface Paginated<T> {
   page: number;
   limit: number;
   totalPages: number;
+}
+
+export interface ApiAllocation {
+  id: string
+  invoiceId: string
+  componentId: string
+  amount: number
+  vatRate: number | null
+  vatAmount: number | null
+  year: number | null
+  periodFrom: string | null
+  periodTo: string | null
+  consumption: number | null
+  consumptionUnit: string | null
+  targetOwnerId: string | null
+  unitIds: string[]
+  note: string | null
+  createdAt: string
+  component: { id: string; name: string; componentType: string }
+}
+
+export interface AllocationSummary {
+  totalAmount: number
+  allocatedAmount: number
+  remainingAmount: number
+  allocationStatus: string
+  allocations: ApiAllocation[]
 }
 
 export const financeApi = {
@@ -318,5 +348,17 @@ export const financeApi = {
       apiClient.post<ApiInvoice>(`/finance/invoices/${id}/approve`).then((r) => r.data),
     returnToDraft: (id: string, reason?: string) =>
       apiClient.post<ApiInvoice>(`/finance/invoices/${id}/return-to-draft`, { reason }).then((r) => r.data),
+
+    // Allocations
+    getAllocations: (id: string) =>
+      apiClient.get<ApiAllocation[]>(`/finance/invoices/${id}/allocations`).then(r => r.data),
+    getAllocationSummary: (id: string) =>
+      apiClient.get<AllocationSummary>(`/finance/invoices/${id}/allocation-summary`).then(r => r.data),
+    createAllocation: (id: string, dto: Record<string, unknown>) =>
+      apiClient.post<ApiAllocation>(`/finance/invoices/${id}/allocations`, dto).then(r => r.data),
+    updateAllocation: (id: string, allocationId: string, dto: Record<string, unknown>) =>
+      apiClient.put<ApiAllocation>(`/finance/invoices/${id}/allocations/${allocationId}`, dto).then(r => r.data),
+    deleteAllocation: (id: string, allocationId: string) =>
+      apiClient.delete(`/finance/invoices/${id}/allocations/${allocationId}`).then(r => r.data),
   },
 };
