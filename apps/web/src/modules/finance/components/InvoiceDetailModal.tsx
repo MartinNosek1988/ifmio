@@ -148,6 +148,8 @@ export function InvoiceDetailModal({ invoice, transactions, onClose, onEdit, onM
       {invoice.paymentMethod && row('Způsob úhrady', PAYMENT_METHODS.find(m => m.value === invoice.paymentMethod)?.label || invoice.paymentMethod)}
       {invoice.paidAmount != null && row('Uhrazená částka', formatKc(invoice.paidAmount))}
       {row('Variabilní symbol', invoice.variableSymbol)}
+      {invoice.constantSymbol && row('Konstantní symbol', invoice.constantSymbol)}
+      {invoice.specificSymbol && row('Specifický symbol', invoice.specificSymbol)}
       {row('Měna', invoice.currency || 'CZK')}
 
       {/* Supplier */}

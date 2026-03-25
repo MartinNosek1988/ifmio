@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Upload, Zap, CheckCircle2 } from 'lucide-react';
+import { Upload, Zap, CheckCircle2, Download } from 'lucide-react';
 import { SearchBar, Table, Badge, Button } from '../../../shared/components';
 import type { Column } from '../../../shared/components';
 import { formatKc, formatCzDate } from '../../../shared/utils/format';
@@ -56,6 +56,10 @@ interface Props {
   onSelectTx: (tx: FinTransaction) => void;
   filterType: string;
   onFilterType: (v: string) => void;
+  dateFrom: string;
+  onDateFrom: (v: string) => void;
+  dateTo: string;
+  onDateTo: (v: string) => void;
   onDelete: (tx: FinTransaction) => void;
   onAutoMatch?: () => void;
   onMatchAll?: () => void;
@@ -68,10 +72,35 @@ interface Props {
 export function BankTab({
   transactions, accounts, search, onSearch, importRef, importUctId,
   setImportUctId, importMsg, setImportMsg, onImport, onSelectTx,
-  filterType, onFilterType, onDelete, onAutoMatch, onMatchAll,
+  filterType, onFilterType, dateFrom, onDateFrom, dateTo, onDateTo,
+  onDelete, onAutoMatch, onMatchAll,
   autoMatchResult, onDismissAutoResult, isAutoMatching, isMatchingAll,
 }: Props) {
   const [filterMatch, setFilterMatch] = useState('');
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async (fmt: 'csv' | 'xlsx') => {
+    setExporting(true)
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL ?? '/api/v1'
+      const token = sessionStorage.getItem('ifmio:access_token')
+      const params = new URLSearchParams()
+      params.set('format', fmt)
+      if (filterType) params.set('type', filterType)
+      if (filterMatch) params.set('status', filterMatch)
+      if (dateFrom) params.set('dateFrom', dateFrom)
+      if (dateTo) params.set('dateTo', dateTo)
+      const res = await fetch(`${baseUrl}/finance/transactions/export?${params}`, { headers: { Authorization: `Bearer ${token}` } })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const blob = await res.blob()
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = `transakce.${fmt}`
+      link.click()
+      URL.revokeObjectURL(link.href)
+    } catch { /* toast could be added here */ }
+    finally { setExporting(false) }
+  };
 
   const filtered = useMemo(() => {
     let list = [...transactions].sort((a, b) => b.datum.localeCompare(a.datum));
@@ -178,6 +207,20 @@ export function BankTab({
         <select value={filterMatch} onChange={(e) => setFilterMatch(e.target.value)} style={selectStyle} data-testid="finance-tx-filter-status">
           {MATCH_FILTER_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '.82rem', color: 'var(--text-muted)' }}>
+          Od
+          <input type="date" value={dateFrom} onChange={e => onDateFrom(e.target.value)} style={{ ...selectStyle, padding: '6px 10px', fontSize: '.84rem' }} />
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '.82rem', color: 'var(--text-muted)' }}>
+          Do
+          <input type="date" value={dateTo} onChange={e => onDateTo(e.target.value)} style={{ ...selectStyle, padding: '6px 10px', fontSize: '.84rem' }} />
+        </label>
+        {(filterMatch || dateFrom || dateTo || filterType) && (
+          <button onClick={() => { setFilterMatch(''); onFilterType(''); onDateFrom(''); onDateTo('') }}
+            style={{ background: 'none', border: 'none', color: 'var(--primary, #3b82f6)', cursor: 'pointer', fontSize: '.82rem', padding: '8px 0' }}>
+            Vymazat filtry
+          </button>
+        )}
         {onAutoMatch && (
           <Button icon={<Zap size={15} />} onClick={onAutoMatch} disabled={isAutoMatching} data-testid="finance-tx-auto-match-btn">
             {isAutoMatching ? 'Párování...' : 'Auto-párovat'}
@@ -188,6 +231,12 @@ export function BankTab({
             {isMatchingAll ? 'Zpracovávám...' : 'Spárovat vše'}
           </Button>
         )}
+        <Button icon={<Download size={15} />} onClick={() => handleExport('csv')} disabled={exporting}>
+          {exporting ? 'Export...' : 'CSV'}
+        </Button>
+        <Button icon={<Download size={15} />} onClick={() => handleExport('xlsx')} disabled={exporting}>
+          XLSX
+        </Button>
       </div>
 
       <Table

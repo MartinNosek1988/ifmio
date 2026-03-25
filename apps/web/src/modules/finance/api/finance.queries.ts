@@ -340,6 +340,57 @@ export function useApproveInvoice() {
   });
 }
 
+// ─── INVOICE ACTIONS ──────────────────────────────────────────────
+
+export function useCopyInvoice() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => financeApi.invoices.copy(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['finance', 'invoices'] }),
+  })
+}
+
+export function useCopyRecurring() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, period, count }: { id: string; period: 'monthly' | 'quarterly'; count: number }) =>
+      financeApi.invoices.copyRecurring(id, { period, count }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['finance', 'invoices'] }),
+  })
+}
+
+export function useChangeInvoiceType() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, type }: { id: string; type: string }) => financeApi.invoices.changeType(id, type),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['finance', 'invoices'] }),
+  })
+}
+
+export function useChangeInvoiceNumber() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, number }: { id: string; number: string }) => financeApi.invoices.changeNumber(id, number),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['finance', 'invoices'] }),
+  })
+}
+
+export function useAddInvoiceTag() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, tag }: { id: string; tag: string }) => financeApi.invoices.addTag(id, tag),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['finance', 'invoices'] }),
+  })
+}
+
+export function useRemoveInvoiceTag() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, tag }: { id: string; tag: string }) => financeApi.invoices.removeTag(id, tag),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['finance', 'invoices'] }),
+  })
+}
+
 // ─── INVOICE ALLOCATIONS ──────────────────────────────────────────
 
 export function useInvoiceAllocations(invoiceId: string | undefined) {

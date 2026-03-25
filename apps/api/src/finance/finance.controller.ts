@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Put, Patch, Delete, Body, Query, Param, Req, HttpCode, HttpStatus,
+  Controller, Get, Post, Put, Patch, Delete, Body, Query, Param, Req, Res, HttpCode, HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { FinanceService } from './finance.service';
@@ -9,7 +9,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuditAction } from '../common/decorators/audit.decorator';
 import { ROLES_MANAGE, ROLES_FINANCE, ROLES_FINANCE_DRAFT } from '../common/constants/roles.constants';
 import { CreateInvoiceDto, UpdateInvoiceDto, InvoiceListQueryDto, MarkPaidDto, ReturnToDraftDto, CreateAllocationDto, UpdateAllocationDto } from './dto/invoice.dto';
-import type { FastifyRequest } from 'fastify';
+import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { AuthUser } from '@ifmio/shared-types';
 
 @ApiTags('Finance')
@@ -96,6 +96,20 @@ export class FinanceController {
     page?: number; limit?: number;
   }) {
     return this.service.listTransactions(user, query);
+  }
+
+  @Get('transactions/export')
+  @ApiOperation({ summary: 'Export transakcí (CSV/XLSX)' })
+  async exportTransactions(
+    @CurrentUser() user: AuthUser,
+    @Query() query: { bankAccountId?: string; status?: string; type?: string; dateFrom?: string; dateTo?: string; financialContextId?: string; search?: string; format?: string },
+    @Res() reply?: FastifyReply,
+  ) {
+    const format = (query.format === 'xlsx' ? 'xlsx' : 'csv') as 'csv' | 'xlsx';
+    const buffer = await this.service.exportTransactions(user, query, format);
+    const ext = format === 'xlsx' ? 'xlsx' : 'csv';
+    const mime = format === 'xlsx' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'text/csv; charset=utf-8';
+    reply!.header('Content-Type', mime).header('Content-Disposition', `attachment; filename="transakce.${ext}"`).send(buffer);
   }
 
   @Post('transactions')
@@ -364,6 +378,56 @@ export class FinanceController {
   @ApiOperation({ summary: 'Smazat doklad' })
   deleteInvoice(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.invoicesService.remove(user, id);
+  }
+
+  // ─── INVOICE ACTIONS (copy, type, number, tags, history) ────
+
+  @Post('invoices/:id/copy')
+  @Roles(...ROLES_FINANCE_DRAFT)
+  @ApiOperation({ summary: 'Kopírovat doklad' })
+  copyInvoice(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.invoicesService.copyInvoice(user, id)
+  }
+
+  @Post('invoices/:id/copy-recurring')
+  @Roles(...ROLES_FINANCE_DRAFT)
+  @ApiOperation({ summary: 'Kopírovat opakovaně (měsíčně/čtvrtletně)' })
+  copyRecurring(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: { period: 'monthly' | 'quarterly'; count: number }) {
+    return this.invoicesService.copyRecurring(user, id, body.period, body.count)
+  }
+
+  @Patch('invoices/:id/change-type')
+  @Roles(...ROLES_FINANCE_DRAFT)
+  @ApiOperation({ summary: 'Změnit typ dokladu' })
+  changeType(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: { type: string }) {
+    return this.invoicesService.changeType(user, id, body.type)
+  }
+
+  @Patch('invoices/:id/change-number')
+  @Roles(...ROLES_FINANCE_DRAFT)
+  @ApiOperation({ summary: 'Změnit číslo dokladu' })
+  changeNumber(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: { number: string }) {
+    return this.invoicesService.changeNumber(user, id, body.number)
+  }
+
+  @Post('invoices/:id/add-tag')
+  @Roles(...ROLES_FINANCE_DRAFT)
+  @ApiOperation({ summary: 'Přidat štítek' })
+  addTag(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: { tag: string }) {
+    return this.invoicesService.addTag(user, id, body.tag)
+  }
+
+  @Post('invoices/:id/remove-tag')
+  @Roles(...ROLES_FINANCE_DRAFT)
+  @ApiOperation({ summary: 'Odebrat štítek' })
+  removeTag(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: { tag: string }) {
+    return this.invoicesService.removeTag(user, id, body.tag)
+  }
+
+  @Get('invoices/:id/history')
+  @ApiOperation({ summary: 'Historie změn dokladu' })
+  getHistory(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.invoicesService.getHistory(user, id)
   }
 
   // ─── INVOICE COST ALLOCATIONS ───────────────────────────────

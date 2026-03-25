@@ -243,6 +243,33 @@ export class InvoiceListQueryDto {
   @IsOptional() @IsString()
   financialContextId?: string;
 
+  @IsOptional() @IsString()
+  supplier?: string;
+
+  @IsOptional() @IsString()
+  buyer?: string;
+
+  @IsOptional() @IsString()
+  number?: string;
+
+  @IsOptional() @IsString()
+  variableSymbol?: string;
+
+  @IsOptional() @IsDateString()
+  issueDateFrom?: string;
+
+  @IsOptional() @IsDateString()
+  issueDateTo?: string;
+
+  @IsOptional() @IsDateString()
+  dueDateFrom?: string;
+
+  @IsOptional() @IsDateString()
+  dueDateTo?: string;
+
+  @IsOptional() @IsString()
+  allocationStatus?: string;
+
   @IsOptional() @Type(() => Number) @IsNumber()
   page?: number;
 

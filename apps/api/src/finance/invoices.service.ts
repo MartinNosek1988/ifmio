@@ -16,7 +16,9 @@ export class InvoicesService {
   ) {}
 
   async list(user: AuthUser, query: InvoiceListQueryDto) {
-    const { type, isPaid, search, approvalStatus, financialContextId } = query;
+    const { type, isPaid, search, approvalStatus, financialContextId,
+      supplier, buyer, number: numFilter, variableSymbol,
+      issueDateFrom, issueDateTo, dueDateFrom, dueDateTo, allocationStatus } = query;
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 50));
     const skip = (page - 1) * limit;
@@ -27,9 +29,18 @@ export class InvoicesService {
       deletedAt: null,
       ...scopeWhere,
       ...(type ? { type } : {}),
-      ...(isPaid !== undefined ? { isPaid: isPaid === 'true' } : {}),
+      ...(isPaid !== undefined && isPaid !== '' ? { isPaid: isPaid === 'true' } : {}),
       ...(approvalStatus ? { approvalStatus } : {}),
       ...(financialContextId ? { financialContextId } : {}),
+      ...(allocationStatus ? { allocationStatus } : {}),
+      ...(supplier ? { supplierName: { contains: supplier, mode: 'insensitive' } } : {}),
+      ...(buyer ? { buyerName: { contains: buyer, mode: 'insensitive' } } : {}),
+      ...(numFilter ? { number: { contains: numFilter, mode: 'insensitive' } } : {}),
+      ...(variableSymbol ? { variableSymbol: { contains: variableSymbol, mode: 'insensitive' } } : {}),
+      ...(issueDateFrom ? { issueDate: { ...(issueDateFrom ? { gte: new Date(issueDateFrom) } : {}), ...(issueDateTo ? { lte: new Date(issueDateTo) } : {}) } } : {}),
+      ...(!issueDateFrom && issueDateTo ? { issueDate: { lte: new Date(issueDateTo) } } : {}),
+      ...(dueDateFrom ? { dueDate: { ...(dueDateFrom ? { gte: new Date(dueDateFrom) } : {}), ...(dueDateTo ? { lte: new Date(dueDateTo) } : {}) } } : {}),
+      ...(!dueDateFrom && dueDateTo ? { dueDate: { lte: new Date(dueDateTo) } } : {}),
       ...(search ? {
         OR: [
           { number: { contains: search, mode: 'insensitive' } },
@@ -527,99 +538,85 @@ export class InvoicesService {
 
   private parseIsdocXml(xml: string): Record<string, unknown> {
     // Strip namespace prefixes for simpler parsing (isdoc:ID → ID)
-    const stripped = xml.replace(/<\/?[\w-]+:/g, (m) => m[0] === '<' && m[1] === '/' ? '</' : '<');
+    const s = xml.replace(/<\/?[\w-]+:/g, (m) => m[0] === '<' && m[1] === '/' ? '</' : '<');
 
-    // Extract text content from a tag within a section
-    const getFrom = (section: string, tag: string) => {
-      const match = section.match(new RegExp(`<${tag}[^>]*>([^<]*)</${tag}>`, 'i'));
-      return match?.[1]?.trim() || '';
+    // Helpers
+    const tag = (src: string, t: string) => {
+      const m = src.match(new RegExp(`<${t}[^>]*>([^<]*)</${t}>`, 'i'));
+      return m?.[1]?.trim() ?? '';
     };
-    const get = (tag: string) => getFrom(stripped, tag);
-    const getNum = (tag: string) => parseFloat(getFrom(stripped, tag)) || 0;
-
-    // Extract sections
-    const getSection = (tag: string, source = stripped) => {
-      const match = source.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, 'i'));
-      return match?.[1] || '';
+    const section = (src: string, t: string) => {
+      const m = src.match(new RegExp(`<${t}[^>]*>([\\s\\S]*?)</${t}>`, 'i'));
+      return m?.[1] ?? '';
     };
+    const num = (src: string, t: string) => parseFloat(tag(src, t)) || 0;
 
-    const supplierXml = getSection('AccountingSupplierParty');
-    const buyerXml = getSection('AccountingCustomerParty');
-    const paymentMeansXml = getSection('PaymentMeans');
-    const legalMonetaryXml = getSection('LegalMonetaryTotal');
-    const taxTotalXml = getSection('TaxTotal');
+    // Extract top-level sections first
+    const supplierXml = section(s, 'AccountingSupplierParty');
+    const buyerXml = section(s, 'AccountingCustomerParty');
+    const paymentXml = section(s, 'PaymentMeans');
+    const monetaryXml = section(s, 'LegalMonetaryTotal');
+    const taxXml = section(s, 'TaxTotal');
 
-    // Parse party: IČO from PartyIdentification/ID, DIČ from PartyTaxScheme/CompanyID
-    const parseParty = (section: string) => {
-      const partyIdSection = getSection('PartyIdentification', section);
-      const taxSchemeSection = getSection('PartyTaxScheme', section);
-      return {
-        name: getFrom(section, 'Name') || getFrom(section, 'TradeName'),
-        ico: getFrom(partyIdSection, 'ID') || getFrom(section, 'IČ'),
-        dic: getFrom(taxSchemeSection, 'CompanyID') || getFrom(section, 'TaxRegistrationID') || getFrom(section, 'DIČ'),
-      };
-    };
-
-    const supplier = parseParty(supplierXml);
-    const buyer = parseParty(buyerXml);
-
-    // Document number — get ID that's a direct child of Invoice, not nested in parties
-    // Remove party sections first to avoid matching their IDs
-    const xmlWithoutParties = stripped
+    // Document number — extract from XML with all nested blocks removed
+    const rootOnly = s
       .replace(/<AccountingSupplierParty[\s\S]*?<\/AccountingSupplierParty>/gi, '')
       .replace(/<AccountingCustomerParty[\s\S]*?<\/AccountingCustomerParty>/gi, '')
       .replace(/<PaymentMeans[\s\S]*?<\/PaymentMeans>/gi, '')
       .replace(/<TaxTotal[\s\S]*?<\/TaxTotal>/gi, '')
-      .replace(/<InvoiceLine[\s\S]*?<\/InvoiceLine>/gi, '');
-    const docNumber = getFrom(xmlWithoutParties, 'ID') || get('DocumentNumber') || `ISDOC-${Date.now()}`;
+      .replace(/<TaxSubTotal[\s\S]*?<\/TaxSubTotal>/gi, '')
+      .replace(/<InvoiceLine[\s\S]*?<\/InvoiceLine>/gi, '')
+      .replace(/<TaxScheme[\s\S]*?<\/TaxScheme>/gi, '');
+    const docNumber = tag(rootOnly, 'ID') || tag(s, 'DocumentNumber') || `ISDOC-${Date.now()}`;
 
-    // Variable symbol — search in PaymentMeans section
-    const variableSymbol = getFrom(paymentMeansXml, 'VariableSymbol') || get('VariableSymbol') || '';
+    // Supplier: IČO from PartyIdentification/ID, DIČ from PartyTaxScheme/CompanyID
+    const supplierPartyId = section(supplierXml, 'PartyIdentification');
+    const supplierTaxScheme = section(supplierXml, 'PartyTaxScheme');
+    const supplierName = tag(supplierXml, 'Name') || tag(supplierXml, 'TradeName');
+    const supplierIco = tag(supplierPartyId, 'ID');
+    const supplierDic = tag(supplierTaxScheme, 'CompanyID');
 
-    // Payment method from PaymentMeansCode
-    const pmCode = getFrom(paymentMeansXml, 'PaymentMeansCode');
-    const paymentMethodMap: Record<string, string> = { '42': 'bank_transfer', '10': 'cash', '48': 'card' };
-
-    // Due date — search in PaymentMeans, then PaymentTerms, then top-level DueDate
-    const dueDate = getFrom(paymentMeansXml, 'PaymentDueDate')
-      || getFrom(getSection('PaymentTerms'), 'PaymentDueDate')
-      || get('DueDate')
-      || '';
+    // Buyer: same structure
+    const buyerPartyId = section(buyerXml, 'PartyIdentification');
+    const buyerTaxScheme = section(buyerXml, 'PartyTaxScheme');
+    const buyerName = tag(buyerXml, 'Name') || tag(buyerXml, 'TradeName');
+    const buyerIco = tag(buyerPartyId, 'ID');
+    const buyerDic = tag(buyerTaxScheme, 'CompanyID');
 
     // Amounts from LegalMonetaryTotal
-    const amountBase = parseFloat(getFrom(legalMonetaryXml, 'TaxExclusiveAmount')) || getNum('TaxableAmount');
-    const amountTotal = parseFloat(getFrom(legalMonetaryXml, 'PayableAmount'))
-      || parseFloat(getFrom(legalMonetaryXml, 'TaxInclusiveAmount'))
-      || amountBase;
-    const vatAmount = parseFloat(getFrom(taxTotalXml, 'TaxAmount')) || 0;
+    const amountBase = num(monetaryXml, 'TaxExclusiveAmount');
+    const amountTotal = num(monetaryXml, 'PayableAmount') || num(monetaryXml, 'TaxInclusiveAmount') || amountBase;
+    const vatAmount = num(taxXml, 'TaxAmount');
 
-    // VAT rate — from first InvoiceLine's ClassifiedTaxCategory/Percent, or calculated
-    let vatRate = 0;
-    const firstLineXml = getSection('InvoiceLine');
-    if (firstLineXml) {
-      vatRate = parseFloat(getFrom(firstLineXml, 'Percent')) || 0;
-    }
-    if (!vatRate && amountBase > 0) {
-      vatRate = Math.round((vatAmount / amountBase) * 100);
-    }
+    // VAT rate — from TaxSubTotal or InvoiceLine, fallback to calculation
+    let vatRate = num(section(taxXml, 'TaxSubTotal'), 'Percent')
+      || num(section(s, 'InvoiceLine'), 'Percent');
+    if (!vatRate && amountBase > 0) vatRate = Math.round((vatAmount / amountBase) * 100);
 
-    // Currency from any currencyID attribute
-    const currMatch = stripped.match(/currencyID="([A-Z]{3})"/i);
-    const currency = currMatch?.[1] || get('CurrencyCode') || 'CZK';
+    // Payment symbols + due date from PaymentMeans
+    const variableSymbol = tag(paymentXml, 'VariableSymbol');
+    const dueDate = tag(paymentXml, 'PaymentDueDate') || tag(paymentXml, 'DueDate')
+      || tag(section(s, 'PaymentTerms'), 'PaymentDueDate') || tag(s, 'DueDate');
+    const pmCode = tag(paymentXml, 'PaymentMeansCode');
+    const pmMap: Record<string, string> = { '42': 'bank_transfer', '10': 'cash', '48': 'card' };
+
+    // Currency
+    const currMatch = s.match(/currencyID="([A-Z]{3})"/i);
+    const currency = currMatch?.[1] || tag(s, 'LocalCurrencyCode') || tag(s, 'CurrencyCode') || 'CZK';
 
     // Invoice lines
     const lines: Array<Record<string, unknown>> = [];
     const lineRegex = /<InvoiceLine[^>]*>([\s\S]*?)<\/InvoiceLine>/gi;
     let lineMatch: RegExpExecArray | null;
     let lineIdx = 0;
-    while ((lineMatch = lineRegex.exec(stripped)) !== null) {
+    while ((lineMatch = lineRegex.exec(s)) !== null) {
       const l = lineMatch[1];
-      const description = getFrom(l, 'Name') || getFrom(l, 'Description') || getFrom(l, 'Note') || `Položka ${++lineIdx}`;
-      const quantity = parseFloat(getFrom(l, 'InvoicedQuantity')) || 1;
-      const unit = getFrom(l, 'unitCode') || 'ks';
-      const unitPrice = parseFloat(getFrom(l, 'PriceAmount')) || 0;
-      const lineTotal = parseFloat(getFrom(l, 'LineExtensionAmount')) || quantity * unitPrice;
-      const lineVatRate = parseFloat(getFrom(l, 'Percent')) || 0;
+      const description = tag(l, 'Name') || tag(l, 'Description') || tag(l, 'Note') || `Položka ${++lineIdx}`;
+      const quantity = parseFloat(tag(l, 'InvoicedQuantity')) || 1;
+      const unit = tag(l, 'unitCode') || 'ks';
+      const unitPrice = num(l, 'PriceAmount');
+      const lineTotal = num(l, 'LineExtensionAmount') || quantity * unitPrice;
+      const lineVatRate = num(l, 'Percent');
       const lineVatAmount = Math.round(lineTotal * lineVatRate / 100 * 100) / 100;
       lines.push({ description, quantity, unit, unitPrice, lineTotal, vatRate: lineVatRate, vatAmount: lineVatAmount });
     }
@@ -627,23 +624,15 @@ export class InvoicesService {
     return {
       number: docNumber,
       type: 'received',
-      supplierName: supplier.name,
-      supplierIco: supplier.ico,
-      supplierDic: supplier.dic,
-      buyerName: buyer.name,
-      buyerIco: buyer.ico,
-      buyerDic: buyer.dic,
-      description: get('Note') || get('Description') || '',
-      amountBase,
-      vatAmount,
-      amountTotal,
-      vatRate,
-      currency,
-      issueDate: get('IssueDate') || new Date().toISOString().slice(0, 10),
-      duzp: get('TaxPointDate') || get('IssueDate') || '',
-      dueDate,
+      supplierName, supplierIco, supplierDic,
+      buyerName, buyerIco, buyerDic,
+      description: tag(rootOnly, 'Note') || tag(rootOnly, 'Description') || '',
+      amountBase, vatAmount, amountTotal, vatRate, currency,
+      issueDate: tag(s, 'IssueDate') || new Date().toISOString().slice(0, 10),
+      duzp: tag(s, 'TaxPointDate') || tag(s, 'IssueDate') || '',
+      dueDate: dueDate || '',
       variableSymbol,
-      ...(pmCode && paymentMethodMap[pmCode] ? { paymentMethod: paymentMethodMap[pmCode] } : {}),
+      ...(pmCode && pmMap[pmCode] ? { paymentMethod: pmMap[pmCode] } : {}),
       lines: lines.length > 0 ? lines : undefined,
     };
   }
@@ -874,4 +863,124 @@ export class InvoicesService {
       data: { allocationStatus: status },
     })
   }
+
+  // ─── COPY / RECURRING / TYPE / NUMBER / TAGS / HISTORY ────────
+
+  async copyInvoice(user: AuthUser, id: string) {
+    const src = await this.findOneInternal(user, id)
+
+    const created = await this.prisma.$transaction(async (tx) => {
+      const invoice = await tx.invoice.create({
+        data: {
+          tenantId: user.tenantId, propertyId: src.propertyId,
+          number: `${src.number}-COPY`, type: src.type,
+          supplierName: src.supplierName, supplierIco: src.supplierIco, supplierDic: src.supplierDic,
+          buyerName: src.buyerName, buyerIco: src.buyerIco, buyerDic: src.buyerDic,
+          description: src.description, amountBase: src.amountBase, vatRate: src.vatRate,
+          vatAmount: src.vatAmount, amountTotal: src.amountTotal, currency: src.currency,
+          issueDate: src.issueDate, duzp: src.duzp, dueDate: src.dueDate,
+          variableSymbol: src.variableSymbol, constantSymbol: src.constantSymbol, specificSymbol: src.specificSymbol,
+          lines: src.lines as any, note: src.note, tags: src.tags,
+          approvalStatus: 'draft', isPaid: false,
+          supplierId: src.supplierId, buyerId: src.buyerId,
+        },
+      })
+
+      const allocs = await tx.invoiceCostAllocation.findMany({ where: { invoiceId: id } })
+      if (allocs.length > 0) {
+        await tx.invoiceCostAllocation.createMany({
+          data: allocs.map(({ id: _, invoiceId: __, createdAt: ___, ...rest }) => ({ ...rest, invoiceId: invoice.id })),
+        })
+      }
+
+      const evidAllocs = await tx.evidenceFolderAllocation.findMany({ where: { invoiceId: id } })
+      if (evidAllocs.length > 0) {
+        await tx.evidenceFolderAllocation.createMany({
+          data: evidAllocs.map(({ id: _, invoiceId: __, createdAt: ___, ...rest }) => ({ ...rest, invoiceId: invoice.id })),
+        })
+      }
+
+      return invoice
+    })
+
+    await this.recalculateAllocationStatus(created.id)
+    return this.serializeInvoice(created)
+  }
+
+  async copyRecurring(user: AuthUser, id: string, period: 'monthly' | 'quarterly', count: number) {
+    if (period !== 'monthly' && period !== 'quarterly') throw new BadRequestException('Neplatná perioda opakování')
+    if (!Number.isFinite(count) || !Number.isInteger(count)) throw new BadRequestException('Počet opakování musí být celé číslo')
+    const maxCount = period === 'monthly' ? 12 : 4
+    if (count < 1 || count > maxCount) throw new BadRequestException(period === 'monthly' ? 'Počet opakování musí být 1–12' : 'Počet čtvrtletních opakování musí být 1–4')
+    const src = await this.findOneInternal(user, id)
+    const months = period === 'monthly' ? 1 : 3
+    const created: any[] = []
+
+    for (let i = 1; i <= count; i++) {
+      const offsetMs = months * i
+      const newIssue = new Date(src.issueDate)
+      newIssue.setMonth(newIssue.getMonth() + offsetMs)
+      const newDue = src.dueDate ? new Date(src.dueDate) : null
+      if (newDue) newDue.setMonth(newDue.getMonth() + offsetMs)
+
+      const inv = await this.prisma.invoice.create({
+        data: {
+          tenantId: user.tenantId, propertyId: src.propertyId,
+          number: `${src.number}-${String(i).padStart(2, '0')}`,
+          type: src.type,
+          supplierName: src.supplierName, supplierIco: src.supplierIco, supplierDic: src.supplierDic,
+          buyerName: src.buyerName, buyerIco: src.buyerIco, buyerDic: src.buyerDic,
+          description: src.description, amountBase: src.amountBase, vatRate: src.vatRate,
+          vatAmount: src.vatAmount, amountTotal: src.amountTotal, currency: src.currency,
+          issueDate: newIssue, duzp: newIssue, dueDate: newDue,
+          variableSymbol: src.variableSymbol, constantSymbol: src.constantSymbol,
+          specificSymbol: src.specificSymbol, lines: src.lines as any,
+          note: src.note, tags: src.tags,
+          approvalStatus: 'draft', isPaid: false,
+          supplierId: src.supplierId, buyerId: src.buyerId,
+        },
+      })
+      created.push(this.serializeInvoice(inv))
+    }
+    return { created, count: created.length }
+  }
+
+  async changeType(user: AuthUser, id: string, type: string) {
+    const inv = await this.findOneInternal(user, id)
+    if (inv.approvalStatus !== 'draft') throw new BadRequestException('Typ lze měnit pouze u draft dokladů')
+    const updated = await this.prisma.invoice.update({ where: { id }, data: { type: type as any } })
+    return this.serializeInvoice(updated)
+  }
+
+  async changeNumber(user: AuthUser, id: string, number: string) {
+    const inv = await this.findOneInternal(user, id)
+    if (inv.approvalStatus !== 'draft') throw new BadRequestException('Číslo lze měnit pouze u draft dokladů')
+    const updated = await this.prisma.invoice.update({ where: { id }, data: { number } })
+    return this.serializeInvoice(updated)
+  }
+
+  async addTag(user: AuthUser, id: string, tag: string) {
+    const inv = await this.findOneInternal(user, id)
+    if (inv.tags.length >= 20) throw new BadRequestException('Maximálně 20 štítků na doklad')
+    if (inv.tags.includes(tag)) return this.serializeInvoice(inv)
+    const updated = await this.prisma.invoice.update({ where: { id }, data: { tags: { push: tag } } })
+    return this.serializeInvoice(updated)
+  }
+
+  async removeTag(user: AuthUser, id: string, tag: string) {
+    const inv = await this.findOneInternal(user, id)
+    const updated = await this.prisma.invoice.update({
+      where: { id },
+      data: { tags: { set: inv.tags.filter(t => t !== tag) } },
+    })
+    return this.serializeInvoice(updated)
+  }
+
+  async getHistory(user: AuthUser, id: string) {
+    const invoice = await this.prisma.invoice.findFirst({ where: { id, tenantId: user.tenantId, deletedAt: null } })
+    if (!invoice) throw new NotFoundException('Doklad nenalezen')
+    // TODO: implement audit log query when AuditLog model supports entity filtering
+    return []
+  }
+
 }
