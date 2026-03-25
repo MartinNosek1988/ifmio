@@ -93,6 +93,7 @@ model Tenant {
   unitQuantities             UnitQuantity[]
   unitEquipment              UnitEquipment[]
   unitManagementFees         UnitManagementFee[]
+  evidenceFolders            EvidenceFolder[]
 
   @@map("tenants")
 }
@@ -462,6 +463,7 @@ model Property {
   sipoExports                SipoExport[]
   sipoPayments               SipoPayment[]
   floorPlans                 FloorPlan[]
+  evidenceFolders            EvidenceFolder[]
 
   @@index([tenantId])
   @@map("properties")
@@ -887,7 +889,8 @@ model Invoice {
   @@index([buyerId])
   @@map("invoices")
 
-  costAllocations InvoiceCostAllocation[]
+  costAllocations          InvoiceCostAllocation[]
+  evidenceAllocations      EvidenceFolderAllocation[]
 }
 
 // ─── INVOICE COST ALLOCATION (D1 — propojení dokladu se složkami předpisu) ────
@@ -4015,4 +4018,46 @@ enum FloorZoneType {
   STORAGE
   PARKING
   OTHER
+}
+
+// ─── EVIDENCE FOLDERS (evidenční složky — náklady mimo vyúčtování) ───────────
+
+model EvidenceFolder {
+  id          String   @id @default(cuid())
+  tenantId    String
+  propertyId  String
+  name        String
+  code        String?
+  description String?
+  color       String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property    Property                  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  allocations EvidenceFolderAllocation[]
+
+  @@index([tenantId, propertyId])
+  @@map("evidence_folders")
+}
+
+model EvidenceFolderAllocation {
+  id               String         @id @default(cuid())
+  evidenceFolderId String
+  invoiceId        String
+  amount           Decimal        @db.Decimal(12, 2)
+  year             Int?
+  periodFrom       DateTime?
+  periodTo         DateTime?
+  note             String?
+  createdAt        DateTime       @default(now())
+
+  evidenceFolder   EvidenceFolder @relation(fields: [evidenceFolderId], references: [id], onDelete: Cascade)
+  invoice          Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([evidenceFolderId])
+  @@index([invoiceId])
+  @@map("evidence_folder_allocations")
 }

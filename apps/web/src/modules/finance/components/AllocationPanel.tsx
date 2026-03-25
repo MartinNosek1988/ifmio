@@ -4,8 +4,10 @@ import { Badge, Button, Modal } from '../../../shared/components'
 import { useToast } from '../../../shared/components/toast/Toast'
 import { useAllocationSummary, useCreateAllocation, useUpdateAllocation, useDeleteAllocation } from '../api/finance.queries'
 import { usePropertyComponents } from '../api/components.queries'
+import { useEvidenceFolders, useInvoiceEvidenceAllocations, useCreateEvidenceAllocation, useDeleteEvidenceAllocation } from '../evidence-folders/evidence-folders.queries'
 import { formatKc } from '../../../shared/utils/format'
 import type { ApiAllocation } from '../api/finance.api'
+import type { ApiEvidenceAllocation } from '../evidence-folders/evidence-folders.api'
 
 const TYPE_LABELS: Record<string, string> = {
   ADVANCE: 'Záloha', FLAT_FEE: 'Paušál', FUND: 'Fond oprav',
@@ -71,6 +73,14 @@ export function AllocationPanel({ invoiceId, propertyId, readOnly }: Props) {
   const createMut = useCreateAllocation()
   const updateMut = useUpdateAllocation()
   const deleteMut = useDeleteAllocation()
+
+  // Evidence allocations
+  const { data: evidAllocations = [] } = useInvoiceEvidenceAllocations(invoiceId)
+  const { data: evidFolders = [] } = useEvidenceFolders(propertyId || undefined)
+  const createEvidMut = useCreateEvidenceAllocation()
+  const deleteEvidMut = useDeleteEvidenceAllocation()
+  const [showEvidForm, setShowEvidForm] = useState(false)
+  const [evidForm, setEvidForm] = useState({ evidenceFolderId: '', amount: '', year: String(new Date().getFullYear()), note: '' })
 
   const [showForm, setShowForm] = useState(false)
   const [editAlloc, setEditAlloc] = useState<ApiAllocation | null>(null)
@@ -181,6 +191,7 @@ export function AllocationPanel({ invoiceId, propertyId, readOnly }: Props) {
   if (isLoading || !summary) return null
 
   const sc = STATUS_CONFIG[summary.allocationStatus] ?? STATUS_CONFIG.unallocated
+  const evidTotal = evidAllocations.reduce((s: number, a: ApiEvidenceAllocation) => s + a.amount, 0)
 
   return (
     <div style={{ marginTop: 16 }}>
@@ -197,7 +208,8 @@ export function AllocationPanel({ invoiceId, propertyId, readOnly }: Props) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 6, background: 'var(--surface-2, var(--surface))', marginBottom: 10, fontSize: '.85rem' }}>
         <div style={{ width: 8, height: 8, borderRadius: '50%', background: sc.color }} />
         <span style={{ fontWeight: 500 }}>
-          Alokováno: {formatKc(summary.allocatedAmount)} / {formatKc(summary.totalAmount)}
+          Alokováno: {formatKc(summary.allocatedAmount + evidTotal)} / {formatKc(summary.totalAmount)}
+          {evidTotal > 0 && <span style={{ fontSize: '.78rem', color: 'var(--text-muted)', marginLeft: 4 }}>(složky: {formatKc(summary.allocatedAmount)}, evid.: {formatKc(evidTotal)})</span>}
         </span>
         <Badge variant={summary.allocationStatus === 'allocated' ? 'green' : summary.allocationStatus === 'partial' ? 'yellow' : 'red'}>
           {sc.label}
@@ -354,6 +366,110 @@ export function AllocationPanel({ invoiceId, propertyId, readOnly }: Props) {
                 </div>
               </>
             )}
+          </div>
+        </Modal>
+      )}
+
+      {/* ─── Evidence Allocations Section ────────────────────── */}
+      <div style={{ marginTop: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <div style={{ fontSize: '.78rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
+            Evidenční složky
+          </div>
+          {!readOnly && (
+            <Button size="sm" icon={<Plus size={12} />} onClick={() => {
+              setEvidForm({ evidenceFolderId: '', amount: summary ? String(summary.remainingAmount - evidAllocations.reduce((s, a) => s + a.amount, 0)) : '', year: String(new Date().getFullYear()), note: '' })
+              setShowEvidForm(true)
+            }}>Přidat</Button>
+          )}
+        </div>
+        <div style={{ fontSize: '.75rem', color: 'var(--text-muted)', marginBottom: 8, fontStyle: 'italic' }}>
+          Evidenční náklady nevstupují do vyúčtování vlastníků.
+        </div>
+
+        {evidAllocations.length > 0 && (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.84rem' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                <th style={thStyle}>Složka</th>
+                <th style={{ ...thStyle, textAlign: 'right' }}>Částka</th>
+                <th style={{ ...thStyle, textAlign: 'center' }}>Rok</th>
+                <th style={thStyle}>Pozn.</th>
+                {!readOnly && <th style={{ width: 40, padding: '6px 8px' }} />}
+              </tr>
+            </thead>
+            <tbody>
+              {evidAllocations.map((a: ApiEvidenceAllocation) => (
+                <tr key={a.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '6px 8px' }}>
+                    {a.evidenceFolder.color && <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: a.evidenceFolder.color, marginRight: 6 }} />}
+                    <span style={{ fontWeight: 500 }}>{a.evidenceFolder.name}</span>
+                  </td>
+                  <td style={{ textAlign: 'right', padding: '6px 8px', fontFamily: 'monospace' }}>{formatKc(a.amount)}</td>
+                  <td style={{ textAlign: 'center', padding: '6px 8px' }}>{a.year ?? '—'}</td>
+                  <td style={{ padding: '6px 8px', fontSize: '.8rem', color: 'var(--text-muted)' }}>{a.note ?? ''}</td>
+                  {!readOnly && (
+                    <td style={{ padding: '6px 8px' }}>
+                      <button className="btn btn--sm" onClick={() => {
+                        if (confirm('Smazat?')) deleteEvidMut.mutate({ invoiceId, allocationId: a.id })
+                      }} style={{ padding: '2px 4px', color: 'var(--danger)' }}><Trash2 size={12} /></button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Evidence form modal */}
+      {showEvidForm && (
+        <Modal open onClose={() => setShowEvidForm(false)} title="Přidat do evidenční složky" footer={
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <Button onClick={() => setShowEvidForm(false)}>Zrušit</Button>
+            <Button variant="primary" onClick={async () => {
+              if (!evidForm.evidenceFolderId || !evidForm.amount) return
+              try {
+                await createEvidMut.mutateAsync({ invoiceId, dto: {
+                  evidenceFolderId: evidForm.evidenceFolderId,
+                  amount: parseFloat(evidForm.amount),
+                  year: evidForm.year ? parseInt(evidForm.year, 10) : undefined,
+                  note: evidForm.note || undefined,
+                }})
+                setShowEvidForm(false)
+              } catch {}
+            }} disabled={createEvidMut.isPending || !evidForm.evidenceFolderId}>
+              {createEvidMut.isPending ? 'Ukládám…' : 'Uložit'}
+            </Button>
+          </div>
+        }>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <label className="form-label">Evidenční složka *</label>
+              <select value={evidForm.evidenceFolderId} onChange={e => setEvidForm(f => ({ ...f, evidenceFolderId: e.target.value }))} style={{ ...inputStyle, cursor: 'pointer' }}>
+                <option value="">— vyberte —</option>
+                {evidFolders.map((f: any) => (
+                  <option key={f.id} value={f.id}>{f.name}{f.code ? ` (${f.code})` : ''}</option>
+                ))}
+              </select>
+              {evidFolders.length === 0 && (
+                <div style={{ fontSize: '.78rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                  Nejprve vytvořte evidenční složky v záložce Finance → Evidenční složky.
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="form-label">Částka (Kč) *</label>
+              <input type="number" min="0" step="0.01" value={evidForm.amount} onChange={e => setEvidForm(f => ({ ...f, amount: e.target.value }))} style={inputStyle} />
+            </div>
+            <div>
+              <label className="form-label">Rok</label>
+              <input type="number" value={evidForm.year} onChange={e => setEvidForm(f => ({ ...f, year: e.target.value }))} style={inputStyle} />
+            </div>
+            <div>
+              <label className="form-label">Poznámka</label>
+              <textarea value={evidForm.note} onChange={e => setEvidForm(f => ({ ...f, note: e.target.value }))} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
+            </div>
           </div>
         </Modal>
       )}

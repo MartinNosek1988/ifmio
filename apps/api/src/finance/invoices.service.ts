@@ -794,11 +794,11 @@ export class InvoicesService {
     const invoice = await this.prisma.invoice.findFirst({ where: { id: invoiceId } })
     if (!invoice) return
 
-    const agg = await this.prisma.invoiceCostAllocation.aggregate({
-      where: { invoiceId },
-      _sum: { amount: true },
-    })
-    const allocated = agg._sum.amount ? Number(agg._sum.amount) : 0
+    const [costAgg, evidAgg] = await Promise.all([
+      this.prisma.invoiceCostAllocation.aggregate({ where: { invoiceId }, _sum: { amount: true } }),
+      this.prisma.evidenceFolderAllocation.aggregate({ where: { invoiceId }, _sum: { amount: true } }),
+    ])
+    const allocated = (costAgg._sum.amount ? Number(costAgg._sum.amount) : 0) + (evidAgg._sum.amount ? Number(evidAgg._sum.amount) : 0)
     const total = Number(invoice.amountTotal)
 
     let status = 'unallocated'
