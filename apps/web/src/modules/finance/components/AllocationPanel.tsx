@@ -24,10 +24,44 @@ const inputStyle: React.CSSProperties = {
   color: 'var(--text)', boxSizing: 'border-box', fontSize: '.85rem',
 }
 
+const thStyle: React.CSSProperties = { textAlign: 'left', padding: '6px 8px', fontWeight: 600, fontSize: '.78rem', color: 'var(--text-muted)' }
+
 interface Props {
   invoiceId: string
   propertyId?: string | null
   readOnly?: boolean
+}
+
+type TargetMode = '' | 'owner' | 'units'
+
+interface FormState {
+  componentId: string
+  amount: string
+  year: string
+  note: string
+  targetMode: TargetMode
+  targetOwnerId: string
+  unitIdsText: string
+  periodFrom: string
+  periodTo: string
+  consumption: string
+  consumptionUnit: string
+}
+
+function defaultPeriod(year: string) {
+  const y = parseInt(year, 10) || new Date().getFullYear()
+  return { periodFrom: `${y}-01-01`, periodTo: `${y}-12-31` }
+}
+
+function targetLabel(a: ApiAllocation): string {
+  if (a.targetOwnerId) return `Vlastník: ${a.targetOwnerId.slice(0, 8)}…`
+  if (a.unitIds.length > 0) return `${a.unitIds.length} jednotek`
+  return 'Vše'
+}
+
+function consumptionLabel(a: ApiAllocation): string {
+  if (a.consumption != null) return `${a.consumption} ${a.consumptionUnit ?? ''}`
+  return ''
 }
 
 export function AllocationPanel({ invoiceId, propertyId, readOnly }: Props) {
@@ -40,28 +74,56 @@ export function AllocationPanel({ invoiceId, propertyId, readOnly }: Props) {
 
   const [showForm, setShowForm] = useState(false)
   const [editAlloc, setEditAlloc] = useState<ApiAllocation | null>(null)
-  const [form, setForm] = useState({
-    componentId: '', amount: '', year: String(new Date().getFullYear()), note: '',
-  })
+  const [showAdvanced, setShowAdvanced] = useState(false)
+
+  const currentYear = String(new Date().getFullYear())
+  const emptyForm: FormState = {
+    componentId: '', amount: '', year: currentYear, note: '',
+    targetMode: '', targetOwnerId: '', unitIdsText: '',
+    ...defaultPeriod(currentYear), consumption: '', consumptionUnit: '',
+  }
+  const [form, setForm] = useState<FormState>(emptyForm)
+
+  const set = (key: keyof FormState, value: string) => {
+    setForm(f => {
+      const next = { ...f, [key]: value }
+      // Auto-update period when year changes
+      if (key === 'year') {
+        const dp = defaultPeriod(value)
+        next.periodFrom = dp.periodFrom
+        next.periodTo = dp.periodTo
+      }
+      return next
+    })
+  }
 
   const openCreate = () => {
     setEditAlloc(null)
+    setShowAdvanced(false)
     setForm({
-      componentId: '',
+      ...emptyForm,
       amount: summary ? String(summary.remainingAmount) : '',
-      year: String(new Date().getFullYear()),
-      note: '',
     })
     setShowForm(true)
   }
 
   const openEdit = (a: ApiAllocation) => {
     setEditAlloc(a)
+    const tm: TargetMode = a.targetOwnerId ? 'owner' : a.unitIds.length > 0 ? 'units' : ''
+    const hasAdvanced = !!(a.periodFrom || a.periodTo || a.consumption != null)
+    setShowAdvanced(hasAdvanced)
     setForm({
       componentId: a.componentId,
       amount: String(a.amount),
-      year: a.year != null ? String(a.year) : String(new Date().getFullYear()),
+      year: a.year != null ? String(a.year) : currentYear,
       note: a.note ?? '',
+      targetMode: tm,
+      targetOwnerId: a.targetOwnerId ?? '',
+      unitIdsText: a.unitIds.join(', '),
+      periodFrom: a.periodFrom?.slice(0, 10) ?? defaultPeriod(a.year != null ? String(a.year) : currentYear).periodFrom,
+      periodTo: a.periodTo?.slice(0, 10) ?? defaultPeriod(a.year != null ? String(a.year) : currentYear).periodTo,
+      consumption: a.consumption != null ? String(a.consumption) : '',
+      consumptionUnit: a.consumptionUnit ?? '',
     })
     setShowForm(true)
   }
@@ -73,6 +135,23 @@ export function AllocationPanel({ invoiceId, propertyId, readOnly }: Props) {
       amount: parseFloat(form.amount),
       year: form.year ? parseInt(form.year, 10) : undefined,
       note: form.note || undefined,
+    }
+
+    // Target
+    if (form.targetMode === 'owner' && form.targetOwnerId) {
+      dto.targetOwnerId = form.targetOwnerId
+      dto.unitIds = []
+    } else if (form.targetMode === 'units' && form.unitIdsText.trim()) {
+      dto.unitIds = form.unitIdsText.split(',').map(s => s.trim()).filter(Boolean)
+      dto.targetOwnerId = undefined
+    }
+
+    // Advanced fields
+    if (showAdvanced) {
+      if (form.periodFrom) dto.periodFrom = form.periodFrom
+      if (form.periodTo) dto.periodTo = form.periodTo
+      if (form.consumption) dto.consumption = parseFloat(form.consumption)
+      if (form.consumptionUnit) dto.consumptionUnit = form.consumptionUnit
     }
 
     try {
@@ -135,9 +214,11 @@ export function AllocationPanel({ invoiceId, propertyId, readOnly }: Props) {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.84rem' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border)' }}>
-              <th style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 600, fontSize: '.78rem', color: 'var(--text-muted)' }}>Složka</th>
-              <th style={{ textAlign: 'right', padding: '6px 8px', fontWeight: 600, fontSize: '.78rem', color: 'var(--text-muted)' }}>Částka</th>
-              <th style={{ textAlign: 'center', padding: '6px 8px', fontWeight: 600, fontSize: '.78rem', color: 'var(--text-muted)' }}>Rok</th>
+              <th style={thStyle}>Složka</th>
+              <th style={{ ...thStyle, textAlign: 'right' }}>Částka</th>
+              <th style={{ ...thStyle, textAlign: 'center' }}>Rok</th>
+              <th style={thStyle}>Cíl</th>
+              <th style={thStyle}>Spotřeba</th>
               {!readOnly && <th style={{ width: 60, padding: '6px 8px' }} />}
             </tr>
           </thead>
@@ -152,6 +233,8 @@ export function AllocationPanel({ invoiceId, propertyId, readOnly }: Props) {
                 </td>
                 <td style={{ textAlign: 'right', padding: '6px 8px', fontFamily: 'monospace' }}>{formatKc(a.amount)}</td>
                 <td style={{ textAlign: 'center', padding: '6px 8px' }}>{a.year ?? '—'}</td>
+                <td style={{ padding: '6px 8px', fontSize: '.8rem', color: 'var(--text-muted)' }}>{targetLabel(a)}</td>
+                <td style={{ padding: '6px 8px', fontSize: '.8rem', color: 'var(--text-muted)' }}>{consumptionLabel(a)}</td>
                 {!readOnly && (
                   <td style={{ padding: '6px 8px', textAlign: 'right' }}>
                     <button className="btn btn--sm" onClick={() => openEdit(a)} style={{ padding: '2px 4px' }}><Pencil size={12} /></button>
@@ -175,32 +258,102 @@ export function AllocationPanel({ invoiceId, propertyId, readOnly }: Props) {
           </div>
         }>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* Složka */}
             <div>
               <label className="form-label">Složka předpisu *</label>
-              <select value={form.componentId} onChange={e => setForm(f => ({ ...f, componentId: e.target.value }))} style={{ ...inputStyle, cursor: 'pointer' }}>
+              <select value={form.componentId} onChange={e => set('componentId', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
                 <option value="">— vyberte —</option>
                 {components.map((c: any) => (
                   <option key={c.id} value={c.id}>{c.name} ({TYPE_LABELS[c.componentType] ?? c.componentType})</option>
                 ))}
               </select>
             </div>
+
+            {/* Částka */}
             <div>
               <label className="form-label">Částka (Kč) *</label>
-              <input type="number" min="0" step="0.01" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} style={inputStyle} />
+              <input type="number" min="0" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)} style={inputStyle} />
               {summary.remainingAmount > 0 && !editAlloc && (
                 <div style={{ fontSize: '.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
                   Zbývá k alokaci: {formatKc(summary.remainingAmount)}
                 </div>
               )}
             </div>
+
+            {/* Rok */}
             <div>
               <label className="form-label">Hospodářský rok</label>
-              <input type="number" value={form.year} onChange={e => setForm(f => ({ ...f, year: e.target.value }))} style={inputStyle} />
+              <input type="number" value={form.year} onChange={e => set('year', e.target.value)} style={inputStyle} />
             </div>
+
+            {/* Cíl nákladu */}
+            <div>
+              <label className="form-label">Cíl nákladu</label>
+              <select value={form.targetMode} onChange={e => set('targetMode', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                <option value="">Všechny jednotky složky</option>
+                <option value="owner">Konkrétní vlastník</option>
+                <option value="units">Konkrétní jednotky</option>
+              </select>
+            </div>
+
+            {form.targetMode === 'owner' && (
+              <div>
+                <label className="form-label">ID vlastníka</label>
+                <input value={form.targetOwnerId} onChange={e => set('targetOwnerId', e.target.value)} placeholder="ID vlastníka (Party)" style={inputStyle} />
+              </div>
+            )}
+
+            {form.targetMode === 'units' && (
+              <div>
+                <label className="form-label">IDs jednotek (oddělené čárkou)</label>
+                <input value={form.unitIdsText} onChange={e => set('unitIdsText', e.target.value)} placeholder="unit-id-1, unit-id-2" style={inputStyle} />
+              </div>
+            )}
+
+            {/* Poznámka */}
             <div>
               <label className="form-label">Poznámka</label>
-              <textarea value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
+              <textarea value={form.note} onChange={e => set('note', e.target.value)} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
             </div>
+
+            {/* Rozšířené nastavení */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                style={{ background: 'none', border: 'none', color: 'var(--primary, #3b82f6)', cursor: 'pointer', fontSize: '.82rem', padding: 0 }}
+              >
+                Rozšířené nastavení {showAdvanced ? '▴' : '▾'}
+              </button>
+            </div>
+
+            {showAdvanced && (
+              <>
+                {/* Období */}
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <label className="form-label">Období od</label>
+                    <input type="date" value={form.periodFrom} onChange={e => set('periodFrom', e.target.value)} style={inputStyle} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label className="form-label">Období do</label>
+                    <input type="date" value={form.periodTo} onChange={e => set('periodTo', e.target.value)} style={inputStyle} />
+                  </div>
+                </div>
+
+                {/* Spotřeba */}
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <div style={{ flex: 3 }}>
+                    <label className="form-label">Spotřeba</label>
+                    <input type="number" min="0" step="0.0001" value={form.consumption} onChange={e => set('consumption', e.target.value)} placeholder="0" style={inputStyle} />
+                  </div>
+                  <div style={{ flex: 2 }}>
+                    <label className="form-label">Jednotka</label>
+                    <input value={form.consumptionUnit} onChange={e => set('consumptionUnit', e.target.value)} placeholder="m³, kWh, GJ…" style={inputStyle} />
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </Modal>
       )}
