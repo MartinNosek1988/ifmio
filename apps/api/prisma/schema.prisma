@@ -596,6 +596,8 @@ model UnitRoom {
   area           Float
   coefficient    Float    @default(1.0)
   calculatedArea Float?
+  roomType       String   @default("standard") // "standard" | "accessory"
+  includeTuv     Boolean  @default(true)
   tenantId       String
   tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt      DateTime @default(now())
@@ -623,16 +625,29 @@ model UnitQuantity {
 }
 
 model UnitEquipment {
-  id       String  @id @default(uuid())
-  unitId   String
-  unit     Unit    @relation(fields: [unitId], references: [id], onDelete: Cascade)
-  name     String
-  status   String  @default("functional")
-  note     String?
-  tenantId String
-  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String    @id @default(uuid())
+  unitId            String
+  unit              Unit      @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  name              String
+  status            String    @default("functional")
+  note              String?
+  quantity          Float     @default(1)
+  serialNumber      String?
+  purchaseDate      DateTime?
+  purchasePrice     Float?
+  installPrice      Float?
+  warranty          Int?       // months
+  lifetime          Int?       // months
+  rentDuring        Float?
+  rentAfter         String?
+  useInPrescription Boolean   @default(true)
+  validFrom         DateTime?
+  validTo           DateTime?
+  description       String?
+  tenantId          String
+  tenant            Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@index([tenantId, unitId])
   @@map("unit_equipment")

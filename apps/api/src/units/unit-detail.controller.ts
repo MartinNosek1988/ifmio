@@ -140,4 +140,20 @@ export class UnitDetailController {
   async deleteFee(@CurrentUser() user: AuthUser, @Param('propertyId') pid: string, @Param('unitId') uid: string, @Param('feeId') feeId: string) {
     await this.service.deleteFee(user, pid, uid, feeId)
   }
+
+  // ─── Meters ──────────────────────────────────────────────────
+
+  @Get('meters')
+  @ApiOperation({ summary: 'List meters for unit' })
+  listMeters(@CurrentUser() user: AuthUser, @Param('propertyId') pid: string, @Param('unitId') uid: string) {
+    return this.service.listMeters(user, pid, uid)
+  }
+
+  // ─── Prescription Components ─────────────────────────────────
+
+  @Get('prescription-components')
+  @ApiOperation({ summary: 'List prescription component assignments for unit' })
+  listPrescriptionComponents(@CurrentUser() user: AuthUser, @Param('propertyId') pid: string, @Param('unitId') uid: string) {
+    return this.service.listPrescriptionComponents(user, pid, uid)
+  }
 }

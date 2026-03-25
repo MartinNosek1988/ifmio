@@ -48,7 +48,7 @@ export class UnitDetailService {
     })
   }
 
-  async createRoom(user: AuthUser, propertyId: string, unitId: string, dto: { name: string; area: number; coefficient?: number }) {
+  async createRoom(user: AuthUser, propertyId: string, unitId: string, dto: { name: string; area: number; coefficient?: number; roomType?: string; includeTuv?: boolean }) {
     await this.verifyUnit(user, propertyId, unitId)
     const coeff = dto.coefficient ?? 1.0
     return this.prisma.unitRoom.create({
@@ -59,11 +59,13 @@ export class UnitDetailService {
         area: dto.area,
         coefficient: coeff,
         calculatedArea: dto.area * coeff,
+        roomType: dto.roomType ?? 'standard',
+        includeTuv: dto.includeTuv ?? true,
       },
     })
   }
 
-  async updateRoom(user: AuthUser, propertyId: string, unitId: string, roomId: string, dto: { name?: string; area?: number; coefficient?: number }) {
+  async updateRoom(user: AuthUser, propertyId: string, unitId: string, roomId: string, dto: { name?: string; area?: number; coefficient?: number; roomType?: string; includeTuv?: boolean }) {
     await this.verifyUnit(user, propertyId, unitId)
     const room = await this.prisma.unitRoom.findFirst({ where: { id: roomId, unitId, tenantId: user.tenantId } })
     if (!room) throw new NotFoundException('Místnost nenalezena')
@@ -71,7 +73,14 @@ export class UnitDetailService {
     const coeff = dto.coefficient ?? room.coefficient
     return this.prisma.unitRoom.update({
       where: { id: roomId },
-      data: { ...dto, calculatedArea: area * coeff },
+      data: {
+        ...(dto.name !== undefined && { name: dto.name }),
+        ...(dto.area !== undefined && { area: dto.area }),
+        ...(dto.coefficient !== undefined && { coefficient: dto.coefficient }),
+        ...(dto.roomType !== undefined && { roomType: dto.roomType }),
+        ...(dto.includeTuv !== undefined && { includeTuv: dto.includeTuv }),
+        calculatedArea: area * coeff,
+      },
     })
   }
 
@@ -118,18 +127,66 @@ export class UnitDetailService {
     })
   }
 
-  async createEquipment(user: AuthUser, propertyId: string, unitId: string, dto: { name: string; status?: string; note?: string }) {
+  async createEquipment(user: AuthUser, propertyId: string, unitId: string, dto: {
+    name: string; status?: string; note?: string; quantity?: number; serialNumber?: string;
+    purchaseDate?: string; purchasePrice?: number; installPrice?: number; warranty?: number;
+    lifetime?: number; rentDuring?: number; rentAfter?: string; useInPrescription?: boolean;
+    validFrom?: string; validTo?: string; description?: string
+  }) {
     await this.verifyUnit(user, propertyId, unitId)
     return this.prisma.unitEquipment.create({
-      data: { unitId, tenantId: user.tenantId, name: dto.name, status: dto.status ?? 'functional', note: dto.note },
+      data: {
+        unitId, tenantId: user.tenantId,
+        name: dto.name,
+        status: dto.status ?? 'functional',
+        note: dto.note,
+        quantity: dto.quantity ?? 1,
+        serialNumber: dto.serialNumber,
+        purchaseDate: dto.purchaseDate ? new Date(dto.purchaseDate) : null,
+        purchasePrice: dto.purchasePrice,
+        installPrice: dto.installPrice,
+        warranty: dto.warranty,
+        lifetime: dto.lifetime,
+        rentDuring: dto.rentDuring,
+        rentAfter: dto.rentAfter,
+        useInPrescription: dto.useInPrescription ?? true,
+        validFrom: dto.validFrom ? new Date(dto.validFrom) : null,
+        validTo: dto.validTo ? new Date(dto.validTo) : null,
+        description: dto.description,
+      },
     })
   }
 
-  async updateEquipment(user: AuthUser, propertyId: string, unitId: string, eqId: string, dto: { name?: string; status?: string; note?: string }) {
+  async updateEquipment(user: AuthUser, propertyId: string, unitId: string, eqId: string, dto: {
+    name?: string; status?: string; note?: string; quantity?: number; serialNumber?: string;
+    purchaseDate?: string; purchasePrice?: number; installPrice?: number; warranty?: number;
+    lifetime?: number; rentDuring?: number; rentAfter?: string; useInPrescription?: boolean;
+    validFrom?: string; validTo?: string | null; description?: string
+  }) {
     await this.verifyUnit(user, propertyId, unitId)
     const eq = await this.prisma.unitEquipment.findFirst({ where: { id: eqId, unitId, tenantId: user.tenantId } })
     if (!eq) throw new NotFoundException('Vybavení nenalezeno')
-    return this.prisma.unitEquipment.update({ where: { id: eqId }, data: dto })
+    return this.prisma.unitEquipment.update({
+      where: { id: eqId },
+      data: {
+        ...(dto.name !== undefined && { name: dto.name }),
+        ...(dto.status !== undefined && { status: dto.status }),
+        ...(dto.note !== undefined && { note: dto.note }),
+        ...(dto.quantity !== undefined && { quantity: dto.quantity }),
+        ...(dto.serialNumber !== undefined && { serialNumber: dto.serialNumber }),
+        ...(dto.purchaseDate !== undefined && { purchaseDate: dto.purchaseDate ? new Date(dto.purchaseDate) : null }),
+        ...(dto.purchasePrice !== undefined && { purchasePrice: dto.purchasePrice }),
+        ...(dto.installPrice !== undefined && { installPrice: dto.installPrice }),
+        ...(dto.warranty !== undefined && { warranty: dto.warranty }),
+        ...(dto.lifetime !== undefined && { lifetime: dto.lifetime }),
+        ...(dto.rentDuring !== undefined && { rentDuring: dto.rentDuring }),
+        ...(dto.rentAfter !== undefined && { rentAfter: dto.rentAfter }),
+        ...(dto.useInPrescription !== undefined && { useInPrescription: dto.useInPrescription }),
+        ...(dto.validFrom !== undefined && { validFrom: dto.validFrom ? new Date(dto.validFrom) : null }),
+        ...(dto.validTo !== undefined && { validTo: dto.validTo ? new Date(dto.validTo) : null }),
+        ...(dto.description !== undefined && { description: dto.description }),
+      },
+    })
   }
 
   async deleteEquipment(user: AuthUser, propertyId: string, unitId: string, eqId: string) {
@@ -183,5 +240,29 @@ export class UnitDetailService {
     const fee = await this.prisma.unitManagementFee.findFirst({ where: { id: feeId, unitId, tenantId: user.tenantId } })
     if (!fee) throw new NotFoundException('Správní odměna nenalezena')
     await this.prisma.unitManagementFee.delete({ where: { id: feeId } })
+  }
+
+  // ─── Meters (read-only from unit context) ──────────────────
+
+  async listMeters(user: AuthUser, propertyId: string, unitId: string) {
+    await this.verifyUnit(user, propertyId, unitId)
+    return this.prisma.meter.findMany({
+      where: { unitId, tenantId: user.tenantId },
+      orderBy: { name: 'asc' },
+      include: { readings: { orderBy: { readingDate: 'desc' }, take: 1 } },
+    })
+  }
+
+  // ─── Prescription Components (read-only from unit context) ─
+
+  async listPrescriptionComponents(user: AuthUser, propertyId: string, unitId: string) {
+    await this.verifyUnit(user, propertyId, unitId)
+    return this.prisma.componentAssignment.findMany({
+      where: { unitId, tenantId: user.tenantId, isActive: true },
+      include: {
+        component: { select: { id: true, name: true, code: true, componentType: true, calculationMethod: true, defaultAmount: true, effectiveFrom: true, effectiveTo: true, isActive: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    })
   }
 }
