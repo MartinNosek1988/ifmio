@@ -947,6 +947,7 @@ enum InvoiceType {
   issued
   proforma
   credit_note
+  internal      // interní doklad
 }
 
 enum InvoiceApprovalStatus {

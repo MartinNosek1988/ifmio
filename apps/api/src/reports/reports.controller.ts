@@ -4,6 +4,7 @@ import type { FastifyReply } from 'fastify';
 import { ReportsService } from './reports.service';
 import { ScheduledReportsService } from './scheduled-reports.service';
 import { FundSettlementService } from './fund-settlement.service';
+import { CostsReportService } from './costs-report.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { ROLES_FINANCE_DRAFT, ROLES_MANAGE } from '../common/constants/roles.constants';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -17,6 +18,7 @@ export class ReportsController {
     private service: ReportsService,
     private scheduled: ScheduledReportsService,
     private fundSettlement: FundSettlementService,
+    private costsReport: CostsReportService,
   ) {}
 
   @Get('monthly')
@@ -226,6 +228,34 @@ export class ReportsController {
     reply!
       .header('Content-Type', 'application/pdf')
       .header('Content-Disposition', `attachment; filename="vyuctovani-fondu-${params.year}.pdf"`)
+      .send(buffer)
+  }
+
+  // ─── Costs by folder ───────────────────────────────────────
+
+  @Get('costs-by-folder')
+  @Roles(...ROLES_FINANCE_DRAFT)
+  @ApiOperation({ summary: 'Náklady dle složek (PDF/JSON)' })
+  async getCostsByFolder(
+    @CurrentUser() user: AuthUser,
+    @Query('propertyId') propertyId: string,
+    @Query('year') year: string,
+    @Query('format') format?: string,
+    @Res() reply?: FastifyReply,
+  ) {
+    const data = await this.costsReport.generateData(user, {
+      propertyId,
+      year: parseInt(year, 10),
+    })
+
+    if (format === 'json') {
+      return reply!.send(data)
+    }
+
+    const buffer = await this.costsReport.generatePdf(data)
+    reply!
+      .header('Content-Type', 'application/pdf')
+      .header('Content-Disposition', `attachment; filename="naklady-dle-slozek-${year}.pdf"`)
       .send(buffer)
   }
 

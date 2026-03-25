@@ -5,6 +5,8 @@ import { useToast } from '../../../shared/components/toast/Toast'
 import { useAllocationSummary, useCreateAllocation, useUpdateAllocation, useDeleteAllocation } from '../api/finance.queries'
 import { usePropertyComponents } from '../api/components.queries'
 import { useEvidenceFolders, useInvoiceEvidenceAllocations, useCreateEvidenceAllocation, useDeleteEvidenceAllocation } from '../evidence-folders/evidence-folders.queries'
+import { useProperty } from '../../properties/use-properties'
+import { useUnitOwnershipsByProperty } from '../../properties/ownerships-api'
 import { formatKc } from '../../../shared/utils/format'
 import type { ApiAllocation } from '../api/finance.api'
 import type { ApiEvidenceAllocation } from '../evidence-folders/evidence-folders.api'
@@ -55,8 +57,11 @@ function defaultPeriod(year: string) {
   return { periodFrom: `${y}-01-01`, periodTo: `${y}-12-31` }
 }
 
-function targetLabel(a: ApiAllocation): string {
-  if (a.targetOwnerId) return `Vlastník: ${a.targetOwnerId.slice(0, 8)}…`
+function targetLabel(a: ApiAllocation, ownerships: any[]): string {
+  if (a.targetOwnerId) {
+    const owner = ownerships.find((o: any) => o.partyId === a.targetOwnerId)
+    return owner?.party?.displayName ?? `Vlastník: ${a.targetOwnerId.slice(0, 8)}…`
+  }
   if (a.unitIds.length > 0) return `${a.unitIds.length} jednotek`
   return 'Vše'
 }
@@ -73,6 +78,11 @@ export function AllocationPanel({ invoiceId, propertyId, readOnly }: Props) {
   const createMut = useCreateAllocation()
   const updateMut = useUpdateAllocation()
   const deleteMut = useDeleteAllocation()
+
+  // Property data for owner/unit selects
+  const { data: propertyData } = useProperty(propertyId || '')
+  const propertyUnits = propertyData?.units ?? []
+  const { data: unitOwnerships = [] } = useUnitOwnershipsByProperty(propertyId || '')
 
   // Evidence allocations
   const { data: evidAllocations = [] } = useInvoiceEvidenceAllocations(invoiceId)
@@ -245,7 +255,7 @@ export function AllocationPanel({ invoiceId, propertyId, readOnly }: Props) {
                 </td>
                 <td style={{ textAlign: 'right', padding: '6px 8px', fontFamily: 'monospace' }}>{formatKc(a.amount)}</td>
                 <td style={{ textAlign: 'center', padding: '6px 8px' }}>{a.year ?? '—'}</td>
-                <td style={{ padding: '6px 8px', fontSize: '.8rem', color: 'var(--text-muted)' }}>{targetLabel(a)}</td>
+                <td style={{ padding: '6px 8px', fontSize: '.8rem', color: 'var(--text-muted)' }}>{targetLabel(a, unitOwnerships)}</td>
                 <td style={{ padding: '6px 8px', fontSize: '.8rem', color: 'var(--text-muted)' }}>{consumptionLabel(a)}</td>
                 {!readOnly && (
                   <td style={{ padding: '6px 8px', textAlign: 'right' }}>
@@ -310,15 +320,40 @@ export function AllocationPanel({ invoiceId, propertyId, readOnly }: Props) {
 
             {form.targetMode === 'owner' && (
               <div>
-                <label className="form-label">ID vlastníka</label>
-                <input value={form.targetOwnerId} onChange={e => set('targetOwnerId', e.target.value)} placeholder="ID vlastníka (Party)" style={inputStyle} />
+                <label className="form-label">Vlastník</label>
+                <select value={form.targetOwnerId} onChange={e => set('targetOwnerId', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                  <option value="">— vyberte vlastníka —</option>
+                  {unitOwnerships.map((o: any) => (
+                    <option key={o.id} value={o.partyId}>
+                      {o.party?.displayName ?? '—'}{o.unit ? ` (${o.unit.name})` : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
             )}
 
             {form.targetMode === 'units' && (
               <div>
-                <label className="form-label">IDs jednotek (oddělené čárkou)</label>
-                <input value={form.unitIdsText} onChange={e => set('unitIdsText', e.target.value)} placeholder="unit-id-1, unit-id-2" style={inputStyle} />
+                <label className="form-label">Jednotky</label>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: 8, maxHeight: 160, overflow: 'auto' }}>
+                  {propertyUnits.length === 0 && <div style={{ fontSize: '.8rem', color: 'var(--text-muted)' }}>Žádné jednotky</div>}
+                  {propertyUnits.map((u: any) => {
+                    const selected = form.unitIdsText.split(',').map(s => s.trim()).includes(u.id)
+                    return (
+                      <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', fontSize: '.84rem', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={selected} onChange={() => {
+                          const ids = form.unitIdsText.split(',').map(s => s.trim()).filter(Boolean)
+                          const next = selected ? ids.filter(id => id !== u.id) : [...ids, u.id]
+                          set('unitIdsText', next.join(', '))
+                        }} />
+                        <span style={{ fontWeight: 500 }}>{u.name}</span>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '.78rem' }}>
+                          {u.spaceType === 'RESIDENTIAL' ? 'bytový' : u.spaceType === 'NON_RESIDENTIAL' ? 'nebytový' : u.spaceType?.toLowerCase() ?? ''}
+                        </span>
+                      </label>
+                    )
+                  })}
+                </div>
               </div>
             )}
 

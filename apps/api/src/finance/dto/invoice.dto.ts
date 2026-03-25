@@ -62,7 +62,7 @@ export class CreateInvoiceDto {
   @IsNotEmpty({ message: 'Číslo dokladu je povinné' })
   number!: string;
 
-  @IsOptional() @IsEnum(['received', 'issued'])
+  @IsOptional() @IsEnum(['received', 'issued', 'proforma', 'credit_note', 'internal'])
   type?: string;
 
   @IsOptional() @IsString()
@@ -151,7 +151,7 @@ export class UpdateInvoiceDto {
   @IsOptional() @IsString()
   number?: string;
 
-  @IsOptional() @IsEnum(['received', 'issued'])
+  @IsOptional() @IsEnum(['received', 'issued', 'proforma', 'credit_note', 'internal'])
   type?: string;
 
   @IsOptional() @IsString()
@@ -228,7 +228,7 @@ export class UpdateInvoiceDto {
 }
 
 export class InvoiceListQueryDto {
-  @IsOptional() @IsEnum(['received', 'issued'])
+  @IsOptional() @IsEnum(['received', 'issued', 'proforma', 'credit_note', 'internal'])
   type?: string;
 
   @IsOptional() @IsString()

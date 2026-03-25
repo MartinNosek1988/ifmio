@@ -19,6 +19,9 @@ export default function EvidenceFoldersTab() {
   const { data: folders = [], isLoading } = useEvidenceFolders(propertyId || undefined)
   const [showForm, setShowForm] = useState(false)
   const [editFolder, setEditFolder] = useState<ApiEvidenceFolder | null>(null)
+  const [showCostsPdf, setShowCostsPdf] = useState(false)
+  const [costsYear, setCostsYear] = useState(String(new Date().getFullYear() - 1))
+  const [costsLoading, setCostsLoading] = useState(false)
   const toast = useToast()
 
   const createMut = useCreateEvidenceFolder()
@@ -85,6 +88,7 @@ export default function EvidenceFoldersTab() {
           </select>
         )}
         <Button variant="primary" size="sm" onClick={openCreate}>Nová evidenční složka</Button>
+        <Button size="sm" onClick={() => setShowCostsPdf(true)}>Náklady dle složek PDF</Button>
       </div>
 
       <div style={{ fontSize: '.78rem', color: 'var(--text-muted)', marginBottom: 12 }}>
@@ -157,6 +161,47 @@ export default function EvidenceFoldersTab() {
               <label className="form-label">Popis</label>
               <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
             </div>
+          </div>
+        </Modal>
+      )}
+
+      {showCostsPdf && (
+        <Modal open onClose={() => setShowCostsPdf(false)} title="Náklady dle složek — PDF" footer={
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <Button onClick={() => setShowCostsPdf(false)}>Zavřít</Button>
+            <Button variant="primary" disabled={costsLoading} onClick={async () => {
+              setCostsLoading(true)
+              try {
+                const baseUrl = import.meta.env.VITE_API_URL ?? '/api/v1'
+                const token = sessionStorage.getItem('ifmio:access_token')
+                const res = await fetch(`${baseUrl}/reports/costs-by-folder?propertyId=${propertyId}&year=${costsYear}&format=pdf`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                })
+                if (!res.ok) throw new Error(`HTTP ${res.status}`)
+                const blob = await res.blob()
+                const link = document.createElement('a')
+                link.href = URL.createObjectURL(blob)
+                link.download = `naklady-dle-slozek-${costsYear}.pdf`
+                link.click()
+                URL.revokeObjectURL(link.href)
+                setShowCostsPdf(false)
+              } catch {
+                toast.error('Generování PDF se nezdařilo.')
+              } finally {
+                setCostsLoading(false)
+              }
+            }}>
+              {costsLoading ? 'Generuji…' : 'Generovat PDF'}
+            </Button>
+          </div>
+        }>
+          <div>
+            <label className="form-label">Rok</label>
+            <select value={costsYear} onChange={e => setCostsYear(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
           </div>
         </Modal>
       )}

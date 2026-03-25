@@ -11,7 +11,7 @@ import { InvoiceDetailModal } from './InvoiceDetailModal';
 import { InvoiceForm } from './InvoiceForm';
 
 export const INVOICE_TYPE_LABELS: Record<string, string> = {
-  received: 'Přijatá', issued: 'Vydaná', proforma: 'Záloha', credit_note: 'Dobropis',
+  received: 'Přijatá', issued: 'Vydaná', proforma: 'Záloha', credit_note: 'Dobropis', internal: 'Interní',
 };
 
 export const APPROVAL_STATUS_LABELS: Record<string, string> = {
