@@ -34,7 +34,7 @@ import { PredpisDetail } from './components/PredpisDetail';
 import { ParovaniPicker } from './components/ParovaniTab';
 import { PrescriptionForm } from './components/PrescriptionForm';
 import GenerateFromComponentsWizard from './components/GenerateFromComponentsWizard';
-import MatchingModal from './components/MatchingModal';
+import { TransactionDetail } from './components/TransactionDetail';
 
 const TABS = [
   { key: 'components', label: 'Složky předpisu' },
@@ -499,9 +499,11 @@ export default function FinancePage() {
 
       {/* ── MODAL: MATCHING (enhanced) ──────────────────────────── */}
       {matchingTx && (
-        <MatchingModal
+        <TransactionDetail
           tx={matchingTx}
+          list={transactions}
           onClose={() => setMatchingTx(null)}
+          onNavigate={(tx) => setMatchingTx(tx)}
         />
       )}
     </div>
