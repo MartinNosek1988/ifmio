@@ -26,6 +26,7 @@ import SettlementPage from '../settlement/SettlementPage';
 import PohodaExportSection from './components/PohodaExportSection';
 import SipoTab from './sipo/SipoTab';
 import ComponentsTab from './components/ComponentsTab';
+import PaymentOrdersTab from './components/PaymentOrdersTab';
 import EvidenceFoldersTab from './evidence-folders/EvidenceFoldersTab';
 
 // Modal components
@@ -48,6 +49,7 @@ const TABS = [
   { key: 'accounts', label: 'Účty' },
   { key: 'initial', label: 'Počáteční stavy' },
   { key: 'settlement', label: 'Vyúčtování' },
+  { key: 'payment-orders', label: 'Příkazy' },
   { key: 'export', label: 'Export' },
   { key: 'sipo', label: 'SIPO' },
 ] as const;
@@ -358,6 +360,7 @@ export default function FinancePage() {
       {tab === 'settlement' && <SettlementPage />}
 
       {/* ── TAB: EXPORT ──────────────────────────────────────────── */}
+      {tab === 'payment-orders' && <PaymentOrdersTab />}
       {tab === 'export' && <PohodaExportSection />}
 
       {/* ── TAB: SIPO ────────────────────────────────────────────── */}
