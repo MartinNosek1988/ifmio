@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Query, Body, Res } from '@nestjs/common';
+import { Controller, Get, Post, Query, Body, Res, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import type { FastifyReply } from 'fastify';
 import { ReportsService } from './reports.service';
@@ -211,10 +211,15 @@ export class ReportsController {
     @Query('format') format?: string,
     @Res() reply?: FastifyReply,
   ) {
+    const yearNum = parseInt(year, 10)
+    if (isNaN(yearNum) || yearNum < 2000 || yearNum > 2100) {
+      throw new BadRequestException('Neplatný rok — očekáváno číslo mezi 2000 a 2100')
+    }
+
     const params = {
       propertyId,
       componentId,
-      year: parseInt(year, 10),
+      year: yearNum,
       unitIds: unitIds ? unitIds.split(',') : undefined,
     }
 
@@ -243,9 +248,14 @@ export class ReportsController {
     @Query('format') format?: string,
     @Res() reply?: FastifyReply,
   ) {
+    const yearNum = parseInt(year, 10)
+    if (isNaN(yearNum) || yearNum < 2000 || yearNum > 2100) {
+      throw new BadRequestException('Neplatný rok — očekáváno číslo mezi 2000 a 2100')
+    }
+
     const data = await this.costsReport.generateData(user, {
       propertyId,
-      year: parseInt(year, 10),
+      year: yearNum,
     })
 
     if (format === 'json') {

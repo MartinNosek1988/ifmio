@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Pencil, Trash2 } from 'lucide-react'
 import { Button, Modal, LoadingState, EmptyState } from '../../../shared/components'
 import { useToast } from '../../../shared/components/toast/Toast'
@@ -30,7 +30,10 @@ export default function EvidenceFoldersTab() {
 
   const [form, setForm] = useState({ name: '', code: '', description: '', color: '#6366f1', sortOrder: '0' })
 
-  if (!propertyId && properties.length > 0) setPropertyId(properties[0].id)
+  useEffect(() => {
+    if (!propertyId && properties.length > 0) setPropertyId(properties[0].id)
+  }, [properties, propertyId])
+
   if (!propertyId) return <EmptyState title="Žádná nemovitost" description="Nejprve vytvořte nemovitost." />
 
   const openCreate = () => {

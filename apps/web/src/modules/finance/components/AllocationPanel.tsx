@@ -157,13 +157,16 @@ export function AllocationPanel({ invoiceId, propertyId, readOnly }: Props) {
       note: form.note || undefined,
     }
 
-    // Target
+    // Target — explicitly clear unused fields
     if (form.targetMode === 'owner' && form.targetOwnerId) {
       dto.targetOwnerId = form.targetOwnerId
       dto.unitIds = []
     } else if (form.targetMode === 'units' && form.unitIdsText.trim()) {
       dto.unitIds = form.unitIdsText.split(',').map(s => s.trim()).filter(Boolean)
-      dto.targetOwnerId = undefined
+      dto.targetOwnerId = null
+    } else {
+      dto.targetOwnerId = null
+      dto.unitIds = []
     }
 
     // Advanced fields

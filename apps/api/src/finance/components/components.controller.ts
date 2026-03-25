@@ -46,7 +46,7 @@ export class ComponentsController {
     @Query('date') date?: string,
   ) {
     const asOfDate = date ? new Date(date) : new Date()
-    const balance = await this.service.calculateFundBalance(componentId, asOfDate)
+    const balance = await this.service.calculateFundBalance(componentId, asOfDate, user.tenantId)
     return { balance, asOfDate: asOfDate.toISOString() }
   }
 
