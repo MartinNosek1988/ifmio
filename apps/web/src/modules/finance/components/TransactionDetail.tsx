@@ -55,6 +55,7 @@ export function TransactionDetail({ tx, list, onClose, onNavigate }: Props) {
   }
 
   const handleUnmatch = async () => {
+    if (!window.confirm('Opravdu chcete odpárovat tuto transakci?')) return
     try {
       await unmatchMut.mutateAsync(tx.id)
       toast.success('Odpárováno')

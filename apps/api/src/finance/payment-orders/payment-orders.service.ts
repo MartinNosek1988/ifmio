@@ -82,11 +82,13 @@ export class PaymentOrdersService {
   async cancel(user: AuthUser, id: string) {
     const order = await this.prisma.paymentOrder.findFirst({ where: { id, tenantId: user.tenantId } })
     if (!order) throw new NotFoundException('Příkaz nenalezen')
+    if (order.status === 'exported') throw new BadRequestException('Exportovaný příkaz k úhradě nelze zrušit.')
     await this.prisma.paymentOrder.update({ where: { id }, data: { status: 'cancelled' } })
   }
 
   async exportOrder(user: AuthUser, id: string, format: 'pdf' | 'abo'): Promise<Buffer> {
     const order = await this.getDetail(user, id)
+    if (order.status === 'cancelled') throw new BadRequestException('Zrušený příkaz k úhradě nelze exportovat.')
     await this.prisma.paymentOrder.update({ where: { id }, data: { status: 'exported', exportFormat: format, exportedAt: new Date() } })
     return format === 'pdf' ? this.buildPdf(order) : this.buildAbo(order)
   }

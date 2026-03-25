@@ -69,9 +69,13 @@ export default function PaymentOrdersTab() {
 
   const handleCreate = () => {
     const account = (accounts as any[]).find((a: any) => a.id === bankAccountId)
+    if (!account?.financialContextId) {
+      toast.error('Bankovní účet nemá přiřazen finanční kontext.')
+      return
+    }
     createMut.mutate({
       bankAccountId,
-      financialContextId: account?.financialContextId ?? bankAccountId,
+      financialContextId: account.financialContextId,
       note: note || undefined,
       items: items.filter(it => it.counterpartyAccount && it.amount).map(it => ({
         counterpartyName: it.counterpartyName || undefined,
