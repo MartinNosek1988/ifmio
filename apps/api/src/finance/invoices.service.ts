@@ -518,13 +518,6 @@ export class InvoicesService {
       }
     }
 
-    // TODO: remove debug log
-    console.log('[ISDOC SAVE] parsed fields:', JSON.stringify({
-      number: parsed.number, supplierName: parsed.supplierName, supplierIco: parsed.supplierIco,
-      amountBase: parsed.amountBase, amountTotal: parsed.amountTotal, vatAmount: parsed.vatAmount,
-      variableSymbol: parsed.variableSymbol, dueDate: parsed.dueDate,
-    }))
-
     return this.create(user, {
       ...(parsed as unknown as CreateInvoiceDto),
       isdocXml: xmlContent,
@@ -875,52 +868,50 @@ export class InvoicesService {
 
   async copyInvoice(user: AuthUser, id: string) {
     const src = await this.findOneInternal(user, id)
-    const invoice = await this.prisma.invoice.create({
-      data: {
-        tenantId: user.tenantId,
-        propertyId: src.propertyId,
-        number: `${src.number}-COPY`,
-        type: src.type,
-        supplierName: src.supplierName,
-        supplierIco: src.supplierIco,
-        supplierDic: src.supplierDic,
-        buyerName: src.buyerName,
-        buyerIco: src.buyerIco,
-        buyerDic: src.buyerDic,
-        description: src.description,
-        amountBase: src.amountBase,
-        vatRate: src.vatRate,
-        vatAmount: src.vatAmount,
-        amountTotal: src.amountTotal,
-        currency: src.currency,
-        issueDate: src.issueDate,
-        duzp: src.duzp,
-        dueDate: src.dueDate,
-        variableSymbol: src.variableSymbol,
-        constantSymbol: src.constantSymbol,
-        specificSymbol: src.specificSymbol,
-        lines: src.lines as any,
-        note: src.note,
-        tags: src.tags,
-        approvalStatus: 'draft',
-        isPaid: false,
-        supplierId: src.supplierId,
-        buyerId: src.buyerId,
-      },
-    })
-    // Copy allocations
-    const allocs = await this.prisma.invoiceCostAllocation.findMany({ where: { invoiceId: id } })
-    for (const a of allocs) {
-      await this.prisma.invoiceCostAllocation.create({
-        data: { invoiceId: invoice.id, componentId: a.componentId, amount: a.amount, vatRate: a.vatRate, vatAmount: a.vatAmount, year: a.year, periodFrom: a.periodFrom, periodTo: a.periodTo, consumption: a.consumption, consumptionUnit: a.consumptionUnit, targetOwnerId: a.targetOwnerId, unitIds: a.unitIds, note: a.note },
+
+    const created = await this.prisma.$transaction(async (tx) => {
+      const invoice = await tx.invoice.create({
+        data: {
+          tenantId: user.tenantId, propertyId: src.propertyId,
+          number: `${src.number}-COPY`, type: src.type,
+          supplierName: src.supplierName, supplierIco: src.supplierIco, supplierDic: src.supplierDic,
+          buyerName: src.buyerName, buyerIco: src.buyerIco, buyerDic: src.buyerDic,
+          description: src.description, amountBase: src.amountBase, vatRate: src.vatRate,
+          vatAmount: src.vatAmount, amountTotal: src.amountTotal, currency: src.currency,
+          issueDate: src.issueDate, duzp: src.duzp, dueDate: src.dueDate,
+          variableSymbol: src.variableSymbol, constantSymbol: src.constantSymbol, specificSymbol: src.specificSymbol,
+          lines: src.lines as any, note: src.note, tags: src.tags,
+          approvalStatus: 'draft', isPaid: false,
+          supplierId: src.supplierId, buyerId: src.buyerId,
+        },
       })
-    }
-    await this.recalculateAllocationStatus(invoice.id)
-    return this.serializeInvoice(invoice)
+
+      const allocs = await tx.invoiceCostAllocation.findMany({ where: { invoiceId: id } })
+      if (allocs.length > 0) {
+        await tx.invoiceCostAllocation.createMany({
+          data: allocs.map(({ id: _, invoiceId: __, createdAt: ___, ...rest }) => ({ ...rest, invoiceId: invoice.id })),
+        })
+      }
+
+      const evidAllocs = await tx.evidenceFolderAllocation.findMany({ where: { invoiceId: id } })
+      if (evidAllocs.length > 0) {
+        await tx.evidenceFolderAllocation.createMany({
+          data: evidAllocs.map(({ id: _, invoiceId: __, createdAt: ___, ...rest }) => ({ ...rest, invoiceId: invoice.id })),
+        })
+      }
+
+      return invoice
+    })
+
+    await this.recalculateAllocationStatus(created.id)
+    return this.serializeInvoice(created)
   }
 
   async copyRecurring(user: AuthUser, id: string, period: 'monthly' | 'quarterly', count: number) {
-    if (count < 1 || count > 12) throw new BadRequestException('Počet opakování musí být 1-12')
+    if (period !== 'monthly' && period !== 'quarterly') throw new BadRequestException('Neplatná perioda opakování')
+    if (!Number.isFinite(count) || !Number.isInteger(count)) throw new BadRequestException('Počet opakování musí být celé číslo')
+    const maxCount = period === 'monthly' ? 12 : 4
+    if (count < 1 || count > maxCount) throw new BadRequestException(period === 'monthly' ? 'Počet opakování musí být 1–12' : 'Počet čtvrtletních opakování musí být 1–4')
     const src = await this.findOneInternal(user, id)
     const months = period === 'monthly' ? 1 : 3
     const created: any[] = []
@@ -985,7 +976,9 @@ export class InvoicesService {
     return this.serializeInvoice(updated)
   }
 
-  async getHistory(_user: AuthUser, _id: string) {
+  async getHistory(user: AuthUser, id: string) {
+    const invoice = await this.prisma.invoice.findFirst({ where: { id, tenantId: user.tenantId, deletedAt: null } })
+    if (!invoice) throw new NotFoundException('Doklad nenalezen')
     // TODO: implement audit log query when AuditLog model supports entity filtering
     return []
   }

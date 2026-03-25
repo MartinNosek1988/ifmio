@@ -47,6 +47,7 @@ export function InvoiceContextMenu({ invoice, position, onClose, onOpenDetail, o
   const [newType, setNewType] = useState(invoice.type)
   const [newNumber, setNewNumber] = useState(invoice.number)
   const [newTag, setNewTag] = useState('')
+  const [tags, setTags] = useState<string[]>(invoice.tags ?? [])
 
   // Close on outside click / scroll / escape
   useEffect(() => {
@@ -143,22 +144,22 @@ export function InvoiceContextMenu({ invoice, position, onClose, onOpenDetail, o
       {subModal === 'tags' && (
         <Modal open onClose={() => setSubModal(null)} title="Štítky">
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-            {(invoice.tags ?? []).length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: '.82rem' }}>Žádné štítky</span>}
-            {(invoice.tags ?? []).map(t => (
+            {tags.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: '.82rem' }}>Žádné štítky</span>}
+            {tags.map(t => (
               <Badge key={t} variant="blue">
                 {t}
-                <button onClick={async () => { await removeTagMut.mutateAsync({ id: invoice.id, tag: t }); toast.success(`Štítek "${t}" odebrán`) }}
+                <button onClick={async () => { await removeTagMut.mutateAsync({ id: invoice.id, tag: t }); setTags(prev => prev.filter(x => x !== t)); toast.success(`Štítek "${t}" odebrán`) }}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', marginLeft: 4, padding: 0, fontSize: '.9rem' }}>×</button>
               </Badge>
             ))}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <input value={newTag} onChange={e => setNewTag(e.target.value)} placeholder="Nový štítek…" style={{ ...inputStyle, flex: 1 }}
-              onKeyDown={async e => { if (e.key === 'Enter' && newTag.trim()) { await addTagMut.mutateAsync({ id: invoice.id, tag: newTag.trim() }); setNewTag(''); toast.success('Štítek přidán') } }} />
+              onKeyDown={async e => { if (e.key === 'Enter' && newTag.trim()) { await addTagMut.mutateAsync({ id: invoice.id, tag: newTag.trim() }); setTags(prev => [...prev, newTag.trim()]); setNewTag(''); toast.success('Štítek přidán') } }} />
             <Button size="sm" disabled={!newTag.trim() || addTagMut.isPending} onClick={async () => {
               if (!newTag.trim()) return
               await addTagMut.mutateAsync({ id: invoice.id, tag: newTag.trim() })
-              setNewTag(''); toast.success('Štítek přidán')
+              setTags(prev => [...prev, newTag.trim()]); setNewTag(''); toast.success('Štítek přidán')
             }}>Přidat</Button>
           </div>
         </Modal>
