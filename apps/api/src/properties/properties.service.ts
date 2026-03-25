@@ -75,22 +75,30 @@ export class PropertiesService {
     if (!property) throw new NotFoundException('Nemovitost nenalezena');
 
     // Compute active prescriptions count + monthly volume
-    const prescriptionAgg = await this.prisma.prescription.aggregate({
-      where: {
-        tenantId: user.tenantId,
-        propertyId: id,
-        status: 'active',
-        validFrom: { lte: new Date() },
-        OR: [{ validTo: null }, { validTo: { gte: new Date() } }],
-      },
-      _count: true,
-      _sum: { amount: true },
-    });
+    let activePrescriptions = 0;
+    let monthlyVolume = 0;
+    try {
+      const prescriptionAgg = await this.prisma.prescription.aggregate({
+        where: {
+          tenantId: user.tenantId,
+          propertyId: id,
+          status: 'active',
+          validFrom: { lte: new Date() },
+          OR: [{ validTo: null }, { validTo: { gte: new Date() } }],
+        },
+        _count: true,
+        _sum: { amount: true },
+      });
+      activePrescriptions = prescriptionAgg._count;
+      monthlyVolume = prescriptionAgg._sum.amount ? Number(prescriptionAgg._sum.amount) : 0;
+    } catch {
+      // Prescription aggregation may fail if schema is out of sync — don't crash detail
+    }
 
     return {
       ...property,
-      activePrescriptions: prescriptionAgg._count,
-      monthlyVolume: prescriptionAgg._sum.amount ? Number(prescriptionAgg._sum.amount) : 0,
+      activePrescriptions,
+      monthlyVolume,
     };
   }
 

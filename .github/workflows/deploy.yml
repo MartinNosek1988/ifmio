@@ -34,13 +34,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Resolve failed migration (if any)
-        run: npx prisma migrate resolve --rolled-back 20260511000000_property_detail_fields_unit_sub_resources 2>/dev/null || true
-        working-directory: apps/api
-        env:
-          DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.DIRECT_DATABASE_URL }}
-
       - name: Run Prisma migrations
         run: npx prisma migrate deploy
         working-directory: apps/api
