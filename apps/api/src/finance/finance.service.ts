@@ -1116,4 +1116,72 @@ export class FinanceService {
 
     return { total: prescriptions.length, sent, failed, skipped };
   }
+
+  // ─── TRANSACTION EXPORT ──────────────────────────────────────
+
+  async exportTransactions(
+    user: AuthUser,
+    query: { bankAccountId?: string; status?: string; type?: string; dateFrom?: string; dateTo?: string; financialContextId?: string; search?: string },
+    format: 'csv' | 'xlsx',
+  ): Promise<Buffer> {
+    const { bankAccountId, status, type, dateFrom, dateTo, financialContextId, search } = query
+    const scopeWhere = await this.scope.scopeByRelation(user, 'bankAccount')
+    const where: Prisma.BankTransactionWhereInput = {
+      tenantId: user.tenantId,
+      ...scopeWhere,
+      ...(bankAccountId ? { bankAccountId } : {}),
+      ...(financialContextId ? { bankAccount: { financialContextId } } : {}),
+      ...(status ? { status: status as Prisma.EnumBankTransactionStatusFilter } : {}),
+      ...(type ? { type: type as Prisma.EnumBankTransactionTypeFilter } : {}),
+      ...(dateFrom || dateTo ? { date: { ...(dateFrom ? { gte: new Date(dateFrom) } : {}), ...(dateTo ? { lte: new Date(dateTo) } : {}) } } : {}),
+      ...(search ? { OR: [
+        { description: { contains: search, mode: 'insensitive' as const } },
+        { variableSymbol: { contains: search, mode: 'insensitive' as const } },
+        { counterparty: { contains: search, mode: 'insensitive' as const } },
+      ] } : {}),
+    }
+
+    const rows = await this.prisma.bankTransaction.findMany({
+      where, orderBy: { date: 'desc' }, take: 10_000,
+      include: { bankAccount: { select: { name: true } } },
+    })
+
+    const fmtDate = (d: Date | null) => d ? `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}` : ''
+    const fmtAmount = (n: number) => n.toFixed(2).replace('.', ',')
+
+    const headers = ['Datum', 'Účtováno', 'Protiúčet', 'Popis', 'VS', 'SS', 'KS', 'Částka', 'Typ', 'Stav', 'Cíl', 'Poznámka', 'Účet']
+
+    if (format === 'csv') {
+      const esc = (s: string) => s.includes(';') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s
+      const lines = ['\ufeff' + headers.join(';')]
+      for (const r of rows) {
+        lines.push([
+          esc(fmtDate(r.date)), esc(fmtDate(r.bookingDate)), esc(r.counterparty ?? ''),
+          esc(r.description ?? ''), esc(r.variableSymbol ?? ''), esc(r.specificSymbol ?? ''),
+          esc(r.constantSymbol ?? ''), fmtAmount(Number(r.amount)), r.type,
+          r.status, r.matchTarget ?? '', esc(r.matchNote ?? ''), esc(r.bankAccount?.name ?? ''),
+        ].join(';'))
+      }
+      return Buffer.from(lines.join('\r\n'), 'utf-8')
+    }
+
+    // XLSX
+    const ExcelJS = await import('exceljs')
+    const wb = new ExcelJS.default.Workbook()
+    wb.creator = 'ifmio'
+    const ws = wb.addWorksheet('Transakce')
+    ws.columns = headers.map((h, i) => ({ header: h, key: String(i), width: i === 3 ? 30 : i === 12 ? 20 : 14 }))
+    ws.getRow(1).font = { bold: true }
+
+    for (const r of rows) {
+      ws.addRow({
+        '0': fmtDate(r.date), '1': fmtDate(r.bookingDate), '2': r.counterparty ?? '',
+        '3': r.description ?? '', '4': r.variableSymbol ?? '', '5': r.specificSymbol ?? '',
+        '6': r.constantSymbol ?? '', '7': Number(r.amount), '8': r.type,
+        '9': r.status, '10': r.matchTarget ?? '', '11': r.matchNote ?? '', '12': r.bankAccount?.name ?? '',
+      })
+    }
+
+    return Buffer.from(await wb.xlsx.writeBuffer())
+  }
 }

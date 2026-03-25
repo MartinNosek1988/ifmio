@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Upload, Zap, CheckCircle2 } from 'lucide-react';
+import { Upload, Zap, CheckCircle2, Download } from 'lucide-react';
 import { SearchBar, Table, Badge, Button } from '../../../shared/components';
 import type { Column } from '../../../shared/components';
 import { formatKc, formatCzDate } from '../../../shared/utils/format';
@@ -77,6 +77,30 @@ export function BankTab({
   autoMatchResult, onDismissAutoResult, isAutoMatching, isMatchingAll,
 }: Props) {
   const [filterMatch, setFilterMatch] = useState('');
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async (fmt: 'csv' | 'xlsx') => {
+    setExporting(true)
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL ?? '/api/v1'
+      const token = sessionStorage.getItem('ifmio:access_token')
+      const params = new URLSearchParams()
+      params.set('format', fmt)
+      if (filterType) params.set('type', filterType)
+      if (filterMatch) params.set('status', filterMatch)
+      if (dateFrom) params.set('dateFrom', dateFrom)
+      if (dateTo) params.set('dateTo', dateTo)
+      const res = await fetch(`${baseUrl}/finance/transactions/export?${params}`, { headers: { Authorization: `Bearer ${token}` } })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const blob = await res.blob()
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = `transakce.${fmt}`
+      link.click()
+      URL.revokeObjectURL(link.href)
+    } catch { /* toast could be added here */ }
+    finally { setExporting(false) }
+  };
 
   const filtered = useMemo(() => {
     let list = [...transactions].sort((a, b) => b.datum.localeCompare(a.datum));
@@ -207,6 +231,12 @@ export function BankTab({
             {isMatchingAll ? 'Zpracovávám...' : 'Spárovat vše'}
           </Button>
         )}
+        <Button icon={<Download size={15} />} onClick={() => handleExport('csv')} disabled={exporting}>
+          {exporting ? 'Export...' : 'CSV'}
+        </Button>
+        <Button icon={<Download size={15} />} onClick={() => handleExport('xlsx')} disabled={exporting}>
+          XLSX
+        </Button>
       </div>
 
       <Table

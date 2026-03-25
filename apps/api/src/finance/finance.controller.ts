@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Put, Patch, Delete, Body, Query, Param, Req, HttpCode, HttpStatus,
+  Controller, Get, Post, Put, Patch, Delete, Body, Query, Param, Req, Res, HttpCode, HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { FinanceService } from './finance.service';
@@ -9,7 +9,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuditAction } from '../common/decorators/audit.decorator';
 import { ROLES_MANAGE, ROLES_FINANCE, ROLES_FINANCE_DRAFT } from '../common/constants/roles.constants';
 import { CreateInvoiceDto, UpdateInvoiceDto, InvoiceListQueryDto, MarkPaidDto, ReturnToDraftDto, CreateAllocationDto, UpdateAllocationDto } from './dto/invoice.dto';
-import type { FastifyRequest } from 'fastify';
+import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { AuthUser } from '@ifmio/shared-types';
 
 @ApiTags('Finance')
@@ -96,6 +96,20 @@ export class FinanceController {
     page?: number; limit?: number;
   }) {
     return this.service.listTransactions(user, query);
+  }
+
+  @Get('transactions/export')
+  @ApiOperation({ summary: 'Export transakcí (CSV/XLSX)' })
+  async exportTransactions(
+    @CurrentUser() user: AuthUser,
+    @Query() query: { bankAccountId?: string; status?: string; type?: string; dateFrom?: string; dateTo?: string; financialContextId?: string; search?: string; format?: string },
+    @Res() reply?: FastifyReply,
+  ) {
+    const format = (query.format === 'xlsx' ? 'xlsx' : 'csv') as 'csv' | 'xlsx';
+    const buffer = await this.service.exportTransactions(user, query, format);
+    const ext = format === 'xlsx' ? 'xlsx' : 'csv';
+    const mime = format === 'xlsx' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'text/csv; charset=utf-8';
+    reply!.header('Content-Type', mime).header('Content-Disposition', `attachment; filename="transakce.${ext}"`).send(buffer);
   }
 
   @Post('transactions')
