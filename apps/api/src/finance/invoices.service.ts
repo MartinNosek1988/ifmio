@@ -134,6 +134,8 @@ export class InvoicesService {
         paymentDate: dto.paymentDate ? new Date(dto.paymentDate) : null,
         isPaid: dto.isPaid || false,
         variableSymbol: dto.variableSymbol || null,
+        constantSymbol: dto.constantSymbol || null,
+        specificSymbol: dto.specificSymbol || null,
         transactionId: dto.transactionId || null,
         supplierId: dto.supplierId || null,
         buyerId: dto.buyerId || null,
@@ -180,6 +182,8 @@ export class InvoicesService {
     if (dto.paymentDate !== undefined) data.paymentDate = dto.paymentDate ? new Date(dto.paymentDate) : null;
     if (dto.isPaid !== undefined) data.isPaid = dto.isPaid;
     if (dto.variableSymbol !== undefined) data.variableSymbol = dto.variableSymbol;
+    if (dto.constantSymbol !== undefined) data.constantSymbol = dto.constantSymbol || null;
+    if (dto.specificSymbol !== undefined) data.specificSymbol = dto.specificSymbol || null;
     if (dto.transactionId !== undefined) data.transactionId = dto.transactionId || null;
     if (dto.supplierId !== undefined) data.supplierId = dto.supplierId || null;
     if (dto.buyerId !== undefined) data.buyerId = dto.buyerId || null;
@@ -773,6 +777,10 @@ export class InvoicesService {
   async createAllocation(user: AuthUser, invoiceId: string, dto: CreateAllocationDto) {
     const invoice = await this.prisma.invoice.findFirst({ where: { id: invoiceId, tenantId: user.tenantId, deletedAt: null } })
     if (!invoice) throw new NotFoundException('Doklad nenalezen')
+    if (invoice.approvalStatus !== 'draft') throw new BadRequestException('Alokace lze měnit pouze u dokladů ve stavu Draft')
+
+    const component = await this.prisma.prescriptionComponent.findFirst({ where: { id: dto.componentId, tenantId: user.tenantId, propertyId: invoice.propertyId! } })
+    if (!component) throw new BadRequestException('Složka předpisu nenalezena nebo nepatří k této nemovitosti')
 
     const row = await this.prisma.invoiceCostAllocation.create({
       data: {
@@ -800,9 +808,15 @@ export class InvoicesService {
   async updateAllocation(user: AuthUser, invoiceId: string, allocationId: string, dto: UpdateAllocationDto) {
     const invoice = await this.prisma.invoice.findFirst({ where: { id: invoiceId, tenantId: user.tenantId, deletedAt: null } })
     if (!invoice) throw new NotFoundException('Doklad nenalezen')
+    if (invoice.approvalStatus !== 'draft') throw new BadRequestException('Alokace lze měnit pouze u dokladů ve stavu Draft')
 
     const existing = await this.prisma.invoiceCostAllocation.findFirst({ where: { id: allocationId, invoiceId } })
     if (!existing) throw new NotFoundException('Alokace nenalezena')
+
+    if (dto.componentId) {
+      const component = await this.prisma.prescriptionComponent.findFirst({ where: { id: dto.componentId, tenantId: user.tenantId, propertyId: invoice.propertyId! } })
+      if (!component) throw new BadRequestException('Složka předpisu nenalezena nebo nepatří k této nemovitosti')
+    }
 
     const data: Record<string, unknown> = {}
     if (dto.componentId !== undefined) data.componentId = dto.componentId
@@ -831,6 +845,7 @@ export class InvoicesService {
   async deleteAllocation(user: AuthUser, invoiceId: string, allocationId: string) {
     const invoice = await this.prisma.invoice.findFirst({ where: { id: invoiceId, tenantId: user.tenantId, deletedAt: null } })
     if (!invoice) throw new NotFoundException('Doklad nenalezen')
+    if (invoice.approvalStatus !== 'draft') throw new BadRequestException('Alokace lze měnit pouze u dokladů ve stavu Draft')
 
     const existing = await this.prisma.invoiceCostAllocation.findFirst({ where: { id: allocationId, invoiceId } })
     if (!existing) throw new NotFoundException('Alokace nenalezena')

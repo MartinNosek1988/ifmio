@@ -452,29 +452,29 @@ export class ComponentsService {
 
   // ─── FUND BALANCE ──────────────────────────────────────────────
 
-  async calculateFundBalance(componentId: string, asOfDate: Date) {
+  async calculateFundBalance(componentId: string, asOfDate: Date, tenantId?: string) {
     const component = await this.prisma.prescriptionComponent.findFirst({
-      where: { id: componentId },
+      where: { id: componentId, ...(tenantId ? { tenantId } : {}) },
     })
     if (!component) throw new NotFoundException('Složka předpisu nenalezena')
 
     const initial = component.initialBalance ? Number(component.initialBalance) : 0
 
-    // Income: sum of PrescriptionItem amounts linked to this component
+    // Income: sum of PrescriptionItem amounts linked to this component (by prescription.validFrom)
     const incomeAgg = await this.prisma.prescriptionItem.aggregate({
       where: {
         componentId,
-        prescription: { createdAt: { lte: asOfDate } },
+        prescription: { validFrom: { lte: asOfDate } },
       },
       _sum: { amount: true },
     })
     const income = incomeAgg._sum.amount ? Number(incomeAgg._sum.amount) : 0
 
-    // Expenses: sum of InvoiceCostAllocation amounts linked to this component
+    // Expenses: sum of InvoiceCostAllocation amounts linked to this component (by invoice.issueDate)
     const expenseAgg = await this.prisma.invoiceCostAllocation.aggregate({
       where: {
         componentId,
-        createdAt: { lte: asOfDate },
+        invoice: { issueDate: { lte: asOfDate }, deletedAt: null },
       },
       _sum: { amount: true },
     })
@@ -483,20 +483,20 @@ export class ComponentsService {
     return initial + income - expenses
   }
 
-  async getFundSummary(componentId: string, year: number) {
+  async getFundSummary(componentId: string, year: number, tenantId?: string) {
     const yearStart = new Date(year, 0, 1)
     const yearEnd = new Date(year, 11, 31, 23, 59, 59, 999)
     const prevYearEnd = new Date(year - 1, 11, 31, 23, 59, 59, 999)
 
     const [stavOd, stavDo] = await Promise.all([
-      this.calculateFundBalance(componentId, prevYearEnd),
-      this.calculateFundBalance(componentId, yearEnd),
+      this.calculateFundBalance(componentId, prevYearEnd, tenantId),
+      this.calculateFundBalance(componentId, yearEnd, tenantId),
     ])
 
     const incomeAgg = await this.prisma.prescriptionItem.aggregate({
       where: {
         componentId,
-        prescription: { createdAt: { gte: yearStart, lte: yearEnd } },
+        prescription: { validFrom: { gte: yearStart, lte: yearEnd } },
       },
       _sum: { amount: true },
     })
@@ -505,7 +505,7 @@ export class ComponentsService {
     const expenseAgg = await this.prisma.invoiceCostAllocation.aggregate({
       where: {
         componentId,
-        createdAt: { gte: yearStart, lte: yearEnd },
+        invoice: { issueDate: { gte: yearStart, lte: yearEnd }, deletedAt: null },
       },
       _sum: { amount: true },
     })

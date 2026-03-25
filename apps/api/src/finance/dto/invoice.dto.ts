@@ -1,6 +1,6 @@
 import {
   IsString, IsOptional, IsNumber, IsBoolean, IsDateString,
-  IsEnum, IsArray, ValidateNested, Min, IsNotEmpty,
+  IsEnum, IsArray, ValidateNested, ValidateIf, Min, IsNotEmpty,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -52,7 +52,7 @@ export class UpdateAllocationDto {
   @IsOptional() @IsDateString() periodTo?: string
   @IsOptional() @IsNumber() consumption?: number
   @IsOptional() @IsString() consumptionUnit?: string
-  @IsOptional() @IsString() targetOwnerId?: string
+  @IsOptional() @ValidateIf((o) => o.targetOwnerId !== null) @IsString() targetOwnerId?: string | null
   @IsOptional() @IsArray() @IsString({ each: true }) unitIds?: string[]
   @IsOptional() @IsString() note?: string
 }

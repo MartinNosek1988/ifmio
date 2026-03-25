@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common'
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
 import { Decimal } from '@prisma/client/runtime/library'
 import type { CreateEvidenceFolderDto, UpdateEvidenceFolderDto, CreateEvidenceAllocationDto, UpdateEvidenceAllocationDto } from './dto/evidence-folder.dto'
@@ -56,14 +56,8 @@ export class EvidenceFoldersService {
   }
 
   async deleteFolder(tenantId: string, id: string) {
-    const existing = await this.prisma.evidenceFolder.findFirst({
-      where: { id, tenantId },
-      include: { _count: { select: { allocations: true } } },
-    })
+    const existing = await this.prisma.evidenceFolder.findFirst({ where: { id, tenantId } })
     if (!existing) throw new NotFoundException('Evidenční složka nenalezena')
-    if (existing._count.allocations > 0) {
-      throw new ConflictException('Složka obsahuje náklady, nelze smazat')
-    }
     await this.prisma.evidenceFolder.update({ where: { id }, data: { isActive: false } })
   }
 
@@ -84,6 +78,10 @@ export class EvidenceFoldersService {
   async createAllocation(tenantId: string, invoiceId: string, dto: CreateEvidenceAllocationDto) {
     const invoice = await this.prisma.invoice.findFirst({ where: { id: invoiceId, tenantId, deletedAt: null } })
     if (!invoice) throw new NotFoundException('Doklad nenalezen')
+    if (invoice.approvalStatus !== 'draft') throw new BadRequestException('Alokace lze měnit pouze u dokladů ve stavu Draft')
+
+    const folder = await this.prisma.evidenceFolder.findFirst({ where: { id: dto.evidenceFolderId, tenantId, propertyId: invoice.propertyId!, isActive: true } })
+    if (!folder) throw new BadRequestException('Evidenční složka nenalezena nebo nepatří k této nemovitosti')
 
     const row = await this.prisma.evidenceFolderAllocation.create({
       data: {
@@ -105,9 +103,15 @@ export class EvidenceFoldersService {
   async updateAllocation(tenantId: string, invoiceId: string, allocationId: string, dto: UpdateEvidenceAllocationDto) {
     const invoice = await this.prisma.invoice.findFirst({ where: { id: invoiceId, tenantId, deletedAt: null } })
     if (!invoice) throw new NotFoundException('Doklad nenalezen')
+    if (invoice.approvalStatus !== 'draft') throw new BadRequestException('Alokace lze měnit pouze u dokladů ve stavu Draft')
 
     const existing = await this.prisma.evidenceFolderAllocation.findFirst({ where: { id: allocationId, invoiceId } })
     if (!existing) throw new NotFoundException('Alokace nenalezena')
+
+    if (dto.evidenceFolderId) {
+      const folder = await this.prisma.evidenceFolder.findFirst({ where: { id: dto.evidenceFolderId, tenantId, propertyId: invoice.propertyId!, isActive: true } })
+      if (!folder) throw new BadRequestException('Evidenční složka nenalezena nebo nepatří k této nemovitosti')
+    }
 
     const data: Record<string, unknown> = {}
     if (dto.evidenceFolderId !== undefined) data.evidenceFolderId = dto.evidenceFolderId
@@ -130,6 +134,7 @@ export class EvidenceFoldersService {
   async deleteAllocation(tenantId: string, invoiceId: string, allocationId: string) {
     const invoice = await this.prisma.invoice.findFirst({ where: { id: invoiceId, tenantId, deletedAt: null } })
     if (!invoice) throw new NotFoundException('Doklad nenalezen')
+    if (invoice.approvalStatus !== 'draft') throw new BadRequestException('Alokace lze měnit pouze u dokladů ve stavu Draft')
 
     const existing = await this.prisma.evidenceFolderAllocation.findFirst({ where: { id: allocationId, invoiceId } })
     if (!existing) throw new NotFoundException('Alokace nenalezena')

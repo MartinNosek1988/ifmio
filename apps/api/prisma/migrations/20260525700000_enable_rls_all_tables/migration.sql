@@ -1,5 +1,8 @@
 -- Migration: enable RLS on all public tables flagged by Supabase linter
--- No RLS policies needed — NestJS backend uses service_role key which bypasses RLS automatically.
+-- No row-level policies are defined here.
+-- RLS is bypassed because DATABASE_URL uses the Postgres role that owns the tables
+-- (mapped to Supabase's service_role, which has BYPASSRLS privilege).
+-- Application-level tenant isolation is enforced in NestJS services via tenantId filters.
 
 ALTER TABLE public.user_features ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.kanban_tasks ENABLE ROW LEVEL SECURITY;

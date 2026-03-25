@@ -126,7 +126,7 @@ export class FundSettlementService {
       castka: -Math.abs(Number(a.amount)),
     }))
 
-    // KROK 4: Per-owner data
+    // KROK 4: Per-owner data — batch load to avoid N+1
     const assignments = await this.prisma.componentAssignment.findMany({
       where: {
         componentId,
@@ -137,46 +137,57 @@ export class FundSettlementService {
     })
     const unitIds = [...new Set(assignments.map(a => a.unitId))]
 
+    // Batch: units, ownerships, prescription incomes
+    const [units, ownerships, prescriptionItems] = await Promise.all([
+      this.prisma.unit.findMany({
+        where: { id: { in: unitIds } },
+        select: { id: true, name: true, spaceType: true, commonAreaShare: true },
+      }),
+      this.prisma.unitOwnership.findMany({
+        where: { unitId: { in: unitIds }, isActive: true, tenantId },
+        include: { party: { select: { displayName: true } } },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.prescriptionItem.findMany({
+        where: {
+          componentId,
+          prescription: { unitId: { in: unitIds }, validFrom: { gte: yearStart, lte: yearEnd } },
+        },
+        select: { amount: true, prescription: { select: { unitId: true } } },
+      }),
+    ])
+
+    // Build lookup maps
+    const unitMap = new Map(units.map(u => [u.id, u]))
+    const ownerMap = new Map<string, typeof ownerships[0]>()
+    for (const o of ownerships) {
+      if (!ownerMap.has(o.unitId)) ownerMap.set(o.unitId, o) // first = most recent (orderBy desc)
+    }
+    const incomeMap = new Map<string, number>()
+    for (const pi of prescriptionItems) {
+      const uid = pi.prescription.unitId
+      if (uid) incomeMap.set(uid, (incomeMap.get(uid) ?? 0) + Number(pi.amount))
+    }
+
     const owners: OwnerSettlement[] = []
 
     for (const unitId of unitIds) {
-      const unit = await this.prisma.unit.findFirst({
-        where: { id: unitId },
-        select: { name: true, spaceType: true, commonAreaShare: true },
-      })
+      const unit = unitMap.get(unitId)
       if (!unit) continue
 
-      // Get owner via UnitOwnership
-      const ownership = await this.prisma.unitOwnership.findFirst({
-        where: { unitId, isActive: true, tenantId },
-        include: { party: { select: { displayName: true } } },
-        orderBy: { createdAt: 'desc' },
-      })
-
+      const ownership = ownerMap.get(unitId)
       const vlastnikJmeno = ownership?.party.displayName ?? 'Neznámý vlastník'
 
-      // Share: use UnitOwnership share, fallback to unit.commonAreaShare
       let citatel = ownership?.shareNumerator ?? 0
       let jmenovatel = ownership?.shareDenominator ?? 1
       if (citatel === 0 && unit.commonAreaShare) {
-        // Convert decimal share to fraction approximation
         const share = Number(unit.commonAreaShare)
         citatel = Math.round(share * 10000)
         jmenovatel = 10000
       }
       if (jmenovatel === 0) jmenovatel = 1
 
-      // Income for this unit
-      const unitIncomeAgg = await this.prisma.prescriptionItem.aggregate({
-        where: {
-          componentId,
-          prescription: { unitId, validFrom: { gte: yearStart, lte: yearEnd } },
-        },
-        _sum: { amount: true },
-      })
-      const predepsanoDo = unitIncomeAgg._sum.amount ? Number(unitIncomeAgg._sum.amount) : 0
-
-      // Owner's share of expenses
+      const predepsanoDo = incomeMap.get(unitId) ?? 0
       const podil = jmenovatel > 0 ? citatel / jmenovatel : 0
       const vydajePerVlastnik = new Decimal(vydajeTotal).mul(new Decimal(podil)).toDecimalPlaces(2).toNumber()
       const podilNaZustatku = new Decimal(stavFonduDo).mul(new Decimal(podil)).toDecimalPlaces(2).toNumber()
