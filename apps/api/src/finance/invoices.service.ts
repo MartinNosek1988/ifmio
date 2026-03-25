@@ -401,14 +401,8 @@ export class InvoicesService {
   }
 
   async importIsdoc(user: AuthUser, xmlContent: string) {
-    // TODO: remove debug log
-    console.log('[ISDOC DEBUG] raw XML first 500 chars:', xmlContent.substring(0, 500))
-
     // Parse ISDOC XML to extract invoice data
     const parsed = this.parseIsdocXml(xmlContent);
-
-    // TODO: remove debug log
-    console.log('[ISDOC DEBUG] parsed result:', JSON.stringify(parsed, null, 2).substring(0, 2000))
 
     // Auto-create or find supplier in residents
     const supplierIco = parsed.supplierIco as string;
@@ -533,99 +527,85 @@ export class InvoicesService {
 
   private parseIsdocXml(xml: string): Record<string, unknown> {
     // Strip namespace prefixes for simpler parsing (isdoc:ID → ID)
-    const stripped = xml.replace(/<\/?[\w-]+:/g, (m) => m[0] === '<' && m[1] === '/' ? '</' : '<');
+    const s = xml.replace(/<\/?[\w-]+:/g, (m) => m[0] === '<' && m[1] === '/' ? '</' : '<');
 
-    // Extract text content from a tag within a section
-    const getFrom = (section: string, tag: string) => {
-      const match = section.match(new RegExp(`<${tag}[^>]*>([^<]*)</${tag}>`, 'i'));
-      return match?.[1]?.trim() || '';
+    // Helpers
+    const tag = (src: string, t: string) => {
+      const m = src.match(new RegExp(`<${t}[^>]*>([^<]*)</${t}>`, 'i'));
+      return m?.[1]?.trim() ?? '';
     };
-    const get = (tag: string) => getFrom(stripped, tag);
-    const getNum = (tag: string) => parseFloat(getFrom(stripped, tag)) || 0;
-
-    // Extract sections
-    const getSection = (tag: string, source = stripped) => {
-      const match = source.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, 'i'));
-      return match?.[1] || '';
+    const section = (src: string, t: string) => {
+      const m = src.match(new RegExp(`<${t}[^>]*>([\\s\\S]*?)</${t}>`, 'i'));
+      return m?.[1] ?? '';
     };
+    const num = (src: string, t: string) => parseFloat(tag(src, t)) || 0;
 
-    const supplierXml = getSection('AccountingSupplierParty');
-    const buyerXml = getSection('AccountingCustomerParty');
-    const paymentMeansXml = getSection('PaymentMeans');
-    const legalMonetaryXml = getSection('LegalMonetaryTotal');
-    const taxTotalXml = getSection('TaxTotal');
+    // Extract top-level sections first
+    const supplierXml = section(s, 'AccountingSupplierParty');
+    const buyerXml = section(s, 'AccountingCustomerParty');
+    const paymentXml = section(s, 'PaymentMeans');
+    const monetaryXml = section(s, 'LegalMonetaryTotal');
+    const taxXml = section(s, 'TaxTotal');
 
-    // Parse party: IČO from PartyIdentification/ID, DIČ from PartyTaxScheme/CompanyID
-    const parseParty = (section: string) => {
-      const partyIdSection = getSection('PartyIdentification', section);
-      const taxSchemeSection = getSection('PartyTaxScheme', section);
-      return {
-        name: getFrom(section, 'Name') || getFrom(section, 'TradeName'),
-        ico: getFrom(partyIdSection, 'ID') || getFrom(section, 'IČ'),
-        dic: getFrom(taxSchemeSection, 'CompanyID') || getFrom(section, 'TaxRegistrationID') || getFrom(section, 'DIČ'),
-      };
-    };
-
-    const supplier = parseParty(supplierXml);
-    const buyer = parseParty(buyerXml);
-
-    // Document number — get ID that's a direct child of Invoice, not nested in parties
-    // Remove party sections first to avoid matching their IDs
-    const xmlWithoutParties = stripped
+    // Document number — extract from XML with all nested blocks removed
+    const rootOnly = s
       .replace(/<AccountingSupplierParty[\s\S]*?<\/AccountingSupplierParty>/gi, '')
       .replace(/<AccountingCustomerParty[\s\S]*?<\/AccountingCustomerParty>/gi, '')
       .replace(/<PaymentMeans[\s\S]*?<\/PaymentMeans>/gi, '')
       .replace(/<TaxTotal[\s\S]*?<\/TaxTotal>/gi, '')
-      .replace(/<InvoiceLine[\s\S]*?<\/InvoiceLine>/gi, '');
-    const docNumber = getFrom(xmlWithoutParties, 'ID') || get('DocumentNumber') || `ISDOC-${Date.now()}`;
+      .replace(/<TaxSubTotal[\s\S]*?<\/TaxSubTotal>/gi, '')
+      .replace(/<InvoiceLine[\s\S]*?<\/InvoiceLine>/gi, '')
+      .replace(/<TaxScheme[\s\S]*?<\/TaxScheme>/gi, '');
+    const docNumber = tag(rootOnly, 'ID') || tag(s, 'DocumentNumber') || `ISDOC-${Date.now()}`;
 
-    // Variable symbol — search in PaymentMeans section
-    const variableSymbol = getFrom(paymentMeansXml, 'VariableSymbol') || get('VariableSymbol') || '';
+    // Supplier: IČO from PartyIdentification/ID, DIČ from PartyTaxScheme/CompanyID
+    const supplierPartyId = section(supplierXml, 'PartyIdentification');
+    const supplierTaxScheme = section(supplierXml, 'PartyTaxScheme');
+    const supplierName = tag(supplierXml, 'Name') || tag(supplierXml, 'TradeName');
+    const supplierIco = tag(supplierPartyId, 'ID');
+    const supplierDic = tag(supplierTaxScheme, 'CompanyID');
 
-    // Payment method from PaymentMeansCode
-    const pmCode = getFrom(paymentMeansXml, 'PaymentMeansCode');
-    const paymentMethodMap: Record<string, string> = { '42': 'bank_transfer', '10': 'cash', '48': 'card' };
-
-    // Due date — search in PaymentMeans, then PaymentTerms, then top-level DueDate
-    const dueDate = getFrom(paymentMeansXml, 'PaymentDueDate')
-      || getFrom(getSection('PaymentTerms'), 'PaymentDueDate')
-      || get('DueDate')
-      || '';
+    // Buyer: same structure
+    const buyerPartyId = section(buyerXml, 'PartyIdentification');
+    const buyerTaxScheme = section(buyerXml, 'PartyTaxScheme');
+    const buyerName = tag(buyerXml, 'Name') || tag(buyerXml, 'TradeName');
+    const buyerIco = tag(buyerPartyId, 'ID');
+    const buyerDic = tag(buyerTaxScheme, 'CompanyID');
 
     // Amounts from LegalMonetaryTotal
-    const amountBase = parseFloat(getFrom(legalMonetaryXml, 'TaxExclusiveAmount')) || getNum('TaxableAmount');
-    const amountTotal = parseFloat(getFrom(legalMonetaryXml, 'PayableAmount'))
-      || parseFloat(getFrom(legalMonetaryXml, 'TaxInclusiveAmount'))
-      || amountBase;
-    const vatAmount = parseFloat(getFrom(taxTotalXml, 'TaxAmount')) || 0;
+    const amountBase = num(monetaryXml, 'TaxExclusiveAmount');
+    const amountTotal = num(monetaryXml, 'PayableAmount') || num(monetaryXml, 'TaxInclusiveAmount') || amountBase;
+    const vatAmount = num(taxXml, 'TaxAmount');
 
-    // VAT rate — from first InvoiceLine's ClassifiedTaxCategory/Percent, or calculated
-    let vatRate = 0;
-    const firstLineXml = getSection('InvoiceLine');
-    if (firstLineXml) {
-      vatRate = parseFloat(getFrom(firstLineXml, 'Percent')) || 0;
-    }
-    if (!vatRate && amountBase > 0) {
-      vatRate = Math.round((vatAmount / amountBase) * 100);
-    }
+    // VAT rate — from TaxSubTotal or InvoiceLine, fallback to calculation
+    let vatRate = num(section(taxXml, 'TaxSubTotal'), 'Percent')
+      || num(section(s, 'InvoiceLine'), 'Percent');
+    if (!vatRate && amountBase > 0) vatRate = Math.round((vatAmount / amountBase) * 100);
 
-    // Currency from any currencyID attribute
-    const currMatch = stripped.match(/currencyID="([A-Z]{3})"/i);
-    const currency = currMatch?.[1] || get('CurrencyCode') || 'CZK';
+    // Payment symbols + due date from PaymentMeans
+    const variableSymbol = tag(paymentXml, 'VariableSymbol');
+    const dueDate = tag(paymentXml, 'PaymentDueDate') || tag(paymentXml, 'DueDate')
+      || tag(section(s, 'PaymentTerms'), 'PaymentDueDate') || tag(s, 'DueDate');
+    const pmCode = tag(paymentXml, 'PaymentMeansCode');
+    const pmMap: Record<string, string> = { '42': 'bank_transfer', '10': 'cash', '48': 'card' };
+
+    // Currency
+    const currMatch = s.match(/currencyID="([A-Z]{3})"/i);
+    const currency = currMatch?.[1] || tag(s, 'LocalCurrencyCode') || tag(s, 'CurrencyCode') || 'CZK';
 
     // Invoice lines
     const lines: Array<Record<string, unknown>> = [];
     const lineRegex = /<InvoiceLine[^>]*>([\s\S]*?)<\/InvoiceLine>/gi;
     let lineMatch: RegExpExecArray | null;
     let lineIdx = 0;
-    while ((lineMatch = lineRegex.exec(stripped)) !== null) {
+    while ((lineMatch = lineRegex.exec(s)) !== null) {
       const l = lineMatch[1];
-      const description = getFrom(l, 'Name') || getFrom(l, 'Description') || getFrom(l, 'Note') || `Položka ${++lineIdx}`;
-      const quantity = parseFloat(getFrom(l, 'InvoicedQuantity')) || 1;
-      const unit = getFrom(l, 'unitCode') || 'ks';
-      const unitPrice = parseFloat(getFrom(l, 'PriceAmount')) || 0;
-      const lineTotal = parseFloat(getFrom(l, 'LineExtensionAmount')) || quantity * unitPrice;
-      const lineVatRate = parseFloat(getFrom(l, 'Percent')) || 0;
+      const description = tag(l, 'Name') || tag(l, 'Description') || tag(l, 'Note') || `Položka ${++lineIdx}`;
+      const quantity = parseFloat(tag(l, 'InvoicedQuantity')) || 1;
+      const unit = tag(l, 'unitCode') || 'ks';
+      const unitPrice = num(l, 'PriceAmount');
+      const lineTotal = num(l, 'LineExtensionAmount') || quantity * unitPrice;
+      const lineVatRate = num(l, 'Percent');
       const lineVatAmount = Math.round(lineTotal * lineVatRate / 100 * 100) / 100;
       lines.push({ description, quantity, unit, unitPrice, lineTotal, vatRate: lineVatRate, vatAmount: lineVatAmount });
     }
@@ -633,23 +613,15 @@ export class InvoicesService {
     return {
       number: docNumber,
       type: 'received',
-      supplierName: supplier.name,
-      supplierIco: supplier.ico,
-      supplierDic: supplier.dic,
-      buyerName: buyer.name,
-      buyerIco: buyer.ico,
-      buyerDic: buyer.dic,
-      description: get('Note') || get('Description') || '',
-      amountBase,
-      vatAmount,
-      amountTotal,
-      vatRate,
-      currency,
-      issueDate: get('IssueDate') || new Date().toISOString().slice(0, 10),
-      duzp: get('TaxPointDate') || get('IssueDate') || '',
-      dueDate,
+      supplierName, supplierIco, supplierDic,
+      buyerName, buyerIco, buyerDic,
+      description: tag(rootOnly, 'Note') || tag(rootOnly, 'Description') || '',
+      amountBase, vatAmount, amountTotal, vatRate, currency,
+      issueDate: tag(s, 'IssueDate') || new Date().toISOString().slice(0, 10),
+      duzp: tag(s, 'TaxPointDate') || tag(s, 'IssueDate') || '',
+      dueDate: dueDate || '',
       variableSymbol,
-      ...(pmCode && paymentMethodMap[pmCode] ? { paymentMethod: paymentMethodMap[pmCode] } : {}),
+      ...(pmCode && pmMap[pmCode] ? { paymentMethod: pmMap[pmCode] } : {}),
       lines: lines.length > 0 ? lines : undefined,
     };
   }
