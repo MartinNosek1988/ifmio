@@ -98,6 +98,7 @@ model Tenant {
   aiExtractionLogs           AiExtractionLog[]
   supplierExtractionPatterns SupplierExtractionPattern[]
   aiExtractionBatches        AiExtractionBatch[]
+  invoiceTrainingSamples     InvoiceTrainingSample[]
 
   @@map("tenants")
 }
@@ -4216,4 +4217,22 @@ model AiExtractionBatchItem {
 
   @@index([batchId])
   @@map("ai_extraction_batch_items")
+}
+
+model InvoiceTrainingSample {
+  id            String   @id @default(cuid())
+  tenantId      String
+  dokladId      String?
+  pdfHash       String
+  imageBase64   String   @db.Text
+  extractedJson Json
+  source        String   // "claude_vision" | "manual"
+  confirmedAt   DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, pdfHash])
+  @@index([tenantId])
+  @@map("invoice_training_samples")
 }
