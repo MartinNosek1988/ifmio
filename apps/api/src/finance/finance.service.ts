@@ -1193,7 +1193,9 @@ export class FinanceService {
             status: sp.matchTarget ? 'matched' : 'unmatched',
             matchTarget: (sp.matchTarget as any) ?? null,
             matchedEntityId: sp.matchedEntityId ?? null,
-            matchedEntityType: sp.matchedEntityId ? 'prescription' : null,
+            matchedEntityType: sp.matchedEntityId
+              ? (sp.matchTarget === 'INVOICE' ? 'invoice' : sp.matchTarget === 'COMPONENT' ? 'component' : 'prescription')
+              : null,
             matchedAt: sp.matchTarget ? new Date() : null,
             matchedBy: sp.matchTarget ? 'manual' : null,
             financialContextId: tx.financialContextId,

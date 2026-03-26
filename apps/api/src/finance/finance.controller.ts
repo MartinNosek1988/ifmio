@@ -293,6 +293,7 @@ export class FinanceController {
 
   @Post('transactions/:id/split')
   @Roles(...ROLES_FINANCE)
+  @AuditAction('BankTransaction', 'SPLIT')
   @ApiOperation({ summary: 'Rozdělit transakci' })
   splitTransaction(
     @CurrentUser() user: AuthUser,
