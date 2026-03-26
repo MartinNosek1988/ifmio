@@ -10,7 +10,7 @@ import { AllocationPanel } from './AllocationPanel';
 import { PaymentModal } from './PaymentModal';
 import { PairTransactionModal } from './PairTransactionModal';
 import { INVOICE_TYPE_LABELS, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_VARIANTS } from './DokladyTab';
-import { useSubmitInvoice, useApproveInvoice, useReturnInvoiceToDraft } from '../api/finance.queries';
+import { useSubmitInvoice, useApproveInvoice, useReturnInvoiceToDraft, useInvoicePaymentQr } from '../api/finance.queries';
 import { useAuthStore } from '../../../core/auth';
 
 export const PAYMENT_METHODS = [
@@ -44,6 +44,8 @@ export function InvoiceDetailModal({ invoice, transactions, onClose, onEdit, onM
   const submitMut = useSubmitInvoice();
   const approveMut = useApproveInvoice();
   const returnMut = useReturnInvoiceToDraft();
+  const showQr = invoice.paymentIban || invoice.type === 'issued';
+  const { data: qrData } = useInvoicePaymentQr(showQr ? invoice.id : undefined);
 
   const row = (label: string, value: React.ReactNode) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: '0.88rem' }}>
@@ -150,6 +152,7 @@ export function InvoiceDetailModal({ invoice, transactions, onClose, onEdit, onM
       {row('Variabilní symbol', invoice.variableSymbol)}
       {invoice.constantSymbol && row('Konstantní symbol', invoice.constantSymbol)}
       {invoice.specificSymbol && row('Specifický symbol', invoice.specificSymbol)}
+      {invoice.paymentIban && row('IBAN', invoice.paymentIban)}
       {row('Měna', invoice.currency || 'CZK')}
 
       {/* Supplier */}
@@ -183,6 +186,28 @@ export function InvoiceDetailModal({ invoice, transactions, onClose, onEdit, onM
       {/* Invoice lines */}
       {invoice.lines && invoice.lines.length > 0 && (
         <InvoiceLinesDetail lines={invoice.lines} />
+      )}
+
+      {/* QR payment */}
+      {showQr && (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>QR Platba</div>
+          {qrData?.qrDataUrl ? (
+            <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', background: 'var(--surface-2, var(--surface))', borderRadius: 8, padding: 14 }}>
+              <img src={qrData.qrDataUrl} alt="QR platba" style={{ width: 160, height: 160, borderRadius: 4 }} />
+              <div style={{ fontSize: '0.88rem' }}>
+                <div style={{ color: 'var(--text-muted)', marginBottom: 6 }}>Naskenujte QR kód</div>
+                {row('IBAN', invoice.paymentIban?.replace(/(.{4})/g, '$1 ').trim())}
+                {row('Částka', formatKc(invoice.amountTotal))}
+                {invoice.variableSymbol && row('VS', invoice.variableSymbol)}
+              </div>
+            </div>
+          ) : (
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic', padding: '8px 0' }}>
+              Pro zobrazení QR kódu vyplňte IBAN v detailu faktury.
+            </div>
+          )}
+        </div>
       )}
 
       {/* Cost allocations */}

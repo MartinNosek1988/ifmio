@@ -848,6 +848,7 @@ model Invoice {
   variableSymbol   String?
   constantSymbol   String?
   specificSymbol   String?
+  paymentIban      String?
   allocationStatus String    @default("unallocated") // unallocated | partial | allocated
   transactionId  String?
   supplierId     String?

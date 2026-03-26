@@ -351,6 +351,16 @@ export class FinanceController {
     return this.invoicesService.exportIsdoc(user, id);
   }
 
+  @Get('invoices/:id/payment-qr')
+  @ApiOperation({ summary: 'QR kód pro platbu (SPAYD)' })
+  getPaymentQr(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Query('size') size?: string,
+  ) {
+    return this.invoicesService.getPaymentQr(user, id, size ? parseInt(size, 10) : 200);
+  }
+
   @Put('invoices/:id')
   @Roles(...ROLES_FINANCE_DRAFT)
   @AuditAction('invoice', 'update')

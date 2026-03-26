@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, ForbiddenException 
 import { PrismaService } from '../prisma/prisma.service';
 import { PropertyScopeService } from '../common/services/property-scope.service';
 import { Decimal } from '@prisma/client/runtime/library';
+import QRCode from 'qrcode';
 import type { CreateInvoiceDto, UpdateInvoiceDto, InvoiceListQueryDto, MarkPaidDto, CreateAllocationDto, UpdateAllocationDto } from './dto/invoice.dto';
 import type { AuthUser } from '@ifmio/shared-types';
 
@@ -147,6 +148,7 @@ export class InvoicesService {
         variableSymbol: dto.variableSymbol || null,
         constantSymbol: dto.constantSymbol || null,
         specificSymbol: dto.specificSymbol || null,
+        paymentIban: dto.paymentIban || null,
         transactionId: dto.transactionId || null,
         supplierId: dto.supplierId || null,
         buyerId: dto.buyerId || null,
@@ -195,6 +197,7 @@ export class InvoicesService {
     if (dto.variableSymbol !== undefined) data.variableSymbol = dto.variableSymbol;
     if (dto.constantSymbol !== undefined) data.constantSymbol = dto.constantSymbol || null;
     if (dto.specificSymbol !== undefined) data.specificSymbol = dto.specificSymbol || null;
+    if (dto.paymentIban !== undefined) data.paymentIban = dto.paymentIban || null;
     if (dto.transactionId !== undefined) data.transactionId = dto.transactionId || null;
     if (dto.supplierId !== undefined) data.supplierId = dto.supplierId || null;
     if (dto.buyerId !== undefined) data.buyerId = dto.buyerId || null;
@@ -351,6 +354,25 @@ export class InvoicesService {
       approvedAt: invoice.approvedAt?.toISOString() ?? null,
       rejectedAt: invoice.rejectedAt?.toISOString() ?? null,
     };
+  }
+
+  async getPaymentQr(user: AuthUser, id: string, size = 200): Promise<{ qrString: string | null; qrDataUrl: string | null }> {
+    const invoice = await this.findOneInternal(user, id)
+    const iban = invoice.paymentIban
+    const total = Number(invoice.amountTotal)
+
+    if (!iban || total <= 0) return { qrString: null, qrDataUrl: null }
+
+    const parts = ['SPD*1.0', `ACC:${iban.replace(/\s/g, '')}`, `AM:${total.toFixed(2)}`, `CC:${invoice.currency || 'CZK'}`]
+    const msg = `Faktura ${invoice.number}`.slice(0, 60)
+    parts.push(`MSG:${msg}`)
+    if (invoice.variableSymbol) parts.push(`X-VS:${invoice.variableSymbol}`)
+    if (invoice.constantSymbol) parts.push(`X-KS:${invoice.constantSymbol}`)
+    if (invoice.specificSymbol) parts.push(`X-SS:${invoice.specificSymbol}`)
+
+    const qrString = parts.join('*')
+    const qrDataUrl = await QRCode.toDataURL(qrString, { width: size, margin: 1 })
+    return { qrString, qrDataUrl }
   }
 
   private async logAudit(user: AuthUser, action: string, entityId: string) {

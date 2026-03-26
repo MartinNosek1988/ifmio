@@ -148,6 +148,7 @@ export interface ApiInvoice {
   variableSymbol?: string;
   constantSymbol?: string | null;
   specificSymbol?: string | null;
+  paymentIban?: string | null;
   allocationStatus: string;
   tags: string[];
   transactionId?: string | null;
@@ -343,6 +344,8 @@ export const financeApi = {
       apiClient.post<ApiInvoice>('/finance/invoices/import-isdoc', { xmlContent }).then((r) => r.data),
     exportIsdoc: (id: string) =>
       apiClient.get<string>(`/finance/invoices/${id}/export-isdoc`).then((r) => r.data),
+    getPaymentQr: (id: string, size = 200) =>
+      apiClient.get<{ qrString: string | null; qrDataUrl: string | null }>(`/finance/invoices/${id}/payment-qr?size=${size}`).then((r) => r.data),
     submit: (id: string) =>
       apiClient.post<ApiInvoice>(`/finance/invoices/${id}/submit`).then((r) => r.data),
     approve: (id: string) =>

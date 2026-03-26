@@ -56,6 +56,7 @@ export function InvoiceForm({ invoice, transactions, onClose }: {
     variableSymbol: invoice?.variableSymbol || '',
     constantSymbol: invoice?.constantSymbol || '',
     specificSymbol: invoice?.specificSymbol || '',
+    paymentIban: invoice?.paymentIban || '',
     transactionId: invoice?.transactionId || '',
     note: invoice?.note || '',
     isPaid: invoice?.isPaid || false,
@@ -143,6 +144,7 @@ export function InvoiceForm({ invoice, transactions, onClose }: {
       variableSymbol: form.variableSymbol || undefined,
       constantSymbol: form.constantSymbol || undefined,
       specificSymbol: form.specificSymbol || undefined,
+      paymentIban: form.paymentIban || undefined,
       transactionId: form.transactionId || undefined,
       note: form.note || undefined,
       isPaid: form.isPaid,
@@ -319,6 +321,13 @@ export function InvoiceForm({ invoice, transactions, onClose }: {
           <label className="form-label">Specifický symbol</label>
           <input value={form.specificSymbol} onChange={e => set('specificSymbol', e.target.value)} style={inputStyle()} />
         </div>
+      </div>
+
+      {/* Row 6.5: IBAN for QR payment */}
+      <div style={{ marginBottom: 14 }}>
+        <label className="form-label">IBAN pro platbu</label>
+        <input value={form.paymentIban} onChange={e => set('paymentIban', e.target.value)} style={inputStyle()} placeholder="CZ74 5500 0000 0002 0218 8785" />
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>IBAN účtu příjemce pro generování QR platby</div>
       </div>
 
       {/* Row 7: transaction link + paid */}

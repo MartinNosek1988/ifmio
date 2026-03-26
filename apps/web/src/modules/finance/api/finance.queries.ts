@@ -320,6 +320,14 @@ export function useExportIsdoc() {
   });
 }
 
+export function useInvoicePaymentQr(invoiceId: string | undefined) {
+  return useQuery({
+    queryKey: ['finance', 'invoices', invoiceId, 'payment-qr'],
+    queryFn: () => financeApi.invoices.getPaymentQr(invoiceId!),
+    enabled: !!invoiceId,
+  });
+}
+
 export function useSubmitInvoice() {
   const qc = useQueryClient();
   return useMutation({
