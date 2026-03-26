@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Plus, FileText, FileCode } from 'lucide-react';
+import { Plus, FileText, FileCode, Upload, ChevronDown, Cpu, Clock } from 'lucide-react';
 import { KpiCard, SearchBar, Table, Badge, Button, Modal } from '../../../shared/components';
 import type { Column } from '../../../shared/components';
 import { formatKc, formatCzDate } from '../../../shared/utils/format';
@@ -124,6 +124,18 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
   const deletePatternMut = useDeleteExtractionPattern();
 
   const pendingBatches = (batches ?? []).filter(b => b.status === 'submitted' || b.status === 'processing');
+  const [uploadMenuOpen, setUploadMenuOpen] = useState(false);
+  const uploadMenuRef = useRef<HTMLDivElement>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
+
+  // Close upload menu on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (uploadMenuRef.current && !uploadMenuRef.current.contains(e.target as Node)) setUploadMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const downloadAttachment = async (invoiceId: string, type: 'pdf' | 'isdoc') => {
     try {
@@ -317,13 +329,6 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
           <option value="">Schválení: Vše</option>
           {Object.entries(APPROVAL_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 6, border: '1px solid var(--border)', cursor: 'pointer', background: 'var(--surface)', color: 'var(--text)', fontSize: '0.85rem' }}>
-          <FileText size={15} /> Import ISDOC
-          <input ref={isdocRef} type="file" accept=".isdoc,.isdocx,.xml" onChange={handleIsdocImport} style={{ display: 'none' }} />
-        </label>
-        <Button onClick={() => setShowBulkImport(true)} icon={<FileText size={15} />}>Hromadný import</Button>
-        <Button onClick={() => setShowPdfExtract(true)} icon={<FileText size={15} />}>Import z PDF (AI)</Button>
-        <Button onClick={() => setShowBatchImport(true)} icon={<Clock size={15} />}>Dávkově (-50%)</Button>
         <button
           onClick={() => setShowFilters(!showFilters)}
           style={{ ...selectStyle, cursor: 'pointer', position: 'relative', fontSize: '0.85rem' }}
@@ -335,6 +340,44 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
             </span>
           )}
         </button>
+
+        {/* Upload dropdown */}
+        <div style={{ position: 'relative' }} ref={uploadMenuRef}>
+          <button
+            onClick={() => setUploadMenuOpen(o => !o)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text)' }}
+          >
+            <Upload size={15} /> Nahrát doklad <ChevronDown size={13} />
+          </button>
+          {uploadMenuOpen && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, minWidth: 220, zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}>
+                <input ref={isdocRef} type="file" accept=".isdoc,.isdocx,.xml" multiple style={{ display: 'none' }} onChange={e => { setUploadMenuOpen(false); handleIsdocImport(e); }} />
+                <FileText size={16} style={{ marginTop: 2, color: '#1D9E75', flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>ISDOC</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Importovat faktury z XML</div>
+                </div>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}>
+                <input ref={pdfInputRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={() => { setUploadMenuOpen(false); setShowPdfExtract(true); }} />
+                <Cpu size={16} style={{ marginTop: 2, color: '#1D9E75', flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>PDF (AI extrakce)</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Vytěžit data pomocí AI</div>
+                </div>
+              </label>
+              <button onClick={() => { setUploadMenuOpen(false); setShowBatchImport(true); }} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                <Clock size={16} style={{ marginTop: 2, color: 'var(--text-muted)', flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>Dávkově <span style={{ marginLeft: 6, fontSize: 11, background: '#E1F5EE', color: '#0F6E56', padding: '1px 6px', borderRadius: 4 }}>-50%</span></div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Zpracování do 24 hodin</div>
+                </div>
+              </button>
+            </div>
+          )}
+        </div>
+
         <Button variant="primary" icon={<Plus size={15} />} data-testid="finance-doklady-add-btn" onClick={() => { setEditInvoice(null); setShowForm(true); }}>Nový doklad</Button>
       </div>
 
