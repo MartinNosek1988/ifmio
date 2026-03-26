@@ -11,6 +11,7 @@ import { InvoiceDetailModal } from './InvoiceDetailModal';
 import { InvoiceForm } from './InvoiceForm';
 import { InvoiceContextMenu } from './InvoiceContextMenu';
 import { IsdocImportModal } from './IsdocImportModal';
+import { PdfExtractModal } from './PdfExtractModal';
 
 export const INVOICE_TYPE_LABELS: Record<string, string> = {
   received: 'Přijatá', issued: 'Vydaná', proforma: 'Záloha', credit_note: 'Dobropis', internal: 'Interní',
@@ -105,6 +106,7 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
   const approveMut = useApproveInvoice();
   const isdocRef = useRef<HTMLInputElement>(null);
   const [showBulkImport, setShowBulkImport] = useState(false);
+  const [showPdfExtract, setShowPdfExtract] = useState(false);
 
   const handleIsdocImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -255,6 +257,7 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
           <input ref={isdocRef} type="file" accept=".isdoc,.isdocx,.xml" onChange={handleIsdocImport} style={{ display: 'none' }} />
         </label>
         <Button onClick={() => setShowBulkImport(true)} icon={<FileText size={15} />}>Hromadný import</Button>
+        <Button onClick={() => setShowPdfExtract(true)} icon={<FileText size={15} />}>Import z PDF (AI)</Button>
         <button
           onClick={() => setShowFilters(!showFilters)}
           style={{ ...selectStyle, cursor: 'pointer', position: 'relative', fontSize: '0.85rem' }}
@@ -383,6 +386,7 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
 
       {/* Bulk import modal */}
       {showBulkImport && <IsdocImportModal onClose={() => setShowBulkImport(false)} />}
+      {showPdfExtract && <PdfExtractModal onClose={() => setShowPdfExtract(false)} />}
     </div>
   );
 }

@@ -337,6 +337,13 @@ export class FinanceController {
     return this.invoicesService.create(user, dto);
   }
 
+  @Post('invoices/extract-pdf')
+  @Roles(...ROLES_FINANCE)
+  @ApiOperation({ summary: 'Extrakce dat z PDF faktury pomocí AI' })
+  extractPdf(@CurrentUser() user: AuthUser, @Body() body: { pdfBase64: string; fileName?: string }) {
+    return this.invoicesService.extractFromPdf(user, body.pdfBase64);
+  }
+
   @Post('invoices/import-isdoc')
   @Roles(...ROLES_FINANCE_DRAFT)
   @AuditAction('invoice', 'import_isdoc')

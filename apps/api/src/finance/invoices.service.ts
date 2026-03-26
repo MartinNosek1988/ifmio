@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
+import Anthropic from '@anthropic-ai/sdk';
 import { PrismaService } from '../prisma/prisma.service';
 import { PropertyScopeService } from '../common/services/property-scope.service';
 import { LocalStorageProvider } from '../documents/storage/local.storage';
@@ -20,11 +22,17 @@ interface BulkImportItem {
 
 @Injectable()
 export class InvoicesService {
+  private anthropic: Anthropic | null = null
+
   constructor(
     private prisma: PrismaService,
     private scope: PropertyScopeService,
     private storage: LocalStorageProvider,
-  ) {}
+    private config: ConfigService,
+  ) {
+    const apiKey = this.config.get<string>('ANTHROPIC_API_KEY')
+    if (apiKey) this.anthropic = new Anthropic({ apiKey })
+  }
 
   async list(user: AuthUser, query: InvoiceListQueryDto) {
     const { type, isPaid, search, approvalStatus, financialContextId,
@@ -606,6 +614,47 @@ export class InvoicesService {
       created: results.filter(r => r.success).length,
       failed: results.filter(r => !r.success).length,
     }
+  }
+
+  async extractFromPdf(user: AuthUser, pdfBase64: string) {
+    if (!this.anthropic) throw new BadRequestException('AI extrakce není dostupná — ANTHROPIC_API_KEY není nastaven')
+    if (pdfBase64.length > 10 * 1024 * 1024) throw new BadRequestException('PDF je příliš velké (max ~7.5 MB)')
+
+    const response = await this.anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1024,
+      system: `Jsi expert na extrakci dat z českých faktur.
+Extrahuj strukturovaná data z faktury a vrať POUZE validní JSON objekt.
+Pokud pole není na faktuře uvedeno, vrať null pro dané pole.
+Číselné hodnoty vrať jako čísla (ne stringy).
+Data vrať ve formátu YYYY-MM-DD.
+IČO je 8místné číslo bez mezer. DIČ začíná "CZ" + IČO.`,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 } },
+          { type: 'text', text: `Extrahuj data z této faktury a vrať JSON:
+{"number":null,"supplierName":null,"supplierIco":null,"supplierDic":null,"buyerName":null,"buyerIco":null,"buyerDic":null,"description":null,"amountBase":null,"vatAmount":null,"amountTotal":null,"vatRate":null,"issueDate":null,"duzp":null,"dueDate":null,"variableSymbol":null,"constantSymbol":null,"specificSymbol":null,"paymentIban":null,"currency":"CZK","paymentMethod":null}
+Vrať POUZE JSON, žádný jiný text.` },
+        ],
+      }],
+    })
+
+    const textBlock = response.content.find(c => c.type === 'text')
+    if (!textBlock || textBlock.type !== 'text') throw new BadRequestException('Nepodařilo se extrahovat data z PDF')
+
+    let extracted: Record<string, unknown>
+    try {
+      extracted = JSON.parse(textBlock.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim())
+    } catch {
+      throw new BadRequestException('Nepodařilo se parsovat výstup AI')
+    }
+
+    const keyFields = ['number', 'supplierName', 'amountTotal', 'issueDate', 'variableSymbol']
+    const filled = keyFields.filter(k => extracted[k] != null && extracted[k] !== '').length
+    const confidence = filled >= 4 ? 'high' : filled >= 2 ? 'medium' : 'low'
+
+    return { extracted, confidence }
   }
 
   async exportIsdoc(user: AuthUser, id: string): Promise<string> {
