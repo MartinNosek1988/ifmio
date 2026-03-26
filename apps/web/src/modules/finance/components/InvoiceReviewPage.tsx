@@ -100,12 +100,14 @@ function LineItemsEditor({ lines, onChange }: {
     onChange([...lines, { _id: crypto.randomUUID(), description: '', quantity: 1, unit: 'ks', unitPrice: 0, lineTotal: 0, vatRate: 21, vatAmount: 0 }])
   }
 
+  const safeNum = (v: any) => { const n = Number(v); return Number.isFinite(n) ? n : 0 }
+
   const updateLine = (idx: number, field: keyof InvoiceLine, value: any) => {
     const updated = [...lines]
     ;(updated[idx] as any)[field] = value
     const line = updated[idx]
-    line.lineTotal = line.quantity * line.unitPrice
-    line.vatAmount = line.lineTotal * (line.vatRate / 100)
+    line.lineTotal = safeNum(line.quantity) * safeNum(line.unitPrice)
+    line.vatAmount = line.lineTotal * (safeNum(line.vatRate) / 100)
     onChange(updated)
   }
 
@@ -246,15 +248,17 @@ export default function InvoiceReviewPage() {
     }
   }, [activeField])
 
-  // FIX 5: recalculate totals when lines change
+  const safeNum = (v: any) => { const n = Number(v); return Number.isFinite(n) ? n : 0 }
+
+  // Recalculate totals when lines change (NaN-safe)
   const handleLinesChange = (newLines: LineWithId[]) => {
     setLines(newLines)
     setDirty(true)
     const base = newLines.reduce((s, l) =>
-      s + (Number(l.quantity) || 1) * (Number(l.unitPrice) || 0), 0)
+      s + safeNum(l.quantity) * safeNum(l.unitPrice), 0)
     const vat = newLines.reduce((s, l) =>
-      s + (Number(l.quantity) || 1) * (Number(l.unitPrice) || 0)
-        * ((Number(l.vatRate) || 0) / 100), 0)
+      s + safeNum(l.quantity) * safeNum(l.unitPrice)
+        * (safeNum(l.vatRate) / 100), 0)
     setForm(f => ({
       ...f,
       amountBase: base.toFixed(2),
@@ -263,8 +267,8 @@ export default function InvoiceReviewPage() {
     }))
   }
 
-  const handleSave = async () => {
-    if (!id) return
+  const handleSave = async (): Promise<boolean> => {
+    if (!id) return false
     // Strip _id from lines before sending to API
     const apiLines = lines.map(({ _id, ...rest }) => rest)
     try {
@@ -299,14 +303,19 @@ export default function InvoiceReviewPage() {
       })
       setDirty(false)
       toast.success('Doklad uložen')
+      return true
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Uložení selhalo')
+      return false
     }
   }
 
   const handleSubmit = async () => {
     if (!id) return
-    if (dirty) await handleSave()
+    if (dirty) {
+      const saved = await handleSave()
+      if (!saved) return
+    }
     try {
       await submitMut.mutateAsync(id)
       toast.success('Odesláno ke schválení')
@@ -338,10 +347,13 @@ export default function InvoiceReviewPage() {
         if (pdf) {
           import('../../../core/api/client').then(({ apiClient }) => {
             apiClient.get(`/documents/${pdf.id}/download`, { responseType: 'arraybuffer' }).then(res => {
-              const bytes = new Uint8Array(res.data as ArrayBuffer)
-              let binary = ''
-              for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
-              setPdfBase64(btoa(binary))
+              const blob = new Blob([res.data as ArrayBuffer], { type: 'application/pdf' })
+              const reader = new FileReader()
+              reader.onloadend = () => {
+                const result = reader.result as string
+                setPdfBase64(result.substring(result.indexOf(',') + 1))
+              }
+              reader.readAsDataURL(blob)
             }).catch(() => {})
           })
         }

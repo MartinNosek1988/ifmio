@@ -51,14 +51,13 @@ export function PdfExtractModal({ onClose }: { onClose: () => void }) {
         qc.invalidateQueries({ queryKey: ['finance', 'invoices'] })
 
         // Store extraction data + PDF in sessionStorage for review page
-        sessionStorage.setItem(
-          `invoice-extraction-${invoiceId}`,
-          JSON.stringify({
-            originalExtracted: extracted,
-            confidence: data.confidence,
-            pdfBase64: pdfBase64Ref.current,
-          }),
-        )
+        try {
+          const payload: Record<string, any> = { originalExtracted: extracted, confidence: data.confidence }
+          if (pdfBase64Ref.current && pdfBase64Ref.current.length < 5 * 1024 * 1024) {
+            payload.pdfBase64 = pdfBase64Ref.current
+          }
+          sessionStorage.setItem(`invoice-extraction-${invoiceId}`, JSON.stringify(payload))
+        } catch { /* quota exceeded — review page will load PDF from DB */ }
 
         // Fire & forget: save extraction pattern + training data
         financeApi.invoices.saveExtractionPattern(invoiceId, extracted, pdfBase64Ref.current ?? undefined).catch(() => {})
