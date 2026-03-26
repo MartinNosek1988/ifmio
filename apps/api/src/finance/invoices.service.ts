@@ -518,6 +518,20 @@ export class InvoicesService {
       }
     }
 
+    // TODO: remove after diagnosis
+    console.log('[ISDOC TRACE]', {
+      number: parsed.number,
+      supplierName: parsed.supplierName,
+      supplierIco: parsed.supplierIco,
+      amountBase: parsed.amountBase?.toString(),
+      amountTotal: parsed.amountTotal?.toString(),
+      vatAmount: parsed.vatAmount?.toString(),
+      vatRate: parsed.vatRate,
+      variableSymbol: parsed.variableSymbol,
+      issueDate: parsed.issueDate,
+      dueDate: parsed.dueDate,
+    });
+
     return this.create(user, {
       ...(parsed as unknown as CreateInvoiceDto),
       isdocXml: xmlContent,
@@ -539,6 +553,8 @@ export class InvoicesService {
   private parseIsdocXml(xml: string): Record<string, unknown> {
     // Strip namespace prefixes for simpler parsing (isdoc:ID → ID)
     const s = xml.replace(/<\/?[\w-]+:/g, (m) => m[0] === '<' && m[1] === '/' ? '</' : '<');
+    // TODO: remove after diagnosis
+    console.log('[ISDOC XML STRIPPED]', s.substring(0, 300));
 
     // Helpers
     const tag = (src: string, t: string) => {
