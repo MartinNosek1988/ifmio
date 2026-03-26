@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Plus, FileText, FileCode, Upload, ChevronDown, Cpu, Clock } from 'lucide-react';
+import { Plus, FileText, FileCode, Upload, ChevronDown, Cpu, Clock, Sparkles } from 'lucide-react';
 import { KpiCard, SearchBar, Table, Badge, Button, Modal } from '../../../shared/components';
 import type { Column } from '../../../shared/components';
 import { formatKc, formatCzDate } from '../../../shared/utils/format';
@@ -7,7 +7,6 @@ import type { ApiInvoice } from '../api/finance.api';
 import { financeApi } from '../api/finance.api';
 import type { FinTransaction } from '../types';
 import { useInvoices, useInvoiceStats, useDeleteInvoice, useMarkInvoicePaid, useImportIsdoc, useExportIsdoc, usePairInvoice, useSubmitInvoice, useApproveInvoice, useAiExtractionStats, useExtractionPatterns, useDeleteExtractionPattern, useBatchList } from '../api/finance.queries';
-import { Sparkles, Clock } from 'lucide-react';
 import React from 'react';
 import { useAuthStore } from '../../../core/auth';
 import { InvoiceDetailModal } from './InvoiceDetailModal';
