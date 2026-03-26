@@ -60,8 +60,8 @@ export function PdfExtractModal({ onClose }: { onClose: () => void }) {
           }),
         )
 
-        // Fire & forget: save extraction pattern
-        financeApi.invoices.saveExtractionPattern(invoiceId, extracted).catch(() => {})
+        // Fire & forget: save extraction pattern + training data
+        financeApi.invoices.saveExtractionPattern(invoiceId, extracted, pdfBase64 ?? undefined).catch(() => {})
 
         toast.success('Faktura vytvořena — otevírám detail')
         onClose()

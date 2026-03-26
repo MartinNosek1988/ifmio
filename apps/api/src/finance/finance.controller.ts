@@ -5,6 +5,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { FinanceService } from './finance.service';
 import { InvoicesService } from './invoices.service';
 import { AiBatchService } from './ai-batch.service';
+import { TrainingDataService } from './training-data.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuditAction } from '../common/decorators/audit.decorator';
@@ -21,6 +22,7 @@ export class FinanceController {
     private service: FinanceService,
     private invoicesService: InvoicesService,
     private aiBatchService: AiBatchService,
+    private trainingDataService: TrainingDataService,
   ) {}
 
   @Get('summary')
@@ -357,9 +359,9 @@ export class FinanceController {
   @ApiOperation({ summary: 'Uložit vzor extrakce pro dodavatele' })
   saveExtractionPattern(
     @CurrentUser() user: AuthUser,
-    @Body() body: { invoiceId: string; originalExtracted: Record<string, any> },
+    @Body() body: { invoiceId: string; originalExtracted: Record<string, any>; pdfBase64?: string },
   ) {
-    return this.invoicesService.saveExtractionPattern(user, body.invoiceId, body.originalExtracted);
+    return this.invoicesService.saveExtractionPattern(user, body.invoiceId, body.originalExtracted, body.pdfBase64);
   }
 
   @Get('invoices/extraction-patterns')
@@ -375,6 +377,28 @@ export class FinanceController {
   @ApiOperation({ summary: 'Smazat vzor extrakce dodavatele' })
   deleteExtractionPattern(@CurrentUser() user: AuthUser, @Param('supplierIco') supplierIco: string) {
     return this.invoicesService.deleteExtractionPattern(user, supplierIco);
+  }
+
+  // ─── TRAINING DATA ─────────────────────────────────────────────
+
+  @Get('training-data/stats')
+  @Roles(...ROLES_FINANCE)
+  @ApiOperation({ summary: 'Statistiky trénovacích dat pro AI' })
+  async trainingDataStats(@CurrentUser() user: AuthUser) {
+    const count = await this.trainingDataService.countByTenant(user.tenantId);
+    return { count, readyForTraining: count >= 500 };
+  }
+
+  @Get('training-data/export')
+  @Roles('tenant_owner', 'tenant_admin')
+  @ApiOperation({ summary: 'Export trénovacích dat (NDJSON)' })
+  async trainingDataExport(@CurrentUser() user: AuthUser, @Res() reply: FastifyReply) {
+    const samples = await this.trainingDataService.exportForTraining(user.tenantId);
+    const ndjson = samples.map(s => JSON.stringify({ imageBase64: s.imageBase64, extractedJson: s.extractedJson })).join('\n');
+    return reply
+      .header('Content-Type', 'application/x-ndjson')
+      .header('Content-Disposition', 'attachment; filename="training-data.ndjson"')
+      .send(ndjson);
   }
 
   // ─── BATCH EXTRACTION ───────────────────────────────────────────

@@ -9,6 +9,7 @@ import { Decimal } from '@prisma/client/runtime/library';
 import QRCode from 'qrcode';
 import type { CreateInvoiceDto, UpdateInvoiceDto, InvoiceListQueryDto, MarkPaidDto, CreateAllocationDto, UpdateAllocationDto } from './dto/invoice.dto';
 import type { AuthUser } from '@ifmio/shared-types';
+import { TrainingDataService } from './training-data.service';
 
 /** Roles allowed to approve invoices */
 const APPROVAL_ROLES = ['tenant_owner', 'tenant_admin', 'finance_manager'];
@@ -29,6 +30,7 @@ export class InvoicesService {
     private scope: PropertyScopeService,
     private storage: LocalStorageProvider,
     private config: ConfigService,
+    private trainingData: TrainingDataService,
   ) {
     const apiKey = this.config.get<string>('ANTHROPIC_API_KEY')
     if (apiKey) this.anthropic = new Anthropic({ apiKey })
@@ -790,6 +792,7 @@ Vrať POUZE JSON, žádný jiný text.${fewShotSection}` },
     user: AuthUser,
     invoiceId: string,
     originalExtracted: Record<string, any>,
+    pdfBase64?: string,
   ) {
     const invoice = await this.prisma.invoice.findFirst({
       where: { id: invoiceId, tenantId: user.tenantId, deletedAt: null },
@@ -850,6 +853,38 @@ Vrať POUZE JSON, žádný jiný text.${fewShotSection}` },
         updatedAt: new Date(),
       },
     })
+
+    // Save training sample for future Donut fine-tuning
+    if (pdfBase64) {
+      this.trainingData.save({
+        tenantId: user.tenantId,
+        dokladId: invoiceId,
+        pdfBase64,
+        confirmedFields: {
+          number: invoice.number,
+          supplierName: invoice.supplierName,
+          supplierIco: invoice.supplierIco,
+          supplierDic: invoice.supplierDic,
+          buyerName: invoice.buyerName,
+          buyerIco: invoice.buyerIco,
+          buyerDic: invoice.buyerDic,
+          description: invoice.description,
+          amountBase: Number(invoice.amountBase),
+          vatRate: invoice.vatRate,
+          vatAmount: Number(invoice.vatAmount),
+          amountTotal: Number(invoice.amountTotal),
+          issueDate: invoice.issueDate?.toISOString()?.slice(0, 10) ?? null,
+          duzp: invoice.duzp?.toISOString()?.slice(0, 10) ?? null,
+          dueDate: invoice.dueDate?.toISOString()?.slice(0, 10) ?? null,
+          variableSymbol: invoice.variableSymbol,
+          constantSymbol: invoice.constantSymbol,
+          specificSymbol: invoice.specificSymbol,
+          paymentIban: invoice.paymentIban,
+          currency: invoice.currency,
+        },
+        source: 'claude_vision',
+      }).catch(() => {}) // non-critical — don't fail the main flow
+    }
 
     return { saved: true, supplierIco: invoice.supplierIco, corrections: corrections.length }
   }
