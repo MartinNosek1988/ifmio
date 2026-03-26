@@ -7,16 +7,19 @@ interface Props {
   title: ReactNode;
   subtitle?: ReactNode;
   wide?: boolean;
+  extraWide?: boolean;
   footer?: ReactNode;
   children: ReactNode;
 }
 
-export function Modal({ open, onClose, title, subtitle, wide, footer, children }: Props) {
+export function Modal({ open, onClose, title, subtitle, wide, extraWide, footer, children }: Props) {
   if (!open) return null;
+
+  const cls = `modal${wide ? ' modal--wide' : ''}${extraWide ? ' modal--extra-wide' : ''}`
 
   return (
     <div className="modal-overlay" data-testid="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className={`modal${wide ? ' modal--wide' : ''}`} onClick={(e) => e.stopPropagation()}>
+      <div className={cls} onClick={(e) => e.stopPropagation()}>
         <div className="modal__header">
           <div>
             <div className="modal__title">{title}</div>

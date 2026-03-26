@@ -1,13 +1,16 @@
-import { useState, useRef } from 'react'
-import { Upload, FileText, Sparkles } from 'lucide-react'
+import React, { useState, useRef, useCallback, Suspense } from 'react'
+import { Upload, FileText, Sparkles, ArrowDownLeft } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Modal, Badge, Button } from '../../../shared/components'
 import { useToast } from '../../../shared/components/toast/Toast'
 import { apiClient } from '../../../core/api/client'
 import { financeApi } from '../api/finance.api'
 
+const PdfViewer = React.lazy(() => import('./PdfViewer'))
+
 type Step = 'upload' | 'extracting' | 'review'
 type Confidence = 'high' | 'medium' | 'low'
+type FieldConfidence = Record<string, Confidence>
 
 const CONFIDENCE_LABELS: Record<Confidence, { label: string; variant: string }> = {
   high: { label: 'Vysoká jistota — zkontrolujte a uložte', variant: 'green' },
@@ -15,11 +18,70 @@ const CONFIDENCE_LABELS: Record<Confidence, { label: string; variant: string }> 
   low: { label: 'Nízká jistota — pečlivě zkontrolujte všechna pole', variant: 'red' },
 }
 
+const CONFIDENCE_DOTS: Record<Confidence, string> = {
+  high: 'var(--text-muted)',
+  medium: '#f59e0b',
+  low: '#ef4444',
+}
+
+const FIELD_LABELS: Record<string, string> = {
+  number: 'Číslo faktury',
+  currency: 'Měna',
+  supplierName: 'Název dodavatele',
+  supplierIco: 'IČO dodavatele',
+  supplierDic: 'DIČ dodavatele',
+  buyerName: 'Název odběratele',
+  buyerIco: 'IČO odběratele',
+  buyerDic: 'DIČ odběratele',
+  amountBase: 'Základ',
+  vatRate: 'DPH sazba',
+  vatAmount: 'DPH',
+  amountTotal: 'Celkem',
+  issueDate: 'Datum vystavení',
+  duzp: 'DÚZP',
+  dueDate: 'Splatnost',
+  variableSymbol: 'VS',
+  constantSymbol: 'KS',
+  specificSymbol: 'SS',
+  paymentIban: 'IBAN',
+  description: 'Popis',
+}
+
+// Determine per-field confidence from extracted data
+function computeFieldConfidence(extracted: Record<string, any>): FieldConfidence {
+  const highIfFilled = ['number', 'supplierName', 'amountTotal', 'amountBase']
+  const mediumFields = ['variableSymbol', 'paymentIban', 'supplierDic', 'supplierIco', 'buyerDic', 'buyerIco']
+  const lowIfEmpty = ['constantSymbol', 'specificSymbol']
+
+  const result: FieldConfidence = {}
+  for (const key of Object.keys(FIELD_LABELS)) {
+    const val = extracted[key]
+    const filled = val !== undefined && val !== null && val !== ''
+    if (highIfFilled.includes(key)) {
+      result[key] = filled ? 'high' : 'low'
+    } else if (lowIfEmpty.includes(key)) {
+      result[key] = filled ? 'medium' : 'low'
+    } else if (mediumFields.includes(key)) {
+      result[key] = filled ? 'medium' : 'low'
+    } else {
+      result[key] = filled ? 'high' : 'medium'
+    }
+  }
+  return result
+}
+
 const inputStyle: React.CSSProperties = {
   padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)',
   background: 'var(--surface-2, var(--surface))', color: 'var(--text)',
   boxSizing: 'border-box', fontSize: '.84rem', width: '100%',
 }
+
+const assignBtnStyle = (active: boolean): React.CSSProperties => ({
+  background: active ? '#1D9E75' : 'transparent',
+  color: active ? '#fff' : 'var(--text-muted)',
+  border: 'none', borderRadius: 4, padding: '2px 4px',
+  cursor: 'pointer', fontSize: '.78rem', lineHeight: 1, flexShrink: 0,
+})
 
 export function PdfExtractModal({ onClose }: { onClose: () => void }) {
   const toast = useToast()
@@ -29,14 +91,23 @@ export function PdfExtractModal({ onClose }: { onClose: () => void }) {
   const [step, setStep] = useState<Step>('upload')
   const [confidence, setConfidence] = useState<Confidence>('medium')
   const [form, setForm] = useState<Record<string, any>>({})
+  const [pdfBase64, setPdfBase64] = useState<string | null>(null)
+  const [activeField, setActiveField] = useState<string | null>(null)
+  const [fieldConfidence, setFieldConfidence] = useState<FieldConfidence>({})
+  const [editedFields, setEditedFields] = useState<Set<string>>(new Set())
+  const [flashField, setFlashField] = useState<string | null>(null)
 
-  const set = (key: string, value: any) => setForm(prev => ({ ...prev, [key]: value }))
+  const set = (key: string, value: any) => {
+    setForm(prev => ({ ...prev, [key]: value }))
+    setEditedFields(prev => new Set(prev).add(key))
+  }
 
   const extractMut = useMutation({
     mutationFn: (base64: string) => financeApi.invoices.extractPdf(base64),
     onSuccess: (data) => {
       setForm(data.extracted)
       setConfidence(data.confidence)
+      setFieldConfidence(computeFieldConfidence(data.extracted))
       setStep('review')
     },
     onError: (e: any) => {
@@ -64,6 +135,7 @@ export function PdfExtractModal({ onClose }: { onClose: () => void }) {
     let binary = ''
     for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
     const base64 = btoa(binary)
+    setPdfBase64(base64)
     extractMut.mutate(base64)
   }
 
@@ -100,25 +172,106 @@ export function PdfExtractModal({ onClose }: { onClose: () => void }) {
   }
 
   const handleReset = () => {
-    setStep('upload'); setForm({})
+    setStep('upload'); setForm({}); setPdfBase64(null)
+    setActiveField(null); setFieldConfidence({}); setEditedFields(new Set())
   }
 
-  const c = CONFIDENCE_LABELS[confidence]
+  const handleTextSelected = useCallback((text: string) => {
+    if (activeField) {
+      setForm(prev => ({ ...prev, [activeField]: text }))
+      setEditedFields(prev => new Set(prev).add(activeField))
+      setFlashField(activeField)
+      setTimeout(() => setFlashField(null), 1000)
+      setActiveField(null)
+    }
+  }, [activeField])
 
-  return (
-    <Modal open onClose={onClose} wide title="Import z PDF (AI)" footer={
-      <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-        <Button onClick={onClose}>Zrušit</Button>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {step === 'review' && <Button onClick={handleReset}>Zpracovat další PDF</Button>}
-          {step === 'review' && (
-            <Button variant="primary" onClick={handleSave} disabled={createMut.isPending}>
-              {createMut.isPending ? 'Ukládám...' : 'Uložit fakturu'}
-            </Button>
+  const c = CONFIDENCE_LABELS[confidence]
+  const isReview = step === 'review'
+
+  // Count low-confidence fields
+  const lowConfFields = Object.entries(fieldConfidence)
+    .filter(([key, conf]) => conf === 'low' && !editedFields.has(key))
+
+  // Confidence dot for a field
+  const confDot = (key: string) => {
+    if (editedFields.has(key)) return '#1D9E75' // green = manually edited
+    return CONFIDENCE_DOTS[fieldConfidence[key] || 'high']
+  }
+
+  const confTooltip = (key: string) => {
+    if (editedFields.has(key)) return 'Ručně opraveno'
+    const fc = fieldConfidence[key]
+    if (fc === 'high') return 'AI jistota: vysoká'
+    if (fc === 'medium') return 'AI jistota: střední'
+    return 'AI jistota: nízká'
+  }
+
+  // Field with assign button + confidence dot
+  const Field = ({ name, label, type, style: extraStyle, placeholder }: {
+    name: string; label: string; type?: string; style?: React.CSSProperties; placeholder?: string
+  }) => {
+    const isActive = activeField === name
+    const isFlashing = flashField === name
+    const borderColor = isActive ? '#1D9E75' : isFlashing ? '#1D9E75' : undefined
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+          <span
+            title={confTooltip(name)}
+            style={{
+              width: 7, height: 7, borderRadius: '50%', display: 'inline-block',
+              background: confDot(name), flexShrink: 0,
+            }}
+          />
+          <label className="form-label" style={{ margin: 0, flex: 1 }}>{label}</label>
+          {pdfBase64 && (
+            <button
+              onClick={() => setActiveField(isActive ? null : name)}
+              style={assignBtnStyle(isActive)}
+              title="Vyberte text z PDF"
+            >
+              <ArrowDownLeft size={12} />
+            </button>
           )}
         </div>
+        <input
+          type={type}
+          value={form[name] ?? ''}
+          onChange={e => set(name, e.target.value)}
+          placeholder={placeholder}
+          style={{
+            ...inputStyle,
+            ...extraStyle,
+            ...(borderColor ? { borderColor, boxShadow: `0 0 0 1px ${borderColor}` } : {}),
+            ...(isFlashing ? { transition: 'border-color 0.3s, box-shadow 0.3s' } : {}),
+          }}
+        />
       </div>
-    }>
+    )
+  }
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      extraWide={isReview}
+      wide={!isReview}
+      title="Import z PDF (AI)"
+      footer={
+        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+          <Button onClick={onClose}>Zrušit</Button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {isReview && <Button onClick={handleReset}>Zpracovat další PDF</Button>}
+            {isReview && (
+              <Button variant="primary" onClick={handleSave} disabled={createMut.isPending}>
+                {createMut.isPending ? 'Ukládám...' : 'Uložit fakturu'}
+              </Button>
+            )}
+          </div>
+        </div>
+      }
+    >
 
       {/* Step 1: Upload */}
       {step === 'upload' && (
@@ -158,120 +311,112 @@ export function PdfExtractModal({ onClose }: { onClose: () => void }) {
         </div>
       )}
 
-      {/* Step 3: Review */}
-      {step === 'review' && (
-        <div>
-          <div style={{ marginBottom: 16, padding: '8px 14px', borderRadius: 6, background: 'var(--surface-2, var(--surface))', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Sparkles size={16} />
-            <Badge variant={c.variant as any}>{c.label}</Badge>
-          </div>
+      {/* Step 3: Review — split layout */}
+      {isReview && (
+        <div style={{
+          display: 'flex', gap: 16,
+          flexDirection: window.innerWidth <= 900 ? 'column' : 'row',
+          minHeight: 0,
+        }}>
+          {/* Left: PDF Viewer */}
+          {pdfBase64 && (
+            <div style={{
+              flex: '1 1 50%', minWidth: 0,
+              maxHeight: window.innerWidth <= 900 ? 300 : 600,
+              display: 'flex', flexDirection: 'column',
+            }}>
+              <Suspense fallback={
+                <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>
+                  Načítám PDF viewer...
+                </div>
+              }>
+                <PdfViewer
+                  pdfBase64={pdfBase64}
+                  onTextSelected={handleTextSelected}
+                  highlightedTexts={Object.values(form).filter(Boolean) as string[]}
+                  activeFieldLabel={activeField ? FIELD_LABELS[activeField] || activeField : null}
+                />
+              </Suspense>
+              {!activeField && (
+                <div style={{
+                  textAlign: 'center', fontSize: '.78rem', color: 'var(--text-muted)',
+                  marginTop: 6, fontStyle: 'italic',
+                }}>
+                  Klikněte na tlačítko u pole a poté vyberte text v PDF
+                </div>
+              )}
+            </div>
+          )}
 
-          {/* Number + Type */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-            <div>
-              <label className="form-label">Číslo faktury *</label>
-              <input value={form.number ?? ''} onChange={e => set('number', e.target.value)} style={inputStyle} />
+          {/* Right: Form */}
+          <div style={{
+            flex: '1 1 50%', minWidth: 0, overflowY: 'auto',
+            maxHeight: window.innerWidth <= 900 ? undefined : 600,
+          }}>
+            {/* Confidence banner */}
+            <div style={{ marginBottom: 12, padding: '8px 14px', borderRadius: 6, background: 'var(--surface-2, var(--surface))', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Sparkles size={16} />
+              <Badge variant={c.variant as any}>{c.label}</Badge>
             </div>
-            <div>
-              <label className="form-label">Měna</label>
-              <input value={form.currency ?? 'CZK'} onChange={e => set('currency', e.target.value)} style={inputStyle} />
-            </div>
-          </div>
 
-          {/* Supplier */}
-          <div style={{ fontSize: '.78rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 }}>Dodavatel</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
-            <div>
-              <label className="form-label">Název</label>
-              <input value={form.supplierName ?? ''} onChange={e => set('supplierName', e.target.value)} style={inputStyle} />
-            </div>
-            <div>
-              <label className="form-label">IČO</label>
-              <input value={form.supplierIco ?? ''} onChange={e => set('supplierIco', e.target.value)} style={inputStyle} />
-            </div>
-            <div>
-              <label className="form-label">DIČ</label>
-              <input value={form.supplierDic ?? ''} onChange={e => set('supplierDic', e.target.value)} style={inputStyle} />
-            </div>
-          </div>
+            {/* Low confidence warning */}
+            {lowConfFields.length > 0 && (
+              <div style={{
+                marginBottom: 12, padding: '6px 12px', borderRadius: 6,
+                background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)',
+                fontSize: '.82rem', color: '#b45309',
+              }}>
+                {lowConfFields.length} {lowConfFields.length === 1 ? 'pole má' : 'polí má'} nízkou jistotu — prosím zkontrolujte
+              </div>
+            )}
 
-          {/* Buyer */}
-          <div style={{ fontSize: '.78rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 }}>Odběratel</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
-            <div>
-              <label className="form-label">Název</label>
-              <input value={form.buyerName ?? ''} onChange={e => set('buyerName', e.target.value)} style={inputStyle} />
+            {/* Number + Currency */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <Field name="number" label="Číslo faktury *" />
+              <Field name="currency" label="Měna" />
             </div>
-            <div>
-              <label className="form-label">IČO</label>
-              <input value={form.buyerIco ?? ''} onChange={e => set('buyerIco', e.target.value)} style={inputStyle} />
-            </div>
-            <div>
-              <label className="form-label">DIČ</label>
-              <input value={form.buyerDic ?? ''} onChange={e => set('buyerDic', e.target.value)} style={inputStyle} />
-            </div>
-          </div>
 
-          {/* Amounts */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
-            <div>
-              <label className="form-label">Základ</label>
-              <input type="number" value={form.amountBase ?? ''} onChange={e => set('amountBase', e.target.value)} style={inputStyle} />
+            {/* Supplier */}
+            <div style={{ fontSize: '.78rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 }}>Dodavatel</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <Field name="supplierName" label="Název" />
+              <Field name="supplierIco" label="IČO" />
+              <Field name="supplierDic" label="DIČ" />
             </div>
-            <div>
-              <label className="form-label">DPH sazba %</label>
-              <input type="number" value={form.vatRate ?? ''} onChange={e => set('vatRate', e.target.value)} style={inputStyle} />
-            </div>
-            <div>
-              <label className="form-label">DPH</label>
-              <input type="number" value={form.vatAmount ?? ''} onChange={e => set('vatAmount', e.target.value)} style={inputStyle} />
-            </div>
-            <div>
-              <label className="form-label">Celkem</label>
-              <input type="number" value={form.amountTotal ?? ''} onChange={e => set('amountTotal', e.target.value)} style={{ ...inputStyle, fontWeight: 600 }} />
-            </div>
-          </div>
 
-          {/* Dates */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
-            <div>
-              <label className="form-label">Datum vystavení</label>
-              <input type="date" value={form.issueDate ?? ''} onChange={e => set('issueDate', e.target.value)} style={inputStyle} />
+            {/* Buyer */}
+            <div style={{ fontSize: '.78rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 }}>Odběratel</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <Field name="buyerName" label="Název" />
+              <Field name="buyerIco" label="IČO" />
+              <Field name="buyerDic" label="DIČ" />
             </div>
-            <div>
-              <label className="form-label">DÚZP</label>
-              <input type="date" value={form.duzp ?? ''} onChange={e => set('duzp', e.target.value)} style={inputStyle} />
-            </div>
-            <div>
-              <label className="form-label">Splatnost</label>
-              <input type="date" value={form.dueDate ?? ''} onChange={e => set('dueDate', e.target.value)} style={inputStyle} />
-            </div>
-          </div>
 
-          {/* Symbols + IBAN */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 2fr', gap: 12, marginBottom: 12 }}>
-            <div>
-              <label className="form-label">VS</label>
-              <input value={form.variableSymbol ?? ''} onChange={e => set('variableSymbol', e.target.value)} style={inputStyle} />
+            {/* Amounts */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <Field name="amountBase" label="Základ" type="number" />
+              <Field name="vatRate" label="DPH sazba %" type="number" />
+              <Field name="vatAmount" label="DPH" type="number" />
+              <Field name="amountTotal" label="Celkem" type="number" style={{ fontWeight: 600 }} />
             </div>
-            <div>
-              <label className="form-label">KS</label>
-              <input value={form.constantSymbol ?? ''} onChange={e => set('constantSymbol', e.target.value)} style={inputStyle} />
-            </div>
-            <div>
-              <label className="form-label">SS</label>
-              <input value={form.specificSymbol ?? ''} onChange={e => set('specificSymbol', e.target.value)} style={inputStyle} />
-            </div>
-            <div>
-              <label className="form-label">IBAN</label>
-              <input value={form.paymentIban ?? ''} onChange={e => set('paymentIban', e.target.value)} style={inputStyle} placeholder="CZ..." />
-            </div>
-          </div>
 
-          {/* Description */}
-          <div>
-            <label className="form-label">Popis</label>
-            <input value={form.description ?? ''} onChange={e => set('description', e.target.value)} style={inputStyle} />
+            {/* Dates */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <Field name="issueDate" label="Datum vystavení" type="date" />
+              <Field name="duzp" label="DÚZP" type="date" />
+              <Field name="dueDate" label="Splatnost" type="date" />
+            </div>
+
+            {/* Symbols + IBAN */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 2fr', gap: 12, marginBottom: 12 }}>
+              <Field name="variableSymbol" label="VS" />
+              <Field name="constantSymbol" label="KS" />
+              <Field name="specificSymbol" label="SS" />
+              <Field name="paymentIban" label="IBAN" placeholder="CZ..." />
+            </div>
+
+            {/* Description */}
+            <Field name="description" label="Popis" />
           </div>
         </div>
       )}
