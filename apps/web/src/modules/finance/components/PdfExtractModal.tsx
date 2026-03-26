@@ -12,9 +12,9 @@ export function PdfExtractModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const pdfBase64Ref = useRef<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [step, setStep] = useState<'upload' | 'extracting'>('upload')
-  const [pdfBase64, setPdfBase64] = useState<string | null>(null)
 
   const extractMut = useMutation({
     mutationFn: (base64: string) => financeApi.invoices.extractPdf(base64),
@@ -56,12 +56,12 @@ export function PdfExtractModal({ onClose }: { onClose: () => void }) {
           JSON.stringify({
             originalExtracted: extracted,
             confidence: data.confidence,
-            pdfBase64,
+            pdfBase64: pdfBase64Ref.current,
           }),
         )
 
-        // Fire & forget: save extraction pattern
-        financeApi.invoices.saveExtractionPattern(invoiceId, extracted).catch(() => {})
+        // Fire & forget: save extraction pattern + training data
+        financeApi.invoices.saveExtractionPattern(invoiceId, extracted, pdfBase64Ref.current ?? undefined).catch(() => {})
 
         toast.success('Faktura vytvořena — otevírám detail')
         onClose()
@@ -86,7 +86,7 @@ export function PdfExtractModal({ onClose }: { onClose: () => void }) {
     let binary = ''
     for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
     const base64 = btoa(binary)
-    setPdfBase64(base64)
+    pdfBase64Ref.current = base64
     extractMut.mutate(base64)
   }
 
