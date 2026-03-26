@@ -412,10 +412,6 @@ export class InvoicesService {
   }
 
   async importIsdoc(user: AuthUser, xmlContent: string) {
-    // TODO: remove after diagnosis
-    console.log('[ISDOC INPUT TYPE]', typeof xmlContent, 'length:', xmlContent?.length ?? 'N/A')
-    console.log('[ISDOC INPUT SAMPLE]', (xmlContent ?? '').substring(0, 200))
-
     // Parse ISDOC XML to extract invoice data
     const parsed = this.parseIsdocXml(xmlContent);
 
@@ -543,17 +539,12 @@ export class InvoicesService {
   private parseIsdocXml(xmlString: string): Record<string, unknown> {
     // Validate input
     if (!xmlString || typeof xmlString !== 'string') {
-      // TODO: remove after diagnosis
-      console.error('[ISDOC] Invalid input:', typeof xmlString)
       return { number: `ISDOC-${Date.now()}`, type: 'received', issueDate: new Date().toISOString().slice(0, 10) }
     }
 
     // Strip XML declaration + namespace prefixes (isdoc:ID → ID)
     let s = xmlString.replace(/<\?xml[^?]*\?>/g, '').trim()
     s = s.replace(/<(\/?)[a-zA-Z][a-zA-Z0-9]*:/g, '<$1')
-
-    // TODO: remove after diagnosis
-    console.log('[ISDOC PARSE START] length:', s.length, 'first 100:', s.substring(0, 100))
 
     // Helpers
     const extractSection = (src: string, tag: string): string => {
@@ -651,8 +642,6 @@ export class InvoicesService {
       lines: lines.length > 0 ? lines : undefined,
     }
 
-    // TODO: remove after diagnosis
-    console.log('[ISDOC RESULT]', JSON.stringify(result))
     return result
   }
 
