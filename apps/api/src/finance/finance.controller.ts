@@ -293,6 +293,7 @@ export class FinanceController {
 
   @Post('transactions/:id/split')
   @Roles(...ROLES_FINANCE)
+  @AuditAction('BankTransaction', 'SPLIT')
   @ApiOperation({ summary: 'Rozdělit transakci' })
   splitTransaction(
     @CurrentUser() user: AuthUser,
@@ -336,6 +337,19 @@ export class FinanceController {
     return this.invoicesService.create(user, dto);
   }
 
+  @Post('invoices/extract-pdf')
+  @Roles(...ROLES_FINANCE)
+  @ApiOperation({ summary: 'Extrakce dat z PDF faktury pomocí AI' })
+  extractPdf(@CurrentUser() user: AuthUser, @Body() body: { pdfBase64: string; fileName?: string }) {
+    return this.invoicesService.extractFromPdf(user, body.pdfBase64, body.fileName);
+  }
+
+  @Get('invoices/ai-extraction-stats')
+  @ApiOperation({ summary: 'Statistiky AI extrakce faktur' })
+  getAiExtractionStats(@CurrentUser() user: AuthUser, @Query('period') period?: string) {
+    return this.invoicesService.getAiExtractionStats(user, (period as any) || 'month');
+  }
+
   @Post('invoices/import-isdoc')
   @Roles(...ROLES_FINANCE_DRAFT)
   @AuditAction('invoice', 'import_isdoc')
@@ -344,10 +358,37 @@ export class FinanceController {
     return this.invoicesService.importIsdoc(user, body.xmlContent);
   }
 
+  @Post('invoices/import-isdoc-bulk')
+  @Roles(...ROLES_FINANCE_DRAFT)
+  @AuditAction('invoice', 'import_isdoc_bulk')
+  @ApiOperation({ summary: 'Hromadný import ISDOC s PDF přílohami' })
+  importIsdocBulk(@CurrentUser() user: AuthUser, @Body() body: {
+    invoices: Array<{ xmlContent: string; pdfBase64?: string; pdfFileName?: string; isdocFileName: string }>
+  }) {
+    if (body.invoices.length > 50) throw new BadRequestException('Maximálně 50 faktur najednou');
+    return this.invoicesService.importIsdocBulk(user, body.invoices);
+  }
+
   @Get('invoices/:id/export-isdoc')
   @ApiOperation({ summary: 'Export dokladu do ISDOC XML' })
   exportIsdoc(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.invoicesService.exportIsdoc(user, id);
+  }
+
+  @Get('invoices/:id/documents')
+  @ApiOperation({ summary: 'Přílohy dokladu' })
+  getInvoiceDocuments(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.invoicesService.getDocuments(user, id);
+  }
+
+  @Get('invoices/:id/payment-qr')
+  @ApiOperation({ summary: 'QR kód pro platbu (SPAYD)' })
+  getPaymentQr(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Query('size') size?: string,
+  ) {
+    return this.invoicesService.getPaymentQr(user, id, size ? parseInt(size, 10) : 200);
   }
 
   @Put('invoices/:id')

@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Upload, Zap, CheckCircle2, Download, Scissors } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { SplitTransactionModal } from './SplitTransactionModal';
 import { SearchBar, Table, Badge, Button, Modal } from '../../../shared/components';
+import { useToast } from '../../../shared/components/toast/Toast';
 import type { Column } from '../../../shared/components';
 import { formatKc, formatCzDate } from '../../../shared/utils/format';
 import type { FinTransaction, FinAccount } from '../types';
@@ -100,6 +102,8 @@ export function BankTab({
   onDelete, onAutoMatch, onMatchAll,
   autoMatchResult, onDismissAutoResult, isAutoMatching, isMatchingAll,
 }: Props) {
+  const qc = useQueryClient();
+  const toast = useToast();
   const [filterMatch, setFilterMatch] = useState('');
   const [exporting, setExporting] = useState(false);
   const [splitTx, setSplitTx] = useState<FinTransaction | null>(null);
@@ -302,7 +306,7 @@ export function BankTab({
         <SplitTransactionModal
           transaction={splitTx}
           onClose={() => setSplitTx(null)}
-          onSuccess={() => { setSplitTx(null); }}
+          onSuccess={() => { setSplitTx(null); qc.invalidateQueries({ queryKey: ['transactions'] }); qc.invalidateQueries({ queryKey: ['finance-summary'] }); }}
         />
       )}
 
@@ -324,7 +328,7 @@ export function BankTab({
                 link.click()
                 URL.revokeObjectURL(link.href)
                 setShowStatement(false)
-              } catch { /* error */ }
+              } catch { toast.error('Nepodařilo se vygenerovat výpis') }
               finally { setStmtLoading(false) }
             }}>{stmtLoading ? 'Generuji…' : 'Stáhnout PDF'}</Button>
           </div>

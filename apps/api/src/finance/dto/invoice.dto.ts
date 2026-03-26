@@ -129,6 +129,9 @@ export class CreateInvoiceDto {
   specificSymbol?: string;
 
   @IsOptional() @IsString()
+  paymentIban?: string;
+
+  @IsOptional() @IsString()
   transactionId?: string;
 
   @IsOptional() @IsString()
@@ -210,6 +213,9 @@ export class UpdateInvoiceDto {
 
   @IsOptional() @IsString()
   specificSymbol?: string;
+
+  @IsOptional() @IsString()
+  paymentIban?: string;
 
   @IsOptional() @IsString()
   transactionId?: string;

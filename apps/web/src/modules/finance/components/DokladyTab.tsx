@@ -5,11 +5,14 @@ import type { Column } from '../../../shared/components';
 import { formatKc, formatCzDate } from '../../../shared/utils/format';
 import type { ApiInvoice } from '../api/finance.api';
 import type { FinTransaction } from '../types';
-import { useInvoices, useInvoiceStats, useDeleteInvoice, useMarkInvoicePaid, useImportIsdoc, useExportIsdoc, usePairInvoice, useSubmitInvoice, useApproveInvoice } from '../api/finance.queries';
+import { useInvoices, useInvoiceStats, useDeleteInvoice, useMarkInvoicePaid, useImportIsdoc, useExportIsdoc, usePairInvoice, useSubmitInvoice, useApproveInvoice, useAiExtractionStats } from '../api/finance.queries';
+import { Sparkles } from 'lucide-react';
 import { useAuthStore } from '../../../core/auth';
 import { InvoiceDetailModal } from './InvoiceDetailModal';
 import { InvoiceForm } from './InvoiceForm';
 import { InvoiceContextMenu } from './InvoiceContextMenu';
+import { IsdocImportModal } from './IsdocImportModal';
+import { PdfExtractModal } from './PdfExtractModal';
 
 export const INVOICE_TYPE_LABELS: Record<string, string> = {
   received: 'Přijatá', issued: 'Vydaná', proforma: 'Záloha', credit_note: 'Dobropis', internal: 'Interní',
@@ -103,6 +106,10 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
   const submitMut = useSubmitInvoice();
   const approveMut = useApproveInvoice();
   const isdocRef = useRef<HTMLInputElement>(null);
+  const [showBulkImport, setShowBulkImport] = useState(false);
+  const [showPdfExtract, setShowPdfExtract] = useState(false);
+  const [showAiStats, setShowAiStats] = useState(false);
+  const { data: aiStats } = useAiExtractionStats('month');
 
   const handleIsdocImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -252,6 +259,8 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
           <FileText size={15} /> Import ISDOC
           <input ref={isdocRef} type="file" accept=".isdoc,.isdocx,.xml" onChange={handleIsdocImport} style={{ display: 'none' }} />
         </label>
+        <Button onClick={() => setShowBulkImport(true)} icon={<FileText size={15} />}>Hromadný import</Button>
+        <Button onClick={() => setShowPdfExtract(true)} icon={<FileText size={15} />}>Import z PDF (AI)</Button>
         <button
           onClick={() => setShowFilters(!showFilters)}
           style={{ ...selectStyle, cursor: 'pointer', position: 'relative', fontSize: '0.85rem' }}
@@ -265,6 +274,16 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
         </button>
         <Button variant="primary" icon={<Plus size={15} />} data-testid="finance-doklady-add-btn" onClick={() => { setEditInvoice(null); setShowForm(true); }}>Nový doklad</Button>
       </div>
+
+      {/* AI stats widget */}
+      {aiStats && aiStats.totalExtractions > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, padding: '6px 14px', background: 'var(--surface-2, var(--surface))', borderRadius: 6, border: '1px solid var(--border)', fontSize: '.82rem', color: 'var(--text-muted)' }}>
+          <Sparkles size={13} />
+          <span>AI extrakce tento měsíc: <strong style={{ color: 'var(--text)' }}>{aiStats.totalExtractions} faktur</strong> · {aiStats.totalCostCzk.toFixed(1)} Kč · Haiku 4.5</span>
+          <span style={{ flex: 1 }} />
+          <button onClick={() => setShowAiStats(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary, #14b8a6)', fontSize: '.82rem' }}>Podrobnosti</button>
+        </div>
+      )}
 
       {/* Advanced filter panel */}
       {showFilters && (
@@ -376,6 +395,63 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
           onOpenEdit={() => { if (contextMenu.invoice.approvalStatus === 'draft') { setEditInvoice(contextMenu.invoice); setShowForm(true) }; setContextMenu(null) }}
           onDelete={() => { setDeleteTarget(contextMenu.invoice); setContextMenu(null) }}
         />
+      )}
+
+      {/* Bulk import modal */}
+      {showBulkImport && <IsdocImportModal onClose={() => setShowBulkImport(false)} />}
+      {showPdfExtract && <PdfExtractModal onClose={() => setShowPdfExtract(false)} />}
+
+      {/* AI extraction stats modal */}
+      {showAiStats && aiStats && (
+        <Modal open onClose={() => setShowAiStats(false)} title="Statistiky AI extrakce faktur">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+            <div style={{ textAlign: 'center', padding: 12, background: 'var(--surface-2, var(--surface))', borderRadius: 8 }}>
+              <div style={{ fontSize: '.75rem', color: 'var(--text-muted)', marginBottom: 2 }}>Extrahováno</div>
+              <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{aiStats.totalExtractions}</div>
+            </div>
+            <div style={{ textAlign: 'center', padding: 12, background: 'var(--surface-2, var(--surface))', borderRadius: 8 }}>
+              <div style={{ fontSize: '.75rem', color: 'var(--text-muted)', marginBottom: 2 }}>Náklady</div>
+              <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{aiStats.totalCostCzk.toFixed(2)} Kč</div>
+            </div>
+            <div style={{ textAlign: 'center', padding: 12, background: 'var(--surface-2, var(--surface))', borderRadius: 8 }}>
+              <div style={{ fontSize: '.75rem', color: 'var(--text-muted)', marginBottom: 2 }}>Průměr/faktura</div>
+              <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{aiStats.avgCostPerInvoice.toFixed(2)} Kč</div>
+            </div>
+            <div style={{ textAlign: 'center', padding: 12, background: 'var(--surface-2, var(--surface))', borderRadius: 8 }}>
+              <div style={{ fontSize: '.75rem', color: 'var(--text-muted)', marginBottom: 2 }}>Úspěšnost</div>
+              <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{aiStats.totalExtractions > 0 ? Math.round((aiStats.successfulExtractions / aiStats.totalExtractions) * 100) : 0}%</div>
+            </div>
+          </div>
+          {aiStats.byModel.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: '.78rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Dle modelu</div>
+              <table style={{ width: '100%', fontSize: '.84rem', borderCollapse: 'collapse' }}>
+                <thead><tr style={{ borderBottom: '1px solid var(--border)' }}>
+                  {['Model', 'Počet', 'Tokeny', 'Náklady'].map(h => <th key={h} style={{ padding: '4px 8px', textAlign: 'left', fontWeight: 600, fontSize: '.78rem', color: 'var(--text-muted)' }}>{h}</th>)}
+                </tr></thead>
+                <tbody>{aiStats.byModel.map(m => (
+                  <tr key={m.model} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '4px 8px' }}>{m.model.replace('claude-', '').replace('-20251001', '')}</td>
+                    <td style={{ padding: '4px 8px' }}>{m.count}</td>
+                    <td style={{ padding: '4px 8px' }}>{m.tokens.toLocaleString()}</td>
+                    <td style={{ padding: '4px 8px' }}>${m.costUsd.toFixed(4)}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          )}
+          <div>
+            <div style={{ fontSize: '.78rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Dle jistoty</div>
+            <div style={{ display: 'flex', gap: 12 }}>
+              {([['high', 'Vysoká', 'green'], ['medium', 'Střední', 'yellow'], ['low', 'Nízká', 'red']] as const).map(([k, label, variant]) => (
+                <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '.84rem' }}>
+                  <Badge variant={variant}>{label}</Badge>
+                  <span>{aiStats.byConfidence[k]}{aiStats.totalExtractions > 0 ? ` (${Math.round((aiStats.byConfidence[k] / aiStats.totalExtractions) * 100)}%)` : ''}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

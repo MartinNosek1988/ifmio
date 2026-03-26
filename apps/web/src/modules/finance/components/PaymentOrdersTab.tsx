@@ -40,6 +40,7 @@ export default function PaymentOrdersTab() {
   const createMut = useMutation({
     mutationFn: (data: any) => apiClient.post('/finance/payment-orders', data).then(r => r.data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['payment-orders'] }); toast.success('Příkaz vytvořen'); setShowCreate(false) },
+    onError: (error: any) => { toast.error(error?.response?.data?.message || 'Vytvoření příkazu selhalo') },
   })
 
   const cancelMut = useMutation({
@@ -73,11 +74,16 @@ export default function PaymentOrdersTab() {
       toast.error('Bankovní účet nemá přiřazen finanční kontext.')
       return
     }
+    const validItems = items.filter(it => it.counterpartyAccount && it.amount)
+    if (validItems.length === 0) {
+      toast.error('Přidejte alespoň jednu položku s účtem a částkou')
+      return
+    }
     createMut.mutate({
       bankAccountId,
       financialContextId: account.financialContextId,
       note: note || undefined,
-      items: items.filter(it => it.counterpartyAccount && it.amount).map(it => ({
+      items: validItems.map(it => ({
         counterpartyName: it.counterpartyName || undefined,
         counterpartyAccount: it.counterpartyAccount,
         counterpartyBankCode: it.counterpartyBankCode || '0000',

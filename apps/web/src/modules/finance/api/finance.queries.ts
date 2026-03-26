@@ -320,6 +320,29 @@ export function useExportIsdoc() {
   });
 }
 
+export function useAiExtractionStats(period = 'month') {
+  return useQuery({
+    queryKey: ['finance', 'ai-extraction-stats', period],
+    queryFn: () => financeApi.invoices.getAiExtractionStats(period),
+  });
+}
+
+export function useInvoiceDocuments(invoiceId: string | undefined) {
+  return useQuery({
+    queryKey: ['finance', 'invoices', invoiceId, 'documents'],
+    queryFn: () => financeApi.invoices.getDocuments(invoiceId!),
+    enabled: !!invoiceId,
+  });
+}
+
+export function useInvoicePaymentQr(invoiceId: string | undefined) {
+  return useQuery({
+    queryKey: ['finance', 'invoices', invoiceId, 'payment-qr'],
+    queryFn: () => financeApi.invoices.getPaymentQr(invoiceId!),
+    enabled: !!invoiceId,
+  });
+}
+
 export function useSubmitInvoice() {
   const qc = useQueryClient();
   return useMutation({

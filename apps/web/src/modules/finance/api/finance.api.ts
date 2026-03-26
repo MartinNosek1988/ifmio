@@ -148,6 +148,7 @@ export interface ApiInvoice {
   variableSymbol?: string;
   constantSymbol?: string | null;
   specificSymbol?: string | null;
+  paymentIban?: string | null;
   allocationStatus: string;
   tags: string[];
   transactionId?: string | null;
@@ -339,10 +340,20 @@ export const financeApi = {
       apiClient.post(`/finance/invoices/${id}/mark-paid`, dto || {}).then((r) => r.data),
     pair: (id: string, transactionId: string) =>
       apiClient.post(`/finance/invoices/${id}/pair`, { transactionId }).then((r) => r.data),
+    extractPdf: (pdfBase64: string, fileName?: string) =>
+      apiClient.post<{ extracted: Record<string, unknown>; confidence: 'high' | 'medium' | 'low'; usage?: { inputTokens: number; outputTokens: number; costUsd: number } }>('/finance/invoices/extract-pdf', { pdfBase64, fileName }).then((r) => r.data),
+    getAiExtractionStats: (period = 'month') =>
+      apiClient.get<{ totalExtractions: number; successfulExtractions: number; totalInputTokens: number; totalOutputTokens: number; totalCostUsd: number; totalCostCzk: number; avgCostPerInvoice: number; byConfidence: { high: number; medium: number; low: number }; byModel: Array<{ model: string; count: number; costUsd: number; tokens: number }> }>(`/finance/invoices/ai-extraction-stats?period=${period}`).then((r) => r.data),
     importIsdoc: (xmlContent: string) =>
       apiClient.post<ApiInvoice>('/finance/invoices/import-isdoc', { xmlContent }).then((r) => r.data),
+    importIsdocBulk: (invoices: Array<{ xmlContent: string; pdfBase64?: string; pdfFileName?: string; isdocFileName: string }>) =>
+      apiClient.post<{ results: Array<{ isdocFileName: string; success: boolean; invoiceId?: string; number?: string; error?: string }>; created: number; failed: number }>('/finance/invoices/import-isdoc-bulk', { invoices }).then((r) => r.data),
+    getDocuments: (id: string) =>
+      apiClient.get<Array<{ id: string; name: string; originalName: string; mimeType: string; size: number; storageKey: string; createdAt: string }>>(`/finance/invoices/${id}/documents`).then((r) => r.data),
     exportIsdoc: (id: string) =>
       apiClient.get<string>(`/finance/invoices/${id}/export-isdoc`).then((r) => r.data),
+    getPaymentQr: (id: string, size = 200) =>
+      apiClient.get<{ qrString: string | null; qrDataUrl: string | null }>(`/finance/invoices/${id}/payment-qr?size=${size}`).then((r) => r.data),
     submit: (id: string) =>
       apiClient.post<ApiInvoice>(`/finance/invoices/${id}/submit`).then((r) => r.data),
     approve: (id: string) =>

@@ -1,19 +1,38 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import * as crypto from 'crypto';
+import Anthropic from '@anthropic-ai/sdk';
 import { PrismaService } from '../prisma/prisma.service';
 import { PropertyScopeService } from '../common/services/property-scope.service';
+import { LocalStorageProvider } from '../documents/storage/local.storage';
 import { Decimal } from '@prisma/client/runtime/library';
+import QRCode from 'qrcode';
 import type { CreateInvoiceDto, UpdateInvoiceDto, InvoiceListQueryDto, MarkPaidDto, CreateAllocationDto, UpdateAllocationDto } from './dto/invoice.dto';
 import type { AuthUser } from '@ifmio/shared-types';
 
 /** Roles allowed to approve invoices */
 const APPROVAL_ROLES = ['tenant_owner', 'tenant_admin', 'finance_manager'];
 
+interface BulkImportItem {
+  xmlContent: string
+  pdfBase64?: string
+  pdfFileName?: string
+  isdocFileName: string
+}
+
 @Injectable()
 export class InvoicesService {
+  private anthropic: Anthropic | null = null
+
   constructor(
     private prisma: PrismaService,
     private scope: PropertyScopeService,
-  ) {}
+    private storage: LocalStorageProvider,
+    private config: ConfigService,
+  ) {
+    const apiKey = this.config.get<string>('ANTHROPIC_API_KEY')
+    if (apiKey) this.anthropic = new Anthropic({ apiKey })
+  }
 
   async list(user: AuthUser, query: InvoiceListQueryDto) {
     const { type, isPaid, search, approvalStatus, financialContextId,
@@ -147,6 +166,7 @@ export class InvoicesService {
         variableSymbol: dto.variableSymbol || null,
         constantSymbol: dto.constantSymbol || null,
         specificSymbol: dto.specificSymbol || null,
+        paymentIban: dto.paymentIban || null,
         transactionId: dto.transactionId || null,
         supplierId: dto.supplierId || null,
         buyerId: dto.buyerId || null,
@@ -195,6 +215,7 @@ export class InvoicesService {
     if (dto.variableSymbol !== undefined) data.variableSymbol = dto.variableSymbol;
     if (dto.constantSymbol !== undefined) data.constantSymbol = dto.constantSymbol || null;
     if (dto.specificSymbol !== undefined) data.specificSymbol = dto.specificSymbol || null;
+    if (dto.paymentIban !== undefined) data.paymentIban = dto.paymentIban || null;
     if (dto.transactionId !== undefined) data.transactionId = dto.transactionId || null;
     if (dto.supplierId !== undefined) data.supplierId = dto.supplierId || null;
     if (dto.buyerId !== undefined) data.buyerId = dto.buyerId || null;
@@ -351,6 +372,34 @@ export class InvoicesService {
       approvedAt: invoice.approvedAt?.toISOString() ?? null,
       rejectedAt: invoice.rejectedAt?.toISOString() ?? null,
     };
+  }
+
+  async getDocuments(user: AuthUser, invoiceId: string) {
+    await this.findOneInternal(user, invoiceId)
+    const links = await this.prisma.documentLink.findMany({
+      where: { entityType: 'invoice', entityId: invoiceId },
+      include: { document: { select: { id: true, name: true, originalName: true, mimeType: true, size: true, storageKey: true, createdAt: true } } },
+    })
+    return links.map(l => l.document)
+  }
+
+  async getPaymentQr(user: AuthUser, id: string, size = 200): Promise<{ qrString: string | null; qrDataUrl: string | null }> {
+    const invoice = await this.findOneInternal(user, id)
+    const iban = invoice.paymentIban
+    const total = Number(invoice.amountTotal)
+
+    if (!iban || total <= 0) return { qrString: null, qrDataUrl: null }
+
+    const parts = ['SPD*1.0', `ACC:${iban.replace(/\s/g, '')}`, `AM:${total.toFixed(2)}`, `CC:${invoice.currency || 'CZK'}`]
+    const msg = `Faktura ${invoice.number}`.slice(0, 60)
+    parts.push(`MSG:${msg}`)
+    if (invoice.variableSymbol) parts.push(`X-VS:${invoice.variableSymbol}`)
+    if (invoice.constantSymbol) parts.push(`X-KS:${invoice.constantSymbol}`)
+    if (invoice.specificSymbol) parts.push(`X-SS:${invoice.specificSymbol}`)
+
+    const qrString = parts.join('*')
+    const qrDataUrl = await QRCode.toDataURL(qrString, { width: size, margin: 1 })
+    return { qrString, qrDataUrl }
   }
 
   private async logAudit(user: AuthUser, action: string, entityId: string) {
@@ -530,6 +579,162 @@ export class InvoicesService {
     });
   }
 
+  async importIsdocBulk(user: AuthUser, items: BulkImportItem[]) {
+    const results: Array<{ isdocFileName: string; success: boolean; invoiceId?: string; number?: string; error?: string }> = []
+
+    for (const item of items) {
+      try {
+        const invoice = await this.importIsdoc(user, item.xmlContent)
+
+        // Store PDF attachment if provided
+        if (item.pdfBase64 && item.pdfFileName) {
+          const pdfBuffer = Buffer.from(item.pdfBase64, 'base64')
+          const key = `${user.tenantId}/${crypto.randomUUID()}.pdf`
+          await this.storage.save(pdfBuffer, key, 'application/pdf')
+          const doc = await this.prisma.document.create({
+            data: {
+              tenantId: user.tenantId,
+              name: item.pdfFileName,
+              originalName: item.pdfFileName,
+              mimeType: 'application/pdf',
+              size: pdfBuffer.length,
+              storageKey: key,
+              storageType: 'local',
+              category: 'invoice',
+              createdById: user.id,
+              links: { create: [{ entityType: 'invoice', entityId: invoice.id }] },
+            },
+          })
+        }
+
+        results.push({ isdocFileName: item.isdocFileName, success: true, invoiceId: invoice.id, number: invoice.number })
+      } catch (e: any) {
+        results.push({ isdocFileName: item.isdocFileName, success: false, error: e.message || 'Neznámá chyba' })
+      }
+    }
+
+    return {
+      results,
+      created: results.filter(r => r.success).length,
+      failed: results.filter(r => !r.success).length,
+    }
+  }
+
+  private static readonly MODEL_PRICING: Record<string, { input: number; output: number }> = {
+    'claude-haiku-4-5-20251001': { input: 1.00, output: 5.00 },
+    'claude-sonnet-4-6': { input: 3.00, output: 15.00 },
+    'claude-opus-4-6': { input: 5.00, output: 25.00 },
+  }
+  private static readonly USD_CZK_RATE = 23.0
+
+  async extractFromPdf(user: AuthUser, pdfBase64: string, fileName?: string) {
+    if (!this.anthropic) throw new BadRequestException('AI extrakce není dostupná — ANTHROPIC_API_KEY není nastaven')
+    if (pdfBase64.length > 10 * 1024 * 1024) throw new BadRequestException('PDF je příliš velké (max ~7.5 MB)')
+
+    const modelId = 'claude-haiku-4-5-20251001'
+    let response: any
+    try {
+      response = await this.anthropic.messages.create({
+        model: modelId,
+        max_tokens: 1024,
+        system: `Jsi expert na extrakci dat z českých faktur.
+Extrahuj strukturovaná data z faktury a vrať POUZE validní JSON objekt.
+Pokud pole není na faktuře uvedeno, vrať null pro dané pole.
+Číselné hodnoty vrať jako čísla (ne stringy).
+Data vrať ve formátu YYYY-MM-DD.
+IČO je 8místné číslo bez mezer. DIČ začíná "CZ" + IČO.`,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 } },
+            { type: 'text', text: `Extrahuj data z této faktury a vrať JSON:
+{"number":null,"supplierName":null,"supplierIco":null,"supplierDic":null,"buyerName":null,"buyerIco":null,"buyerDic":null,"description":null,"amountBase":null,"vatAmount":null,"amountTotal":null,"vatRate":null,"issueDate":null,"duzp":null,"dueDate":null,"variableSymbol":null,"constantSymbol":null,"specificSymbol":null,"paymentIban":null,"currency":"CZK","paymentMethod":null}
+Vrať POUZE JSON, žádný jiný text.` },
+          ],
+        }],
+      })
+    } catch (e: any) {
+      await this.prisma.aiExtractionLog.create({
+        data: { tenantId: user.tenantId, model: modelId, inputTokens: 0, outputTokens: 0, costUsd: 0, confidence: 'low', fileName, success: false, createdBy: user.id },
+      })
+      throw new BadRequestException('AI extrakce selhala: ' + (e.message || 'neznámá chyba'))
+    }
+
+    const inputTokens = response.usage?.input_tokens ?? 0
+    const outputTokens = response.usage?.output_tokens ?? 0
+    const pricing = InvoicesService.MODEL_PRICING[modelId] ?? { input: 1.00, output: 5.00 }
+    const costUsd = (inputTokens / 1e6) * pricing.input + (outputTokens / 1e6) * pricing.output
+
+    const textBlock = response.content.find((c: any) => c.type === 'text')
+    if (!textBlock || textBlock.type !== 'text') {
+      await this.prisma.aiExtractionLog.create({
+        data: { tenantId: user.tenantId, model: modelId, inputTokens, outputTokens, costUsd, confidence: 'low', fileName, success: false, createdBy: user.id },
+      })
+      throw new BadRequestException('Nepodařilo se extrahovat data z PDF')
+    }
+
+    let extracted: Record<string, unknown>
+    try {
+      extracted = JSON.parse(textBlock.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim())
+    } catch {
+      await this.prisma.aiExtractionLog.create({
+        data: { tenantId: user.tenantId, model: modelId, inputTokens, outputTokens, costUsd, confidence: 'low', fileName, success: false, createdBy: user.id },
+      })
+      throw new BadRequestException('Nepodařilo se parsovat výstup AI')
+    }
+
+    const keyFields = ['number', 'supplierName', 'amountTotal', 'issueDate', 'variableSymbol']
+    const filled = keyFields.filter(k => extracted[k] != null && extracted[k] !== '').length
+    const confidence = filled >= 4 ? 'high' : filled >= 2 ? 'medium' : 'low'
+
+    await this.prisma.aiExtractionLog.create({
+      data: { tenantId: user.tenantId, model: modelId, inputTokens, outputTokens, costUsd, confidence, fileName, success: true, createdBy: user.id },
+    })
+
+    return { extracted, confidence, usage: { inputTokens, outputTokens, costUsd } }
+  }
+
+  async getAiExtractionStats(user: AuthUser, period: 'month' | 'year' | 'all' = 'month') {
+    const now = new Date()
+    let dateFilter: Date | undefined
+    if (period === 'month') dateFilter = new Date(now.getFullYear(), now.getMonth(), 1)
+    else if (period === 'year') dateFilter = new Date(now.getFullYear(), 0, 1)
+
+    const where: any = { tenantId: user.tenantId }
+    if (dateFilter) where.createdAt = { gte: dateFilter }
+
+    const logs = await this.prisma.aiExtractionLog.findMany({ where, orderBy: { createdAt: 'desc' } })
+
+    const totalExtractions = logs.length
+    const successfulExtractions = logs.filter(l => l.success).length
+    const totalInputTokens = logs.reduce((s, l) => s + l.inputTokens, 0)
+    const totalOutputTokens = logs.reduce((s, l) => s + l.outputTokens, 0)
+    const totalCostUsd = logs.reduce((s, l) => s + Number(l.costUsd), 0)
+    const totalCostCzk = totalCostUsd * InvoicesService.USD_CZK_RATE
+
+    const byConfidence = { high: 0, medium: 0, low: 0 }
+    for (const l of logs) if (l.confidence in byConfidence) byConfidence[l.confidence as keyof typeof byConfidence]++
+
+    const modelMap = new Map<string, { count: number; costUsd: number; tokens: number }>()
+    for (const l of logs) {
+      const m = modelMap.get(l.model) ?? { count: 0, costUsd: 0, tokens: 0 }
+      m.count++
+      m.costUsd += Number(l.costUsd)
+      m.tokens += l.inputTokens + l.outputTokens
+      modelMap.set(l.model, m)
+    }
+
+    return {
+      totalExtractions, successfulExtractions,
+      totalInputTokens, totalOutputTokens,
+      totalCostUsd: Math.round(totalCostUsd * 1e6) / 1e6,
+      totalCostCzk: Math.round(totalCostCzk * 100) / 100,
+      avgCostPerInvoice: successfulExtractions > 0 ? Math.round((totalCostCzk / successfulExtractions) * 100) / 100 : 0,
+      byConfidence,
+      byModel: Array.from(modelMap.entries()).map(([model, v]) => ({ model, count: v.count, costUsd: Math.round(v.costUsd * 1e6) / 1e6, tokens: v.tokens })),
+    }
+  }
+
   async exportIsdoc(user: AuthUser, id: string): Promise<string> {
     const invoice = await this.findOneInternal(user, id);
 
@@ -543,17 +748,12 @@ export class InvoicesService {
   private parseIsdocXml(xmlString: string): Record<string, unknown> {
     // Validate input
     if (!xmlString || typeof xmlString !== 'string') {
-      // TODO: remove after diagnosis
-      console.error('[ISDOC] Invalid input:', typeof xmlString)
       return { number: `ISDOC-${Date.now()}`, type: 'received', issueDate: new Date().toISOString().slice(0, 10) }
     }
 
     // Strip XML declaration + namespace prefixes (isdoc:ID → ID)
     let s = xmlString.replace(/<\?xml[^?]*\?>/g, '').trim()
     s = s.replace(/<(\/?)[a-zA-Z][a-zA-Z0-9]*:/g, '<$1')
-
-    // TODO: remove after diagnosis
-    console.log('[ISDOC PARSE START] length:', s.length, 'first 100:', s.substring(0, 100))
 
     // Helpers
     const extractSection = (src: string, tag: string): string => {
@@ -651,8 +851,6 @@ export class InvoicesService {
       lines: lines.length > 0 ? lines : undefined,
     }
 
-    // TODO: remove after diagnosis
-    console.log('[ISDOC RESULT]', JSON.stringify(result))
     return result
   }
 

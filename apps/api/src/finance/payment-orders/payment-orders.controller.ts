@@ -3,6 +3,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { PaymentOrdersService } from './payment-orders.service'
 import { Roles } from '../../common/decorators/roles.decorator'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
+import { AuditAction } from '../../common/decorators/audit.decorator'
 import { ROLES_FINANCE } from '../../common/constants/roles.constants'
 import type { AuthUser } from '@ifmio/shared-types'
 import type { FastifyReply } from 'fastify'
@@ -27,6 +28,7 @@ export class PaymentOrdersController {
 
   @Post()
   @Roles(...ROLES_FINANCE)
+  @AuditAction('PaymentOrder', 'CREATE')
   @ApiOperation({ summary: 'Vytvořit příkaz k úhradě' })
   create(@CurrentUser() user: AuthUser, @Body() dto: {
     bankAccountId: string; financialContextId: string; note?: string;
@@ -37,6 +39,7 @@ export class PaymentOrdersController {
 
   @Delete(':id')
   @Roles(...ROLES_FINANCE)
+  @AuditAction('PaymentOrder', 'CANCEL')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Zrušit příkaz' })
   cancel(@CurrentUser() user: AuthUser, @Param('id') id: string) {
@@ -45,6 +48,7 @@ export class PaymentOrdersController {
 
   @Post(':id/export')
   @Roles(...ROLES_FINANCE)
+  @AuditAction('PaymentOrder', 'EXPORT')
   @ApiOperation({ summary: 'Exportovat příkaz (PDF/ABO)' })
   async exportOrder(
     @CurrentUser() user: AuthUser,

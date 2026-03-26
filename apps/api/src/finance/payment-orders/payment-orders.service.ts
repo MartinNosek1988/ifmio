@@ -53,6 +53,9 @@ export class PaymentOrdersService {
     const account = await this.prisma.bankAccount.findFirst({ where: { id: dto.bankAccountId, tenantId: user.tenantId } })
     if (!account) throw new NotFoundException('Bankovní účet nenalezen')
 
+    const fc = await this.prisma.financialContext.findFirst({ where: { id: dto.financialContextId, tenantId: user.tenantId } })
+    if (!fc) throw new BadRequestException('Finanční kontext nenalezen')
+
     return this.prisma.paymentOrder.create({
       data: {
         tenantId: user.tenantId,
