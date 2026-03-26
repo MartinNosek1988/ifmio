@@ -17,6 +17,9 @@ const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
   textFilter: (text: string) => text,
 }
 
+// Keys whose values must pass through unsanitized (e.g. XML content for ISDOC import)
+const RAW_KEYS = new Set(['xmlContent', 'isdocXml'])
+
 /**
  * Global pipe that strips ALL HTML tags from string inputs.
  * Prevents stored XSS by sanitizing at the API boundary.
@@ -48,7 +51,9 @@ export class SanitizePipe implements PipeTransform {
   private sanitizeObject(obj: Record<string, unknown>): Record<string, unknown> {
     const result: Record<string, unknown> = {}
     for (const [key, val] of Object.entries(obj)) {
-      if (typeof val === 'string') {
+      if (RAW_KEYS.has(key) && typeof val === 'string') {
+        result[key] = val
+      } else if (typeof val === 'string') {
         result[key] = this.sanitizeString(val)
       } else if (Array.isArray(val)) {
         result[key] = val.map(item => this.transform(item))
