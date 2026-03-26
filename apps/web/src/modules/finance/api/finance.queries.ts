@@ -327,6 +327,23 @@ export function useAiExtractionStats(period = 'month') {
   });
 }
 
+export function useExtractionPatterns() {
+  return useQuery({
+    queryKey: ['finance', 'extraction-patterns'],
+    queryFn: () => financeApi.invoices.getExtractionPatterns(),
+  })
+}
+
+export function useDeleteExtractionPattern() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (supplierIco: string) => financeApi.invoices.deleteExtractionPattern(supplierIco),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['finance', 'extraction-patterns'] })
+    },
+  })
+}
+
 export function useInvoiceDocuments(invoiceId: string | undefined) {
   return useQuery({
     queryKey: ['finance', 'invoices', invoiceId, 'documents'],

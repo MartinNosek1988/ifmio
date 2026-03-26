@@ -350,6 +350,31 @@ export class FinanceController {
     return this.invoicesService.getAiExtractionStats(user, (period as any) || 'month');
   }
 
+  @Post('invoices/save-extraction-pattern')
+  @Roles(...ROLES_FINANCE)
+  @ApiOperation({ summary: 'Uložit vzor extrakce pro dodavatele' })
+  saveExtractionPattern(
+    @CurrentUser() user: AuthUser,
+    @Body() body: { invoiceId: string; originalExtracted: Record<string, any> },
+  ) {
+    return this.invoicesService.saveExtractionPattern(user, body.invoiceId, body.originalExtracted);
+  }
+
+  @Get('invoices/extraction-patterns')
+  @Roles(...ROLES_FINANCE)
+  @ApiOperation({ summary: 'Seznam vzorů extrakce dodavatelů' })
+  listExtractionPatterns(@CurrentUser() user: AuthUser) {
+    return this.invoicesService.listExtractionPatterns(user);
+  }
+
+  @Delete('invoices/extraction-patterns/:supplierIco')
+  @Roles(...ROLES_FINANCE)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Smazat vzor extrakce dodavatele' })
+  deleteExtractionPattern(@CurrentUser() user: AuthUser, @Param('supplierIco') supplierIco: string) {
+    return this.invoicesService.deleteExtractionPattern(user, supplierIco);
+  }
+
   @Post('invoices/import-isdoc')
   @Roles(...ROLES_FINANCE_DRAFT)
   @AuditAction('invoice', 'import_isdoc')

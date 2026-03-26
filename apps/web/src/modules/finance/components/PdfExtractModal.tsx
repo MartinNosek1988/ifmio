@@ -96,6 +96,7 @@ export function PdfExtractModal({ onClose }: { onClose: () => void }) {
   const [fieldConfidence, setFieldConfidence] = useState<FieldConfidence>({})
   const [editedFields, setEditedFields] = useState<Set<string>>(new Set())
   const [flashField, setFlashField] = useState<string | null>(null)
+  const [originalExtracted, setOriginalExtracted] = useState<Record<string, any> | null>(null)
 
   const set = (key: string, value: any) => {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -105,9 +106,10 @@ export function PdfExtractModal({ onClose }: { onClose: () => void }) {
   const extractMut = useMutation({
     mutationFn: (base64: string) => financeApi.invoices.extractPdf(base64),
     onSuccess: (data) => {
-      setForm(data.extracted)
+      setForm(data.extracted as Record<string, any>)
+      setOriginalExtracted({ ...(data.extracted as Record<string, any>) })
       setConfidence(data.confidence)
-      setFieldConfidence(computeFieldConfidence(data.extracted))
+      setFieldConfidence(computeFieldConfidence(data.extracted as Record<string, any>))
       setStep('review')
     },
     onError: (e: any) => {
@@ -118,9 +120,21 @@ export function PdfExtractModal({ onClose }: { onClose: () => void }) {
 
   const createMut = useMutation({
     mutationFn: (dto: any) => apiClient.post('/finance/invoices', dto).then(r => r.data),
-    onSuccess: () => {
+    onSuccess: (savedInvoice: any) => {
       toast.success('Faktura uložena')
       qc.invalidateQueries({ queryKey: ['finance', 'invoices'] })
+
+      // Fire & forget: save extraction pattern for this supplier
+      if (originalExtracted && savedInvoice?.id) {
+        financeApi.invoices.saveExtractionPattern(savedInvoice.id, originalExtracted)
+          .then(res => {
+            if (res.saved && res.corrections && res.corrections > 0) {
+              toast.success('Vzor pro dodavatele aktualizován')
+            }
+          })
+          .catch(() => {}) // silent failure — pattern is not critical
+      }
+
       onClose()
     },
     onError: (e: any) => toast.error(e?.response?.data?.message || 'Uložení selhalo'),
@@ -174,6 +188,7 @@ export function PdfExtractModal({ onClose }: { onClose: () => void }) {
   const handleReset = () => {
     setStep('upload'); setForm({}); setPdfBase64(null)
     setActiveField(null); setFieldConfidence({}); setEditedFields(new Set())
+    setOriginalExtracted(null)
   }
 
   const handleTextSelected = useCallback((text: string) => {

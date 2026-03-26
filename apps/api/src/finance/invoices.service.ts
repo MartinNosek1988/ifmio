@@ -631,6 +631,29 @@ export class InvoicesService {
     if (!this.anthropic) throw new BadRequestException('AI extrakce není dostupná — ANTHROPIC_API_KEY není nastaven')
     if (pdfBase64.length > 10 * 1024 * 1024) throw new BadRequestException('PDF je příliš velké (max ~7.5 MB)')
 
+    // Load top-5 supplier patterns for few-shot context
+    const patterns = await this.prisma.supplierExtractionPattern.findMany({
+      where: { tenantId: user.tenantId },
+      orderBy: { usageCount: 'desc' },
+      take: 5,
+    })
+
+    let fewShotSection = ''
+    if (patterns.length > 0) {
+      fewShotSection = '\n\nVzory z předchozích faktur v systému:\n'
+      for (const pattern of patterns) {
+        fewShotSection += `\nDodavatel ${pattern.supplierName ?? pattern.supplierIco} (IČO: ${pattern.supplierIco}):\n`
+        const examples = pattern.fieldExamples as Record<string, string>
+        for (const [field, val] of Object.entries(examples)) {
+          fewShotSection += `  - ${field}: ${val}\n`
+        }
+        if (pattern.hints) {
+          fewShotSection += `  Poznámka: ${pattern.hints}\n`
+        }
+      }
+      fewShotSection += '\nPokud faktura pochází od některého z těchto dodavatelů, použij tyto vzory jako referenci pro formát a hodnoty polí.'
+    }
+
     const modelId = 'claude-haiku-4-5-20251001'
     let response: any
     try {
@@ -649,7 +672,7 @@ IČO je 8místné číslo bez mezer. DIČ začíná "CZ" + IČO.`,
             { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 } },
             { type: 'text', text: `Extrahuj data z této faktury a vrať JSON:
 {"number":null,"supplierName":null,"supplierIco":null,"supplierDic":null,"buyerName":null,"buyerIco":null,"buyerDic":null,"description":null,"amountBase":null,"vatAmount":null,"amountTotal":null,"vatRate":null,"issueDate":null,"duzp":null,"dueDate":null,"variableSymbol":null,"constantSymbol":null,"specificSymbol":null,"paymentIban":null,"currency":"CZK","paymentMethod":null}
-Vrať POUZE JSON, žádný jiný text.` },
+Vrať POUZE JSON, žádný jiný text.${fewShotSection}` },
           ],
         }],
       })
@@ -690,6 +713,15 @@ Vrať POUZE JSON, žádný jiný text.` },
     await this.prisma.aiExtractionLog.create({
       data: { tenantId: user.tenantId, model: modelId, inputTokens, outputTokens, costUsd, confidence, fileName, success: true, createdBy: user.id },
     })
+
+    // Update usage count if extracted supplier matches a known pattern
+    const extractedIco = typeof extracted.supplierIco === 'string' ? extracted.supplierIco : null
+    if (extractedIco) {
+      await this.prisma.supplierExtractionPattern.updateMany({
+        where: { tenantId: user.tenantId, supplierIco: extractedIco },
+        data: { usageCount: { increment: 1 }, lastUsedAt: new Date() },
+      })
+    }
 
     return { extracted, confidence, usage: { inputTokens, outputTokens, costUsd } }
   }
@@ -733,6 +765,93 @@ Vrať POUZE JSON, žádný jiný text.` },
       byConfidence,
       byModel: Array.from(modelMap.entries()).map(([model, v]) => ({ model, count: v.count, costUsd: Math.round(v.costUsd * 1e6) / 1e6, tokens: v.tokens })),
     }
+  }
+
+  // ─── SUPPLIER EXTRACTION PATTERNS ──────────────────────────────
+
+  async saveExtractionPattern(
+    user: AuthUser,
+    invoiceId: string,
+    originalExtracted: Record<string, any>,
+  ) {
+    const invoice = await this.prisma.invoice.findFirst({
+      where: { id: invoiceId, tenantId: user.tenantId, deletedAt: null },
+    })
+    if (!invoice) throw new NotFoundException('Faktura nenalezena')
+    if (!invoice.supplierIco) return { saved: false, reason: 'no_supplier_ico' }
+
+    // Build fieldExamples from the final invoice (user-corrected values)
+    const importantFields = [
+      'variableSymbol', 'vatRate', 'constantSymbol',
+      'specificSymbol', 'paymentIban', 'description',
+    ] as const
+    const fieldExamples: Record<string, string> = {}
+    for (const field of importantFields) {
+      const val = invoice[field]
+      if (val != null && val !== '') {
+        fieldExamples[field] = String(val)
+      }
+    }
+
+    // Build hints from user corrections
+    let hints: string | null = null
+    const corrections: string[] = []
+    for (const key of Object.keys(fieldExamples)) {
+      const origVal = originalExtracted[key]
+      const finalVal = fieldExamples[key]
+      if (finalVal && String(finalVal) !== String(origVal ?? '')) {
+        corrections.push(`Pole "${key}" má správnou hodnotu "${finalVal}"`)
+      }
+    }
+    if (corrections.length > 0) {
+      hints = corrections.join('. ')
+    }
+
+    // Upsert — merge fieldExamples with existing
+    const existing = await this.prisma.supplierExtractionPattern.findUnique({
+      where: { tenantId_supplierIco: { tenantId: user.tenantId, supplierIco: invoice.supplierIco } },
+    })
+
+    const mergedExamples = existing
+      ? { ...(existing.fieldExamples as Record<string, string>), ...fieldExamples }
+      : fieldExamples
+
+    await this.prisma.supplierExtractionPattern.upsert({
+      where: { tenantId_supplierIco: { tenantId: user.tenantId, supplierIco: invoice.supplierIco } },
+      create: {
+        tenantId: user.tenantId,
+        supplierIco: invoice.supplierIco,
+        supplierName: invoice.supplierName ?? undefined,
+        fieldExamples: mergedExamples,
+        hints,
+        usageCount: 0,
+      },
+      update: {
+        supplierName: invoice.supplierName ?? undefined,
+        fieldExamples: mergedExamples,
+        ...(hints ? { hints } : {}),
+        updatedAt: new Date(),
+      },
+    })
+
+    return { saved: true, supplierIco: invoice.supplierIco, corrections: corrections.length }
+  }
+
+  async listExtractionPatterns(user: AuthUser) {
+    return this.prisma.supplierExtractionPattern.findMany({
+      where: { tenantId: user.tenantId },
+      orderBy: { usageCount: 'desc' },
+    })
+  }
+
+  async deleteExtractionPattern(user: AuthUser, supplierIco: string) {
+    const pattern = await this.prisma.supplierExtractionPattern.findUnique({
+      where: { tenantId_supplierIco: { tenantId: user.tenantId, supplierIco } },
+    })
+    if (!pattern) throw new NotFoundException('Vzor nenalezen')
+    await this.prisma.supplierExtractionPattern.delete({
+      where: { id: pattern.id },
+    })
   }
 
   async exportIsdoc(user: AuthUser, id: string): Promise<string> {

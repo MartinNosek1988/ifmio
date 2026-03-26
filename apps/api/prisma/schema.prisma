@@ -96,6 +96,7 @@ model Tenant {
   evidenceFolders            EvidenceFolder[]
   paymentOrders              PaymentOrder[]
   aiExtractionLogs           AiExtractionLog[]
+  supplierExtractionPatterns SupplierExtractionPattern[]
 
   @@map("tenants")
 }
@@ -4138,4 +4139,26 @@ model AiExtractionLog {
   @@index([tenantId])
   @@index([tenantId, createdAt])
   @@map("ai_extraction_logs")
+}
+
+model SupplierExtractionPattern {
+  id              String    @id @default(cuid())
+  tenantId        String
+  supplierIco     String
+  supplierName    String?
+
+  fieldExamples   Json      // Record<string, string> — field→example value
+  hints           String?   // correction notes for the AI prompt
+
+  usageCount      Int       @default(0)
+  successRate     Float?
+  lastUsedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, supplierIco])
+  @@index([tenantId])
+  @@map("supplier_extraction_patterns")
 }

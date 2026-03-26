@@ -5,7 +5,7 @@ import type { Column } from '../../../shared/components';
 import { formatKc, formatCzDate } from '../../../shared/utils/format';
 import type { ApiInvoice } from '../api/finance.api';
 import type { FinTransaction } from '../types';
-import { useInvoices, useInvoiceStats, useDeleteInvoice, useMarkInvoicePaid, useImportIsdoc, useExportIsdoc, usePairInvoice, useSubmitInvoice, useApproveInvoice, useAiExtractionStats } from '../api/finance.queries';
+import { useInvoices, useInvoiceStats, useDeleteInvoice, useMarkInvoicePaid, useImportIsdoc, useExportIsdoc, usePairInvoice, useSubmitInvoice, useApproveInvoice, useAiExtractionStats, useExtractionPatterns, useDeleteExtractionPattern } from '../api/finance.queries';
 import { Sparkles } from 'lucide-react';
 import { useAuthStore } from '../../../core/auth';
 import { InvoiceDetailModal } from './InvoiceDetailModal';
@@ -109,7 +109,10 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [showPdfExtract, setShowPdfExtract] = useState(false);
   const [showAiStats, setShowAiStats] = useState(false);
+  const [aiStatsTab, setAiStatsTab] = useState<'stats' | 'patterns'>('stats');
   const { data: aiStats } = useAiExtractionStats('month');
+  const { data: patterns } = useExtractionPatterns();
+  const deletePatternMut = useDeleteExtractionPattern();
 
   const handleIsdocImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -403,7 +406,25 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
 
       {/* AI extraction stats modal */}
       {showAiStats && aiStats && (
-        <Modal open onClose={() => setShowAiStats(false)} title="Statistiky AI extrakce faktur">
+        <Modal open onClose={() => { setShowAiStats(false); setAiStatsTab('stats'); }} wide title="Statistiky AI extrakce faktur">
+          {/* Tab bar */}
+          <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)', marginBottom: 16 }}>
+            {([['stats', 'Statistiky'], ['patterns', `Vzory dodavatelů${patterns?.length ? ` (${patterns.length})` : ''}`]] as const).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setAiStatsTab(key)}
+                style={{
+                  padding: '8px 16px', border: 'none', cursor: 'pointer', fontSize: '.84rem', fontWeight: 500,
+                  background: 'none', color: aiStatsTab === key ? 'var(--primary, #14b8a6)' : 'var(--text-muted)',
+                  borderBottom: aiStatsTab === key ? '2px solid var(--primary, #14b8a6)' : '2px solid transparent',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {aiStatsTab === 'stats' && (<>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
             <div style={{ textAlign: 'center', padding: 12, background: 'var(--surface-2, var(--surface))', borderRadius: 8 }}>
               <div style={{ fontSize: '.75rem', color: 'var(--text-muted)', marginBottom: 2 }}>Extrahováno</div>
@@ -451,6 +472,46 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
               ))}
             </div>
           </div>
+          </>)}
+
+          {aiStatsTab === 'patterns' && (
+            <div>
+              <div style={{ fontSize: '.82rem', color: 'var(--text-muted)', marginBottom: 14, padding: '8px 12px', background: 'var(--surface-2, var(--surface))', borderRadius: 6 }}>
+                Systém se učí z vašich korekcí. Čím více faktur zpracujete, tím přesnější extrakce bude pro opakující se dodavatele.
+              </div>
+              {patterns && patterns.length > 0 ? (
+                <table style={{ width: '100%', fontSize: '.84rem', borderCollapse: 'collapse' }}>
+                  <thead><tr style={{ borderBottom: '1px solid var(--border)' }}>
+                    {['Dodavatel', 'IČO', 'Použito', 'Naposledy', 'Akce'].map(h => (
+                      <th key={h} style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, fontSize: '.78rem', color: 'var(--text-muted)' }}>{h}</th>
+                    ))}
+                  </tr></thead>
+                  <tbody>{patterns.map(p => (
+                    <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '6px 8px' }}>{p.supplierName || '—'}</td>
+                      <td style={{ padding: '6px 8px', fontFamily: 'monospace', fontSize: '.8rem' }}>{p.supplierIco}</td>
+                      <td style={{ padding: '6px 8px' }}>{p.usageCount}x</td>
+                      <td style={{ padding: '6px 8px', fontSize: '.8rem', color: 'var(--text-muted)' }}>
+                        {p.lastUsedAt ? formatCzDate(p.lastUsedAt) : '—'}
+                      </td>
+                      <td style={{ padding: '6px 8px' }}>
+                        <button
+                          onClick={() => { if (confirm(`Smazat vzor pro ${p.supplierName || p.supplierIco}?`)) deletePatternMut.mutate(p.supplierIco); }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '.8rem' }}
+                        >
+                          Smazat
+                        </button>
+                      </td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)', fontSize: '.84rem' }}>
+                  Zatím žádné vzory. Vzory se vytvoří automaticky při uložení opravené faktury.
+                </div>
+              )}
+            </div>
+          )}
         </Modal>
       )}
     </div>
