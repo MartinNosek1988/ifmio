@@ -6,7 +6,7 @@ import { useToast } from '../../../shared/components/toast/Toast'
 import { useInvoice, useUpdateInvoice, useSubmitInvoice, useApproveInvoice, useReturnInvoiceToDraft } from '../api/finance.queries'
 import { formatKc } from '../../../shared/utils/format'
 import { partiesApi } from '../../parties/api/parties.api'
-import type { ApiInvoice, InvoiceLine } from '../api/finance.api'
+import type { InvoiceLine } from '../api/finance.api'
 
 const PdfViewer = React.lazy(() => import('./PdfViewer'))
 
@@ -17,7 +17,7 @@ const INVOICE_TYPES: Record<string, string> = {
 }
 
 const STATUS_BADGES: Record<string, { label: string; variant: string }> = {
-  draft: { label: 'Koncept', variant: 'gray' },
+  draft: { label: 'Koncept', variant: 'muted' },
   submitted: { label: 'Ke schválení', variant: 'yellow' },
   approved: { label: 'Schváleno', variant: 'green' },
 }
@@ -46,7 +46,7 @@ function SupplierAutocomplete({ value, onChange, onSelect }: {
 }) {
   const [results, setResults] = useState<Array<{ id: string; displayName: string; ic: string | null }>>([])
   const [open, setOpen] = useState(false)
-  const timeout = useRef<ReturnType<typeof setTimeout>>()
+  const timeout = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const search = (q: string) => {
     onChange(q)
