@@ -350,7 +350,7 @@ export function useBatchList() {
   return useQuery({
     queryKey: ['finance', 'batch-extract'],
     queryFn: () => financeApi.invoices.listBatches(),
-    refetchInterval: 60_000, // auto-refresh every minute
+    refetchInterval: 60_000,
   })
 }
 
