@@ -157,6 +157,8 @@ export interface ApiInvoice {
   lines?: InvoiceLine[] | null;
   isdocXml?: string | null;
   note?: string;
+  hasPdf?: boolean;
+  hasIsdoc?: boolean;
   approvalStatus: InvoiceApprovalStatus;
   submittedAt?: string | null;
   approvedAt?: string | null;

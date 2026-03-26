@@ -456,6 +456,16 @@ export class FinanceController {
     return this.invoicesService.exportIsdoc(user, id);
   }
 
+  @Get('invoices/:id/download/isdoc')
+  @ApiOperation({ summary: 'Stáhnout ISDOC přílohu' })
+  async downloadIsdoc(@CurrentUser() user: AuthUser, @Param('id') id: string, @Res() reply: FastifyReply) {
+    const xml = await this.invoicesService.exportIsdoc(user, id);
+    return reply
+      .header('Content-Disposition', `attachment; filename="faktura-${id}.isdoc"`)
+      .header('Content-Type', 'application/xml')
+      .send(xml);
+  }
+
   @Get('invoices/:id/documents')
   @ApiOperation({ summary: 'Přílohy dokladu' })
   getInvoiceDocuments(@CurrentUser() user: AuthUser, @Param('id') id: string) {

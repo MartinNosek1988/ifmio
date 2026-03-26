@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { Plus, FileText } from 'lucide-react';
+import { Plus, FileText, FileCode } from 'lucide-react';
 import { KpiCard, SearchBar, Table, Badge, Button, Modal } from '../../../shared/components';
 import type { Column } from '../../../shared/components';
 import { formatKc, formatCzDate } from '../../../shared/utils/format';
 import type { ApiInvoice } from '../api/finance.api';
+import { financeApi } from '../api/finance.api';
 import type { FinTransaction } from '../types';
 import { useInvoices, useInvoiceStats, useDeleteInvoice, useMarkInvoicePaid, useImportIsdoc, useExportIsdoc, usePairInvoice, useSubmitInvoice, useApproveInvoice, useAiExtractionStats, useExtractionPatterns, useDeleteExtractionPattern, useBatchList } from '../api/finance.queries';
 import { Sparkles, Clock } from 'lucide-react';
@@ -124,6 +125,37 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
 
   const pendingBatches = (batches ?? []).filter(b => b.status === 'submitted' || b.status === 'processing');
 
+  const downloadAttachment = async (invoiceId: string, type: 'pdf' | 'isdoc') => {
+    try {
+      if (type === 'isdoc') {
+        const xml = await financeApi.invoices.exportIsdoc(invoiceId)
+        const blob = new Blob([xml], { type: 'application/xml' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `faktura-${invoiceId}.isdoc`
+        a.click()
+        URL.revokeObjectURL(url)
+      } else {
+        // PDF: download via documents endpoint
+        const docs = await financeApi.invoices.getDocuments(invoiceId)
+        const pdf = docs.find(d => d.mimeType === 'application/pdf')
+        if (pdf) {
+          const { apiClient: client } = await import('../../../core/api/client')
+          const res = await client.get(`/documents/${pdf.id}/download`, { responseType: 'blob' })
+          const url = URL.createObjectURL(res.data as Blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = pdf.originalName || `faktura-${invoiceId}.pdf`
+          a.click()
+          URL.revokeObjectURL(url)
+        }
+      }
+    } catch {
+      // silent — download failed
+    }
+  }
+
   const handleIsdocImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -218,6 +250,23 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
       if (i.isPaid) return <Badge variant="green">Uhrazeno</Badge>;
       const overdue = i.dueDate && i.dueDate < new Date().toISOString().slice(0, 10);
       return <Badge variant={overdue ? 'red' : 'yellow'}>{overdue ? 'Po splatnosti' : 'Čeká'}</Badge>;
+    } },
+    { key: 'attachments', label: '', render: (i) => {
+      const abtnStyle: React.CSSProperties = { background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' };
+      return (
+        <div style={{ display: 'flex', gap: 2 }} onClick={(e) => e.stopPropagation()}>
+          {i.hasPdf && (
+            <button onClick={() => downloadAttachment(i.id, 'pdf')} title="Stáhnout PDF" style={{ ...abtnStyle, color: '#E24B4A' }}>
+              <FileText size={15} />
+            </button>
+          )}
+          {i.hasIsdoc && (
+            <button onClick={() => downloadAttachment(i.id, 'isdoc')} title="Stáhnout ISDOC" style={{ ...abtnStyle, color: '#1D9E75' }}>
+              <FileCode size={15} />
+            </button>
+          )}
+        </div>
+      );
     } },
     { key: 'actions', label: '', render: (i) => {
       const btnStyle = { background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.78rem' };

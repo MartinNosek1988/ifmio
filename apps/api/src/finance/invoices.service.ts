@@ -84,6 +84,16 @@ export class InvoicesService {
       this.prisma.invoice.count({ where }),
     ]);
 
+    // Batch-fetch PDF attachment counts for returned invoices
+    const invoiceIds = items.map(i => i.id)
+    const pdfLinks = invoiceIds.length > 0
+      ? await this.prisma.documentLink.findMany({
+          where: { entityType: 'invoice', entityId: { in: invoiceIds } },
+          select: { entityId: true },
+        })
+      : []
+    const pdfSet = new Set(pdfLinks.map(l => l.entityId))
+
     return {
       data: items.map(i => ({
         ...i,
@@ -97,6 +107,8 @@ export class InvoicesService {
         paymentDate: i.paymentDate?.toISOString() ?? null,
         createdAt: i.createdAt.toISOString(),
         updatedAt: i.updatedAt.toISOString(),
+        hasPdf: pdfSet.has(i.id),
+        hasIsdoc: i.isdocXml !== null,
       })),
       total,
       page,
