@@ -320,6 +320,13 @@ export function useExportIsdoc() {
   });
 }
 
+export function useAiExtractionStats(period = 'month') {
+  return useQuery({
+    queryKey: ['finance', 'ai-extraction-stats', period],
+    queryFn: () => financeApi.invoices.getAiExtractionStats(period),
+  });
+}
+
 export function useInvoiceDocuments(invoiceId: string | undefined) {
   return useQuery({
     queryKey: ['finance', 'invoices', invoiceId, 'documents'],

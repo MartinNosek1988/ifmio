@@ -341,7 +341,13 @@ export class FinanceController {
   @Roles(...ROLES_FINANCE)
   @ApiOperation({ summary: 'Extrakce dat z PDF faktury pomocí AI' })
   extractPdf(@CurrentUser() user: AuthUser, @Body() body: { pdfBase64: string; fileName?: string }) {
-    return this.invoicesService.extractFromPdf(user, body.pdfBase64);
+    return this.invoicesService.extractFromPdf(user, body.pdfBase64, body.fileName);
+  }
+
+  @Get('invoices/ai-extraction-stats')
+  @ApiOperation({ summary: 'Statistiky AI extrakce faktur' })
+  getAiExtractionStats(@CurrentUser() user: AuthUser, @Query('period') period?: string) {
+    return this.invoicesService.getAiExtractionStats(user, (period as any) || 'month');
   }
 
   @Post('invoices/import-isdoc')

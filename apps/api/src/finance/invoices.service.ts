@@ -616,37 +616,66 @@ export class InvoicesService {
     }
   }
 
-  async extractFromPdf(user: AuthUser, pdfBase64: string) {
+  private static readonly MODEL_PRICING: Record<string, { input: number; output: number }> = {
+    'claude-haiku-4-5-20251001': { input: 1.00, output: 5.00 },
+    'claude-sonnet-4-6': { input: 3.00, output: 15.00 },
+    'claude-opus-4-6': { input: 5.00, output: 25.00 },
+  }
+  private static readonly USD_CZK_RATE = 23.0
+
+  async extractFromPdf(user: AuthUser, pdfBase64: string, fileName?: string) {
     if (!this.anthropic) throw new BadRequestException('AI extrakce není dostupná — ANTHROPIC_API_KEY není nastaven')
     if (pdfBase64.length > 10 * 1024 * 1024) throw new BadRequestException('PDF je příliš velké (max ~7.5 MB)')
 
-    const response = await this.anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      system: `Jsi expert na extrakci dat z českých faktur.
+    const modelId = 'claude-haiku-4-5-20251001'
+    let response: any
+    try {
+      response = await this.anthropic.messages.create({
+        model: modelId,
+        max_tokens: 1024,
+        system: `Jsi expert na extrakci dat z českých faktur.
 Extrahuj strukturovaná data z faktury a vrať POUZE validní JSON objekt.
 Pokud pole není na faktuře uvedeno, vrať null pro dané pole.
 Číselné hodnoty vrať jako čísla (ne stringy).
 Data vrať ve formátu YYYY-MM-DD.
 IČO je 8místné číslo bez mezer. DIČ začíná "CZ" + IČO.`,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 } },
-          { type: 'text', text: `Extrahuj data z této faktury a vrať JSON:
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 } },
+            { type: 'text', text: `Extrahuj data z této faktury a vrať JSON:
 {"number":null,"supplierName":null,"supplierIco":null,"supplierDic":null,"buyerName":null,"buyerIco":null,"buyerDic":null,"description":null,"amountBase":null,"vatAmount":null,"amountTotal":null,"vatRate":null,"issueDate":null,"duzp":null,"dueDate":null,"variableSymbol":null,"constantSymbol":null,"specificSymbol":null,"paymentIban":null,"currency":"CZK","paymentMethod":null}
 Vrať POUZE JSON, žádný jiný text.` },
-        ],
-      }],
-    })
+          ],
+        }],
+      })
+    } catch (e: any) {
+      await this.prisma.aiExtractionLog.create({
+        data: { tenantId: user.tenantId, model: modelId, inputTokens: 0, outputTokens: 0, costUsd: 0, confidence: 'low', fileName, success: false, createdBy: user.id },
+      })
+      throw new BadRequestException('AI extrakce selhala: ' + (e.message || 'neznámá chyba'))
+    }
 
-    const textBlock = response.content.find(c => c.type === 'text')
-    if (!textBlock || textBlock.type !== 'text') throw new BadRequestException('Nepodařilo se extrahovat data z PDF')
+    const inputTokens = response.usage?.input_tokens ?? 0
+    const outputTokens = response.usage?.output_tokens ?? 0
+    const pricing = InvoicesService.MODEL_PRICING[modelId] ?? { input: 1.00, output: 5.00 }
+    const costUsd = (inputTokens / 1e6) * pricing.input + (outputTokens / 1e6) * pricing.output
+
+    const textBlock = response.content.find((c: any) => c.type === 'text')
+    if (!textBlock || textBlock.type !== 'text') {
+      await this.prisma.aiExtractionLog.create({
+        data: { tenantId: user.tenantId, model: modelId, inputTokens, outputTokens, costUsd, confidence: 'low', fileName, success: false, createdBy: user.id },
+      })
+      throw new BadRequestException('Nepodařilo se extrahovat data z PDF')
+    }
 
     let extracted: Record<string, unknown>
     try {
       extracted = JSON.parse(textBlock.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim())
     } catch {
+      await this.prisma.aiExtractionLog.create({
+        data: { tenantId: user.tenantId, model: modelId, inputTokens, outputTokens, costUsd, confidence: 'low', fileName, success: false, createdBy: user.id },
+      })
       throw new BadRequestException('Nepodařilo se parsovat výstup AI')
     }
 
@@ -654,7 +683,52 @@ Vrať POUZE JSON, žádný jiný text.` },
     const filled = keyFields.filter(k => extracted[k] != null && extracted[k] !== '').length
     const confidence = filled >= 4 ? 'high' : filled >= 2 ? 'medium' : 'low'
 
-    return { extracted, confidence }
+    await this.prisma.aiExtractionLog.create({
+      data: { tenantId: user.tenantId, model: modelId, inputTokens, outputTokens, costUsd, confidence, fileName, success: true, createdBy: user.id },
+    })
+
+    return { extracted, confidence, usage: { inputTokens, outputTokens, costUsd } }
+  }
+
+  async getAiExtractionStats(user: AuthUser, period: 'month' | 'year' | 'all' = 'month') {
+    const now = new Date()
+    let dateFilter: Date | undefined
+    if (period === 'month') dateFilter = new Date(now.getFullYear(), now.getMonth(), 1)
+    else if (period === 'year') dateFilter = new Date(now.getFullYear(), 0, 1)
+
+    const where: any = { tenantId: user.tenantId }
+    if (dateFilter) where.createdAt = { gte: dateFilter }
+
+    const logs = await this.prisma.aiExtractionLog.findMany({ where, orderBy: { createdAt: 'desc' } })
+
+    const totalExtractions = logs.length
+    const successfulExtractions = logs.filter(l => l.success).length
+    const totalInputTokens = logs.reduce((s, l) => s + l.inputTokens, 0)
+    const totalOutputTokens = logs.reduce((s, l) => s + l.outputTokens, 0)
+    const totalCostUsd = logs.reduce((s, l) => s + Number(l.costUsd), 0)
+    const totalCostCzk = totalCostUsd * InvoicesService.USD_CZK_RATE
+
+    const byConfidence = { high: 0, medium: 0, low: 0 }
+    for (const l of logs) if (l.confidence in byConfidence) byConfidence[l.confidence as keyof typeof byConfidence]++
+
+    const modelMap = new Map<string, { count: number; costUsd: number; tokens: number }>()
+    for (const l of logs) {
+      const m = modelMap.get(l.model) ?? { count: 0, costUsd: 0, tokens: 0 }
+      m.count++
+      m.costUsd += Number(l.costUsd)
+      m.tokens += l.inputTokens + l.outputTokens
+      modelMap.set(l.model, m)
+    }
+
+    return {
+      totalExtractions, successfulExtractions,
+      totalInputTokens, totalOutputTokens,
+      totalCostUsd: Math.round(totalCostUsd * 1e6) / 1e6,
+      totalCostCzk: Math.round(totalCostCzk * 100) / 100,
+      avgCostPerInvoice: successfulExtractions > 0 ? Math.round((totalCostCzk / successfulExtractions) * 100) / 100 : 0,
+      byConfidence,
+      byModel: Array.from(modelMap.entries()).map(([model, v]) => ({ model, count: v.count, costUsd: Math.round(v.costUsd * 1e6) / 1e6, tokens: v.tokens })),
+    }
   }
 
   async exportIsdoc(user: AuthUser, id: string): Promise<string> {

@@ -95,6 +95,7 @@ model Tenant {
   unitManagementFees         UnitManagementFee[]
   evidenceFolders            EvidenceFolder[]
   paymentOrders              PaymentOrder[]
+  aiExtractionLogs           AiExtractionLog[]
 
   @@map("tenants")
 }
@@ -895,6 +896,7 @@ model Invoice {
 
   costAllocations          InvoiceCostAllocation[]
   evidenceAllocations      EvidenceFolderAllocation[]
+  aiExtractionLogs         AiExtractionLog[]
 }
 
 // ─── INVOICE COST ALLOCATION (D1 — propojení dokladu se složkami předpisu) ────
@@ -4112,4 +4114,28 @@ model EvidenceFolderAllocation {
   @@index([evidenceFolderId])
   @@index([invoiceId])
   @@map("evidence_folder_allocations")
+}
+
+// ─── AI EXTRACTION LOG ──────────────────────────────────────────────
+
+model AiExtractionLog {
+  id            String   @id @default(cuid())
+  tenantId      String
+  invoiceId     String?
+  model         String
+  inputTokens   Int
+  outputTokens  Int
+  costUsd       Decimal  @db.Decimal(10, 6)
+  confidence    String
+  fileName      String?
+  success       Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  createdBy     String?
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoice Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([tenantId, createdAt])
+  @@map("ai_extraction_logs")
 }

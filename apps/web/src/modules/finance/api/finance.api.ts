@@ -340,8 +340,10 @@ export const financeApi = {
       apiClient.post(`/finance/invoices/${id}/mark-paid`, dto || {}).then((r) => r.data),
     pair: (id: string, transactionId: string) =>
       apiClient.post(`/finance/invoices/${id}/pair`, { transactionId }).then((r) => r.data),
-    extractPdf: (pdfBase64: string) =>
-      apiClient.post<{ extracted: Record<string, unknown>; confidence: 'high' | 'medium' | 'low' }>('/finance/invoices/extract-pdf', { pdfBase64 }).then((r) => r.data),
+    extractPdf: (pdfBase64: string, fileName?: string) =>
+      apiClient.post<{ extracted: Record<string, unknown>; confidence: 'high' | 'medium' | 'low'; usage?: { inputTokens: number; outputTokens: number; costUsd: number } }>('/finance/invoices/extract-pdf', { pdfBase64, fileName }).then((r) => r.data),
+    getAiExtractionStats: (period = 'month') =>
+      apiClient.get<{ totalExtractions: number; successfulExtractions: number; totalInputTokens: number; totalOutputTokens: number; totalCostUsd: number; totalCostCzk: number; avgCostPerInvoice: number; byConfidence: { high: number; medium: number; low: number }; byModel: Array<{ model: string; count: number; costUsd: number; tokens: number }> }>(`/finance/invoices/ai-extraction-stats?period=${period}`).then((r) => r.data),
     importIsdoc: (xmlContent: string) =>
       apiClient.post<ApiInvoice>('/finance/invoices/import-isdoc', { xmlContent }).then((r) => r.data),
     importIsdocBulk: (invoices: Array<{ xmlContent: string; pdfBase64?: string; pdfFileName?: string; isdocFileName: string }>) =>
