@@ -461,6 +461,10 @@ export class InvoicesService {
   }
 
   async importIsdoc(user: AuthUser, xmlContent: string) {
+    // TODO: remove after diagnosis
+    console.log('[ISDOC INPUT TYPE]', typeof xmlContent, 'length:', xmlContent?.length ?? 'N/A')
+    console.log('[ISDOC INPUT SAMPLE]', (xmlContent ?? '').substring(0, 200))
+
     // Parse ISDOC XML to extract invoice data
     const parsed = this.parseIsdocXml(xmlContent);
 
