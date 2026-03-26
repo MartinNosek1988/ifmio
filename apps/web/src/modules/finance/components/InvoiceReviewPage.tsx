@@ -185,6 +185,22 @@ export default function InvoiceReviewPage() {
   const [activeField, setActiveField] = useState<string | null>(null)
   const [pdfBase64, setPdfBase64] = useState<string | null>(null)
   const [zoom, setZoom] = useState(1.5)
+  const [extractionConfidence, setExtractionConfidence] = useState<string | null>(null)
+
+  // Load extraction data from sessionStorage (set by PdfExtractModal)
+  useEffect(() => {
+    if (!id) return
+    const key = `invoice-extraction-${id}`
+    const raw = sessionStorage.getItem(key)
+    if (raw) {
+      try {
+        const { pdfBase64: pdf, confidence } = JSON.parse(raw)
+        if (pdf) setPdfBase64(pdf)
+        if (confidence) setExtractionConfidence(confidence)
+      } catch { /* ignore parse errors */ }
+      sessionStorage.removeItem(key)
+    }
+  }, [id])
 
   // Populate form when invoice loads
   useEffect(() => {
@@ -313,9 +329,9 @@ export default function InvoiceReviewPage() {
     } catch (e: any) { toast.error(e?.response?.data?.message || 'Vrácení selhalo') }
   }
 
-  // Load PDF from documents
+  // Load PDF from documents (only if not already set from sessionStorage)
   useEffect(() => {
-    if (!id) return
+    if (!id || pdfBase64) return
     import('../api/finance.api').then(({ financeApi }) => {
       financeApi.invoices.getDocuments(id).then(docs => {
         const pdf = docs.find(d => d.mimeType === 'application/pdf')
@@ -331,7 +347,7 @@ export default function InvoiceReviewPage() {
         }
       }).catch(() => {})
     })
-  }, [id])
+  }, [id, pdfBase64])
 
   const isDraft = invoice?.approvalStatus === 'draft'
   const isSubmitted = invoice?.approvalStatus === 'submitted'
@@ -390,6 +406,11 @@ export default function InvoiceReviewPage() {
         <Badge variant={STATUS_BADGES[invoice.approvalStatus]?.variant as any}>
           {STATUS_BADGES[invoice.approvalStatus]?.label ?? invoice.approvalStatus}
         </Badge>
+        {extractionConfidence && (
+          <Badge variant={extractionConfidence === 'high' ? 'green' : extractionConfidence === 'medium' ? 'yellow' : 'red'}>
+            AI: {extractionConfidence === 'high' ? 'vysoká jistota' : extractionConfidence === 'medium' ? 'střední jistota' : 'nízká jistota'}
+          </Badge>
+        )}
         {dirty && canEdit && (
           <Button variant="primary" onClick={handleSave} disabled={updateMut.isPending} icon={<Save size={14} />}>
             {updateMut.isPending ? 'Ukládám...' : 'Uložit'}
