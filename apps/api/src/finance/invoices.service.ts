@@ -136,6 +136,11 @@ export class InvoicesService {
     return invoice;
   }
 
+  async getOne(user: AuthUser, id: string) {
+    const invoice = await this.findOneInternal(user, id);
+    return this.serializeInvoice(invoice);
+  }
+
   async create(user: AuthUser, dto: CreateInvoiceDto & { supplierId?: string | null; buyerId?: string | null; isdocXml?: string | null }) {
     if (dto.propertyId) {
       await this.scope.verifyPropertyAccess(user, dto.propertyId);

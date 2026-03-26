@@ -232,6 +232,14 @@ export function useMatchSuggestions(txId: string | null) {
 
 // ─── INVOICES (Doklady) ───────────────────────────────────────────
 
+export function useInvoice(id: string | undefined) {
+  return useQuery({
+    queryKey: ['finance', 'invoices', id],
+    queryFn: () => financeApi.invoices.getOne(id!),
+    enabled: !!id,
+  });
+}
+
 export function useInvoices(params?: Record<string, unknown>) {
   return useQuery({
     queryKey: financeKeys.invoices(params),
