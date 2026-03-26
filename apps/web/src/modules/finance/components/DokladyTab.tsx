@@ -123,7 +123,6 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
   const deletePatternMut = useDeleteExtractionPattern();
 
   const pendingBatches = (batches ?? []).filter(b => b.status === 'submitted' || b.status === 'processing');
-  const completedBatches = (batches ?? []).filter(b => b.status === 'completed');
 
   const handleIsdocImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -571,7 +570,7 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
                     <Badge variant={
                       b.status === 'completed' ? 'green' :
                       b.status === 'failed' ? 'red' :
-                      b.status === 'submitted' || b.status === 'processing' ? 'yellow' : 'gray'
+                      b.status === 'submitted' || b.status === 'processing' ? 'yellow' : 'muted'
                     }>
                       {b.status === 'completed' ? 'Dokončeno' :
                        b.status === 'failed' ? 'Selhalo' :

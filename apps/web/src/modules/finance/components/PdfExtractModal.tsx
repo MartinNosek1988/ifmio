@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, Suspense } from 'react'
 import { Upload, FileText, Sparkles, ArrowDownLeft } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Modal, Badge, Button } from '../../../shared/components'
 import { useToast } from '../../../shared/components/toast/Toast'
@@ -86,6 +87,7 @@ const assignBtnStyle = (active: boolean): React.CSSProperties => ({
 export function PdfExtractModal({ onClose }: { onClose: () => void }) {
   const toast = useToast()
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [step, setStep] = useState<Step>('upload')
@@ -136,6 +138,10 @@ export function PdfExtractModal({ onClose }: { onClose: () => void }) {
       }
 
       onClose()
+      // Navigate to review page for the newly created invoice
+      if (savedInvoice?.id) {
+        navigate(`/finance/invoices/${savedInvoice.id}/review`)
+      }
     },
     onError: (e: any) => toast.error(e?.response?.data?.message || 'Uložení selhalo'),
   })

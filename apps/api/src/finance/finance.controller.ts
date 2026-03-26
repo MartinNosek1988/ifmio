@@ -444,6 +444,12 @@ export class FinanceController {
     return this.invoicesService.importIsdocBulk(user, body.invoices);
   }
 
+  @Get('invoices/:id')
+  @ApiOperation({ summary: 'Detail dokladu' })
+  getInvoice(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.invoicesService.getOne(user, id);
+  }
+
   @Get('invoices/:id/export-isdoc')
   @ApiOperation({ summary: 'Export dokladu do ISDOC XML' })
   exportIsdoc(@CurrentUser() user: AuthUser, @Param('id') id: string) {

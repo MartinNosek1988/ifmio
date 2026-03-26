@@ -10,6 +10,7 @@ interface PdfViewerProps {
   onTextSelected: (text: string) => void
   highlightedTexts?: string[]
   activeFieldLabel?: string | null
+  scale?: number
 }
 
 const PDF_SCALE = 1.5
@@ -19,7 +20,7 @@ function getScale() {
   return window.innerWidth <= 900 ? PDF_SCALE_MOBILE : PDF_SCALE
 }
 
-export default function PdfViewer({ pdfBase64, onTextSelected, highlightedTexts, activeFieldLabel }: PdfViewerProps) {
+export default function PdfViewer({ pdfBase64, onTextSelected, highlightedTexts, activeFieldLabel, scale: scaleProp }: PdfViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const textLayerRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -53,7 +54,7 @@ export default function PdfViewer({ pdfBase64, onTextSelected, highlightedTexts,
     if (!doc || !canvas || !textLayerDiv) return
 
     const page = await doc.getPage(pageNum)
-    const scale = getScale()
+    const scale = scaleProp ?? getScale()
     const viewport = page.getViewport({ scale })
 
     canvas.width = viewport.width
@@ -62,7 +63,7 @@ export default function PdfViewer({ pdfBase64, onTextSelected, highlightedTexts,
     canvas.style.height = viewport.height + 'px'
 
     const ctx = canvas.getContext('2d')!
-    await page.render({ canvasContext: ctx, viewport }).promise
+    await page.render({ canvas, canvasContext: ctx, viewport }).promise
 
     // Clear old text layer
     textLayerDiv.innerHTML = ''
@@ -96,7 +97,7 @@ export default function PdfViewer({ pdfBase64, onTextSelected, highlightedTexts,
 
       textLayerDiv.appendChild(span)
     }
-  }, [pageNum, highlightedTexts])
+  }, [pageNum, highlightedTexts, scaleProp])
 
   useEffect(() => {
     if (pdfDocRef.current) renderPage()

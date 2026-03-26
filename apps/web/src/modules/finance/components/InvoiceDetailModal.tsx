@@ -92,6 +92,7 @@ export function InvoiceDetailModal({ invoice, transactions, onClose, onEdit, onM
             )}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
+            <Button onClick={() => { onClose(); navigate(`/finance/invoices/${invoice.id}/review`); }}>Otevřít detail</Button>
             <Button onClick={onExport} icon={<Download size={14} />}>Export ISDOC</Button>
             {/* Submit: draft → submitted */}
             {isDraft && !invoice.isPaid && (
