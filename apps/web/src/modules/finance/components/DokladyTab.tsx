@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Plus, FileText, FileCode, Upload, ChevronDown, Cpu, Clock } from 'lucide-react';
+import { Plus, FileText, FileCode, Upload, ChevronDown, Cpu, Clock, Sparkles } from 'lucide-react';
 import { KpiCard, SearchBar, Table, Badge, Button, Modal } from '../../../shared/components';
 import type { Column } from '../../../shared/components';
 import { formatKc, formatCzDate } from '../../../shared/utils/format';
@@ -7,13 +7,11 @@ import type { ApiInvoice } from '../api/finance.api';
 import { financeApi } from '../api/finance.api';
 import type { FinTransaction } from '../types';
 import { useInvoices, useInvoiceStats, useDeleteInvoice, useMarkInvoicePaid, useImportIsdoc, useExportIsdoc, usePairInvoice, useSubmitInvoice, useApproveInvoice, useAiExtractionStats, useExtractionPatterns, useDeleteExtractionPattern, useBatchList } from '../api/finance.queries';
-import { Sparkles, Clock } from 'lucide-react';
 import React from 'react';
 import { useAuthStore } from '../../../core/auth';
 import { InvoiceDetailModal } from './InvoiceDetailModal';
 import { InvoiceForm } from './InvoiceForm';
 import { InvoiceContextMenu } from './InvoiceContextMenu';
-import { IsdocImportModal } from './IsdocImportModal';
 import { PdfExtractModal } from './PdfExtractModal';
 import { BatchImportModal } from './BatchImportModal';
 
@@ -111,7 +109,6 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
   const submitMut = useSubmitInvoice();
   const approveMut = useApproveInvoice();
   const isdocRef = useRef<HTMLInputElement>(null);
-  const [showBulkImport, setShowBulkImport] = useState(false);
   const [showPdfExtract, setShowPdfExtract] = useState(false);
   const [showAiStats, setShowAiStats] = useState(false);
   const [aiStatsTab, setAiStatsTab] = useState<'stats' | 'patterns'>('stats');
@@ -126,7 +123,6 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
   const pendingBatches = (batches ?? []).filter(b => b.status === 'submitted' || b.status === 'processing');
   const [uploadMenuOpen, setUploadMenuOpen] = useState(false);
   const uploadMenuRef = useRef<HTMLDivElement>(null);
-  const pdfInputRef = useRef<HTMLInputElement>(null);
 
   // Close upload menu on outside click
   useEffect(() => {
@@ -359,14 +355,13 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
                   <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Importovat faktury z XML</div>
                 </div>
               </label>
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}>
-                <input ref={pdfInputRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={() => { setUploadMenuOpen(false); setShowPdfExtract(true); }} />
+              <button type="button" onClick={() => { setUploadMenuOpen(false); setShowPdfExtract(true); }} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
                 <Cpu size={16} style={{ marginTop: 2, color: '#1D9E75', flexShrink: 0 }} />
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 500 }}>PDF (AI extrakce)</div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Vytěžit data pomocí AI</div>
                 </div>
-              </label>
+              </button>
               <button onClick={() => { setUploadMenuOpen(false); setShowBatchImport(true); }} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
                 <Clock size={16} style={{ marginTop: 2, color: 'var(--text-muted)', flexShrink: 0 }} />
                 <div>
@@ -517,8 +512,6 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
         />
       )}
 
-      {/* Bulk import modal */}
-      {showBulkImport && <IsdocImportModal onClose={() => setShowBulkImport(false)} />}
       {showPdfExtract && <PdfExtractModal onClose={() => setShowPdfExtract(false)} />}
 
       {/* AI extraction stats modal */}
