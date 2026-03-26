@@ -29,7 +29,6 @@ export function PdfExtractModal({ onClose }: { onClose: () => void }) {
   const [step, setStep] = useState<Step>('upload')
   const [confidence, setConfidence] = useState<Confidence>('medium')
   const [form, setForm] = useState<Record<string, any>>({})
-  const [pdfBase64, setPdfBase64] = useState<string | null>(null)
 
   const set = (key: string, value: any) => setForm(prev => ({ ...prev, [key]: value }))
 
@@ -65,7 +64,6 @@ export function PdfExtractModal({ onClose }: { onClose: () => void }) {
     let binary = ''
     for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
     const base64 = btoa(binary)
-    setPdfBase64(base64)
     extractMut.mutate(base64)
   }
 
@@ -102,7 +100,7 @@ export function PdfExtractModal({ onClose }: { onClose: () => void }) {
   }
 
   const handleReset = () => {
-    setStep('upload'); setForm({}); setPdfBase64(null)
+    setStep('upload'); setForm({})
   }
 
   const c = CONFIDENCE_LABELS[confidence]
