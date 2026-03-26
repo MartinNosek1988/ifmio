@@ -412,6 +412,10 @@ export class InvoicesService {
   }
 
   async importIsdoc(user: AuthUser, xmlContent: string) {
+    // TODO: remove after diagnosis
+    console.log('[ISDOC INPUT TYPE]', typeof xmlContent, 'length:', xmlContent?.length ?? 'N/A')
+    console.log('[ISDOC INPUT SAMPLE]', (xmlContent ?? '').substring(0, 200))
+
     // Parse ISDOC XML to extract invoice data
     const parsed = this.parseIsdocXml(xmlContent);
 
@@ -518,20 +522,6 @@ export class InvoicesService {
       }
     }
 
-    // TODO: remove after diagnosis
-    console.log('[ISDOC TRACE]', {
-      number: parsed.number,
-      supplierName: parsed.supplierName,
-      supplierIco: parsed.supplierIco,
-      amountBase: parsed.amountBase?.toString(),
-      amountTotal: parsed.amountTotal?.toString(),
-      vatAmount: parsed.vatAmount?.toString(),
-      vatRate: parsed.vatRate,
-      variableSymbol: parsed.variableSymbol,
-      issueDate: parsed.issueDate,
-      dueDate: parsed.dueDate,
-    });
-
     return this.create(user, {
       ...(parsed as unknown as CreateInvoiceDto),
       isdocXml: xmlContent,
@@ -550,31 +540,33 @@ export class InvoicesService {
     return this.generateIsdocXml(invoice);
   }
 
-  private parseIsdocXml(xml: string): Record<string, unknown> {
-    // Strip namespace prefixes for simpler parsing (isdoc:ID → ID)
-    const s = xml.replace(/<\/?[\w-]+:/g, (m) => m[0] === '<' && m[1] === '/' ? '</' : '<');
+  private parseIsdocXml(xmlString: string): Record<string, unknown> {
+    // Validate input
+    if (!xmlString || typeof xmlString !== 'string') {
+      // TODO: remove after diagnosis
+      console.error('[ISDOC] Invalid input:', typeof xmlString)
+      return { number: `ISDOC-${Date.now()}`, type: 'received', issueDate: new Date().toISOString().slice(0, 10) }
+    }
+
+    // Strip XML declaration + namespace prefixes (isdoc:ID → ID)
+    let s = xmlString.replace(/<\?xml[^?]*\?>/g, '').trim()
+    s = s.replace(/<(\/?)[a-zA-Z][a-zA-Z0-9]*:/g, '<$1')
+
     // TODO: remove after diagnosis
-    console.log('[ISDOC XML STRIPPED]', s.substring(0, 300));
+    console.log('[ISDOC PARSE START] length:', s.length, 'first 100:', s.substring(0, 100))
 
     // Helpers
-    const tag = (src: string, t: string) => {
-      const m = src.match(new RegExp(`<${t}[^>]*>([^<]*)</${t}>`, 'i'));
-      return m?.[1]?.trim() ?? '';
-    };
-    const section = (src: string, t: string) => {
-      const m = src.match(new RegExp(`<${t}[^>]*>([\\s\\S]*?)</${t}>`, 'i'));
-      return m?.[1] ?? '';
-    };
-    const num = (src: string, t: string) => parseFloat(tag(src, t)) || 0;
+    const extractSection = (src: string, tag: string): string => {
+      const re = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i')
+      return src.match(re)?.[1] ?? ''
+    }
+    const extractValue = (src: string, tag: string): string => {
+      const re = new RegExp(`<${tag}[^>]*>([^<]+)<\\/${tag}>`, 'i')
+      return src.match(re)?.[1]?.trim() ?? ''
+    }
+    const num = (src: string, tag: string) => parseFloat(extractValue(src, tag)) || 0
 
-    // Extract top-level sections first
-    const supplierXml = section(s, 'AccountingSupplierParty');
-    const buyerXml = section(s, 'AccountingCustomerParty');
-    const paymentXml = section(s, 'PaymentMeans');
-    const monetaryXml = section(s, 'LegalMonetaryTotal');
-    const taxXml = section(s, 'TaxTotal');
-
-    // Document number — extract from XML with all nested blocks removed
+    // Document number — from root level only (strip nested blocks to avoid ID collisions)
     const rootOnly = s
       .replace(/<AccountingSupplierParty[\s\S]*?<\/AccountingSupplierParty>/gi, '')
       .replace(/<AccountingCustomerParty[\s\S]*?<\/AccountingCustomerParty>/gi, '')
@@ -582,75 +574,86 @@ export class InvoicesService {
       .replace(/<TaxTotal[\s\S]*?<\/TaxTotal>/gi, '')
       .replace(/<TaxSubTotal[\s\S]*?<\/TaxSubTotal>/gi, '')
       .replace(/<InvoiceLine[\s\S]*?<\/InvoiceLine>/gi, '')
-      .replace(/<TaxScheme[\s\S]*?<\/TaxScheme>/gi, '');
-    const docNumber = tag(rootOnly, 'ID') || tag(s, 'DocumentNumber') || `ISDOC-${Date.now()}`;
+      .replace(/<TaxScheme[\s\S]*?<\/TaxScheme>/gi, '')
+    const docNumber = extractValue(rootOnly, 'ID') || extractValue(s, 'DocumentNumber') || `ISDOC-${Date.now()}`
 
-    // Supplier: IČO from PartyIdentification/ID, DIČ from PartyTaxScheme/CompanyID
-    const supplierPartyId = section(supplierXml, 'PartyIdentification');
-    const supplierTaxScheme = section(supplierXml, 'PartyTaxScheme');
-    const supplierName = tag(supplierXml, 'Name') || tag(supplierXml, 'TradeName');
-    const supplierIco = tag(supplierPartyId, 'ID');
-    const supplierDic = tag(supplierTaxScheme, 'CompanyID');
+    // Supplier
+    const supplierSection = extractSection(s, 'AccountingSupplierParty')
+    const supplierName = extractValue(supplierSection, 'Name') || extractValue(supplierSection, 'TradeName')
+    const supplierIco = extractValue(extractSection(supplierSection, 'PartyIdentification'), 'ID')
+    const supplierDic = extractValue(extractSection(supplierSection, 'PartyTaxScheme'), 'CompanyID')
 
-    // Buyer: same structure
-    const buyerPartyId = section(buyerXml, 'PartyIdentification');
-    const buyerTaxScheme = section(buyerXml, 'PartyTaxScheme');
-    const buyerName = tag(buyerXml, 'Name') || tag(buyerXml, 'TradeName');
-    const buyerIco = tag(buyerPartyId, 'ID');
-    const buyerDic = tag(buyerTaxScheme, 'CompanyID');
+    // Buyer
+    const buyerSection = extractSection(s, 'AccountingCustomerParty')
+    const buyerName = extractValue(buyerSection, 'Name') || extractValue(buyerSection, 'TradeName')
+    const buyerIco = extractValue(extractSection(buyerSection, 'PartyIdentification'), 'ID')
+    const buyerDic = extractValue(extractSection(buyerSection, 'PartyTaxScheme'), 'CompanyID')
 
     // Amounts from LegalMonetaryTotal
-    const amountBase = num(monetaryXml, 'TaxExclusiveAmount');
-    const amountTotal = num(monetaryXml, 'PayableAmount') || num(monetaryXml, 'TaxInclusiveAmount') || amountBase;
-    const vatAmount = num(taxXml, 'TaxAmount');
+    const monetarySection = extractSection(s, 'LegalMonetaryTotal')
+    const amountBase = num(monetarySection, 'TaxExclusiveAmount')
+    const amountTotal = num(monetarySection, 'PayableAmount') || num(monetarySection, 'TaxInclusiveAmount') || amountBase
 
-    // VAT rate — from TaxSubTotal or InvoiceLine, fallback to calculation
-    let vatRate = num(section(taxXml, 'TaxSubTotal'), 'Percent')
-      || num(section(s, 'InvoiceLine'), 'Percent');
-    if (!vatRate && amountBase > 0) vatRate = Math.round((vatAmount / amountBase) * 100);
+    // VAT
+    const taxSection = extractSection(s, 'TaxTotal')
+    const vatAmount = num(taxSection, 'TaxAmount')
+    let vatRate = num(extractSection(taxSection, 'TaxSubTotal'), 'Percent')
+      || num(extractSection(s, 'InvoiceLine'), 'Percent')
+    if (!vatRate && amountBase > 0) vatRate = Math.round((vatAmount / amountBase) * 100)
 
-    // Payment symbols + due date from PaymentMeans
-    const variableSymbol = tag(paymentXml, 'VariableSymbol');
-    const dueDate = tag(paymentXml, 'PaymentDueDate') || tag(paymentXml, 'DueDate')
-      || tag(section(s, 'PaymentTerms'), 'PaymentDueDate') || tag(s, 'DueDate');
-    const pmCode = tag(paymentXml, 'PaymentMeansCode');
-    const pmMap: Record<string, string> = { '42': 'bank_transfer', '10': 'cash', '48': 'card' };
+    // Dates (return strings — CreateInvoiceDto uses @IsDateString)
+    const issueDate = extractValue(rootOnly, 'IssueDate') || extractValue(s, 'IssueDate') || new Date().toISOString().slice(0, 10)
+    const taxPointDate = extractValue(rootOnly, 'TaxPointDate') || extractValue(s, 'TaxPointDate')
+
+    // Payment means
+    const paymentSection = extractSection(s, 'PaymentMeans')
+    const variableSymbol = extractValue(paymentSection, 'VariableSymbol')
+    const dueDate = extractValue(paymentSection, 'PaymentDueDate') || extractValue(paymentSection, 'DueDate')
+      || extractValue(extractSection(s, 'PaymentTerms'), 'PaymentDueDate') || extractValue(s, 'DueDate')
+    const pmCode = extractValue(paymentSection, 'PaymentMeansCode')
+    const pmMap: Record<string, string> = { '42': 'bank_transfer', '10': 'cash', '48': 'card' }
+
+    // Description
+    const description = extractValue(rootOnly, 'Note') || extractValue(rootOnly, 'Description') || ''
 
     // Currency
-    const currMatch = s.match(/currencyID="([A-Z]{3})"/i);
-    const currency = currMatch?.[1] || tag(s, 'LocalCurrencyCode') || tag(s, 'CurrencyCode') || 'CZK';
+    const currency = extractValue(rootOnly, 'LocalCurrencyCode') || s.match(/currencyID="([A-Z]{3})"/i)?.[1] || extractValue(s, 'CurrencyCode') || 'CZK'
 
     // Invoice lines
-    const lines: Array<Record<string, unknown>> = [];
-    const lineRegex = /<InvoiceLine[^>]*>([\s\S]*?)<\/InvoiceLine>/gi;
-    let lineMatch: RegExpExecArray | null;
-    let lineIdx = 0;
+    const lines: Array<Record<string, unknown>> = []
+    const lineRegex = /<InvoiceLine[^>]*>([\s\S]*?)<\/InvoiceLine>/gi
+    let lineMatch: RegExpExecArray | null
+    let lineIdx = 0
     while ((lineMatch = lineRegex.exec(s)) !== null) {
-      const l = lineMatch[1];
-      const description = tag(l, 'Name') || tag(l, 'Description') || tag(l, 'Note') || `Položka ${++lineIdx}`;
-      const quantity = parseFloat(tag(l, 'InvoicedQuantity')) || 1;
-      const unit = tag(l, 'unitCode') || 'ks';
-      const unitPrice = num(l, 'PriceAmount');
-      const lineTotal = num(l, 'LineExtensionAmount') || quantity * unitPrice;
-      const lineVatRate = num(l, 'Percent');
-      const lineVatAmount = Math.round(lineTotal * lineVatRate / 100 * 100) / 100;
-      lines.push({ description, quantity, unit, unitPrice, lineTotal, vatRate: lineVatRate, vatAmount: lineVatAmount });
+      const l = lineMatch[1]
+      const lineDesc = extractValue(l, 'Name') || extractValue(l, 'Description') || extractValue(l, 'Note') || `Položka ${++lineIdx}`
+      const quantity = parseFloat(extractValue(l, 'InvoicedQuantity')) || 1
+      const unit = extractValue(l, 'unitCode') || 'ks'
+      const unitPrice = num(l, 'PriceAmount')
+      const lineTotal = num(l, 'LineExtensionAmount') || quantity * unitPrice
+      const lineVatRate = num(l, 'Percent')
+      const lineVatAmount = Math.round(lineTotal * lineVatRate / 100 * 100) / 100
+      lines.push({ description: lineDesc, quantity, unit, unitPrice, lineTotal, vatRate: lineVatRate, vatAmount: lineVatAmount })
     }
 
-    return {
+    const result = {
       number: docNumber,
       type: 'received',
       supplierName, supplierIco, supplierDic,
       buyerName, buyerIco, buyerDic,
-      description: tag(rootOnly, 'Note') || tag(rootOnly, 'Description') || '',
+      description,
       amountBase, vatAmount, amountTotal, vatRate, currency,
-      issueDate: tag(s, 'IssueDate') || new Date().toISOString().slice(0, 10),
-      duzp: tag(s, 'TaxPointDate') || tag(s, 'IssueDate') || '',
+      issueDate,
+      duzp: taxPointDate || issueDate,
       dueDate: dueDate || '',
       variableSymbol,
       ...(pmCode && pmMap[pmCode] ? { paymentMethod: pmMap[pmCode] } : {}),
       lines: lines.length > 0 ? lines : undefined,
-    };
+    }
+
+    // TODO: remove after diagnosis
+    console.log('[ISDOC RESULT]', JSON.stringify(result))
+    return result
   }
 
   async findForResident(user: AuthUser, residentId: string) {
