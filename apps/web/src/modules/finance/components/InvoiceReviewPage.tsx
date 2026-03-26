@@ -12,6 +12,8 @@ const PdfViewer = React.lazy(() => import('./PdfViewer'))
 
 // ─── CONSTANTS ──────────────────────────────────────────────────
 
+type LineWithId = InvoiceLine & { _id: string }
+
 const INVOICE_TYPES: Record<string, string> = {
   received: 'Přijatá', issued: 'Vydaná', proforma: 'Záloha', credit_note: 'Dobropis', internal: 'Interní',
 }
@@ -37,6 +39,10 @@ const sectionTitle: React.CSSProperties = {
   textTransform: 'uppercase', letterSpacing: 1,
 }
 
+function addLineId(line: InvoiceLine): LineWithId {
+  return { ...line, _id: crypto.randomUUID() }
+}
+
 // ─── SUPPLIER AUTOCOMPLETE ──────────────────────────────────────
 
 function SupplierAutocomplete({ value, onChange, onSelect }: {
@@ -47,6 +53,11 @@ function SupplierAutocomplete({ value, onChange, onSelect }: {
   const [results, setResults] = useState<Array<{ id: string; displayName: string; ic: string | null }>>([])
   const [open, setOpen] = useState(false)
   const timeout = useRef<ReturnType<typeof setTimeout>>(undefined)
+
+  // FIX 2: cleanup timeout on unmount
+  useEffect(() => {
+    return () => clearTimeout(timeout.current)
+  }, [])
 
   const search = (q: string) => {
     onChange(q)
@@ -82,17 +93,16 @@ function SupplierAutocomplete({ value, onChange, onSelect }: {
 // ─── LINE ITEMS ─────────────────────────────────────────────────
 
 function LineItemsEditor({ lines, onChange }: {
-  lines: InvoiceLine[]
-  onChange: (lines: InvoiceLine[]) => void
+  lines: LineWithId[]
+  onChange: (lines: LineWithId[]) => void
 }) {
   const addLine = () => {
-    onChange([...lines, { description: '', quantity: 1, unit: 'ks', unitPrice: 0, lineTotal: 0, vatRate: 21, vatAmount: 0 }])
+    onChange([...lines, { _id: crypto.randomUUID(), description: '', quantity: 1, unit: 'ks', unitPrice: 0, lineTotal: 0, vatRate: 21, vatAmount: 0 }])
   }
 
   const updateLine = (idx: number, field: keyof InvoiceLine, value: any) => {
     const updated = [...lines]
     ;(updated[idx] as any)[field] = value
-    // Recalculate
     const line = updated[idx]
     line.lineTotal = line.quantity * line.unitPrice
     line.vatAmount = line.lineTotal * (line.vatRate / 100)
@@ -119,7 +129,7 @@ function LineItemsEditor({ lines, onChange }: {
       )}
 
       {lines.map((line, idx) => (
-        <div key={idx} style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1fr 1fr 1fr auto', gap: 6, marginBottom: 6, alignItems: 'end' }}>
+        <div key={line._id} style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1fr 1fr 1fr auto', gap: 6, marginBottom: 6, alignItems: 'end' }}>
           <div>
             {idx === 0 && <label style={labelStyle}>Popis</label>}
             <input value={line.description} onChange={e => updateLine(idx, 'description', e.target.value)} style={inputStyle} />
@@ -170,7 +180,7 @@ export default function InvoiceReviewPage() {
   const returnMut = useReturnInvoiceToDraft()
 
   const [form, setForm] = useState<Record<string, any>>({})
-  const [lines, setLines] = useState<InvoiceLine[]>([])
+  const [lines, setLines] = useState<LineWithId[]>([])
   const [dirty, setDirty] = useState(false)
   const [activeField, setActiveField] = useState<string | null>(null)
   const [pdfBase64, setPdfBase64] = useState<string | null>(null)
@@ -203,7 +213,8 @@ export default function InvoiceReviewPage() {
         paymentIban: invoice.paymentIban ?? '',
         note: invoice.note ?? '',
       })
-      setLines(invoice.lines ?? [])
+      // FIX 1: add stable IDs to lines
+      setLines((invoice.lines ?? []).map(addLineId))
     }
   }, [invoice, dirty])
 
@@ -219,8 +230,27 @@ export default function InvoiceReviewPage() {
     }
   }, [activeField])
 
+  // FIX 5: recalculate totals when lines change
+  const handleLinesChange = (newLines: LineWithId[]) => {
+    setLines(newLines)
+    setDirty(true)
+    const base = newLines.reduce((s, l) =>
+      s + (Number(l.quantity) || 1) * (Number(l.unitPrice) || 0), 0)
+    const vat = newLines.reduce((s, l) =>
+      s + (Number(l.quantity) || 1) * (Number(l.unitPrice) || 0)
+        * ((Number(l.vatRate) || 0) / 100), 0)
+    setForm(f => ({
+      ...f,
+      amountBase: base.toFixed(2),
+      vatAmount: vat.toFixed(2),
+      amountTotal: (base + vat).toFixed(2),
+    }))
+  }
+
   const handleSave = async () => {
     if (!id) return
+    // Strip _id from lines before sending to API
+    const apiLines = lines.map(({ _id, ...rest }) => rest)
     try {
       await updateMut.mutateAsync({
         id,
@@ -239,7 +269,8 @@ export default function InvoiceReviewPage() {
           vatAmount: Number(form.vatAmount) || 0,
           amountTotal: Number(form.amountTotal) || 0,
           currency: form.currency || 'CZK',
-          issueDate: form.issueDate || new Date().toISOString().slice(0, 10),
+          // FIX 6: no today fallback
+          issueDate: form.issueDate || undefined,
           duzp: form.duzp || undefined,
           dueDate: form.dueDate || undefined,
           variableSymbol: form.variableSymbol || undefined,
@@ -247,7 +278,7 @@ export default function InvoiceReviewPage() {
           specificSymbol: form.specificSymbol || undefined,
           paymentIban: form.paymentIban || undefined,
           note: form.note || undefined,
-          lines: lines.length > 0 ? lines : undefined,
+          lines: apiLines.length > 0 ? apiLines : undefined,
         },
       })
       setDirty(false)
@@ -389,7 +420,14 @@ export default function InvoiceReviewPage() {
           <div style={{ flex: 1, overflow: 'auto', background: '#f5f5f5' }}>
             {pdfBase64 ? (
               <Suspense fallback={<div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>Načítám PDF...</div>}>
-                <PdfViewer pdfBase64={pdfBase64} onTextSelected={handleTextSelected} highlightedTexts={Object.values(form).filter(Boolean) as string[]} activeFieldLabel={activeField} />
+                {/* FIX 3: safe highlightedTexts + FIX 4: pass scale */}
+                <PdfViewer
+                  pdfBase64={pdfBase64}
+                  onTextSelected={handleTextSelected}
+                  highlightedTexts={Object.values(form).filter(v => v !== null && v !== undefined && v !== '').map(v => String(v))}
+                  activeFieldLabel={activeField}
+                  scale={zoom}
+                />
               </Suspense>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: '.84rem' }}>
@@ -478,9 +516,9 @@ export default function InvoiceReviewPage() {
             <Field name="paymentIban" label="IBAN" placeholder="CZ..." />
           </div>
 
-          {/* Line items */}
+          {/* Line items — FIX 5: use handleLinesChange */}
           <div style={{ marginBottom: 14 }}>
-            <LineItemsEditor lines={lines} onChange={l => { setLines(l); setDirty(true) }} />
+            <LineItemsEditor lines={lines} onChange={handleLinesChange} />
           </div>
 
           {/* Description + Note */}
