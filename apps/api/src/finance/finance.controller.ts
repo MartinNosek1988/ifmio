@@ -345,10 +345,27 @@ export class FinanceController {
     return this.invoicesService.importIsdoc(user, body.xmlContent);
   }
 
+  @Post('invoices/import-isdoc-bulk')
+  @Roles(...ROLES_FINANCE_DRAFT)
+  @AuditAction('invoice', 'import_isdoc_bulk')
+  @ApiOperation({ summary: 'Hromadný import ISDOC s PDF přílohami' })
+  importIsdocBulk(@CurrentUser() user: AuthUser, @Body() body: {
+    invoices: Array<{ xmlContent: string; pdfBase64?: string; pdfFileName?: string; isdocFileName: string }>
+  }) {
+    if (body.invoices.length > 50) throw new BadRequestException('Maximálně 50 faktur najednou');
+    return this.invoicesService.importIsdocBulk(user, body.invoices);
+  }
+
   @Get('invoices/:id/export-isdoc')
   @ApiOperation({ summary: 'Export dokladu do ISDOC XML' })
   exportIsdoc(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.invoicesService.exportIsdoc(user, id);
+  }
+
+  @Get('invoices/:id/documents')
+  @ApiOperation({ summary: 'Přílohy dokladu' })
+  getInvoiceDocuments(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.invoicesService.getDocuments(user, id);
   }
 
   @Get('invoices/:id/payment-qr')

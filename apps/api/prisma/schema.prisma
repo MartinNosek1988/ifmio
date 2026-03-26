@@ -2026,6 +2026,7 @@ enum EntityType {
   revision
   asset
   work_order
+  invoice
 }
 
 // ─── MIO FINDINGS ─────────────────────────────────────────────────

@@ -12,10 +12,11 @@ import { PropertyScopeModule } from '../common/services/property-scope.module';
 import { KontoModule } from '../konto/konto.module';
 import { EmailModule } from '../email/email.module';
 import { PdfModule } from '../pdf/pdf.module';
+import { LocalStorageProvider } from '../documents/storage/local.storage';
 
 @Module({
   imports: [PrismaModule, PropertyScopeModule, KontoModule, ComponentsModule, EmailModule, PdfModule],
-  providers: [FinanceService, InvoicesService, MatchingService, PrescriptionCalcService],
+  providers: [FinanceService, InvoicesService, MatchingService, PrescriptionCalcService, LocalStorageProvider],
   controllers: [FinanceController, MatchingController, PrescriptionCalcController],
   exports: [FinanceService, InvoicesService, MatchingService],
 })

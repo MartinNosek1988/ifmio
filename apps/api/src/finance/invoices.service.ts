@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { PropertyScopeService } from '../common/services/property-scope.service';
+import { LocalStorageProvider } from '../documents/storage/local.storage';
 import { Decimal } from '@prisma/client/runtime/library';
 import QRCode from 'qrcode';
 import type { CreateInvoiceDto, UpdateInvoiceDto, InvoiceListQueryDto, MarkPaidDto, CreateAllocationDto, UpdateAllocationDto } from './dto/invoice.dto';
@@ -9,11 +11,19 @@ import type { AuthUser } from '@ifmio/shared-types';
 /** Roles allowed to approve invoices */
 const APPROVAL_ROLES = ['tenant_owner', 'tenant_admin', 'finance_manager'];
 
+interface BulkImportItem {
+  xmlContent: string
+  pdfBase64?: string
+  pdfFileName?: string
+  isdocFileName: string
+}
+
 @Injectable()
 export class InvoicesService {
   constructor(
     private prisma: PrismaService,
     private scope: PropertyScopeService,
+    private storage: LocalStorageProvider,
   ) {}
 
   async list(user: AuthUser, query: InvoiceListQueryDto) {
@@ -356,6 +366,15 @@ export class InvoicesService {
     };
   }
 
+  async getDocuments(user: AuthUser, invoiceId: string) {
+    await this.findOneInternal(user, invoiceId)
+    const links = await this.prisma.documentLink.findMany({
+      where: { entityType: 'invoice', entityId: invoiceId },
+      include: { document: { select: { id: true, name: true, originalName: true, mimeType: true, size: true, storageKey: true, createdAt: true } } },
+    })
+    return links.map(l => l.document)
+  }
+
   async getPaymentQr(user: AuthUser, id: string, size = 200): Promise<{ qrString: string | null; qrDataUrl: string | null }> {
     const invoice = await this.findOneInternal(user, id)
     const iban = invoice.paymentIban
@@ -546,6 +565,47 @@ export class InvoicesService {
       supplierId: supplierId ?? undefined,
       buyerId: buyerId ?? undefined,
     });
+  }
+
+  async importIsdocBulk(user: AuthUser, items: BulkImportItem[]) {
+    const results: Array<{ isdocFileName: string; success: boolean; invoiceId?: string; number?: string; error?: string }> = []
+
+    for (const item of items) {
+      try {
+        const invoice = await this.importIsdoc(user, item.xmlContent)
+
+        // Store PDF attachment if provided
+        if (item.pdfBase64 && item.pdfFileName) {
+          const pdfBuffer = Buffer.from(item.pdfBase64, 'base64')
+          const key = `${user.tenantId}/${crypto.randomUUID()}.pdf`
+          await this.storage.save(pdfBuffer, key, 'application/pdf')
+          const doc = await this.prisma.document.create({
+            data: {
+              tenantId: user.tenantId,
+              name: item.pdfFileName,
+              originalName: item.pdfFileName,
+              mimeType: 'application/pdf',
+              size: pdfBuffer.length,
+              storageKey: key,
+              storageType: 'local',
+              category: 'invoice',
+              createdById: user.id,
+              links: { create: [{ entityType: 'invoice', entityId: invoice.id }] },
+            },
+          })
+        }
+
+        results.push({ isdocFileName: item.isdocFileName, success: true, invoiceId: invoice.id, number: invoice.number })
+      } catch (e: any) {
+        results.push({ isdocFileName: item.isdocFileName, success: false, error: e.message || 'Neznámá chyba' })
+      }
+    }
+
+    return {
+      results,
+      created: results.filter(r => r.success).length,
+      failed: results.filter(r => !r.success).length,
+    }
   }
 
   async exportIsdoc(user: AuthUser, id: string): Promise<string> {

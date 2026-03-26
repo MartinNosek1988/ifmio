@@ -10,7 +10,7 @@ import { AllocationPanel } from './AllocationPanel';
 import { PaymentModal } from './PaymentModal';
 import { PairTransactionModal } from './PairTransactionModal';
 import { INVOICE_TYPE_LABELS, APPROVAL_STATUS_LABELS, APPROVAL_STATUS_VARIANTS } from './DokladyTab';
-import { useSubmitInvoice, useApproveInvoice, useReturnInvoiceToDraft, useInvoicePaymentQr } from '../api/finance.queries';
+import { useSubmitInvoice, useApproveInvoice, useReturnInvoiceToDraft, useInvoicePaymentQr, useInvoiceDocuments } from '../api/finance.queries';
 import { useAuthStore } from '../../../core/auth';
 
 export const PAYMENT_METHODS = [
@@ -46,6 +46,7 @@ export function InvoiceDetailModal({ invoice, transactions, onClose, onEdit, onM
   const returnMut = useReturnInvoiceToDraft();
   const showQr = invoice.paymentIban || invoice.type === 'issued';
   const { data: qrData } = useInvoicePaymentQr(showQr ? invoice.id : undefined);
+  const { data: documents = [] } = useInvoiceDocuments(invoice.id);
 
   const row = (label: string, value: React.ReactNode) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: '0.88rem' }}>
@@ -229,6 +230,22 @@ export function InvoiceDetailModal({ invoice, transactions, onClose, onEdit, onM
         <div style={{ marginTop: 14 }}>
           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 4 }}>Propojená transakce</div>
           <div style={{ fontSize: '0.9rem' }}>{invoice.transaction.description} — {formatKc(invoice.transaction.amount)}</div>
+        </div>
+      )}
+
+      {/* Attachments */}
+      {documents.length > 0 && (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Přílohy</div>
+          {documents.map((doc: any) => (
+            <a key={doc.id} href={`${import.meta.env.VITE_API_URL ?? '/api/v1'}/documents/${doc.id}/download`}
+              target="_blank" rel="noopener noreferrer"
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 0', fontSize: '.88rem', color: 'var(--primary)', textDecoration: 'none' }}>
+              <Download size={14} />
+              {doc.originalName}
+              <span style={{ color: 'var(--text-muted)', fontSize: '.78rem' }}>({(doc.size / 1024).toFixed(0)} KB)</span>
+            </a>
+          ))}
         </div>
       )}
 

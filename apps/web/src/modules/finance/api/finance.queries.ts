@@ -320,6 +320,14 @@ export function useExportIsdoc() {
   });
 }
 
+export function useInvoiceDocuments(invoiceId: string | undefined) {
+  return useQuery({
+    queryKey: ['finance', 'invoices', invoiceId, 'documents'],
+    queryFn: () => financeApi.invoices.getDocuments(invoiceId!),
+    enabled: !!invoiceId,
+  });
+}
+
 export function useInvoicePaymentQr(invoiceId: string | undefined) {
   return useQuery({
     queryKey: ['finance', 'invoices', invoiceId, 'payment-qr'],

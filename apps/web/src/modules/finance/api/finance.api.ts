@@ -342,6 +342,10 @@ export const financeApi = {
       apiClient.post(`/finance/invoices/${id}/pair`, { transactionId }).then((r) => r.data),
     importIsdoc: (xmlContent: string) =>
       apiClient.post<ApiInvoice>('/finance/invoices/import-isdoc', { xmlContent }).then((r) => r.data),
+    importIsdocBulk: (invoices: Array<{ xmlContent: string; pdfBase64?: string; pdfFileName?: string; isdocFileName: string }>) =>
+      apiClient.post<{ results: Array<{ isdocFileName: string; success: boolean; invoiceId?: string; number?: string; error?: string }>; created: number; failed: number }>('/finance/invoices/import-isdoc-bulk', { invoices }).then((r) => r.data),
+    getDocuments: (id: string) =>
+      apiClient.get<Array<{ id: string; name: string; originalName: string; mimeType: string; size: number; storageKey: string; createdAt: string }>>(`/finance/invoices/${id}/documents`).then((r) => r.data),
     exportIsdoc: (id: string) =>
       apiClient.get<string>(`/finance/invoices/${id}/export-isdoc`).then((r) => r.data),
     getPaymentQr: (id: string, size = 200) =>
