@@ -57,7 +57,8 @@
       "Bash(for f:*)",
       "Bash(do)",
       "Bash(git pull:*)",
-      "Bash(npx turbo:*)"
+      "Bash(npx turbo:*)",
+      "Bash(node -e \"console.log\\(require\\(''pdfjs-dist/package.json''\\).version\\)\")"
     ]
   }
 }

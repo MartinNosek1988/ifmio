@@ -344,6 +344,25 @@ export const financeApi = {
       apiClient.post<{ extracted: Record<string, unknown>; confidence: 'high' | 'medium' | 'low'; usage?: { inputTokens: number; outputTokens: number; costUsd: number } }>('/finance/invoices/extract-pdf', { pdfBase64, fileName }).then((r) => r.data),
     getAiExtractionStats: (period = 'month') =>
       apiClient.get<{ totalExtractions: number; successfulExtractions: number; totalInputTokens: number; totalOutputTokens: number; totalCostUsd: number; totalCostCzk: number; avgCostPerInvoice: number; byConfidence: { high: number; medium: number; low: number }; byModel: Array<{ model: string; count: number; costUsd: number; tokens: number }> }>(`/finance/invoices/ai-extraction-stats?period=${period}`).then((r) => r.data),
+    saveExtractionPattern: (invoiceId: string, originalExtracted: Record<string, unknown>) =>
+      apiClient.post<{ saved: boolean; supplierIco?: string; corrections?: number }>('/finance/invoices/save-extraction-pattern', { invoiceId, originalExtracted }).then((r) => r.data),
+    getExtractionPatterns: () =>
+      apiClient.get<Array<{ id: string; supplierIco: string; supplierName: string | null; fieldExamples: Record<string, string>; hints: string | null; usageCount: number; successRate: number | null; lastUsedAt: string | null; createdAt: string }>>('/finance/invoices/extraction-patterns').then((r) => r.data),
+    deleteExtractionPattern: (supplierIco: string) =>
+      apiClient.delete(`/finance/invoices/extraction-patterns/${encodeURIComponent(supplierIco)}`).then((r) => r.data),
+
+    // Batch extraction
+    createBatchExtract: (items: Array<{ pdfBase64: string; fileName?: string }>) =>
+      apiClient.post<{ batchId: string; anthropicBatchId: string; itemCount: number; estimatedCostUsd: number; estimatedCostCzk: number }>('/finance/invoices/batch-extract', { items }).then((r) => r.data),
+    listBatches: () =>
+      apiClient.get<Array<{ id: string; status: string; totalCount: number; processedCount: number; failedCount: number; totalCostUsd: number | null; createdAt: string; submittedAt: string | null; completedAt: string | null; _count: { items: number } }>>('/finance/invoices/batch-extract').then((r) => r.data),
+    checkBatch: (batchId: string) =>
+      apiClient.get<{ id: string; status: string; totalCount: number; processedCount: number; failedCount: number; totalCostUsd: number | null; items: Array<{ id: string; customId: string; fileName: string | null; status: string; extractedData: Record<string, any> | null; confidence: string | null; invoiceId: string | null; errorMessage: string | null; costUsd: number | null; completedAt: string | null }>; requestCounts?: { processing: number; succeeded: number; errored: number } }>(`/finance/invoices/batch-extract/${batchId}`).then((r) => r.data),
+    getBatchItemPdf: (batchId: string, itemId: string) =>
+      apiClient.get<string>(`/finance/invoices/batch-extract/${batchId}/items/${itemId}/pdf`).then((r) => r.data),
+    saveBatchInvoices: (batchId: string, approvedItems: Array<{ itemId: string; corrections?: Record<string, any> }>) =>
+      apiClient.post<{ saved: number; failed: number; results: Array<{ itemId: string; success: boolean; invoiceId?: string; error?: string }> }>(`/finance/invoices/batch-extract/${batchId}/save`, { approvedItems }).then((r) => r.data),
+
     importIsdoc: (xmlContent: string) =>
       apiClient.post<ApiInvoice>('/finance/invoices/import-isdoc', { xmlContent }).then((r) => r.data),
     importIsdocBulk: (invoices: Array<{ xmlContent: string; pdfBase64?: string; pdfFileName?: string; isdocFileName: string }>) =>

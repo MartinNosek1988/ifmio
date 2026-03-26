@@ -5,14 +5,18 @@ import type { Column } from '../../../shared/components';
 import { formatKc, formatCzDate } from '../../../shared/utils/format';
 import type { ApiInvoice } from '../api/finance.api';
 import type { FinTransaction } from '../types';
-import { useInvoices, useInvoiceStats, useDeleteInvoice, useMarkInvoicePaid, useImportIsdoc, useExportIsdoc, usePairInvoice, useSubmitInvoice, useApproveInvoice, useAiExtractionStats } from '../api/finance.queries';
-import { Sparkles } from 'lucide-react';
+import { useInvoices, useInvoiceStats, useDeleteInvoice, useMarkInvoicePaid, useImportIsdoc, useExportIsdoc, usePairInvoice, useSubmitInvoice, useApproveInvoice, useAiExtractionStats, useExtractionPatterns, useDeleteExtractionPattern, useBatchList } from '../api/finance.queries';
+import { Sparkles, Clock } from 'lucide-react';
+import React from 'react';
 import { useAuthStore } from '../../../core/auth';
 import { InvoiceDetailModal } from './InvoiceDetailModal';
 import { InvoiceForm } from './InvoiceForm';
 import { InvoiceContextMenu } from './InvoiceContextMenu';
 import { IsdocImportModal } from './IsdocImportModal';
 import { PdfExtractModal } from './PdfExtractModal';
+import { BatchImportModal } from './BatchImportModal';
+
+const BatchReviewModal = React.lazy(() => import('./BatchReviewModal'));
 
 export const INVOICE_TYPE_LABELS: Record<string, string> = {
   received: 'Přijatá', issued: 'Vydaná', proforma: 'Záloha', credit_note: 'Dobropis', internal: 'Interní',
@@ -109,7 +113,17 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [showPdfExtract, setShowPdfExtract] = useState(false);
   const [showAiStats, setShowAiStats] = useState(false);
+  const [aiStatsTab, setAiStatsTab] = useState<'stats' | 'patterns'>('stats');
+  const [showBatchImport, setShowBatchImport] = useState(false);
+  const [showBatchQueue, setShowBatchQueue] = useState(false);
+  const [reviewBatchId, setReviewBatchId] = useState<string | null>(null);
   const { data: aiStats } = useAiExtractionStats('month');
+  const { data: patterns } = useExtractionPatterns();
+  const { data: batches } = useBatchList();
+  const deletePatternMut = useDeleteExtractionPattern();
+
+  const pendingBatches = (batches ?? []).filter(b => b.status === 'submitted' || b.status === 'processing');
+  const completedBatches = (batches ?? []).filter(b => b.status === 'completed');
 
   const handleIsdocImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -261,6 +275,7 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
         </label>
         <Button onClick={() => setShowBulkImport(true)} icon={<FileText size={15} />}>Hromadný import</Button>
         <Button onClick={() => setShowPdfExtract(true)} icon={<FileText size={15} />}>Import z PDF (AI)</Button>
+        <Button onClick={() => setShowBatchImport(true)} icon={<Clock size={15} />}>Dávkově (-50%)</Button>
         <button
           onClick={() => setShowFilters(!showFilters)}
           style={{ ...selectStyle, cursor: 'pointer', position: 'relative', fontSize: '0.85rem' }}
@@ -282,6 +297,20 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
           <span>AI extrakce tento měsíc: <strong style={{ color: 'var(--text)' }}>{aiStats.totalExtractions} faktur</strong> · {aiStats.totalCostCzk.toFixed(1)} Kč · Haiku 4.5</span>
           <span style={{ flex: 1 }} />
           <button onClick={() => setShowAiStats(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary, #14b8a6)', fontSize: '.82rem' }}>Podrobnosti</button>
+        </div>
+      )}
+
+      {/* Pending batches widget */}
+      {pendingBatches.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, padding: '6px 14px', background: 'rgba(245, 158, 11, 0.06)', borderRadius: 6, border: '1px solid rgba(245, 158, 11, 0.2)', fontSize: '.82rem', color: 'var(--text-muted)' }}>
+          <Clock size={13} />
+          <span>
+            Dávkové zpracování: <strong style={{ color: 'var(--text)' }}>
+              {pendingBatches.reduce((s, b) => s + b.totalCount, 0)} faktur
+            </strong> · čeká na výsledky
+          </span>
+          <span style={{ flex: 1 }} />
+          <button onClick={() => setShowBatchQueue(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary, #14b8a6)', fontSize: '.82rem' }}>Zobrazit</button>
         </div>
       )}
 
@@ -403,7 +432,25 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
 
       {/* AI extraction stats modal */}
       {showAiStats && aiStats && (
-        <Modal open onClose={() => setShowAiStats(false)} title="Statistiky AI extrakce faktur">
+        <Modal open onClose={() => { setShowAiStats(false); setAiStatsTab('stats'); }} wide title="Statistiky AI extrakce faktur">
+          {/* Tab bar */}
+          <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)', marginBottom: 16 }}>
+            {([['stats', 'Statistiky'], ['patterns', `Vzory dodavatelů${patterns?.length ? ` (${patterns.length})` : ''}`]] as const).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setAiStatsTab(key)}
+                style={{
+                  padding: '8px 16px', border: 'none', cursor: 'pointer', fontSize: '.84rem', fontWeight: 500,
+                  background: 'none', color: aiStatsTab === key ? 'var(--primary, #14b8a6)' : 'var(--text-muted)',
+                  borderBottom: aiStatsTab === key ? '2px solid var(--primary, #14b8a6)' : '2px solid transparent',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {aiStatsTab === 'stats' && (<>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
             <div style={{ textAlign: 'center', padding: 12, background: 'var(--surface-2, var(--surface))', borderRadius: 8 }}>
               <div style={{ fontSize: '.75rem', color: 'var(--text-muted)', marginBottom: 2 }}>Extrahováno</div>
@@ -451,7 +498,115 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
               ))}
             </div>
           </div>
+          </>)}
+
+          {aiStatsTab === 'patterns' && (
+            <div>
+              <div style={{ fontSize: '.82rem', color: 'var(--text-muted)', marginBottom: 14, padding: '8px 12px', background: 'var(--surface-2, var(--surface))', borderRadius: 6 }}>
+                Systém se učí z vašich korekcí. Čím více faktur zpracujete, tím přesnější extrakce bude pro opakující se dodavatele.
+              </div>
+              {patterns && patterns.length > 0 ? (
+                <table style={{ width: '100%', fontSize: '.84rem', borderCollapse: 'collapse' }}>
+                  <thead><tr style={{ borderBottom: '1px solid var(--border)' }}>
+                    {['Dodavatel', 'IČO', 'Použito', 'Naposledy', 'Akce'].map(h => (
+                      <th key={h} style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, fontSize: '.78rem', color: 'var(--text-muted)' }}>{h}</th>
+                    ))}
+                  </tr></thead>
+                  <tbody>{patterns.map(p => (
+                    <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '6px 8px' }}>{p.supplierName || '—'}</td>
+                      <td style={{ padding: '6px 8px', fontFamily: 'monospace', fontSize: '.8rem' }}>{p.supplierIco}</td>
+                      <td style={{ padding: '6px 8px' }}>{p.usageCount}x</td>
+                      <td style={{ padding: '6px 8px', fontSize: '.8rem', color: 'var(--text-muted)' }}>
+                        {p.lastUsedAt ? formatCzDate(p.lastUsedAt) : '—'}
+                      </td>
+                      <td style={{ padding: '6px 8px' }}>
+                        <button
+                          onClick={() => { if (confirm(`Smazat vzor pro ${p.supplierName || p.supplierIco}?`)) deletePatternMut.mutate(p.supplierIco); }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '.8rem' }}
+                        >
+                          Smazat
+                        </button>
+                      </td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)', fontSize: '.84rem' }}>
+                  Zatím žádné vzory. Vzory se vytvoří automaticky při uložení opravené faktury.
+                </div>
+              )}
+            </div>
+          )}
         </Modal>
+      )}
+
+      {/* Batch import modal */}
+      {showBatchImport && (
+        <BatchImportModal
+          onClose={() => setShowBatchImport(false)}
+          onShowQueue={() => setShowBatchQueue(true)}
+        />
+      )}
+
+      {/* Batch queue modal */}
+      {showBatchQueue && (
+        <Modal open onClose={() => setShowBatchQueue(false)} wide title="Fronta dávkových extrakcí">
+          {(batches ?? []).length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)', fontSize: '.84rem' }}>
+              Žádné dávkové extrakce.
+            </div>
+          ) : (
+            <table style={{ width: '100%', fontSize: '.84rem', borderCollapse: 'collapse' }}>
+              <thead><tr style={{ borderBottom: '1px solid var(--border)' }}>
+                {['Vytvořeno', 'Faktur', 'Stav', 'Náklady', 'Akce'].map(h => (
+                  <th key={h} style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, fontSize: '.78rem', color: 'var(--text-muted)' }}>{h}</th>
+                ))}
+              </tr></thead>
+              <tbody>{(batches ?? []).map(b => (
+                <tr key={b.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '6px 8px', fontSize: '.8rem' }}>{formatCzDate(b.createdAt)}</td>
+                  <td style={{ padding: '6px 8px' }}>{b.totalCount}</td>
+                  <td style={{ padding: '6px 8px' }}>
+                    <Badge variant={
+                      b.status === 'completed' ? 'green' :
+                      b.status === 'failed' ? 'red' :
+                      b.status === 'submitted' || b.status === 'processing' ? 'yellow' : 'gray'
+                    }>
+                      {b.status === 'completed' ? 'Dokončeno' :
+                       b.status === 'failed' ? 'Selhalo' :
+                       b.status === 'submitted' ? 'Odesláno' :
+                       b.status === 'processing' ? 'Zpracovává' : 'Čeká'}
+                    </Badge>
+                  </td>
+                  <td style={{ padding: '6px 8px', fontSize: '.8rem' }}>
+                    {b.totalCostUsd != null ? `${(Number(b.totalCostUsd) * 23).toFixed(2)} Kč` : '—'}
+                  </td>
+                  <td style={{ padding: '6px 8px' }}>
+                    {b.status === 'completed' && (
+                      <button
+                        onClick={() => { setShowBatchQueue(false); setReviewBatchId(b.id); }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary, #14b8a6)', fontSize: '.82rem' }}
+                      >
+                        Zkontrolovat
+                      </button>
+                    )}
+                    {(b.status === 'submitted' || b.status === 'processing') && (
+                      <span style={{ fontSize: '.78rem', color: 'var(--text-muted)' }}>Čeká...</span>
+                    )}
+                  </td>
+                </tr>
+              ))}</tbody>
+            </table>
+          )}
+        </Modal>
+      )}
+
+      {/* Batch review modal */}
+      {reviewBatchId && (
+        <React.Suspense fallback={null}>
+          <BatchReviewModal batchId={reviewBatchId} onClose={() => setReviewBatchId(null)} />
+        </React.Suspense>
       )}
     </div>
   );

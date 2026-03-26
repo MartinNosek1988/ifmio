@@ -96,6 +96,8 @@ model Tenant {
   evidenceFolders            EvidenceFolder[]
   paymentOrders              PaymentOrder[]
   aiExtractionLogs           AiExtractionLog[]
+  supplierExtractionPatterns SupplierExtractionPattern[]
+  aiExtractionBatches        AiExtractionBatch[]
 
   @@map("tenants")
 }
@@ -897,6 +899,7 @@ model Invoice {
   costAllocations          InvoiceCostAllocation[]
   evidenceAllocations      EvidenceFolderAllocation[]
   aiExtractionLogs         AiExtractionLog[]
+  batchItems               AiExtractionBatchItem[]
 }
 
 // ─── INVOICE COST ALLOCATION (D1 — propojení dokladu se složkami předpisu) ────
@@ -4138,4 +4141,79 @@ model AiExtractionLog {
   @@index([tenantId])
   @@index([tenantId, createdAt])
   @@map("ai_extraction_logs")
+}
+
+model SupplierExtractionPattern {
+  id              String    @id @default(cuid())
+  tenantId        String
+  supplierIco     String
+  supplierName    String?
+
+  fieldExamples   Json      // Record<string, string> — field→example value
+  hints           String?   // correction notes for the AI prompt
+
+  usageCount      Int       @default(0)
+  successRate     Float?
+  lastUsedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, supplierIco])
+  @@index([tenantId])
+  @@map("supplier_extraction_patterns")
+}
+
+model AiExtractionBatch {
+  id                String    @id @default(cuid())
+  tenantId          String
+  anthropicBatchId  String?
+  status            String    @default("pending")
+  // pending → submitted → processing → completed → failed
+
+  totalCount        Int       @default(0)
+  processedCount    Int       @default(0)
+  failedCount       Int       @default(0)
+
+  totalCostUsd      Decimal?  @db.Decimal(10, 6)
+  createdAt         DateTime  @default(now())
+  submittedAt       DateTime?
+  completedAt       DateTime?
+  createdBy         String?
+
+  items             AiExtractionBatchItem[]
+  tenant            Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("ai_extraction_batches")
+}
+
+model AiExtractionBatchItem {
+  id              String    @id @default(cuid())
+  batchId         String
+  customId        String
+  fileName        String?
+  pdfBase64       String    @db.Text
+  status          String    @default("pending")
+  // pending → completed → failed
+
+  extractedData   Json?
+  confidence      String?
+  invoiceId       String?
+  errorMessage    String?
+
+  inputTokens     Int?
+  outputTokens    Int?
+  costUsd         Decimal?  @db.Decimal(10, 6)
+
+  createdAt       DateTime  @default(now())
+  completedAt     DateTime?
+
+  batch           AiExtractionBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  invoice         Invoice?          @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  @@index([batchId])
+  @@map("ai_extraction_batch_items")
 }

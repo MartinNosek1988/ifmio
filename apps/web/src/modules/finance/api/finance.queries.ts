@@ -327,6 +327,68 @@ export function useAiExtractionStats(period = 'month') {
   });
 }
 
+export function useExtractionPatterns() {
+  return useQuery({
+    queryKey: ['finance', 'extraction-patterns'],
+    queryFn: () => financeApi.invoices.getExtractionPatterns(),
+  })
+}
+
+export function useDeleteExtractionPattern() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (supplierIco: string) => financeApi.invoices.deleteExtractionPattern(supplierIco),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['finance', 'extraction-patterns'] })
+    },
+  })
+}
+
+// ─── BATCH EXTRACTION ────────────────────────────────────────────
+
+export function useBatchList() {
+  return useQuery({
+    queryKey: ['finance', 'batch-extract'],
+    queryFn: () => financeApi.invoices.listBatches(),
+    refetchInterval: 60_000,
+  })
+}
+
+export function useBatchDetail(batchId: string | null) {
+  return useQuery({
+    queryKey: ['finance', 'batch-extract', batchId],
+    queryFn: () => financeApi.invoices.checkBatch(batchId!),
+    enabled: !!batchId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status
+      return status === 'submitted' || status === 'processing' ? 30_000 : false
+    },
+  })
+}
+
+export function useCreateBatchExtract() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (items: Array<{ pdfBase64: string; fileName?: string }>) =>
+      financeApi.invoices.createBatchExtract(items),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['finance', 'batch-extract'] })
+    },
+  })
+}
+
+export function useSaveBatchInvoices() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ batchId, approvedItems }: { batchId: string; approvedItems: Array<{ itemId: string; corrections?: Record<string, any> }> }) =>
+      financeApi.invoices.saveBatchInvoices(batchId, approvedItems),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['finance', 'invoices'] })
+      qc.invalidateQueries({ queryKey: ['finance', 'batch-extract'] })
+    },
+  })
+}
+
 export function useInvoiceDocuments(invoiceId: string | undefined) {
   return useQuery({
     queryKey: ['finance', 'invoices', invoiceId, 'documents'],

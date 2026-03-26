@@ -13,11 +13,12 @@ import { KontoModule } from '../konto/konto.module';
 import { EmailModule } from '../email/email.module';
 import { PdfModule } from '../pdf/pdf.module';
 import { LocalStorageProvider } from '../documents/storage/local.storage';
+import { AiBatchService } from './ai-batch.service';
 
 @Module({
   imports: [PrismaModule, PropertyScopeModule, KontoModule, ComponentsModule, EmailModule, PdfModule],
-  providers: [FinanceService, InvoicesService, MatchingService, PrescriptionCalcService, LocalStorageProvider],
+  providers: [FinanceService, InvoicesService, MatchingService, PrescriptionCalcService, LocalStorageProvider, AiBatchService],
   controllers: [FinanceController, MatchingController, PrescriptionCalcController],
-  exports: [FinanceService, InvoicesService, MatchingService],
+  exports: [FinanceService, InvoicesService, MatchingService, AiBatchService],
 })
 export class FinanceModule {}
