@@ -344,6 +344,51 @@ export function useDeleteExtractionPattern() {
   })
 }
 
+// ─── BATCH EXTRACTION ────────────────────────────────────────────
+
+export function useBatchList() {
+  return useQuery({
+    queryKey: ['finance', 'batch-extract'],
+    queryFn: () => financeApi.invoices.listBatches(),
+    refetchInterval: 60_000, // auto-refresh every minute
+  })
+}
+
+export function useBatchDetail(batchId: string | null) {
+  return useQuery({
+    queryKey: ['finance', 'batch-extract', batchId],
+    queryFn: () => financeApi.invoices.checkBatch(batchId!),
+    enabled: !!batchId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status
+      return status === 'submitted' || status === 'processing' ? 30_000 : false
+    },
+  })
+}
+
+export function useCreateBatchExtract() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (items: Array<{ pdfBase64: string; fileName?: string }>) =>
+      financeApi.invoices.createBatchExtract(items),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['finance', 'batch-extract'] })
+    },
+  })
+}
+
+export function useSaveBatchInvoices() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ batchId, approvedItems }: { batchId: string; approvedItems: Array<{ itemId: string; corrections?: Record<string, any> }> }) =>
+      financeApi.invoices.saveBatchInvoices(batchId, approvedItems),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['finance', 'invoices'] })
+      qc.invalidateQueries({ queryKey: ['finance', 'batch-extract'] })
+    },
+  })
+}
+
 export function useInvoiceDocuments(invoiceId: string | undefined) {
   return useQuery({
     queryKey: ['finance', 'invoices', invoiceId, 'documents'],

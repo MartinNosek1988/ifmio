@@ -11,6 +11,7 @@ import { MioObservabilityService } from '../mio/mio-observability.service';
 import { MioWebhookService } from '../mio/mio-webhook.service';
 import { BankingService } from '../banking/banking.service';
 import { WhatsAppAutomationService } from '../whatsapp/whatsapp-automation.service';
+import { AiBatchService } from '../finance/ai-batch.service';
 import { RetentionService } from './retention.service';
 
 const ONE_HOUR = 60 * 60 * 1000;
@@ -31,6 +32,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
   private scheduledReportsInterval: ReturnType<typeof setInterval> | null = null;
   private recurringGenInterval: ReturnType<typeof setInterval> | null = null;
   private bankingSyncInterval: ReturnType<typeof setInterval> | null = null;
+  private batchPollInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private readonly config: ConfigService,
@@ -45,6 +47,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     private readonly mioWebhooks: MioWebhookService,
     private readonly banking: BankingService,
     private readonly waAutomation: WhatsAppAutomationService,
+    private readonly aiBatch: AiBatchService,
     private readonly retention: RetentionService,
   ) {}
 
@@ -61,6 +64,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     this.initWebhookOutbox();
     this.initBankingSync();
     this.initWhatsAppAutomation();
+    this.initBatchPolling();
   }
 
   onModuleDestroy() {
@@ -95,6 +99,10 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     if (this.bankingSyncInterval) {
       clearInterval(this.bankingSyncInterval);
       this.bankingSyncInterval = null;
+    }
+    if (this.batchPollInterval) {
+      clearInterval(this.batchPollInterval);
+      this.batchPollInterval = null;
     }
     this.logger.log('Cron intervals cleared');
   }
@@ -441,6 +449,21 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
       if (hour === 10) await this.waAutomation.sendOverdueAlerts();
     } catch (err) {
       this.logger.error('WhatsApp automation FAILED', (err as Error).stack);
+    }
+  }
+
+  // ─── AI Batch Polling ─────────────────────────────────────────
+
+  private initBatchPolling() {
+    this.logger.log('AI batch polling enabled — every hour');
+    this.batchPollInterval = setInterval(() => this.runBatchPoll(), ONE_HOUR);
+  }
+
+  private async runBatchPoll() {
+    try {
+      await this.aiBatch.pollPendingBatches();
+    } catch (err) {
+      this.logger.error('AI batch polling FAILED', (err as Error).stack);
     }
   }
 }

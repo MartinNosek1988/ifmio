@@ -4,6 +4,7 @@ import {
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { FinanceService } from './finance.service';
 import { InvoicesService } from './invoices.service';
+import { AiBatchService } from './ai-batch.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuditAction } from '../common/decorators/audit.decorator';
@@ -19,6 +20,7 @@ export class FinanceController {
   constructor(
     private service: FinanceService,
     private invoicesService: InvoicesService,
+    private aiBatchService: AiBatchService,
   ) {}
 
   @Get('summary')
@@ -373,6 +375,54 @@ export class FinanceController {
   @ApiOperation({ summary: 'Smazat vzor extrakce dodavatele' })
   deleteExtractionPattern(@CurrentUser() user: AuthUser, @Param('supplierIco') supplierIco: string) {
     return this.invoicesService.deleteExtractionPattern(user, supplierIco);
+  }
+
+  // ─── BATCH EXTRACTION ───────────────────────────────────────────
+
+  @Post('invoices/batch-extract')
+  @Roles(...ROLES_FINANCE)
+  @ApiOperation({ summary: 'Dávkové zpracování PDF faktur přes Batch API' })
+  createBatchExtract(
+    @CurrentUser() user: AuthUser,
+    @Body() body: { items: Array<{ pdfBase64: string; fileName?: string }> },
+  ) {
+    return this.aiBatchService.createBatch(user, body.items);
+  }
+
+  @Get('invoices/batch-extract')
+  @Roles(...ROLES_FINANCE)
+  @ApiOperation({ summary: 'Seznam dávkových extrakcí' })
+  listBatches(@CurrentUser() user: AuthUser) {
+    return this.aiBatchService.listBatches(user);
+  }
+
+  @Get('invoices/batch-extract/:batchId')
+  @Roles(...ROLES_FINANCE)
+  @ApiOperation({ summary: 'Stav a výsledky dávkové extrakce' })
+  checkBatch(@CurrentUser() user: AuthUser, @Param('batchId') batchId: string) {
+    return this.aiBatchService.checkBatch(user.tenantId, batchId);
+  }
+
+  @Get('invoices/batch-extract/:batchId/items/:itemId/pdf')
+  @Roles(...ROLES_FINANCE)
+  @ApiOperation({ summary: 'PDF soubor z dávkové extrakce' })
+  getBatchItemPdf(
+    @CurrentUser() user: AuthUser,
+    @Param('batchId') batchId: string,
+    @Param('itemId') itemId: string,
+  ) {
+    return this.aiBatchService.getBatchItemPdf(user.tenantId, batchId, itemId);
+  }
+
+  @Post('invoices/batch-extract/:batchId/save')
+  @Roles(...ROLES_FINANCE)
+  @ApiOperation({ summary: 'Uložit vybrané faktury z dávkové extrakce' })
+  saveBatchInvoices(
+    @CurrentUser() user: AuthUser,
+    @Param('batchId') batchId: string,
+    @Body() body: { approvedItems: Array<{ itemId: string; corrections?: Record<string, any> }> },
+  ) {
+    return this.aiBatchService.saveBatchInvoices(user, batchId, body.approvedItems);
   }
 
   @Post('invoices/import-isdoc')
