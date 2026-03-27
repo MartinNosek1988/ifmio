@@ -234,58 +234,58 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
   };
 
   const columns: Column<ApiInvoice>[] = [
-    { key: 'number', label: sortLabel('Číslo', 'number'), sortable: true, render: (i) => (
+    { key: 'number', label: sortLabel('Číslo', 'number'), sortable: true, width: 130, render: (i) => (
       <span style={{ fontFamily: 'monospace', fontSize: '0.82rem' }}>
         {i.number}
         {i.isdocXml && <span style={{ fontSize: '0.62rem', background: '#1e3a5f', color: '#93c5fd', borderRadius: 3, padding: '0 4px', marginLeft: 4 }}>ISDOC</span>}
       </span>
     ) },
-    { key: 'type', label: 'Typ', render: (i) => <Badge variant="blue">{INVOICE_TYPE_LABELS[i.type] || i.type}</Badge> },
-    { key: 'supplierName', label: sortLabel('Dodavatel', 'supplierName'), sortable: true, render: (i) => (
+    { key: 'type', label: 'Typ', width: 80, render: (i) => <Badge variant="blue">{INVOICE_TYPE_LABELS[i.type] || i.type}</Badge> },
+    { key: 'supplierName', label: sortLabel('Dodavatel', 'supplierName'), sortable: true, width: 180, render: (i) => (
       <div style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={i.supplierName || undefined}>
         <span style={{ fontWeight: 500 }}>{i.supplierName || '—'}</span>
         {i.supplierIco && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>IČO: {i.supplierIco}</div>}
       </div>
     ) },
-    { key: 'buyerName', label: sortLabel('Odběratel', 'buyerName'), sortable: true, render: (i) => (
+    { key: 'buyerName', label: sortLabel('Odběratel', 'buyerName'), sortable: true, width: 160, render: (i) => (
       <div className="hide-mobile" style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={i.buyerName || undefined}>
         <span style={{ fontWeight: 500 }}>{i.buyerName || '—'}</span>
         {i.buyerIco && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>IČO: {i.buyerIco}</div>}
       </div>
     ) },
-    { key: 'variableSymbol', label: 'VS', render: (i) => (
+    { key: 'variableSymbol', label: 'VS', width: 110, render: (i) => (
       <span className="hide-mobile" style={{ fontFamily: 'monospace', fontSize: '0.82rem', color: 'var(--text-muted)' }}>{i.variableSymbol || '—'}</span>
     ) },
-    { key: 'description', label: 'Popis', render: (i) => <span className="text-muted text-sm">{i.description || '—'}</span> },
-    { key: 'amountTotal', label: sortLabel('Částka', 'amountTotal'), align: 'right', sortable: true, render: (i) => (
+    { key: 'description', label: 'Popis', width: 'auto', render: (i) => <span className="text-muted text-sm">{i.description || '—'}</span> },
+    { key: 'amountTotal', label: sortLabel('Částka', 'amountTotal'), align: 'right', sortable: true, width: 130, render: (i) => (
       <div>
         <div style={{ fontWeight: 600 }}>{formatKc(i.amountTotal)}</div>
         {i.vatRate > 0 && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>základ {formatKc(i.amountBase)} + {i.vatRate}% DPH</div>}
       </div>
     ) },
-    { key: 'dueDate', label: sortLabel('Splatnost', 'dueDate'), sortable: true, render: (i) => {
+    { key: 'dueDate', label: sortLabel('Splatnost', 'dueDate'), sortable: true, width: 110, render: (i) => {
       if (!i.dueDate) return <span className="text-muted">—</span>;
       const overdue = !i.isPaid && i.dueDate < new Date().toISOString().slice(0, 10);
       return <span style={{ color: overdue ? 'var(--danger)' : 'var(--text-muted)', fontSize: '0.85rem', fontWeight: overdue ? 600 : 400 }}>{formatCzDate(i.dueDate)}</span>;
     } },
-    { key: 'approvalStatus', label: sortLabel('Schválení', 'approvalStatus'), sortable: true, render: (i) => {
+    { key: 'approvalStatus', label: sortLabel('Schválení', 'approvalStatus'), sortable: true, width: 110, render: (i) => {
       if (i.isPaid) return <Badge variant="green">Uhrazeno</Badge>;
       return <Badge variant={APPROVAL_STATUS_VARIANTS[i.approvalStatus] || 'muted'}>
         {APPROVAL_STATUS_LABELS[i.approvalStatus] || i.approvalStatus}
       </Badge>;
     } },
-    { key: 'allocation', label: 'Alokace', render: (i) => {
+    { key: 'allocation', label: 'Alokace', width: 90, render: (i) => {
       const st = (i as any).allocationStatus
       if (st === 'allocated') return <Badge variant="green">Alokováno</Badge>
       if (st === 'partial') return <Badge variant="yellow">Částečně</Badge>
       return <Badge variant="red">Nealok.</Badge>
     } },
-    { key: 'isPaid', label: 'Platba', render: (i) => {
+    { key: 'isPaid', label: 'Platba', width: 90, render: (i) => {
       if (i.isPaid) return <Badge variant="green">Uhrazeno</Badge>;
       const overdue = i.dueDate && i.dueDate < new Date().toISOString().slice(0, 10);
       return <Badge variant={overdue ? 'red' : 'yellow'}>{overdue ? 'Po splatnosti' : 'Čeká'}</Badge>;
     } },
-    { key: 'attachments', label: '', render: (i) => {
+    { key: 'attachments', label: '', width: 60, render: (i) => {
       const abtnStyle: React.CSSProperties = { background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' };
       return (
         <div style={{ display: 'flex', gap: 2 }} onClick={(e) => e.stopPropagation()}>
@@ -351,6 +351,12 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
           <option value="">Schválení: Vše</option>
           {Object.entries(APPROVAL_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
+        <select value={fAllocation} onChange={(e) => setFAllocation(e.target.value)} style={selectStyle}>
+          <option value="">Alokace: Vše</option>
+          <option value="unallocated">Nealokováno</option>
+          <option value="partial">Částečně</option>
+          <option value="allocated">Alokováno</option>
+        </select>
         <button
           onClick={() => setShowFilters(!showFilters)}
           style={{ ...selectStyle, cursor: 'pointer', position: 'relative', fontSize: '0.85rem' }}
@@ -374,7 +380,7 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
             <Upload size={15} /> Nahrát doklad <ChevronDown size={13} />
           </button>
           {uploadMenuOpen && (
-            <div role="menu" onKeyDown={e => { if (e.key === 'Escape') setUploadMenuOpen(false); }} style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: 'var(--color-background-primary, var(--surface))', border: '0.5px solid var(--color-border-secondary, var(--border))', borderRadius: 8, minWidth: 240, zIndex: 200, boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
+            <div role="menu" onKeyDown={e => { if (e.key === 'Escape') setUploadMenuOpen(false); }} style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: 'var(--color-background-primary, #ffffff)', border: '0.5px solid var(--color-border-secondary, var(--border))', borderRadius: 8, minWidth: 240, zIndex: 200, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', isolation: 'isolate' }}>
               <button type="button" role="menuitem" onClick={() => { setUploadMenuOpen(false); isdocRef.current?.click(); }} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: '0.5px solid var(--color-border-secondary, var(--border))' }}>
                 <FileText size={16} style={{ marginTop: 2, color: '#1D9E75', flexShrink: 0 }} />
                 <div>

@@ -97,7 +97,7 @@ export class InvoicesService {
     const pdfSet = new Set(pdfLinks.map(l => l.entityId))
 
     return {
-      data: items.map(i => ({
+      data: items.map(({ pdfBase64: _pdf, isdocXml, ...i }) => ({
         ...i,
         amountBase: Number(i.amountBase),
         vatAmount: Number(i.vatAmount),
@@ -110,7 +110,7 @@ export class InvoicesService {
         createdAt: i.createdAt.toISOString(),
         updatedAt: i.updatedAt.toISOString(),
         hasPdf: pdfSet.has(i.id),
-        hasIsdoc: i.isdocXml !== null,
+        hasIsdoc: isdocXml !== null,
       })),
       total,
       page,
@@ -155,7 +155,7 @@ export class InvoicesService {
     return this.serializeInvoice(invoice);
   }
 
-  async create(user: AuthUser, dto: CreateInvoiceDto & { supplierId?: string | null; buyerId?: string | null; isdocXml?: string | null }) {
+  async create(user: AuthUser, dto: CreateInvoiceDto & { supplierId?: string | null; buyerId?: string | null; isdocXml?: string | null; pdfBase64?: string | null }) {
     if (dto.propertyId) {
       await this.scope.verifyPropertyAccess(user, dto.propertyId);
     }
@@ -191,6 +191,7 @@ export class InvoicesService {
         buyerId: dto.buyerId || null,
         lines: dto.lines ? JSON.parse(JSON.stringify(dto.lines)) : undefined,
         isdocXml: dto.isdocXml || null,
+        pdfBase64: dto.pdfBase64 || null,
         note: dto.note || null,
       },
     });
@@ -684,7 +685,8 @@ Extrahuj strukturovaná data z faktury a vrať POUZE validní JSON objekt.
 Pokud pole není na faktuře uvedeno, vrať null pro dané pole.
 Číselné hodnoty vrať jako čísla (ne stringy).
 Data vrať ve formátu YYYY-MM-DD.
-IČO je 8místné číslo bez mezer. DIČ začíná "CZ" + IČO.`,
+IČO je 8místné číslo bez mezer. DIČ začíná "CZ" + IČO.
+duzp: datum zdanitelného plnění (DÚZP) — pokud není explicitně uvedeno, použij datum vystavení faktury. Hledej: 'datum zdanitelného plnění', 'DÚZP', 'tax point date', 'date of supply', nebo datum dodání.`,
         messages: [{
           role: 'user',
           content: [

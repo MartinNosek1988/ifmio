@@ -3,6 +3,8 @@ export interface Column<T> {
   label: string;
   align?: 'left' | 'right' | 'center';
   sortable?: boolean;
+  /** Column width (px or 'auto'). When any column has width, table uses fixed layout. */
+  width?: number | string;
   /** Priority for mobile display. 'high' columns get sticky positioning */
   priority?: 'high' | 'medium' | 'low';
   render?: (row: T) => React.ReactNode;
@@ -19,6 +21,14 @@ interface Props<T> {
 }
 
 export function Table<T>({ data, columns, rowKey, emptyText = 'Žádná data', onRowClick, onSort, 'data-testid': testId }: Props<T>) {
+  const hasWidths = columns.some(c => c.width !== undefined);
+  const tableStyle = hasWidths ? { tableLayout: 'fixed' as const, width: '100%' } : undefined;
+  const renderColgroup = () => hasWidths ? (
+    <colgroup>
+      {columns.map(c => <col key={c.key} style={{ width: typeof c.width === 'number' ? c.width : c.width }} />)}
+    </colgroup>
+  ) : null;
+
   const renderHeaders = () => columns.map((c) => (
     <th key={c.key} style={{ textAlign: c.align || 'left' }}>
       {c.sortable && onSort ? (
@@ -42,7 +52,8 @@ export function Table<T>({ data, columns, rowKey, emptyText = 'Žádná data', o
     return (
       <div className="card table-wrap" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <table className="tbl">
+          <table className="tbl" style={tableStyle}>
+            {renderColgroup()}
             <thead>
               <tr>{renderHeaders()}</tr>
             </thead>
