@@ -27,6 +27,8 @@ LABEL org.opencontainers.image.description="ifmio Web — property management fr
 
 COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
+# Add .mjs MIME type for ES module workers (pdf.js)
+RUN sed -i '/application\/javascript/s/js;/js mjs;/' /etc/nginx/mime.types
 
 EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
