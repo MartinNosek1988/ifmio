@@ -45,6 +45,7 @@ export function PdfExtractModal({ onClose }: { onClose: () => void }) {
           specificSymbol: extracted.specificSymbol || undefined,
           paymentIban: extracted.paymentIban || undefined,
           currency: extracted.currency || 'CZK',
+          pdfBase64: pdfBase64Ref.current || undefined,
         }).then(r => r.data)
 
         const invoiceId = savedInvoice.id

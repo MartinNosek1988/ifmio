@@ -329,25 +329,33 @@ export default function InvoiceReviewPage() {
     } catch (e: any) { toast.error(e?.response?.data?.message || 'Vrácení selhalo') }
   }
 
-  // Load PDF from documents (only if not already set from sessionStorage)
+  // Load PDF: 1) sessionStorage, 2) invoice.pdfBase64, 3) document attachments
   useEffect(() => {
-    if (!id || pdfBase64) return
+    if (pdfBase64) return
+    if (invoice?.pdfBase64) {
+      setPdfBase64(invoice.pdfBase64)
+      return
+    }
+    if (!id) return
     import('../api/finance.api').then(({ financeApi }) => {
       financeApi.invoices.getDocuments(id).then(docs => {
         const pdf = docs.find(d => d.mimeType === 'application/pdf')
         if (pdf) {
           import('../../../core/api/client').then(({ apiClient }) => {
             apiClient.get(`/documents/${pdf.id}/download`, { responseType: 'arraybuffer' }).then(res => {
-              const bytes = new Uint8Array(res.data as ArrayBuffer)
-              let binary = ''
-              for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
-              setPdfBase64(btoa(binary))
+              const blob = new Blob([res.data as ArrayBuffer], { type: 'application/pdf' })
+              const reader = new FileReader()
+              reader.onloadend = () => {
+                const result = reader.result as string
+                setPdfBase64(result.substring(result.indexOf(',') + 1))
+              }
+              reader.readAsDataURL(blob)
             }).catch(() => {})
           })
         }
       }).catch(() => {})
     })
-  }, [id, pdfBase64])
+  }, [id, pdfBase64, invoice])
 
   const isDraft = invoice?.approvalStatus === 'draft'
   const isSubmitted = invoice?.approvalStatus === 'submitted'
