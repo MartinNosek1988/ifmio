@@ -195,8 +195,9 @@ export class InvoicesService {
         note: dto.note || null,
       },
     });
+    const { pdfBase64: _pdf, ...rest } = invoice;
     return {
-      ...invoice,
+      ...rest,
       amountBase: Number(invoice.amountBase),
       vatAmount: Number(invoice.vatAmount),
       amountTotal: Number(invoice.amountTotal),

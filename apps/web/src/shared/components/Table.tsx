@@ -69,7 +69,8 @@ export function Table<T>({ data, columns, rowKey, emptyText = 'Žádná data', o
   return (
     <div className="card table-wrap" data-testid={testId} style={{ padding: 0, overflow: 'hidden' }}>
       <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-        <table className="tbl">
+        <table className="tbl" style={tableStyle}>
+          {renderColgroup()}
           <thead>
             <tr>{renderHeaders()}</tr>
           </thead>
