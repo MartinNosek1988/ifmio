@@ -336,15 +336,15 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
             <Upload size={15} /> Nahrát doklad <ChevronDown size={13} />
           </button>
           {uploadMenuOpen && (
-            <div role="menu" onKeyDown={e => { if (e.key === 'Escape') setUploadMenuOpen(false); }} style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, minWidth: 220, zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
-              <button type="button" role="menuitem" onClick={() => { setUploadMenuOpen(false); isdocRef.current?.click(); }} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
+            <div role="menu" onKeyDown={e => { if (e.key === 'Escape') setUploadMenuOpen(false); }} style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: 'var(--color-background-primary, var(--surface))', border: '0.5px solid var(--color-border-secondary, var(--border))', borderRadius: 8, minWidth: 240, zIndex: 200, boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
+              <button type="button" role="menuitem" onClick={() => { setUploadMenuOpen(false); isdocRef.current?.click(); }} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: '0.5px solid var(--color-border-secondary, var(--border))' }}>
                 <FileText size={16} style={{ marginTop: 2, color: '#1D9E75', flexShrink: 0 }} />
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 500 }}>ISDOC</div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Importovat faktury z XML</div>
                 </div>
               </button>
-              <button type="button" role="menuitem" onClick={() => { setUploadMenuOpen(false); setShowPdfExtract(true); }} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
+              <button type="button" role="menuitem" onClick={() => { setUploadMenuOpen(false); setShowPdfExtract(true); }} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: '0.5px solid var(--color-border-secondary, var(--border))' }}>
                 <Cpu size={16} style={{ marginTop: 2, color: '#1D9E75', flexShrink: 0 }} />
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 500 }}>PDF (AI extrakce)</div>
