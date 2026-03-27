@@ -859,6 +859,7 @@ model Invoice {
   buyerId        String?
   lines          Json?
   isdocXml       String?     @db.Text
+  pdfBase64      String?     @db.Text
   note           String?
   tags           String[]    @default([])
   deletedAt      DateTime?
