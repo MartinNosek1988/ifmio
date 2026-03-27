@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Plus, FileText, FileCode, Upload, ChevronDown, Cpu, Clock, Sparkles } from 'lucide-react';
 import { KpiCard, SearchBar, Table, Badge, Button, Modal } from '../../../shared/components';
 import type { Column } from '../../../shared/components';
@@ -123,6 +123,44 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
   const pendingBatches = (batches ?? []).filter(b => b.status === 'submitted' || b.status === 'processing');
   const [uploadMenuOpen, setUploadMenuOpen] = useState(false);
   const uploadMenuRef = useRef<HTMLDivElement>(null);
+  const [sortBy, setSortBy] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortDir('asc');
+    }
+  };
+
+  const sortedInvoices = useMemo(() => {
+    if (!sortBy) return invoices;
+    return [...invoices].sort((a, b) => {
+      let av: any, bv: any;
+      switch (sortBy) {
+        case 'number':          av = a.number; bv = b.number; break;
+        case 'supplierName':    av = a.supplierName ?? ''; bv = b.supplierName ?? ''; break;
+        case 'buyerName':       av = a.buyerName ?? ''; bv = b.buyerName ?? ''; break;
+        case 'amountTotal':     av = Number(a.amountTotal); bv = Number(b.amountTotal); break;
+        case 'dueDate':         av = a.dueDate ?? ''; bv = b.dueDate ?? ''; break;
+        case 'approvalStatus':  av = a.approvalStatus ?? ''; bv = b.approvalStatus ?? ''; break;
+        default: return 0;
+      }
+      let cmp = 0;
+      if (typeof av === 'string' && typeof bv === 'string') {
+        cmp = av.localeCompare(bv, 'cs');
+      } else {
+        if (av < bv) cmp = -1;
+        else if (av > bv) cmp = 1;
+      }
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+  }, [invoices, sortBy, sortDir]);
+
+  const sortLabel = (label: string, column: string) =>
+    `${label} ${sortBy === column ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}`;
 
   // Close upload menu on outside click
   useEffect(() => {
@@ -196,20 +234,20 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
   };
 
   const columns: Column<ApiInvoice>[] = [
-    { key: 'number', label: 'Číslo', render: (i) => (
+    { key: 'number', label: sortLabel('Číslo', 'number'), sortable: true, render: (i) => (
       <span style={{ fontFamily: 'monospace', fontSize: '0.82rem' }}>
         {i.number}
         {i.isdocXml && <span style={{ fontSize: '0.62rem', background: '#1e3a5f', color: '#93c5fd', borderRadius: 3, padding: '0 4px', marginLeft: 4 }}>ISDOC</span>}
       </span>
     ) },
     { key: 'type', label: 'Typ', render: (i) => <Badge variant="blue">{INVOICE_TYPE_LABELS[i.type] || i.type}</Badge> },
-    { key: 'supplierName', label: 'Dodavatel', render: (i) => (
+    { key: 'supplierName', label: sortLabel('Dodavatel', 'supplierName'), sortable: true, render: (i) => (
       <div style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={i.supplierName || undefined}>
         <span style={{ fontWeight: 500 }}>{i.supplierName || '—'}</span>
         {i.supplierIco && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>IČO: {i.supplierIco}</div>}
       </div>
     ) },
-    { key: 'buyerName', label: 'Odběratel', render: (i) => (
+    { key: 'buyerName', label: sortLabel('Odběratel', 'buyerName'), sortable: true, render: (i) => (
       <div className="hide-mobile" style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={i.buyerName || undefined}>
         <span style={{ fontWeight: 500 }}>{i.buyerName || '—'}</span>
         {i.buyerIco && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>IČO: {i.buyerIco}</div>}
@@ -219,18 +257,18 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
       <span className="hide-mobile" style={{ fontFamily: 'monospace', fontSize: '0.82rem', color: 'var(--text-muted)' }}>{i.variableSymbol || '—'}</span>
     ) },
     { key: 'description', label: 'Popis', render: (i) => <span className="text-muted text-sm">{i.description || '—'}</span> },
-    { key: 'amountTotal', label: 'Částka', align: 'right', render: (i) => (
+    { key: 'amountTotal', label: sortLabel('Částka', 'amountTotal'), align: 'right', sortable: true, render: (i) => (
       <div>
         <div style={{ fontWeight: 600 }}>{formatKc(i.amountTotal)}</div>
         {i.vatRate > 0 && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>základ {formatKc(i.amountBase)} + {i.vatRate}% DPH</div>}
       </div>
     ) },
-    { key: 'dueDate', label: 'Splatnost', render: (i) => {
+    { key: 'dueDate', label: sortLabel('Splatnost', 'dueDate'), sortable: true, render: (i) => {
       if (!i.dueDate) return <span className="text-muted">—</span>;
       const overdue = !i.isPaid && i.dueDate < new Date().toISOString().slice(0, 10);
       return <span style={{ color: overdue ? 'var(--danger)' : 'var(--text-muted)', fontSize: '0.85rem', fontWeight: overdue ? 600 : 400 }}>{formatCzDate(i.dueDate)}</span>;
     } },
-    { key: 'approvalStatus', label: 'Schválení', render: (i) => {
+    { key: 'approvalStatus', label: sortLabel('Schválení', 'approvalStatus'), sortable: true, render: (i) => {
       if (i.isPaid) return <Badge variant="green">Uhrazeno</Badge>;
       return <Badge variant={APPROVAL_STATUS_VARIANTS[i.approvalStatus] || 'muted'}>
         {APPROVAL_STATUS_LABELS[i.approvalStatus] || i.approvalStatus}
@@ -336,15 +374,15 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
             <Upload size={15} /> Nahrát doklad <ChevronDown size={13} />
           </button>
           {uploadMenuOpen && (
-            <div role="menu" onKeyDown={e => { if (e.key === 'Escape') setUploadMenuOpen(false); }} style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, minWidth: 220, zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
-              <button type="button" role="menuitem" onClick={() => { setUploadMenuOpen(false); isdocRef.current?.click(); }} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
+            <div role="menu" onKeyDown={e => { if (e.key === 'Escape') setUploadMenuOpen(false); }} style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: 'var(--color-background-primary, var(--surface))', border: '0.5px solid var(--color-border-secondary, var(--border))', borderRadius: 8, minWidth: 240, zIndex: 200, boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
+              <button type="button" role="menuitem" onClick={() => { setUploadMenuOpen(false); isdocRef.current?.click(); }} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: '0.5px solid var(--color-border-secondary, var(--border))' }}>
                 <FileText size={16} style={{ marginTop: 2, color: '#1D9E75', flexShrink: 0 }} />
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 500 }}>ISDOC</div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Importovat faktury z XML</div>
                 </div>
               </button>
-              <button type="button" role="menuitem" onClick={() => { setUploadMenuOpen(false); setShowPdfExtract(true); }} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
+              <button type="button" role="menuitem" onClick={() => { setUploadMenuOpen(false); setShowPdfExtract(true); }} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: '0.5px solid var(--color-border-secondary, var(--border))' }}>
                 <Cpu size={16} style={{ marginTop: 2, color: '#1D9E75', flexShrink: 0 }} />
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 500 }}>PDF (AI extrakce)</div>
@@ -446,7 +484,7 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
         </div>
       )}
 
-      <Table data={invoices} columns={columns} rowKey={(i) => i.id} onRowClick={(i) => setDetailInvoice(i)} emptyText="Žádné doklady. Přidejte nový doklad nebo importujte ISDOC." />
+      <Table data={sortedInvoices} columns={columns} rowKey={(i) => i.id} onRowClick={(i) => setDetailInvoice(i)} onSort={handleSort} emptyText="Žádné doklady. Přidejte nový doklad nebo importujte ISDOC." />
 
       {/* Detail modal */}
       {detailInvoice && (
