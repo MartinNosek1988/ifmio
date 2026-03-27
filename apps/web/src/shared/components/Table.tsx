@@ -14,10 +14,11 @@ interface Props<T> {
   rowKey: (row: T) => string;
   emptyText?: string;
   onRowClick?: (row: T) => void;
+  onSort?: (columnKey: string) => void;
   'data-testid'?: string;
 }
 
-export function Table<T>({ data, columns, rowKey, emptyText = 'Žádná data', onRowClick, 'data-testid': testId }: Props<T>) {
+export function Table<T>({ data, columns, rowKey, emptyText = 'Žádná data', onRowClick, onSort, 'data-testid': testId }: Props<T>) {
   if (data.length === 0) {
     return (
       <div className="card table-wrap" style={{ padding: 0, overflow: 'hidden' }}>
@@ -26,7 +27,7 @@ export function Table<T>({ data, columns, rowKey, emptyText = 'Žádná data', o
             <thead>
               <tr>
                 {columns.map((c) => (
-                  <th key={c.key} style={{ textAlign: c.align || 'left' }}>{c.label}</th>
+                  <th key={c.key} onClick={c.sortable && onSort ? () => onSort(c.key) : undefined} style={{ textAlign: c.align || 'left', ...(c.sortable && onSort ? { cursor: 'pointer', userSelect: 'none' } : {}) }}>{c.label}</th>
                 ))}
               </tr>
             </thead>
