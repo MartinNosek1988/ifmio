@@ -237,7 +237,7 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
     { key: 'number', label: sortLabel('Číslo', 'number'), sortable: true, width: 130, render: (i) => (
       <span style={{ fontFamily: 'monospace', fontSize: '0.82rem' }}>
         {i.number}
-        {i.isdocXml && <span style={{ fontSize: '0.62rem', background: '#1e3a5f', color: '#93c5fd', borderRadius: 3, padding: '0 4px', marginLeft: 4 }}>ISDOC</span>}
+        {i.hasIsdoc && <span style={{ fontSize: '0.62rem', background: '#1e3a5f', color: '#93c5fd', borderRadius: 3, padding: '0 4px', marginLeft: 4 }}>ISDOC</span>}
       </span>
     ) },
     { key: 'type', label: 'Typ', width: 80, render: (i) => <Badge variant="blue">{INVOICE_TYPE_LABELS[i.type] || i.type}</Badge> },

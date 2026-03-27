@@ -346,8 +346,9 @@ export default function InvoiceReviewPage() {
               const blob = new Blob([res.data as ArrayBuffer], { type: 'application/pdf' })
               const reader = new FileReader()
               reader.onloadend = () => {
-                const result = reader.result as string
-                setPdfBase64(result.substring(result.indexOf(',') + 1))
+                if (typeof reader.result === 'string') {
+                  setPdfBase64(reader.result.substring(reader.result.indexOf(',') + 1))
+                }
               }
               reader.readAsDataURL(blob)
             }).catch(() => {})
@@ -355,7 +356,7 @@ export default function InvoiceReviewPage() {
         }
       }).catch(() => {})
     })
-  }, [id, pdfBase64, invoice])
+  }, [id, pdfBase64, invoice?.pdfBase64])
 
   const isDraft = invoice?.approvalStatus === 'draft'
   const isSubmitted = invoice?.approvalStatus === 'submitted'

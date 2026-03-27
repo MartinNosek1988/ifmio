@@ -147,6 +147,9 @@ export class CreateInvoiceDto {
   isdocXml?: string;
 
   @IsOptional() @IsString()
+  pdfBase64?: string;
+
+  @IsOptional() @IsString()
   note?: string;
 }
 
