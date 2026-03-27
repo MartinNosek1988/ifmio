@@ -148,9 +148,14 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
         case 'approvalStatus':  av = a.approvalStatus ?? ''; bv = b.approvalStatus ?? ''; break;
         default: return 0;
       }
-      if (av < bv) return sortDir === 'asc' ? -1 : 1;
-      if (av > bv) return sortDir === 'asc' ? 1 : -1;
-      return 0;
+      let cmp = 0;
+      if (typeof av === 'string' && typeof bv === 'string') {
+        cmp = av.localeCompare(bv, 'cs');
+      } else {
+        if (av < bv) cmp = -1;
+        else if (av > bv) cmp = 1;
+      }
+      return sortDir === 'asc' ? cmp : -cmp;
     });
   }, [invoices, sortBy, sortDir]);
 

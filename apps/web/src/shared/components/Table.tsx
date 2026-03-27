@@ -19,17 +19,32 @@ interface Props<T> {
 }
 
 export function Table<T>({ data, columns, rowKey, emptyText = 'Žádná data', onRowClick, onSort, 'data-testid': testId }: Props<T>) {
+  const renderHeaders = () => columns.map((c) => (
+    <th key={c.key} style={{ textAlign: c.align || 'left' }}>
+      {c.sortable && onSort ? (
+        <button
+          type="button"
+          onClick={() => onSort(c.key)}
+          style={{
+            background: 'none', border: 'none', padding: 0,
+            width: '100%', textAlign: c.align || 'left',
+            cursor: 'pointer', userSelect: 'none',
+            font: 'inherit', color: 'inherit',
+          }}
+        >
+          {c.label}
+        </button>
+      ) : c.label}
+    </th>
+  ));
+
   if (data.length === 0) {
     return (
       <div className="card table-wrap" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <table className="tbl">
             <thead>
-              <tr>
-                {columns.map((c) => (
-                  <th key={c.key} onClick={c.sortable && onSort ? () => onSort(c.key) : undefined} style={{ textAlign: c.align || 'left', ...(c.sortable && onSort ? { cursor: 'pointer', userSelect: 'none' } : {}) }}>{c.label}</th>
-                ))}
-              </tr>
+              <tr>{renderHeaders()}</tr>
             </thead>
           </table>
         </div>
@@ -45,11 +60,7 @@ export function Table<T>({ data, columns, rowKey, emptyText = 'Žádná data', o
       <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
         <table className="tbl">
           <thead>
-            <tr>
-              {columns.map((c) => (
-                <th key={c.key} style={{ textAlign: c.align || 'left' }}>{c.label}</th>
-              ))}
-            </tr>
+            <tr>{renderHeaders()}</tr>
           </thead>
           <tbody>
             {data.map((row) => (
