@@ -356,7 +356,7 @@ export default function InvoiceReviewPage() {
         }
       }).catch(() => {})
     })
-  }, [id, pdfBase64, invoice])
+  }, [id, pdfBase64, invoice?.pdfBase64])
 
   const isDraft = invoice?.approvalStatus === 'draft'
   const isSubmitted = invoice?.approvalStatus === 'submitted'
