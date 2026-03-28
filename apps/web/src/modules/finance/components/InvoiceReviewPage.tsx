@@ -13,7 +13,7 @@ const PdfViewer = React.lazy(() => import('./PdfViewer'))
 
 // ─── CONSTANTS ──────────────────────────────────────────────────
 
-type LineWithId = InvoiceLine & { _id: string }
+type LineWithId = InvoiceLine & { _id: string; type?: 'item' | 'section' | 'note'; account?: string; analytic?: string; fulfillmentCode?: string }
 
 const INVOICE_TYPES: Record<string, string> = {
   received: 'Přijatá', issued: 'Vydaná', proforma: 'Záloha', credit_note: 'Dobropis', internal: 'Interní',
@@ -91,104 +91,135 @@ function SupplierAutocomplete({ value, onChange, onSelect }: {
   )
 }
 
-// ─── LINE ITEMS ─────────────────────────────────────────────────
+// ─── LINE ITEMS (Odoo-style) ────────────────────────────────────
+
+const VAT_RATES = [0, 12, 15, 21]
 
 function LineItemsEditor({ lines, onChange }: {
   lines: LineWithId[]
   onChange: (lines: LineWithId[]) => void
 }) {
   const safeNum = (v: any) => { const n = Number(v); return Number.isFinite(n) ? n : 0 }
+  const [vatMenu, setVatMenu] = useState<number | null>(null)
 
-  const addLine = () => {
-    onChange([...lines, { _id: crypto.randomUUID(), description: '', quantity: 1, unit: 'ks', unitPrice: 0, lineTotal: 0, vatRate: 21, vatAmount: 0 }])
-  }
+  useEffect(() => {
+    const handler = () => setVatMenu(null)
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
-  const updateLine = (idx: number, field: keyof InvoiceLine, value: any) => {
+  const addItem = () => onChange([...lines, { _id: crypto.randomUUID(), type: 'item', description: '', quantity: 1, unit: 'ks', unitPrice: 0, lineTotal: 0, vatRate: 21, vatAmount: 0 }])
+  const addSection = () => onChange([...lines, { _id: crypto.randomUUID(), type: 'section', description: '', quantity: 0, unit: '', unitPrice: 0, lineTotal: 0, vatRate: 0, vatAmount: 0 }])
+  const addNote = () => onChange([...lines, { _id: crypto.randomUUID(), type: 'note', description: '', quantity: 0, unit: '', unitPrice: 0, lineTotal: 0, vatRate: 0, vatAmount: 0 }])
+
+  const updateLine = (idx: number, field: string, value: any) => {
     const updated = [...lines]
     ;(updated[idx] as any)[field] = value
     const line = updated[idx]
-    line.quantity = safeNum(line.quantity)
-    line.unitPrice = safeNum(line.unitPrice)
-    line.vatRate = safeNum(line.vatRate)
-    line.lineTotal = line.quantity * line.unitPrice
-    line.vatAmount = line.lineTotal * (line.vatRate / 100)
+    if (line.type !== 'section' && line.type !== 'note') {
+      line.quantity = safeNum(line.quantity)
+      line.unitPrice = safeNum(line.unitPrice)
+      line.vatRate = safeNum(line.vatRate)
+      line.lineTotal = line.quantity * line.unitPrice
+      line.vatAmount = line.lineTotal * (line.vatRate / 100)
+    }
     onChange(updated)
   }
 
-  const removeLine = (idx: number) => {
-    onChange(lines.filter((_, i) => i !== idx))
-  }
+  const removeLine = (idx: number) => onChange(lines.filter((_, i) => i !== idx))
 
-  // VAT summary grouped by rate
-  const vatGroups = lines.reduce<Record<number, { base: number; vat: number }>>((acc, l) => {
+  const items = lines.filter(l => l.type !== 'section' && l.type !== 'note')
+  const vatGroups = items.reduce<Record<number, { base: number; vat: number }>>((acc, l) => {
     const rate = safeNum(l.vatRate)
     if (!acc[rate]) acc[rate] = { base: 0, vat: 0 }
     acc[rate].base += safeNum(l.lineTotal)
     acc[rate].vat += safeNum(l.vatAmount)
     return acc
   }, {})
-  const totalBase = lines.reduce((s, l) => s + safeNum(l.lineTotal), 0)
-  const totalVat = lines.reduce((s, l) => s + safeNum(l.vatAmount), 0)
+  const totalBase = items.reduce((s, l) => s + safeNum(l.lineTotal), 0)
+  const totalVat = items.reduce((s, l) => s + safeNum(l.vatAmount), 0)
 
   return (
     <div>
-      <div style={{ ...sectionTitle, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span>Položky faktury</span>
-        <button onClick={addLine} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary, #1D9E75)', display: 'flex', alignItems: 'center', gap: 4, fontSize: '.78rem' }}>
-          <Plus size={13} /> Přidat
-        </button>
-      </div>
-
-      {lines.length === 0 && (
-        <div style={{ fontSize: '.82rem', color: 'var(--text-muted)', padding: '8px 0', fontStyle: 'italic' }}>
-          Žádné položky. Klikněte "Přidat" pro přidání řádku.
+      {/* Header row */}
+      {lines.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: '3fr 1.5fr 1fr 1fr 60px 1fr auto', gap: 4, marginBottom: 4 }}>
+          <label style={labelStyle}>Popis</label>
+          <label style={labelStyle}>Účet</label>
+          <label style={labelStyle}>Množství</label>
+          <label style={labelStyle}>Cena/ks</label>
+          <label style={labelStyle}>Daně</label>
+          <label style={{ ...labelStyle, textAlign: 'right' }}>Částka</label>
+          <div />
         </div>
       )}
 
-      {lines.map((line, idx) => (
-        <div key={line._id} style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1fr 1fr 1fr 1fr auto', gap: 6, marginBottom: 6, alignItems: 'end' }}>
-          <div>
-            {idx === 0 && <label style={labelStyle}>Popis</label>}
+      {lines.map((line, idx) => {
+        if (line.type === 'section') {
+          return (
+            <div key={line._id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+              <input value={line.description} onChange={e => updateLine(idx, 'description', e.target.value)} placeholder="Název sekce" style={{ ...inputStyle, fontWeight: 700, flex: 1 }} />
+              <button onClick={() => removeLine(idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 4 }}><Trash2 size={13} /></button>
+            </div>
+          )
+        }
+        if (line.type === 'note') {
+          return (
+            <div key={line._id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+              <input value={line.description} onChange={e => updateLine(idx, 'description', e.target.value)} placeholder="Poznámka..." style={{ ...inputStyle, flex: 1, fontStyle: 'italic', color: 'var(--text-muted)' }} />
+              <button onClick={() => removeLine(idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 4 }}><Trash2 size={13} /></button>
+            </div>
+          )
+        }
+        return (
+          <div key={line._id} style={{ display: 'grid', gridTemplateColumns: '3fr 1.5fr 1fr 1fr 60px 1fr auto', gap: 4, marginBottom: 4, alignItems: 'center' }}>
             <input value={line.description} onChange={e => updateLine(idx, 'description', e.target.value)} style={inputStyle} />
-          </div>
-          <div>
-            {idx === 0 && <label style={labelStyle}>Množství</label>}
+            <input value={line.account ?? ''} onChange={e => updateLine(idx, 'account', e.target.value)} placeholder="518000" style={{ ...inputStyle, fontSize: '.78rem' }} />
             <input type="number" value={line.quantity} onChange={e => updateLine(idx, 'quantity', Number(e.target.value))} style={inputStyle} />
-          </div>
-          <div>
-            {idx === 0 && <label style={labelStyle}>Cena/ks</label>}
             <input type="number" value={line.unitPrice} onChange={e => updateLine(idx, 'unitPrice', Number(e.target.value))} style={inputStyle} />
-          </div>
-          <div>
-            {idx === 0 && <label style={labelStyle}>DPH %</label>}
-            <input type="number" value={line.vatRate} onChange={e => updateLine(idx, 'vatRate', Number(e.target.value))} style={inputStyle} />
-          </div>
-          <div>
-            {idx === 0 && <label style={labelStyle}>Bez DPH</label>}
-            <div style={{ ...inputStyle, background: 'transparent', border: 'none', fontSize: '.82rem', color: 'var(--text-muted)' }}>
-              {formatKc(safeNum(line.lineTotal))}
+            <div style={{ position: 'relative' }} onMouseDown={e => e.stopPropagation()}>
+              <button onClick={() => setVatMenu(vatMenu === idx ? null : idx)} style={{ padding: '2px 8px', borderRadius: 12, background: line.vatRate > 0 ? '#dbeafe' : '#f3f4f6', color: line.vatRate > 0 ? '#1e40af' : '#6b7280', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 500 }}>
+                {safeNum(line.vatRate)}%
+              </button>
+              {vatMenu === idx && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 50, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, boxShadow: '0 4px 6px rgba(0,0,0,0.1)', minWidth: 70 }}>
+                  {VAT_RATES.map(rate => (
+                    <div key={rate} onClick={() => { updateLine(idx, 'vatRate', rate); setVatMenu(null) }} style={{ padding: '5px 12px', cursor: 'pointer', fontSize: 13, background: rate === safeNum(line.vatRate) ? '#eff6ff' : '#fff' }}>{rate}%</div>
+                  ))}
+                </div>
+              )}
             </div>
+            <div style={{ textAlign: 'right', fontSize: '.84rem', fontWeight: 600 }}>{formatKc(safeNum(line.lineTotal))}</div>
+            <button onClick={() => removeLine(idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 4 }}><Trash2 size={13} /></button>
           </div>
-          <div>
-            {idx === 0 && <label style={labelStyle}>Celkem</label>}
-            <div style={{ ...inputStyle, background: 'transparent', border: 'none', fontWeight: 600 }}>
-              {formatKc(safeNum(line.lineTotal) + safeNum(line.vatAmount))}
-            </div>
-          </div>
-          <button onClick={() => removeLine(idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 4 }}>
-            <Trash2 size={14} />
-          </button>
-        </div>
-      ))}
+        )
+      })}
 
-      {lines.length > 0 && (
-        <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)', fontSize: '.82rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 24 }}>
-            <span style={{ color: 'var(--text-muted)' }}>Základ: <strong>{formatKc(totalBase)}</strong></span>
-            {Object.entries(vatGroups).sort(([a], [b]) => Number(b) - Number(a)).map(([rate, { vat }]) => (
-              <span key={rate} style={{ color: 'var(--text-muted)' }}>DPH {rate}%: <strong>{formatKc(vat)}</strong></span>
+      {/* Action row */}
+      <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: '.82rem' }}>
+        <button onClick={addItem} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary, #1D9E75)', fontWeight: 500 }}>+ Přidat položku</button>
+        <button onClick={addSection} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>Přidat sekci</button>
+        <button onClick={addNote} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>Přidat poznámku</button>
+      </div>
+
+      {/* VAT summary */}
+      {items.length > 0 && (
+        <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ fontSize: '.84rem', minWidth: 220 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ color: 'var(--text-muted)' }}>Základ bez DPH</span>
+              <strong>{formatKc(totalBase)}</strong>
+            </div>
+            {Object.entries(vatGroups).sort(([a], [b]) => Number(b) - Number(a)).map(([rate, { vat }]) => Number(rate) > 0 && (
+              <div key={rate} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ color: 'var(--text-muted)' }}>DPH {rate}%</span>
+                <strong>{formatKc(vat)}</strong>
+              </div>
             ))}
-            <span style={{ fontWeight: 600 }}>Celkem: <strong>{formatKc(totalBase + totalVat)}</strong></span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 6, borderTop: '1px solid var(--border)', fontWeight: 700 }}>
+              <span>Celkem</span>
+              <span>{formatKc(totalBase + totalVat)}</span>
+            </div>
           </div>
         </div>
       )}
@@ -214,6 +245,7 @@ export default function InvoiceReviewPage() {
   const [activeField, setActiveField] = useState<string | null>(null)
   const [pdfBase64, setPdfBase64] = useState<string | null>(null)
   const [zoomMode, setZoomMode] = useState<number | 'auto' | 'page' | 'width'>('width')
+  const [lineTab, setLineTab] = useState<'lines' | 'accounting' | 'other'>('lines')
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [extractionConfidence, setExtractionConfidence] = useState<string | null>(null)
@@ -597,17 +629,35 @@ export default function InvoiceReviewPage() {
             <Field name="paymentIban" label="IBAN" placeholder="CZ..." />
           </div>
 
-          {/* Line items — FIX 5: use handleLinesChange */}
-          <div style={{ marginBottom: 14 }}>
-            <LineItemsEditor lines={lines} onChange={handleLinesChange} />
+          {/* Tabs: Položky / Účetní / Další */}
+          <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)', marginBottom: 12 }}>
+            {([['lines', 'Položky faktury'], ['accounting', 'Účetní položky'], ['other', 'Další informace']] as const).map(([key, label]) => (
+              <button key={key} onClick={() => setLineTab(key)} style={{
+                padding: '8px 14px', border: 'none', cursor: 'pointer', fontSize: '.84rem', fontWeight: 500, background: 'none',
+                color: lineTab === key ? 'var(--primary, #1D9E75)' : 'var(--text-muted)',
+                borderBottom: lineTab === key ? '2px solid var(--primary, #1D9E75)' : '2px solid transparent',
+              }}>{label}</button>
+            ))}
           </div>
 
-          {/* Description + Note */}
-          <div style={sectionTitle}>Ostatní</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
-            <Field name="description" label="Popis" />
-            <Field name="note" label="Interní poznámka" />
-          </div>
+          {lineTab === 'lines' && (
+            <div style={{ marginBottom: 14 }}>
+              <LineItemsEditor lines={lines} onChange={handleLinesChange} />
+            </div>
+          )}
+
+          {lineTab === 'accounting' && (
+            <div style={{ padding: '16px 0', fontSize: '.84rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+              Funkce účetních položek bude brzy k dispozici.
+            </div>
+          )}
+
+          {lineTab === 'other' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+              <Field name="description" label="Popis" />
+              <Field name="note" label="Interní poznámka" />
+            </div>
+          )}
 
           {/* Chatter */}
           {id && <InvoiceChatter invoiceId={id} />}
