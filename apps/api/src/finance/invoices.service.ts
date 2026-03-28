@@ -712,7 +712,7 @@ Pokud pole není na faktuře uvedeno, vrať null pro dané pole.
 Data vrať ve formátu YYYY-MM-DD.
 IČO je 8místné číslo bez mezer. DIČ začíná "CZ" + IČO.
 duzp: datum zdanitelného plnění (DÚZP) — pokud není explicitně uvedeno, použij datum vystavení faktury. Hledej: 'datum zdanitelného plnění', 'DÚZP', 'tax point date', 'date of supply', nebo datum dodání.
-lines: seznam položek faktury. Extrahuj všechny řádky z tabulky položek. Každá položka může mít jinou DPH sazbu. Pokud faktura nemá tabulku položek, vrať prázdné pole [].`,
+lines: seznam položek faktury. Extrahuj všechny řádky z tabulky položek. Každá položka může mít jinou DPH sazbu. Pokud faktura nemá tabulku položek, vrať prázdné pole []. lineTotal = cena BEZ DPH (quantity × unitPrice). vatAmount = DPH (lineTotal × vatRate / 100). NIKDY nedávej do lineTotal cenu s DPH.`,
         messages: [{
           role: 'user',
           content: [
