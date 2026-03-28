@@ -7,6 +7,7 @@ import { useInvoice, useUpdateInvoice, useSubmitInvoice, useApproveInvoice, useR
 import { formatKc } from '../../../shared/utils/format'
 import { partiesApi } from '../../parties/api/parties.api'
 import type { InvoiceLine } from '../api/finance.api'
+import { InvoiceChatter } from './InvoiceChatter'
 
 const PdfViewer = React.lazy(() => import('./PdfViewer'))
 
@@ -607,6 +608,9 @@ export default function InvoiceReviewPage() {
             <Field name="description" label="Popis" />
             <Field name="note" label="Interní poznámka" />
           </div>
+
+          {/* Chatter */}
+          {id && <InvoiceChatter invoiceId={id} />}
         </div>
       </div>
     </div>

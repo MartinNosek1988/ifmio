@@ -298,6 +298,7 @@ export class InvoicesService {
     });
 
     await this.logAudit(user, 'INVOICE_SUBMIT', id);
+    await this.logStatusChange(user, id, 'Odesláno ke schválení');
 
     return this.serializeInvoice(updated);
   }
@@ -322,6 +323,7 @@ export class InvoicesService {
     });
 
     await this.logAudit(user, 'INVOICE_APPROVE', id);
+    await this.logStatusChange(user, id, 'Schváleno');
 
     return this.serializeInvoice(updated);
   }
@@ -355,8 +357,45 @@ export class InvoicesService {
     });
 
     await this.logAudit(user, 'INVOICE_RETURN_TO_DRAFT', id);
+    await this.logStatusChange(user, id, reason ? `Vráceno k přepracování: ${reason}` : 'Vráceno k přepracování');
 
     return this.serializeInvoice(updated);
+  }
+
+  // ─── COMMENTS / CHATTER ────────────────────────────────────────
+
+  async getComments(user: AuthUser, invoiceId: string) {
+    await this.findOneInternal(user, invoiceId);
+    return this.prisma.invoiceComment.findMany({
+      where: { invoiceId, tenantId: user.tenantId },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async addComment(user: AuthUser, invoiceId: string, body: string, type: 'note' | 'log' = 'note') {
+    await this.findOneInternal(user, invoiceId);
+    const dbUser = await this.prisma.user.findUnique({ where: { id: user.id }, select: { name: true } });
+    const name = dbUser?.name ?? 'Systém';
+    const parts = name.split(/\s+/);
+    const initials = parts.length >= 2
+      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+      : name.slice(0, 2).toUpperCase();
+
+    return this.prisma.invoiceComment.create({
+      data: {
+        tenantId: user.tenantId,
+        invoiceId,
+        userId: user.id,
+        userName: name,
+        userInitials: initials,
+        body,
+        type,
+      },
+    });
+  }
+
+  private async logStatusChange(user: AuthUser, invoiceId: string, message: string) {
+    await this.addComment(user, invoiceId, message, 'log').catch(() => {});
   }
 
   private serializeInvoice(invoice: any, includeLargeFields = false) {
