@@ -44,6 +44,8 @@ function addLineId(line: InvoiceLine): LineWithId {
   return { ...line, _id: crypto.randomUUID() }
 }
 
+const safeNum = (v: any): number => { const n = Number(v); return Number.isFinite(n) ? n : 0 }
+
 // ─── SUPPLIER AUTOCOMPLETE ──────────────────────────────────────
 
 function SupplierAutocomplete({ value, onChange, onSelect }: {
@@ -99,7 +101,6 @@ function LineItemsEditor({ lines, onChange }: {
   lines: LineWithId[]
   onChange: (lines: LineWithId[]) => void
 }) {
-  const safeNum = (v: any) => { const n = Number(v); return Number.isFinite(n) ? n : 0 }
   const [vatMenu, setVatMenu] = useState<number | null>(null)
 
   useEffect(() => {
