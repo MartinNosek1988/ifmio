@@ -213,7 +213,8 @@ export default function InvoiceReviewPage() {
   const [activeField, setActiveField] = useState<string | null>(null)
   const [pdfBase64, setPdfBase64] = useState<string | null>(null)
   const [zoomMode, setZoomMode] = useState<number | 'auto' | 'page' | 'width'>('width')
-  const [pageInfo, setPageInfo] = useState({ current: 1, total: 0 })
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
   const [extractionConfidence, setExtractionConfidence] = useState<string | null>(null)
 
   // Load extraction data from sessionStorage (set by PdfExtractModal)
@@ -465,10 +466,10 @@ export default function InvoiceReviewPage() {
         <div style={{ flex: '0 0 52%', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border)', overflow: 'hidden' }}>
           {/* Toolbar: page nav + zoom dropdown */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: '1px solid var(--border)', fontSize: '.82rem', flexShrink: 0 }}>
-            {pageInfo.total > 1 && (<>
-              <button onClick={() => setPageInfo(p => ({ ...p, current: Math.max(1, p.current - 1) }))} disabled={pageInfo.current <= 1} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text)' }}><ArrowLeft size={14} /></button>
-              <span>{pageInfo.current} z {pageInfo.total}</span>
-              <button onClick={() => setPageInfo(p => ({ ...p, current: Math.min(p.total, p.current + 1) }))} disabled={pageInfo.current >= pageInfo.total} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text)' }}><ArrowLeft size={14} style={{ transform: 'rotate(180deg)' }} /></button>
+            {totalPages > 1 && (<>
+              <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage <= 1} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text)' }}><ArrowLeft size={14} /></button>
+              <span>{currentPage} z {totalPages}</span>
+              <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text)' }}><ArrowLeft size={14} style={{ transform: 'rotate(180deg)' }} /></button>
             </>)}
             <div style={{ flex: 1 }} />
             {activeField && (
@@ -504,7 +505,8 @@ export default function InvoiceReviewPage() {
                   highlightedTexts={Object.values(form).filter(v => v !== null && v !== undefined && v !== '').map(v => String(v))}
                   activeFieldLabel={activeField}
                   zoomMode={zoomMode}
-                  onPageInfo={(current, total) => setPageInfo({ current, total })}
+                  page={currentPage}
+                  onPageChange={(p, t) => { setCurrentPage(p); setTotalPages(t) }}
                 />
               </Suspense>
             ) : (

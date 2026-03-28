@@ -14,28 +14,34 @@ interface PdfViewerProps {
   zoomMode?: ZoomMode
   /** @deprecated Use zoomMode instead */
   scale?: number
-  onPageInfo?: (current: number, total: number) => void
+  page?: number
+  onPageChange?: (page: number, total: number) => void
 }
 
-export default function PdfViewer({ pdfBase64, onTextSelected, highlightedTexts, activeFieldLabel, zoomMode, scale: scaleProp, onPageInfo }: PdfViewerProps) {
+export default function PdfViewer({ pdfBase64, onTextSelected, highlightedTexts, activeFieldLabel, zoomMode, scale: scaleProp, page: pageProp, onPageChange }: PdfViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const textLayerRef = useRef<HTMLDivElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
-  const [pageNum, setPageNum] = useState(1)
+  const [pageNum, setPageNum] = useState(pageProp ?? 1)
   const [numPages, setNumPages] = useState(0)
   const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null)
   const [containerSize, setContainerSize] = useState({ w: 800, h: 600 })
 
-  // Track container size via ResizeObserver
+  const resizeTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+
+  // Track container size via ResizeObserver (debounced)
   useEffect(() => {
     const el = wrapperRef.current
     if (!el) return
     const ro = new ResizeObserver(entries => {
-      const { width, height } = entries[0].contentRect
-      if (width > 0 && height > 0) setContainerSize({ w: width, h: height })
+      clearTimeout(resizeTimer.current)
+      resizeTimer.current = setTimeout(() => {
+        const { width, height } = entries[0].contentRect
+        if (width > 0 && height > 0) setContainerSize({ w: width, h: height })
+      }, 150)
     })
     ro.observe(el)
-    return () => ro.disconnect()
+    return () => { clearTimeout(resizeTimer.current); ro.disconnect() }
   }, [])
 
   // Load PDF document
@@ -54,10 +60,15 @@ export default function PdfViewer({ pdfBase64, onTextSelected, highlightedTexts,
     return () => { loadTask.destroy() }
   }, [pdfBase64])
 
-  // Report page info
+  // Sync controlled page prop
   useEffect(() => {
-    if (onPageInfo && numPages > 0) onPageInfo(pageNum, numPages)
-  }, [pageNum, numPages, onPageInfo])
+    if (pageProp && pageProp !== pageNum) setPageNum(pageProp)
+  }, [pageProp])
+
+  // Report page changes
+  useEffect(() => {
+    if (onPageChange && numPages > 0) onPageChange(pageNum, numPages)
+  }, [pageNum, numPages, onPageChange])
 
   // Render current page
   const renderPage = useCallback(async () => {
@@ -89,7 +100,7 @@ export default function PdfViewer({ pdfBase64, onTextSelected, highlightedTexts,
     canvas.style.height = viewport.height + 'px'
 
     const ctx = canvas.getContext('2d')!
-    await page.render({ canvasContext: ctx, viewport }).promise
+    await page.render({ canvas, canvasContext: ctx, viewport }).promise
 
     // Clear old text layer
     textLayerDiv.innerHTML = ''
@@ -146,11 +157,6 @@ export default function PdfViewer({ pdfBase64, onTextSelected, highlightedTexts,
     textLayerDiv.addEventListener('mouseup', handleMouseUp)
     return () => textLayerDiv.removeEventListener('mouseup', handleMouseUp)
   }, [onTextSelected])
-
-  // Expose page navigation for parent
-  const goPage = useCallback((dir: 1 | -1) => {
-    setPageNum(p => Math.max(1, Math.min(numPages, p + dir)))
-  }, [numPages])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
