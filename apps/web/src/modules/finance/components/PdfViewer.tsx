@@ -89,7 +89,7 @@ export default function PdfViewer({ pdfBase64, onTextSelected, highlightedTexts,
     canvas.style.height = viewport.height + 'px'
 
     const ctx = canvas.getContext('2d')!
-    await page.render({ canvasContext: ctx, viewport }).promise
+    await page.render({ canvas, canvasContext: ctx, viewport }).promise
 
     // Clear old text layer
     textLayerDiv.innerHTML = ''
@@ -146,11 +146,6 @@ export default function PdfViewer({ pdfBase64, onTextSelected, highlightedTexts,
     textLayerDiv.addEventListener('mouseup', handleMouseUp)
     return () => textLayerDiv.removeEventListener('mouseup', handleMouseUp)
   }, [onTextSelected])
-
-  // Expose page navigation for parent
-  const goPage = useCallback((dir: 1 | -1) => {
-    setPageNum(p => Math.max(1, Math.min(numPages, p + dir)))
-  }, [numPages])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
