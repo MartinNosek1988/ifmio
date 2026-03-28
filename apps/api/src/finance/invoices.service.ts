@@ -707,7 +707,6 @@ Vrať POUZE JSON, žádný jiný text.${fewShotSection}` },
     let extracted: Record<string, unknown>
     try {
       extracted = JSON.parse(textBlock.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim())
-      console.log('[EXTRACT LINES]', JSON.stringify(extracted.lines))
     } catch {
       await this.prisma.aiExtractionLog.create({
         data: { tenantId: user.tenantId, model: modelId, inputTokens, outputTokens, costUsd, confidence: 'low', fileName, success: false, createdBy: user.id },
