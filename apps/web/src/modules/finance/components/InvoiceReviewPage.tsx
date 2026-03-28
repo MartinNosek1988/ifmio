@@ -431,11 +431,11 @@ export default function InvoiceReviewPage() {
       </div>
 
       {/* Split layout */}
-      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+      <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
         {/* Left: PDF Viewer */}
-        <div style={{ flex: '1 1 50%', minWidth: 0, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: '0 0 52%', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border)', overflow: 'hidden' }}>
           {/* Zoom controls */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: '1px solid var(--border)', fontSize: '.82rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: '1px solid var(--border)', fontSize: '.82rem', flexShrink: 0 }}>
             <button onClick={() => setZoom(z => Math.max(0.5, z - 0.25))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text)' }}><ZoomOut size={15} /></button>
             <span>{Math.round(zoom * 100)}%</span>
             <button onClick={() => setZoom(z => Math.min(3, z + 0.25))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text)' }}><ZoomIn size={15} /></button>
@@ -447,7 +447,7 @@ export default function InvoiceReviewPage() {
             )}
           </div>
 
-          <div style={{ flex: 1, overflow: 'auto', background: '#f5f5f5' }}>
+          <div style={{ flex: 1, overflow: 'auto', background: '#f0f0f0' }}>
             {pdfBase64 ? (
               <Suspense fallback={<div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>Načítám PDF...</div>}>
                 {/* FIX 3: safe highlightedTexts + FIX 4: pass scale */}
@@ -468,7 +468,7 @@ export default function InvoiceReviewPage() {
         </div>
 
         {/* Right: Form */}
-        <div style={{ flex: '1 1 50%', minWidth: 0, overflowY: 'auto', padding: '16px 20px' }}>
+        <div style={{ flex: '0 0 48%', overflowY: 'auto', padding: '16px 20px' }}>
           {/* Number + Type + Currency */}
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 10, marginBottom: 14 }}>
             <Field name="number" label="Číslo faktury" />
