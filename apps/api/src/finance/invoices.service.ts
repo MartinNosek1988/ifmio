@@ -237,16 +237,7 @@ export class InvoicesService {
       where: { id },
       data,
     });
-    return {
-      ...invoice,
-      amountBase: Number(invoice.amountBase),
-      vatAmount: Number(invoice.vatAmount),
-      amountTotal: Number(invoice.amountTotal),
-      issueDate: invoice.issueDate.toISOString(),
-      duzp: invoice.duzp?.toISOString() ?? null,
-      dueDate: invoice.dueDate?.toISOString() ?? null,
-      paymentDate: invoice.paymentDate?.toISOString() ?? null,
-    };
+    return this.serializeInvoice(invoice);
   }
 
   async remove(user: AuthUser, id: string) {
@@ -716,6 +707,7 @@ Vrať POUZE JSON, žádný jiný text.${fewShotSection}` },
     let extracted: Record<string, unknown>
     try {
       extracted = JSON.parse(textBlock.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim())
+      console.log('[EXTRACT LINES]', JSON.stringify(extracted.lines))
     } catch {
       await this.prisma.aiExtractionLog.create({
         data: { tenantId: user.tenantId, model: modelId, inputTokens, outputTokens, costUsd, confidence: 'low', fileName, success: false, createdBy: user.id },
