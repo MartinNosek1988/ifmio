@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, Suspense, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Save, ArrowDownLeft, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Save, ArrowDownLeft, Trash2 } from 'lucide-react'
 import { Badge, Button } from '../../../shared/components'
 import { useToast } from '../../../shared/components/toast/Toast'
 import { useInvoice, useUpdateInvoice, useSubmitInvoice, useApproveInvoice, useReturnInvoiceToDraft } from '../api/finance.queries'
@@ -43,6 +43,8 @@ const sectionTitle: React.CSSProperties = {
 function addLineId(line: InvoiceLine): LineWithId {
   return { ...line, _id: crypto.randomUUID() }
 }
+
+const safeNum = (v: any): number => { const n = Number(v); return Number.isFinite(n) ? n : 0 }
 
 // ─── SUPPLIER AUTOCOMPLETE ──────────────────────────────────────
 
@@ -99,7 +101,6 @@ function LineItemsEditor({ lines, onChange }: {
   lines: LineWithId[]
   onChange: (lines: LineWithId[]) => void
 }) {
-  const safeNum = (v: any) => { const n = Number(v); return Number.isFinite(n) ? n : 0 }
   const [vatMenu, setVatMenu] = useState<number | null>(null)
 
   useEffect(() => {
@@ -309,15 +310,16 @@ export default function InvoiceReviewPage() {
     }
   }, [activeField])
 
-  // FIX 5: recalculate totals when lines change
+  // Recalculate totals when lines change (section/note excluded)
   const handleLinesChange = (newLines: LineWithId[]) => {
     setLines(newLines)
     setDirty(true)
-    const base = newLines.reduce((s, l) =>
-      s + (Number(l.quantity) || 1) * (Number(l.unitPrice) || 0), 0)
-    const vat = newLines.reduce((s, l) =>
-      s + (Number(l.quantity) || 1) * (Number(l.unitPrice) || 0)
-        * ((Number(l.vatRate) || 0) / 100), 0)
+    const itemLines = newLines.filter(l => !l.type || l.type === 'item')
+    const base = itemLines.reduce((s, l) =>
+      s + safeNum(l.quantity) * safeNum(l.unitPrice), 0)
+    const vat = itemLines.reduce((s, l) =>
+      s + safeNum(l.quantity) * safeNum(l.unitPrice)
+        * (safeNum(l.vatRate) / 100), 0)
     setForm(f => ({
       ...f,
       amountBase: base.toFixed(2),
