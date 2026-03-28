@@ -152,7 +152,7 @@ export class InvoicesService {
 
   async getOne(user: AuthUser, id: string) {
     const invoice = await this.findOneInternal(user, id);
-    return this.serializeInvoice(invoice);
+    return this.serializeInvoice(invoice, true);
   }
 
   async create(user: AuthUser, dto: CreateInvoiceDto & { supplierId?: string | null; buyerId?: string | null; isdocXml?: string | null; pdfBase64?: string | null }) {
@@ -195,17 +195,7 @@ export class InvoicesService {
         note: dto.note || null,
       },
     });
-    const { pdfBase64: _pdf, ...rest } = invoice;
-    return {
-      ...rest,
-      amountBase: Number(invoice.amountBase),
-      vatAmount: Number(invoice.vatAmount),
-      amountTotal: Number(invoice.amountTotal),
-      issueDate: invoice.issueDate.toISOString(),
-      duzp: invoice.duzp?.toISOString() ?? null,
-      dueDate: invoice.dueDate?.toISOString() ?? null,
-      paymentDate: invoice.paymentDate?.toISOString() ?? null,
-    };
+    return this.serializeInvoice(invoice);
   }
 
   async update(user: AuthUser, id: string, dto: UpdateInvoiceDto) {
@@ -378,9 +368,10 @@ export class InvoicesService {
     return this.serializeInvoice(updated);
   }
 
-  private serializeInvoice(invoice: any) {
+  private serializeInvoice(invoice: any, includeLargeFields = false) {
+    const { pdfBase64, isdocXml, ...rest } = invoice;
     return {
-      ...invoice,
+      ...rest,
       amountBase: Number(invoice.amountBase),
       vatAmount: Number(invoice.vatAmount),
       amountTotal: Number(invoice.amountTotal),
@@ -392,6 +383,9 @@ export class InvoicesService {
       submittedAt: invoice.submittedAt?.toISOString() ?? null,
       approvedAt: invoice.approvedAt?.toISOString() ?? null,
       rejectedAt: invoice.rejectedAt?.toISOString() ?? null,
+      hasPdf: !!pdfBase64,
+      hasIsdoc: !!isdocXml,
+      ...(includeLargeFields ? { pdfBase64, isdocXml } : {}),
     };
   }
 
@@ -687,13 +681,14 @@ Pokud pole není na faktuře uvedeno, vrať null pro dané pole.
 Číselné hodnoty vrať jako čísla (ne stringy).
 Data vrať ve formátu YYYY-MM-DD.
 IČO je 8místné číslo bez mezer. DIČ začíná "CZ" + IČO.
-duzp: datum zdanitelného plnění (DÚZP) — pokud není explicitně uvedeno, použij datum vystavení faktury. Hledej: 'datum zdanitelného plnění', 'DÚZP', 'tax point date', 'date of supply', nebo datum dodání.`,
+duzp: datum zdanitelného plnění (DÚZP) — pokud není explicitně uvedeno, použij datum vystavení faktury. Hledej: 'datum zdanitelného plnění', 'DÚZP', 'tax point date', 'date of supply', nebo datum dodání.
+lines: seznam položek faktury. Extrahuj všechny řádky z tabulky položek. Každá položka může mít jinou DPH sazbu. Pokud faktura nemá tabulku položek, vrať prázdné pole [].`,
         messages: [{
           role: 'user',
           content: [
             { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 } },
             { type: 'text', text: `Extrahuj data z této faktury a vrať JSON:
-{"number":null,"supplierName":null,"supplierIco":null,"supplierDic":null,"buyerName":null,"buyerIco":null,"buyerDic":null,"description":null,"amountBase":null,"vatAmount":null,"amountTotal":null,"vatRate":null,"issueDate":null,"duzp":null,"dueDate":null,"variableSymbol":null,"constantSymbol":null,"specificSymbol":null,"paymentIban":null,"currency":"CZK","paymentMethod":null}
+{"number":null,"supplierName":null,"supplierIco":null,"supplierDic":null,"buyerName":null,"buyerIco":null,"buyerDic":null,"description":null,"amountBase":null,"vatAmount":null,"amountTotal":null,"vatRate":null,"issueDate":null,"duzp":null,"dueDate":null,"variableSymbol":null,"constantSymbol":null,"specificSymbol":null,"paymentIban":null,"currency":"CZK","paymentMethod":null,"lines":[{"description":"","quantity":1,"unitPrice":0,"vatRate":21,"lineTotal":0,"vatAmount":0}]}
 Vrať POUZE JSON, žádný jiný text.${fewShotSection}` },
           ],
         }],

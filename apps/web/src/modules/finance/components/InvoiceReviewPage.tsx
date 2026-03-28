@@ -96,6 +96,8 @@ function LineItemsEditor({ lines, onChange }: {
   lines: LineWithId[]
   onChange: (lines: LineWithId[]) => void
 }) {
+  const safeNum = (v: any) => { const n = Number(v); return Number.isFinite(n) ? n : 0 }
+
   const addLine = () => {
     onChange([...lines, { _id: crypto.randomUUID(), description: '', quantity: 1, unit: 'ks', unitPrice: 0, lineTotal: 0, vatRate: 21, vatAmount: 0 }])
   }
@@ -104,14 +106,25 @@ function LineItemsEditor({ lines, onChange }: {
     const updated = [...lines]
     ;(updated[idx] as any)[field] = value
     const line = updated[idx]
-    line.lineTotal = line.quantity * line.unitPrice
-    line.vatAmount = line.lineTotal * (line.vatRate / 100)
+    line.lineTotal = safeNum(line.quantity) * safeNum(line.unitPrice)
+    line.vatAmount = line.lineTotal * (safeNum(line.vatRate) / 100)
     onChange(updated)
   }
 
   const removeLine = (idx: number) => {
     onChange(lines.filter((_, i) => i !== idx))
   }
+
+  // VAT summary grouped by rate
+  const vatGroups = lines.reduce<Record<number, { base: number; vat: number }>>((acc, l) => {
+    const rate = safeNum(l.vatRate)
+    if (!acc[rate]) acc[rate] = { base: 0, vat: 0 }
+    acc[rate].base += safeNum(l.lineTotal)
+    acc[rate].vat += safeNum(l.vatAmount)
+    return acc
+  }, {})
+  const totalBase = lines.reduce((s, l) => s + safeNum(l.lineTotal), 0)
+  const totalVat = lines.reduce((s, l) => s + safeNum(l.vatAmount), 0)
 
   return (
     <div>
@@ -129,7 +142,7 @@ function LineItemsEditor({ lines, onChange }: {
       )}
 
       {lines.map((line, idx) => (
-        <div key={line._id} style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1fr 1fr 1fr auto', gap: 6, marginBottom: 6, alignItems: 'end' }}>
+        <div key={line._id} style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1fr 1fr 1fr 1fr auto', gap: 6, marginBottom: 6, alignItems: 'end' }}>
           <div>
             {idx === 0 && <label style={labelStyle}>Popis</label>}
             <input value={line.description} onChange={e => updateLine(idx, 'description', e.target.value)} style={inputStyle} />
@@ -147,9 +160,15 @@ function LineItemsEditor({ lines, onChange }: {
             <input type="number" value={line.vatRate} onChange={e => updateLine(idx, 'vatRate', Number(e.target.value))} style={inputStyle} />
           </div>
           <div>
+            {idx === 0 && <label style={labelStyle}>Bez DPH</label>}
+            <div style={{ ...inputStyle, background: 'transparent', border: 'none', fontSize: '.82rem', color: 'var(--text-muted)' }}>
+              {formatKc(line.lineTotal)}
+            </div>
+          </div>
+          <div>
             {idx === 0 && <label style={labelStyle}>Celkem</label>}
             <div style={{ ...inputStyle, background: 'transparent', border: 'none', fontWeight: 600 }}>
-              {formatKc(line.lineTotal)}
+              {formatKc(safeNum(line.lineTotal) + safeNum(line.vatAmount))}
             </div>
           </div>
           <button onClick={() => removeLine(idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 4 }}>
@@ -159,8 +178,14 @@ function LineItemsEditor({ lines, onChange }: {
       ))}
 
       {lines.length > 0 && (
-        <div style={{ textAlign: 'right', fontSize: '.84rem', fontWeight: 600, marginTop: 4, paddingRight: 32 }}>
-          Celkem položky: {formatKc(lines.reduce((s, l) => s + l.lineTotal, 0))}
+        <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)', fontSize: '.82rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 24 }}>
+            <span style={{ color: 'var(--text-muted)' }}>Základ: <strong>{formatKc(totalBase)}</strong></span>
+            {Object.entries(vatGroups).sort(([a], [b]) => Number(b) - Number(a)).map(([rate, { vat }]) => (
+              <span key={rate} style={{ color: 'var(--text-muted)' }}>DPH {rate}%: <strong>{formatKc(vat)}</strong></span>
+            ))}
+            <span style={{ fontWeight: 600 }}>Celkem: <strong>{formatKc(totalBase + totalVat)}</strong></span>
+          </div>
         </div>
       )}
     </div>
