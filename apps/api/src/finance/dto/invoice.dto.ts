@@ -304,3 +304,8 @@ export class MarkPaidDto {
   @IsOptional() @IsString()
   note?: string;
 }
+
+export class AddInvoiceCommentDto {
+  @IsString() @IsNotEmpty() @MaxLength(10000)
+  body!: string;
+}
