@@ -1,32 +1,48 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker
+
+export type ZoomMode = number | 'auto' | 'page' | 'width'
 
 interface PdfViewerProps {
   pdfBase64: string
   onTextSelected: (text: string) => void
   highlightedTexts?: string[]
   activeFieldLabel?: string | null
+  zoomMode?: ZoomMode
+  /** @deprecated Use zoomMode instead */
   scale?: number
+  page?: number
+  onPageChange?: (page: number, total: number) => void
 }
 
-const PDF_SCALE = 1.5
-const PDF_SCALE_MOBILE = 0.8
-
-function getScale() {
-  return window.innerWidth <= 900 ? PDF_SCALE_MOBILE : PDF_SCALE
-}
-
-export default function PdfViewer({ pdfBase64, onTextSelected, highlightedTexts, activeFieldLabel, scale: scaleProp }: PdfViewerProps) {
+export default function PdfViewer({ pdfBase64, onTextSelected, highlightedTexts, activeFieldLabel, zoomMode, scale: scaleProp, page: pageProp, onPageChange }: PdfViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const textLayerRef = useRef<HTMLDivElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [pageNum, setPageNum] = useState(1)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const [pageNum, setPageNum] = useState(pageProp ?? 1)
   const [numPages, setNumPages] = useState(0)
   const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null)
+  const [containerSize, setContainerSize] = useState({ w: 800, h: 600 })
+
+  const resizeTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+
+  // Track container size via ResizeObserver (debounced)
+  useEffect(() => {
+    const el = wrapperRef.current
+    if (!el) return
+    const ro = new ResizeObserver(entries => {
+      clearTimeout(resizeTimer.current)
+      resizeTimer.current = setTimeout(() => {
+        const { width, height } = entries[0].contentRect
+        if (width > 0 && height > 0) setContainerSize({ w: width, h: height })
+      }, 150)
+    })
+    ro.observe(el)
+    return () => { clearTimeout(resizeTimer.current); ro.disconnect() }
+  }, [])
 
   // Load PDF document
   useEffect(() => {
@@ -41,10 +57,18 @@ export default function PdfViewer({ pdfBase64, onTextSelected, highlightedTexts,
       setPageNum(1)
     })
 
-    return () => {
-      loadTask.destroy()
-    }
+    return () => { loadTask.destroy() }
   }, [pdfBase64])
+
+  // Sync controlled page prop
+  useEffect(() => {
+    if (pageProp && pageProp !== pageNum) setPageNum(pageProp)
+  }, [pageProp])
+
+  // Report page changes
+  useEffect(() => {
+    if (onPageChange && numPages > 0) onPageChange(pageNum, numPages)
+  }, [pageNum, numPages, onPageChange])
 
   // Render current page
   const renderPage = useCallback(async () => {
@@ -54,7 +78,20 @@ export default function PdfViewer({ pdfBase64, onTextSelected, highlightedTexts,
     if (!doc || !canvas || !textLayerDiv) return
 
     const page = await doc.getPage(pageNum)
-    const scale = scaleProp ?? getScale()
+
+    // Calculate scale based on zoomMode
+    const mode = zoomMode ?? scaleProp ?? 'width'
+    let scale: number
+    if (mode === 'auto' || mode === 'width') {
+      const baseVp = page.getViewport({ scale: 1 })
+      scale = containerSize.w / baseVp.width
+    } else if (mode === 'page') {
+      const baseVp = page.getViewport({ scale: 1 })
+      scale = Math.min(containerSize.w / baseVp.width, containerSize.h / baseVp.height)
+    } else {
+      scale = mode as number
+    }
+
     const viewport = page.getViewport({ scale })
 
     canvas.width = viewport.width
@@ -97,7 +134,7 @@ export default function PdfViewer({ pdfBase64, onTextSelected, highlightedTexts,
 
       textLayerDiv.appendChild(span)
     }
-  }, [pageNum, highlightedTexts, scaleProp])
+  }, [pageNum, highlightedTexts, zoomMode, scaleProp, containerSize])
 
   useEffect(() => {
     if (pdfDocRef.current) renderPage()
@@ -126,44 +163,19 @@ export default function PdfViewer({ pdfBase64, onTextSelected, highlightedTexts,
       {activeFieldLabel && (
         <div style={{
           padding: '6px 12px', background: 'rgba(29, 158, 117, 0.1)',
-          borderRadius: 6, marginBottom: 8, fontSize: '.82rem', color: 'var(--primary, #1D9E75)',
-          fontWeight: 500, textAlign: 'center',
+          borderRadius: 6, marginBottom: 4, fontSize: '.82rem', color: 'var(--primary, #1D9E75)',
+          fontWeight: 500, textAlign: 'center', flexShrink: 0,
         }}>
           Vyberte text v PDF pro pole: <strong>{activeFieldLabel}</strong>
         </div>
       )}
 
-      {/* Page navigation */}
-      {numPages > 1 && (
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          gap: 12, marginBottom: 8, fontSize: '.82rem',
-        }}>
-          <button
-            onClick={() => setPageNum(p => Math.max(1, p - 1))}
-            disabled={pageNum <= 1}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text)' }}
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <span>Strana {pageNum} / {numPages}</span>
-          <button
-            onClick={() => setPageNum(p => Math.min(numPages, p + 1))}
-            disabled={pageNum >= numPages}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text)' }}
-          >
-            <ChevronRight size={16} />
-          </button>
-        </div>
-      )}
-
       {/* PDF canvas + text layer */}
       <div
-        ref={containerRef}
+        ref={wrapperRef}
         style={{
           position: 'relative', overflow: 'auto', flex: 1,
-          border: '1px solid var(--border)', borderRadius: 6,
-          background: '#f5f5f5',
+          background: '#f0f0f0',
         }}
       >
         <canvas ref={canvasRef} style={{ display: 'block' }} />
