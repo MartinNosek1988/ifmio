@@ -1,3 +1,11 @@
 -- This migration is intentionally empty.
--- Schema changes (AI batch tables + invoices.pdfBase64) were already
--- applied in migration 20260327000000_add_ai_batch_patterns_pdf.
+--
+-- The schema changes it was meant to apply (AI batch tables, supplier
+-- extraction patterns, invoice_training_samples, and invoices.pdfBase64)
+-- were already applied by migration 20260327000000_add_ai_batch_patterns_pdf.
+--
+-- This file exists because the migration was created on a branch that
+-- did not have the 20260327 migration. Both are now marked as applied
+-- on the production database via `prisma migrate resolve --applied`.
+--
+-- Safe to run on any database — it is a no-op.

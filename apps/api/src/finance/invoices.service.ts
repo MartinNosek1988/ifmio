@@ -237,16 +237,7 @@ export class InvoicesService {
       where: { id },
       data,
     });
-    return {
-      ...invoice,
-      amountBase: Number(invoice.amountBase),
-      vatAmount: Number(invoice.vatAmount),
-      amountTotal: Number(invoice.amountTotal),
-      issueDate: invoice.issueDate.toISOString(),
-      duzp: invoice.duzp?.toISOString() ?? null,
-      dueDate: invoice.dueDate?.toISOString() ?? null,
-      paymentDate: invoice.paymentDate?.toISOString() ?? null,
-    };
+    return this.serializeInvoice(invoice);
   }
 
   async remove(user: AuthUser, id: string) {

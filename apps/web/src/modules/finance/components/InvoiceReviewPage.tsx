@@ -106,8 +106,11 @@ function LineItemsEditor({ lines, onChange }: {
     const updated = [...lines]
     ;(updated[idx] as any)[field] = value
     const line = updated[idx]
-    line.lineTotal = safeNum(line.quantity) * safeNum(line.unitPrice)
-    line.vatAmount = line.lineTotal * (safeNum(line.vatRate) / 100)
+    line.quantity = safeNum(line.quantity)
+    line.unitPrice = safeNum(line.unitPrice)
+    line.vatRate = safeNum(line.vatRate)
+    line.lineTotal = line.quantity * line.unitPrice
+    line.vatAmount = line.lineTotal * (line.vatRate / 100)
     onChange(updated)
   }
 
@@ -162,7 +165,7 @@ function LineItemsEditor({ lines, onChange }: {
           <div>
             {idx === 0 && <label style={labelStyle}>Bez DPH</label>}
             <div style={{ ...inputStyle, background: 'transparent', border: 'none', fontSize: '.82rem', color: 'var(--text-muted)' }}>
-              {formatKc(line.lineTotal)}
+              {formatKc(safeNum(line.lineTotal))}
             </div>
           </div>
           <div>
