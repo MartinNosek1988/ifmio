@@ -25,6 +25,18 @@ export class InvoiceLineDto {
 
   @IsOptional() @IsNumber()
   vatAmount?: number;
+
+  @IsOptional() @IsString()
+  type?: string;
+
+  @IsOptional() @IsString()
+  account?: string;
+
+  @IsOptional() @IsString()
+  analytic?: string;
+
+  @IsOptional() @IsString()
+  fulfillmentCode?: string;
 }
 
 export class CreateAllocationDto {
