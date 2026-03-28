@@ -490,6 +490,19 @@ export class FinanceController {
       .send(xml);
   }
 
+  @Get('invoices/:id/comments')
+  @ApiOperation({ summary: 'Komentáře dokladu' })
+  getInvoiceComments(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.invoicesService.getComments(user, id);
+  }
+
+  @Post('invoices/:id/comments')
+  @Roles(...ROLES_FINANCE)
+  @ApiOperation({ summary: 'Přidat komentář k dokladu' })
+  addInvoiceComment(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: { body: string; type?: 'note' | 'log' }) {
+    return this.invoicesService.addComment(user, id, body.body, body.type);
+  }
+
   @Get('invoices/:id/documents')
   @ApiOperation({ summary: 'Přílohy dokladu' })
   getInvoiceDocuments(@CurrentUser() user: AuthUser, @Param('id') id: string) {

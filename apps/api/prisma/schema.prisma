@@ -99,6 +99,7 @@ model Tenant {
   supplierExtractionPatterns SupplierExtractionPattern[]
   aiExtractionBatches        AiExtractionBatch[]
   invoiceTrainingSamples     InvoiceTrainingSample[]
+  invoiceComments            InvoiceComment[]
 
   @@map("tenants")
 }
@@ -172,6 +173,7 @@ model User {
   features                UserFeature[]
   apiKeys                 ApiKey[]
   paymentOrders           PaymentOrder[]
+  invoiceComments         InvoiceComment[]
 
   @@unique([tenantId, email])
   @@unique([oauthProvider, oauthId])
@@ -902,6 +904,7 @@ model Invoice {
   evidenceAllocations      EvidenceFolderAllocation[]
   aiExtractionLogs         AiExtractionLog[]
   batchItems               AiExtractionBatchItem[]
+  comments                 InvoiceComment[]
 }
 
 // ─── INVOICE COST ALLOCATION (D1 — propojení dokladu se složkami předpisu) ────
@@ -4236,4 +4239,24 @@ model InvoiceTrainingSample {
   @@unique([tenantId, pdfHash])
   @@index([tenantId])
   @@map("invoice_training_samples")
+}
+
+model InvoiceComment {
+  id           String   @id @default(cuid())
+  tenantId     String
+  invoiceId    String
+  userId       String
+  userName     String
+  userInitials String
+  body         String   @db.Text
+  type         String   @default("note") // "note" | "log"
+  createdAt    DateTime @default(now())
+
+  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoice  Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId, createdAt])
+  @@index([tenantId])
+  @@map("invoice_comments")
 }
