@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, Suspense, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Save, ZoomIn, ZoomOut, RotateCcw, ArrowDownLeft, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Save, ArrowDownLeft, Plus, Trash2 } from 'lucide-react'
 import { Badge, Button } from '../../../shared/components'
 import { useToast } from '../../../shared/components/toast/Toast'
 import { useInvoice, useUpdateInvoice, useSubmitInvoice, useApproveInvoice, useReturnInvoiceToDraft } from '../api/finance.queries'
@@ -212,7 +212,8 @@ export default function InvoiceReviewPage() {
   const [dirty, setDirty] = useState(false)
   const [activeField, setActiveField] = useState<string | null>(null)
   const [pdfBase64, setPdfBase64] = useState<string | null>(null)
-  const [zoom, setZoom] = useState(1.5)
+  const [zoomMode, setZoomMode] = useState<number | 'auto' | 'page' | 'width'>('width')
+  const [pageInfo, setPageInfo] = useState({ current: 1, total: 0 })
   const [extractionConfidence, setExtractionConfidence] = useState<string | null>(null)
 
   // Load extraction data from sessionStorage (set by PdfExtractModal)
@@ -462,17 +463,35 @@ export default function InvoiceReviewPage() {
       <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
         {/* Left: PDF Viewer */}
         <div style={{ flex: '0 0 52%', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border)', overflow: 'hidden' }}>
-          {/* Zoom controls */}
+          {/* Toolbar: page nav + zoom dropdown */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: '1px solid var(--border)', fontSize: '.82rem', flexShrink: 0 }}>
-            <button onClick={() => setZoom(z => Math.max(0.5, z - 0.25))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text)' }}><ZoomOut size={15} /></button>
-            <span>{Math.round(zoom * 100)}%</span>
-            <button onClick={() => setZoom(z => Math.min(3, z + 0.25))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text)' }}><ZoomIn size={15} /></button>
-            <button onClick={() => setZoom(1.5)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-muted)' }}><RotateCcw size={14} /></button>
+            {pageInfo.total > 1 && (<>
+              <button onClick={() => setPageInfo(p => ({ ...p, current: Math.max(1, p.current - 1) }))} disabled={pageInfo.current <= 1} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text)' }}><ArrowLeft size={14} /></button>
+              <span>{pageInfo.current} z {pageInfo.total}</span>
+              <button onClick={() => setPageInfo(p => ({ ...p, current: Math.min(p.total, p.current + 1) }))} disabled={pageInfo.current >= pageInfo.total} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text)' }}><ArrowLeft size={14} style={{ transform: 'rotate(180deg)' }} /></button>
+            </>)}
+            <div style={{ flex: 1 }} />
             {activeField && (
-              <span style={{ marginLeft: 8, color: 'var(--primary, #1D9E75)', fontWeight: 500 }}>
+              <span style={{ color: 'var(--primary, #1D9E75)', fontWeight: 500, fontSize: '.78rem' }}>
                 Vyberte text pro: {activeField}
               </span>
             )}
+            <select
+              value={String(zoomMode)}
+              onChange={e => { const v = e.target.value; setZoomMode(v === 'auto' || v === 'page' || v === 'width' ? v : parseFloat(v)); }}
+              style={{ fontSize: 13, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)' }}
+            >
+              <option value="width">Podle šířky</option>
+              <option value="auto">Automatická velikost</option>
+              <option value="page">Podle stránky</option>
+              <option value="0.5">50 %</option>
+              <option value="0.75">75 %</option>
+              <option value="1">100 %</option>
+              <option value="1.25">125 %</option>
+              <option value="1.5">150 %</option>
+              <option value="2">200 %</option>
+              <option value="3">300 %</option>
+            </select>
           </div>
 
           <div style={{ flex: 1, overflow: 'auto', background: '#f0f0f0' }}>
@@ -484,7 +503,8 @@ export default function InvoiceReviewPage() {
                   onTextSelected={handleTextSelected}
                   highlightedTexts={Object.values(form).filter(v => v !== null && v !== undefined && v !== '').map(v => String(v))}
                   activeFieldLabel={activeField}
-                  scale={zoom}
+                  zoomMode={zoomMode}
+                  onPageInfo={(current, total) => setPageInfo({ current, total })}
                 />
               </Suspense>
             ) : (
