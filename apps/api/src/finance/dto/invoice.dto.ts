@@ -1,6 +1,6 @@
 import {
   IsString, IsOptional, IsNumber, IsBoolean, IsDateString,
-  IsEnum, IsArray, ValidateNested, ValidateIf, Min, IsNotEmpty,
+  IsEnum, IsArray, ValidateNested, ValidateIf, Min, IsNotEmpty, MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -146,7 +146,7 @@ export class CreateInvoiceDto {
   @IsOptional() @IsString()
   isdocXml?: string;
 
-  @IsOptional() @IsString()
+  @IsOptional() @IsString() @MaxLength(10 * 1024 * 1024)
   pdfBase64?: string;
 
   @IsOptional() @IsString()
