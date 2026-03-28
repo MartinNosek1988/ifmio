@@ -681,13 +681,14 @@ Pokud pole není na faktuře uvedeno, vrať null pro dané pole.
 Číselné hodnoty vrať jako čísla (ne stringy).
 Data vrať ve formátu YYYY-MM-DD.
 IČO je 8místné číslo bez mezer. DIČ začíná "CZ" + IČO.
-duzp: datum zdanitelného plnění (DÚZP) — pokud není explicitně uvedeno, použij datum vystavení faktury. Hledej: 'datum zdanitelného plnění', 'DÚZP', 'tax point date', 'date of supply', nebo datum dodání.`,
+duzp: datum zdanitelného plnění (DÚZP) — pokud není explicitně uvedeno, použij datum vystavení faktury. Hledej: 'datum zdanitelného plnění', 'DÚZP', 'tax point date', 'date of supply', nebo datum dodání.
+lines: seznam položek faktury. Extrahuj všechny řádky z tabulky položek. Každá položka může mít jinou DPH sazbu. Pokud faktura nemá tabulku položek, vrať prázdné pole [].`,
         messages: [{
           role: 'user',
           content: [
             { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 } },
             { type: 'text', text: `Extrahuj data z této faktury a vrať JSON:
-{"number":null,"supplierName":null,"supplierIco":null,"supplierDic":null,"buyerName":null,"buyerIco":null,"buyerDic":null,"description":null,"amountBase":null,"vatAmount":null,"amountTotal":null,"vatRate":null,"issueDate":null,"duzp":null,"dueDate":null,"variableSymbol":null,"constantSymbol":null,"specificSymbol":null,"paymentIban":null,"currency":"CZK","paymentMethod":null}
+{"number":null,"supplierName":null,"supplierIco":null,"supplierDic":null,"buyerName":null,"buyerIco":null,"buyerDic":null,"description":null,"amountBase":null,"vatAmount":null,"amountTotal":null,"vatRate":null,"issueDate":null,"duzp":null,"dueDate":null,"variableSymbol":null,"constantSymbol":null,"specificSymbol":null,"paymentIban":null,"currency":"CZK","paymentMethod":null,"lines":[{"description":"","quantity":1,"unitPrice":0,"vatRate":21,"lineTotal":0,"vatAmount":0}]}
 Vrať POUZE JSON, žádný jiný text.${fewShotSection}` },
           ],
         }],
