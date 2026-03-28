@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, Suspense, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Save, ArrowDownLeft, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Save, ArrowDownLeft, Trash2 } from 'lucide-react'
 import { Badge, Button } from '../../../shared/components'
 import { useToast } from '../../../shared/components/toast/Toast'
 import { useInvoice, useUpdateInvoice, useSubmitInvoice, useApproveInvoice, useReturnInvoiceToDraft } from '../api/finance.queries'
