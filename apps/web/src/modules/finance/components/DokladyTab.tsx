@@ -8,8 +8,8 @@ import { financeApi } from '../api/finance.api';
 import type { FinTransaction } from '../types';
 import { useInvoices, useInvoiceStats, useDeleteInvoice, useMarkInvoicePaid, useImportIsdoc, useExportIsdoc, usePairInvoice, useSubmitInvoice, useApproveInvoice, useAiExtractionStats, useExtractionPatterns, useDeleteExtractionPattern, useBatchList } from '../api/finance.queries';
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../core/auth';
-import { InvoiceDetailModal } from './InvoiceDetailModal';
 import { InvoiceForm } from './InvoiceForm';
 import { InvoiceContextMenu } from './InvoiceContextMenu';
 import { PdfExtractModal } from './PdfExtractModal';
@@ -77,9 +77,9 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
     setFAllocation('');
   };
 
+  const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
   const [editInvoice, setEditInvoice] = useState<ApiInvoice | null>(null);
-  const [detailInvoice, setDetailInvoice] = useState<ApiInvoice | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ApiInvoice | null>(null);
   const [contextMenu, setContextMenu] = useState<{ invoice: ApiInvoice; position: { x: number; y: number } } | null>(null);
   const userRole = useAuthStore((s) => s.user?.role) ?? 'viewer';
@@ -490,21 +490,8 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
         </div>
       )}
 
-      <Table data={sortedInvoices} columns={columns} rowKey={(i) => i.id} onRowClick={(i) => setDetailInvoice(i)} onSort={handleSort} emptyText="Žádné doklady. Přidejte nový doklad nebo importujte ISDOC." />
+      <Table data={sortedInvoices} columns={columns} rowKey={(i) => i.id} onRowClick={(i) => navigate(`/finance/invoices/${i.id}/review`)} onSort={handleSort} emptyText="Žádné doklady. Přidejte nový doklad nebo importujte ISDOC." />
 
-      {/* Detail modal */}
-      {detailInvoice && (
-        <InvoiceDetailModal
-          invoice={detailInvoice}
-          transactions={transactions}
-          onClose={() => setDetailInvoice(null)}
-          onEdit={() => { if (detailInvoice.approvalStatus === 'draft') { setEditInvoice(detailInvoice); setShowForm(true); setDetailInvoice(null); } }}
-          onMarkPaid={(dto) => { markPaidMut.mutate({ id: detailInvoice.id, dto }, { onSuccess: () => setDetailInvoice(null) }); }}
-          onPair={(transactionId) => { pairMut.mutate({ invoiceId: detailInvoice.id, transactionId }, { onSuccess: () => setDetailInvoice(null) }); }}
-          onExport={() => handleExport(detailInvoice)}
-          onDelete={() => { setDeleteTarget(detailInvoice); setDetailInvoice(null); }}
-        />
-      )}
 
       {/* Form modal */}
       {showForm && (
@@ -539,7 +526,7 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
           invoice={contextMenu.invoice}
           position={contextMenu.position}
           onClose={() => setContextMenu(null)}
-          onOpenDetail={() => { setDetailInvoice(contextMenu.invoice); setContextMenu(null) }}
+          onOpenDetail={() => { navigate(`/finance/invoices/${contextMenu.invoice.id}/review`); setContextMenu(null) }}
           onOpenEdit={() => { if (contextMenu.invoice.approvalStatus === 'draft') { setEditInvoice(contextMenu.invoice); setShowForm(true) }; setContextMenu(null) }}
           onDelete={() => { setDeleteTarget(contextMenu.invoice); setContextMenu(null) }}
         />
