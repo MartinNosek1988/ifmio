@@ -41,7 +41,12 @@ const sectionTitle: React.CSSProperties = {
 }
 
 function addLineId(line: InvoiceLine): LineWithId {
-  return { ...line, _id: crypto.randomUUID() }
+  const qty = safeNum(line.quantity)
+  const price = safeNum(line.unitPrice)
+  const rate = safeNum(line.vatRate)
+  const lineTotal = line.lineTotal != null ? safeNum(line.lineTotal) : qty * price
+  const vatAmount = line.vatAmount != null ? safeNum(line.vatAmount) : lineTotal * (rate / 100)
+  return { ...line, _id: crypto.randomUUID(), lineTotal, vatAmount }
 }
 
 const safeNum = (v: any): number => { const n = Number(v); return Number.isFinite(n) ? n : 0 }
