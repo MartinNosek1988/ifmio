@@ -6,7 +6,7 @@ import { formatKc, formatCzDate } from '../../../shared/utils/format';
 import type { ApiInvoice } from '../api/finance.api';
 import { financeApi } from '../api/finance.api';
 import type { FinTransaction } from '../types';
-import { useInvoices, useInvoiceStats, useDeleteInvoice, useMarkInvoicePaid, useImportIsdoc, useExportIsdoc, usePairInvoice, useSubmitInvoice, useApproveInvoice, useAiExtractionStats, useExtractionPatterns, useDeleteExtractionPattern, useBatchList } from '../api/finance.queries';
+import { useInvoices, useInvoiceStats, useDeleteInvoice, useMarkInvoicePaid, useImportIsdoc, useSubmitInvoice, useApproveInvoice, useAiExtractionStats, useExtractionPatterns, useDeleteExtractionPattern, useBatchList } from '../api/finance.queries';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../core/auth';
@@ -103,9 +103,7 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
   const { data: stats } = useInvoiceStats();
   const deleteMut = useDeleteInvoice();
   const markPaidMut = useMarkInvoicePaid();
-  const pairMut = usePairInvoice();
   const importIsdocMut = useImportIsdoc();
-  const exportIsdocMut = useExportIsdoc();
   const submitMut = useSubmitInvoice();
   const approveMut = useApproveInvoice();
   const isdocRef = useRef<HTMLInputElement>(null);
@@ -212,20 +210,6 @@ export function DokladyTab({ transactions }: { transactions: FinTransaction[] })
       } catch { /* skip failed files */ }
     }
     e.target.value = '';
-  };
-
-  const handleExport = (inv: ApiInvoice) => {
-    exportIsdocMut.mutate(inv.id, {
-      onSuccess: (xml) => {
-        const blob = new Blob([typeof xml === 'string' ? xml : JSON.stringify(xml)], { type: 'application/xml' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${inv.number}.isdoc`;
-        a.click();
-        URL.revokeObjectURL(url);
-      },
-    });
   };
 
   const selectStyle = {
