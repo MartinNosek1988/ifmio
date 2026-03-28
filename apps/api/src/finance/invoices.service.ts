@@ -376,7 +376,7 @@ export class InvoicesService {
     await this.findOneInternal(user, invoiceId);
     const dbUser = await this.prisma.user.findUnique({ where: { id: user.id }, select: { name: true } });
     const name = dbUser?.name ?? 'Systém';
-    const parts = name.split(/\s+/);
+    const parts = name.trim().split(/\s+/).filter(Boolean);
     const initials = parts.length >= 2
       ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
       : name.slice(0, 2).toUpperCase();

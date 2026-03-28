@@ -10,7 +10,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuditAction } from '../common/decorators/audit.decorator';
 import { ROLES_MANAGE, ROLES_FINANCE, ROLES_FINANCE_DRAFT } from '../common/constants/roles.constants';
-import { CreateInvoiceDto, UpdateInvoiceDto, InvoiceListQueryDto, MarkPaidDto, ReturnToDraftDto, CreateAllocationDto, UpdateAllocationDto } from './dto/invoice.dto';
+import { CreateInvoiceDto, UpdateInvoiceDto, InvoiceListQueryDto, MarkPaidDto, ReturnToDraftDto, CreateAllocationDto, UpdateAllocationDto, AddInvoiceCommentDto } from './dto/invoice.dto';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { AuthUser } from '@ifmio/shared-types';
 
@@ -499,8 +499,8 @@ export class FinanceController {
   @Post('invoices/:id/comments')
   @Roles(...ROLES_FINANCE)
   @ApiOperation({ summary: 'Přidat komentář k dokladu' })
-  addInvoiceComment(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: { body: string; type?: 'note' | 'log' }) {
-    return this.invoicesService.addComment(user, id, body.body, body.type);
+  addInvoiceComment(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: AddInvoiceCommentDto) {
+    return this.invoicesService.addComment(user, id, dto.body, 'note');
   }
 
   @Get('invoices/:id/documents')

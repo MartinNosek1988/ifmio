@@ -309,15 +309,16 @@ export default function InvoiceReviewPage() {
     }
   }, [activeField])
 
-  // FIX 5: recalculate totals when lines change
+  // Recalculate totals when lines change (section/note excluded)
   const handleLinesChange = (newLines: LineWithId[]) => {
     setLines(newLines)
     setDirty(true)
-    const base = newLines.reduce((s, l) =>
-      s + (Number(l.quantity) || 1) * (Number(l.unitPrice) || 0), 0)
-    const vat = newLines.reduce((s, l) =>
-      s + (Number(l.quantity) || 1) * (Number(l.unitPrice) || 0)
-        * ((Number(l.vatRate) || 0) / 100), 0)
+    const itemLines = newLines.filter(l => !l.type || l.type === 'item')
+    const base = itemLines.reduce((s, l) =>
+      s + safeNum(l.quantity) * safeNum(l.unitPrice), 0)
+    const vat = itemLines.reduce((s, l) =>
+      s + safeNum(l.quantity) * safeNum(l.unitPrice)
+        * (safeNum(l.vatRate) / 100), 0)
     setForm(f => ({
       ...f,
       amountBase: base.toFixed(2),

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, type CSSProperties } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Send } from 'lucide-react'
 import { apiClient } from '../../../core/api/client'
@@ -72,7 +72,7 @@ export function InvoiceChatter({ invoiceId }: { invoiceId: string }) {
   // Group comments by date
   let lastDate = ''
 
-  const tabStyle = (active: boolean): React.CSSProperties => ({
+  const tabStyle = (active: boolean): CSSProperties => ({
     padding: '6px 12px', border: 'none', cursor: 'pointer', fontSize: '.82rem',
     fontWeight: 500, background: 'none',
     color: active ? 'var(--primary, #1D9E75)' : 'var(--text-muted)',
