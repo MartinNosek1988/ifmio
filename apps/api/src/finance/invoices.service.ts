@@ -152,7 +152,7 @@ export class InvoicesService {
 
   async getOne(user: AuthUser, id: string) {
     const invoice = await this.findOneInternal(user, id);
-    return this.serializeInvoice(invoice);
+    return this.serializeInvoice(invoice, true);
   }
 
   async create(user: AuthUser, dto: CreateInvoiceDto & { supplierId?: string | null; buyerId?: string | null; isdocXml?: string | null; pdfBase64?: string | null }) {
@@ -195,17 +195,7 @@ export class InvoicesService {
         note: dto.note || null,
       },
     });
-    const { pdfBase64: _pdf, ...rest } = invoice;
-    return {
-      ...rest,
-      amountBase: Number(invoice.amountBase),
-      vatAmount: Number(invoice.vatAmount),
-      amountTotal: Number(invoice.amountTotal),
-      issueDate: invoice.issueDate.toISOString(),
-      duzp: invoice.duzp?.toISOString() ?? null,
-      dueDate: invoice.dueDate?.toISOString() ?? null,
-      paymentDate: invoice.paymentDate?.toISOString() ?? null,
-    };
+    return this.serializeInvoice(invoice);
   }
 
   async update(user: AuthUser, id: string, dto: UpdateInvoiceDto) {
@@ -378,9 +368,10 @@ export class InvoicesService {
     return this.serializeInvoice(updated);
   }
 
-  private serializeInvoice(invoice: any) {
+  private serializeInvoice(invoice: any, includeLargeFields = false) {
+    const { pdfBase64, isdocXml, ...rest } = invoice;
     return {
-      ...invoice,
+      ...rest,
       amountBase: Number(invoice.amountBase),
       vatAmount: Number(invoice.vatAmount),
       amountTotal: Number(invoice.amountTotal),
@@ -392,6 +383,9 @@ export class InvoicesService {
       submittedAt: invoice.submittedAt?.toISOString() ?? null,
       approvedAt: invoice.approvedAt?.toISOString() ?? null,
       rejectedAt: invoice.rejectedAt?.toISOString() ?? null,
+      hasPdf: !!pdfBase64,
+      hasIsdoc: !!isdocXml,
+      ...(includeLargeFields ? { pdfBase64, isdocXml } : {}),
     };
   }
 
