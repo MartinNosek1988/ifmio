@@ -105,7 +105,10 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
 
   const confirm = useCallback<ConfirmFn>((options) => {
     return new Promise<boolean>((resolve) => {
-      setState({ ...options, resolve })
+      setState(prev => {
+        if (prev !== null) { resolve(false); return prev }
+        return { ...options, resolve }
+      })
     })
   }, [])
 
