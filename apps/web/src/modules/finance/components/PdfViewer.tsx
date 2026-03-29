@@ -152,7 +152,7 @@ export default function PdfViewer({ pdfBase64, onTextSelected, highlightedTexts,
 
       textLayerDiv.appendChild(span)
     }
-  }, [pageNum, zoomMode, scaleProp, containerSize, highlightedTexts])
+  }, [pageNum, zoomMode, scaleProp, containerSize])
 
   useEffect(() => {
     if (pdfDocRef.current) renderPage()
