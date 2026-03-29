@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type CSSProperties } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Send, CheckCircle, Clock, ChevronDown, ChevronUp } from 'lucide-react'
 import { apiClient } from '../../../core/api/client'
