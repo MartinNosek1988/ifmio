@@ -22,6 +22,12 @@ export function validatePassword(password: string): PasswordValidationResult {
   if (!/[A-Z]/.test(password)) {
     errors.push('Heslo musí obsahovat alespoň jedno velké písmeno.')
   }
+  if (!/[a-z]/.test(password)) {
+    errors.push('Heslo musí obsahovat alespoň jedno malé písmeno.')
+  }
+  if (!/\d/.test(password)) {
+    errors.push('Heslo musí obsahovat alespoň jedno číslo.')
+  }
   if (COMMON_PASSWORDS.includes(password)) {
     errors.push('Toto heslo je příliš jednoduché. Zvolte jiné.')
   }

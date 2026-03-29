@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 const DEFAULT_ACTIVITY_TYPES = [
@@ -123,6 +123,11 @@ export class ChatterService {
   }
 
   async completeActivity(tenantId: string, activityId: string, userId: string) {
+    const activity = await this.prisma.activity.findFirst({
+      where: { id: activityId, tenantId },
+    });
+    if (!activity) throw new NotFoundException('Aktivita nenalezena');
+
     return this.prisma.activity.update({
       where: { id: activityId },
       data: {

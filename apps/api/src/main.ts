@@ -48,8 +48,8 @@ async function bootstrap() {
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],  // styles need unsafe-inline for CSS-in-JS
         imgSrc: ["'self'", "data:", "blob:"],
         connectSrc: ["'self'", "https://ags.cuzk.gov.cz", "https://ares.gov.cz"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],

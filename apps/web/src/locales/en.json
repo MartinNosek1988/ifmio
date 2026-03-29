@@ -93,6 +93,7 @@
     "acceptInvitation": {
       "title": "Accept invitation",
       "invitedTo": "Invitation to <strong>{{tenantName}}</strong>",
+      "youWereInvitedTo": "You were invited to",
       "name": "Name",
       "email": "Email",
       "password": "Password (min. 8 characters)",

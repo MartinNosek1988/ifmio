@@ -3,6 +3,8 @@ import { PrismaService } from '../prisma/prisma.service'
 import { EmailService } from '../email/email.service'
 import { randomBytes } from 'crypto'
 
+const PORTAL_TOKEN_EXPIRY_DAYS = 90
+
 @Injectable()
 export class PortalAccessService {
   private readonly logger = new Logger(PortalAccessService.name)
@@ -51,6 +53,7 @@ export class PortalAccessService {
 
   async generateAccess(tenantId: string, residentId: string, email: string) {
     const token = randomBytes(32).toString('hex')
+    const expiresAt = new Date(Date.now() + PORTAL_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000)
 
     const access = await this.prisma.portalAccess.upsert({
       where: { tenantId_email: { tenantId, email } },
@@ -59,16 +62,31 @@ export class PortalAccessService {
         residentId,
         email,
         accessToken: token,
+        expiresAt,
       },
       update: {
         residentId,
         accessToken: token,
         isActive: true,
-        expiresAt: null,
+        expiresAt,
       },
     })
 
     return { id: access.id, accessToken: access.accessToken }
+  }
+
+  async refreshAccess(tenantId: string, accessId: string) {
+    const access = await this.prisma.portalAccess.findFirst({
+      where: { id: accessId, tenantId },
+    })
+    if (!access) throw new NotFoundException('Přístup nenalezen')
+
+    return this.prisma.portalAccess.update({
+      where: { id: accessId },
+      data: {
+        expiresAt: new Date(Date.now() + PORTAL_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000),
+      },
+    })
   }
 
   async bulkGenerateAccess(tenantId: string, propertyId: string) {
