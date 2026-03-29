@@ -594,4 +594,150 @@ export class WorkOrdersService {
       catch (err) { this.logger.error(`WO email to ${addr} failed: ${err}`) }
     }
   }
+
+  // ─── DISPATCH WORKFLOW ────────────────────────────────────────
+
+  async dispatchToSupplier(user: AuthUser, id: string, dto: { supplierId: string; supplierNote?: string; sendEmail?: boolean }) {
+    const wo = await this.getById(user, id);
+    if (wo.status === 'vyresena' || wo.status === 'uzavrena' || wo.status === 'zrusena') {
+      throw new BadRequestException('Nelze dispatchovat uzavřený úkol');
+    }
+
+    const supplier = await this.prisma.party.findFirst({
+      where: { id: dto.supplierId, tenantId: user.tenantId },
+    });
+    if (!supplier) throw new NotFoundException('Dodavatel nenalezen');
+
+    const updated = await this.prisma.workOrder.update({
+      where: { id },
+      data: {
+        supplierId: dto.supplierId,
+        dispatchedAt: new Date(),
+        dispatchedById: user.id,
+        supplierNote: dto.supplierNote || null,
+        status: 'v_reseni',
+        supplierDeclinedAt: null,
+        supplierDeclineReason: null,
+      },
+    });
+
+    // Send email to supplier
+    if (dto.sendEmail !== false && supplier.email) {
+      const subject = `Pracovní úkol: ${updated.title}`;
+      const html = `<p>Dobrý den,</p>
+        <p>Byl Vám přiřazen pracovní úkol <strong>${updated.title}</strong>.</p>
+        ${dto.supplierNote ? `<p>Poznámka: ${dto.supplierNote}</p>` : ''}
+        <p>Priorita: ${updated.priority}</p>
+        ${updated.deadline ? `<p>Termín: ${updated.deadline.toISOString().slice(0, 10)}</p>` : ''}
+        <p>Prosím potvrďte přijetí nebo odmítněte úkol.</p>`;
+      this.email.send({ to: supplier.email, subject, html }).catch(err =>
+        this.logger.error(`Dispatch email failed: ${err}`),
+      );
+    }
+
+    return updated;
+  }
+
+  async confirmBySupplier(user: AuthUser, id: string, dto: { eta: string; note?: string }) {
+    const wo = await this.getById(user, id);
+
+    const updated = await this.prisma.workOrder.update({
+      where: { id },
+      data: {
+        supplierConfirmedAt: new Date(),
+        supplierEta: new Date(dto.eta),
+        status: 'v_reseni',
+        note: dto.note ? (wo.note ? `${wo.note}\n\nDodavatel: ${dto.note}` : `Dodavatel: ${dto.note}`) : undefined,
+      },
+    });
+
+    // Notify admin
+    await this.prisma.notification.create({
+      data: {
+        tenantId: user.tenantId,
+        userId: wo.dispatchedById ?? wo.dispatcherUserId ?? undefined,
+        type: 'WO_SUPPLIER_CONFIRMED',
+        title: 'Dodavatel potvrdil úkol',
+        body: `${wo.title} — ETA: ${dto.eta}`,
+        entityId: id,
+        entityType: 'work_order',
+      },
+    }).catch(() => {});
+
+    return updated;
+  }
+
+  async declineBySupplier(user: AuthUser, id: string, dto: { reason: string }) {
+    const wo = await this.getById(user, id);
+
+    const updated = await this.prisma.workOrder.update({
+      where: { id },
+      data: {
+        supplierDeclinedAt: new Date(),
+        supplierDeclineReason: dto.reason,
+        status: 'nova',
+        supplierId: null,
+        dispatchedAt: null,
+        supplierConfirmedAt: null,
+        supplierEta: null,
+      },
+    });
+
+    await this.prisma.notification.create({
+      data: {
+        tenantId: user.tenantId,
+        userId: wo.dispatchedById ?? wo.dispatcherUserId ?? undefined,
+        type: 'WO_SUPPLIER_DECLINED',
+        title: 'Dodavatel odmítl úkol',
+        body: `${wo.title} — Důvod: ${dto.reason}`,
+        entityId: id,
+        entityType: 'work_order',
+      },
+    }).catch(() => {});
+
+    return updated;
+  }
+
+  async completeBySupplier(user: AuthUser, id: string, dto: { photos?: string[]; completionNote?: string }) {
+    const wo = await this.getById(user, id);
+
+    const updated = await this.prisma.workOrder.update({
+      where: { id },
+      data: {
+        completedPhotos: dto.photos ?? undefined,
+        completionNote: dto.completionNote || null,
+        status: 'vyresena',
+        completedAt: new Date(),
+      },
+    });
+
+    await this.prisma.notification.create({
+      data: {
+        tenantId: user.tenantId,
+        userId: wo.dispatchedById ?? wo.requesterUserId ?? undefined,
+        type: 'WO_COMPLETED',
+        title: 'Úkol dokončen dodavatelem',
+        body: `${wo.title} — ke kontrole`,
+        entityId: id,
+        entityType: 'work_order',
+      },
+    }).catch(() => {});
+
+    return updated;
+  }
+
+  async submitCsat(user: AuthUser, id: string, dto: { score: number; comment?: string }) {
+    const wo = await this.getById(user, id);
+
+    const updated = await this.prisma.workOrder.update({
+      where: { id },
+      data: {
+        csatScore: dto.score,
+        csatComment: dto.comment || null,
+        status: 'uzavrena',
+      },
+    });
+
+    return updated;
+  }
 }

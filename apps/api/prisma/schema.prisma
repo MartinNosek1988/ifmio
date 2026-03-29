@@ -165,6 +165,7 @@ model User {
   assignedWorkOrders      WorkOrder[]               @relation("WOAssignee")
   requestedWorkOrders     WorkOrder[]               @relation("WORequester")
   dispatchedWorkOrders    WorkOrder[]               @relation("WODispatcher")
+  woDispatchedBy          WorkOrder[]               @relation("WODispatchedBy")
   reportSubscriptions     ScheduledReportSubscription[]
   assignedRecurringPlans  RecurringActivityPlan[]       @relation("RecurringPlanAssignee")
   mioDigestLogs           MioDigestLog[]
@@ -2489,6 +2490,22 @@ model WorkOrder {
   requireSummary   Boolean    @default(false)
   requireProtocol  Boolean    @default(false)
 
+  // Dispatch to supplier
+  supplierId              String?
+  dispatchedAt            DateTime?
+  dispatchedById          String?
+  supplierNote            String?    @db.Text
+  supplierConfirmedAt     DateTime?
+  supplierEta             DateTime?
+  supplierDeclinedAt      DateTime?
+  supplierDeclineReason   String?
+
+  // Completion
+  completedPhotos  Json?
+  completionNote   String?    @db.Text
+  csatScore        Int?
+  csatComment      String?
+
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 
@@ -2500,6 +2517,8 @@ model WorkOrder {
   assigneeUser    User?              @relation("WOAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull)
   requesterUser   User?              @relation("WORequester", fields: [requesterUserId], references: [id], onDelete: SetNull)
   dispatcherUser  User?              @relation("WODispatcher", fields: [dispatcherUserId], references: [id], onDelete: SetNull)
+  supplier        Party?             @relation("WorkOrderSupplier", fields: [supplierId], references: [id], onDelete: SetNull)
+  dispatchedByUser User?             @relation("WODispatchedBy", fields: [dispatchedById], references: [id], onDelete: SetNull)
   comments        WorkOrderComment[]
 
   @@index([tenantId])
@@ -3059,6 +3078,7 @@ model Party {
   users                 User[]             @relation("UserParty")
   assemblyAttendances   AssemblyAttendee[]
   perRollamBallots      PerRollamBallot[]
+  suppliedWorkOrders    WorkOrder[]        @relation("WorkOrderSupplier")
 
   @@index([tenantId, displayName])
   @@index([tenantId, ic])
