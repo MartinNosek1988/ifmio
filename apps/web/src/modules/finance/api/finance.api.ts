@@ -137,6 +137,7 @@ export interface ApiInvoice {
   vatRate: number;
   vatAmount: number;
   amountTotal: number;
+  rounding?: number;
   currency: string;
   issueDate: string;
   duzp?: string | null;

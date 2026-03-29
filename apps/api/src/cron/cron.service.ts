@@ -33,6 +33,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
   private recurringGenInterval: ReturnType<typeof setInterval> | null = null;
   private bankingSyncInterval: ReturnType<typeof setInterval> | null = null;
   private batchPollInterval: ReturnType<typeof setInterval> | null = null;
+  private mioRetentionInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private readonly config: ConfigService,
@@ -65,6 +66,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     this.initBankingSync();
     this.initWhatsAppAutomation();
     this.initBatchPolling();
+    this.initMioRetention();
   }
 
   onModuleDestroy() {
@@ -103,6 +105,10 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     if (this.batchPollInterval) {
       clearInterval(this.batchPollInterval);
       this.batchPollInterval = null;
+    }
+    if (this.mioRetentionInterval) {
+      clearInterval(this.mioRetentionInterval);
+      this.mioRetentionInterval = null;
     }
     this.logger.log('Cron intervals cleared');
   }
@@ -464,6 +470,41 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
       await this.aiBatch.pollPendingBatches();
     } catch (err) {
       this.logger.error('AI batch polling FAILED', (err as Error).stack);
+    }
+  }
+
+  // ─── Mio Conversation Retention ───────────────────────────────
+
+  private initMioRetention() {
+    this.logger.log('Mio retention cleanup enabled — daily');
+    this.mioRetentionInterval = setInterval(() => this.runMioRetention(), TWENTY_FOUR_HOURS);
+    setTimeout(() => this.runMioRetention(), 5 * 60 * 1000);
+  }
+
+  private async runMioRetention() {
+    const raw = process.env.MIO_RETENTION_DAYS;
+    let retentionDays = Number.parseInt(raw ?? '', 10);
+    if (!Number.isFinite(retentionDays) || retentionDays <= 0) retentionDays = 90;
+    else if (retentionDays > 365) retentionDays = 365;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - retentionDays);
+
+    try {
+      // Delete messages first (FK), then conversations
+      const deletedMessages = await this.prisma.mioMessage.deleteMany({
+        where: { conversation: { updatedAt: { lt: cutoff } } },
+      });
+      const deletedConversations = await this.prisma.mioConversation.deleteMany({
+        where: { updatedAt: { lt: cutoff } },
+      });
+      if (deletedConversations.count > 0) {
+        this.logger.log(
+          `Mio retention: deleted ${deletedConversations.count} conversations, ` +
+          `${deletedMessages.count} messages older than ${retentionDays} days`,
+        );
+      }
+    } catch (err) {
+      this.logger.error('Mio retention cleanup FAILED', (err as Error).stack);
     }
   }
 }

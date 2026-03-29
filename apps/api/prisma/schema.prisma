@@ -848,6 +848,7 @@ model Invoice {
   vatRate        Int         @default(0)
   vatAmount      Decimal     @default(0) @db.Decimal(12, 2)
   amountTotal    Decimal     @default(0) @db.Decimal(12, 2)
+  rounding       Decimal     @default(0) @db.Decimal(10, 2)
   currency       String      @default("CZK")
   issueDate      DateTime
   duzp           DateTime?
@@ -1972,6 +1973,8 @@ model Document {
   category     DocCategory @default(other)
   description  String?
   isPublic     Boolean     @default(false)
+  scanStatus   ScanStatus  @default(pending_scan)
+  scannedAt    DateTime?
   createdById  String?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
@@ -1986,7 +1989,17 @@ model Document {
   @@index([tenantId])
   @@index([tenantId, category])
   @@index([tenantId, createdAt])
+  @@index([scanStatus])
   @@map("documents")
+}
+
+enum ScanStatus {
+  pending_scan   // uploaded, awaiting scan
+  quarantined    // scan in progress
+  clean          // scanned, no threats
+  infected       // scan found malware — blocked
+  scan_error     // scanner failed — retry
+  skipped        // scanning disabled via feature flag
 }
 
 enum StorageType {
@@ -4248,20 +4261,23 @@ model AiExtractionBatchItem {
 }
 
 model InvoiceTrainingSample {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   tenantId      String
   dokladId      String?
   pdfHash       String
-  imageBase64   String   @db.Text
+  fileRef       String?   // storage key (replaces imageBase64); null = legacy row
+  imageBase64   String?   @db.Text  // deprecated: will be cleaned up by TTL cron
   extractedJson Json
-  source        String   // "claude_vision" | "manual"
-  confirmedAt   DateTime @default(now())
-  createdAt     DateTime @default(now())
+  source        String    // "claude_vision" | "manual"
+  confirmedAt   DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+  expiresAt     DateTime? // TTL: null = no expiry; set to createdAt + retention days
 
-  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, pdfHash])
   @@index([tenantId])
+  @@index([expiresAt])
   @@map("invoice_training_samples")
 }
 

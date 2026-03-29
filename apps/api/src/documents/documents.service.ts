@@ -1,8 +1,9 @@
 import {
-  Injectable, NotFoundException, BadRequestException,
+  Injectable, NotFoundException, BadRequestException, ForbiddenException,
 } from '@nestjs/common'
 import { PrismaService }       from '../prisma/prisma.service'
 import { LocalStorageProvider } from './storage/local.storage'
+import { ScannerService }      from './scanner/scanner.service'
 import * as path               from 'path'
 import * as crypto             from 'crypto'
 import type { AuthUser }       from '@ifmio/shared-types'
@@ -24,6 +25,7 @@ export class DocumentsService {
   constructor(
     private prisma:   PrismaService,
     private storage:  LocalStorageProvider,
+    private scanner:  ScannerService,
   ) {}
 
   async list(user: AuthUser, query: { category?: string; tag?: string; entityType?: string; entityId?: string; search?: string; page?: number; limit?: number }) {
@@ -113,6 +115,7 @@ export class DocumentsService {
         size:        file.size,
         storageKey:  key,
         storageType: 'local',
+        scanStatus:  this.scanner.getInitialStatus(),
         category:    (meta.category as any) ?? 'other',
         description: meta.description ?? null,
         createdById: user.id,
@@ -139,6 +142,15 @@ export class DocumentsService {
       where: { id, tenantId: user.tenantId },
     })
     if (!doc) throw new NotFoundException('Dokument nenalezen')
+
+    if (!this.scanner.isAvailable(doc.scanStatus)) {
+      throw new ForbiddenException(
+        doc.scanStatus === 'infected'
+          ? 'Dokument byl označen jako infikovaný a nelze jej stáhnout.'
+          : 'Dokument čeká na bezpečnostní kontrolu.',
+      )
+    }
+
     return { storageKey: doc.storageKey, name: doc.originalName, mimeType: doc.mimeType }
   }
 
