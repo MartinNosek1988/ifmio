@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Navigation } from '../landing/components/Navigation'
 import { Footer } from '../landing/components/Footer'
 import { SeoHead } from '../../i18n/SeoHead'
@@ -14,6 +14,14 @@ export default function DemoPage() {
   const [form, setForm] = useState({ name: '', email: '', phonePrefix: '+420', phone: '', company: '', gdpr: false })
   const [submitted, setSubmitted] = useState(false)
   const set = (k: string, v: string | boolean) => setForm(f => ({ ...f, [k]: v }))
+
+  useEffect(() => {
+    const prefill = sessionStorage.getItem('prefill_email')
+    if (prefill) {
+      set('email', prefill)
+      sessionStorage.removeItem('prefill_email')
+    }
+  }, [])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()

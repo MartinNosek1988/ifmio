@@ -579,6 +579,46 @@
   flex-wrap: wrap;
 }
 
+/* --- 5b. Hero email capture --- */
+.hero-email-capture {
+  display: flex;
+  gap: 0;
+  margin: 24px auto 0;
+  max-width: 520px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.hero-email-input {
+  flex: 1;
+  padding: 14px 18px;
+  border: 1.5px solid var(--gray-200, #e5e7eb);
+  border-right: none;
+  border-radius: 10px 0 0 10px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  outline: none;
+  background: #fff;
+}
+.hero-email-input:focus {
+  border-color: var(--teal, #0D9B8A);
+}
+.hero-email-btn {
+  padding: 14px 24px;
+  background: var(--teal, #0D9B8A);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  border: none;
+  border-radius: 0 10px 10px 0;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.hero-email-btn:hover {
+  background: var(--teal-dark, #0a8578);
+}
+
 /* --- 6. Trust line --- */
 .trust-line {
   text-align: center;
