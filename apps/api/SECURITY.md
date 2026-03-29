@@ -99,11 +99,24 @@ AI responses rendered as **plain text** in React JSX (`{msg.content}` with `whit
 - User passwords or password hashes
 - Full database query results (minimized via field allowlists)
 
+### Training Data
+- Invoice training samples no longer store raw PDF base64 in DB
+- PDFs > 50 KB stored on disk via `LocalStorageProvider`, only `fileRef` in DB
+- TTL: 180-day expiry, cleaned up by cron (`cleanupExpired()`)
+- Dedup: SHA-256 hash + unique constraint `[tenantId, pdfHash]`
+
+### Document AV Scanning
+- Feature flag: `AV_SCANNING_ENABLED` (default: `false`)
+- Document lifecycle: `pending_scan → quarantined → clean | infected`
+- Download and AI extraction blocked for unscanned/infected documents
+- Scanner interface ready for ClamAV sidecar (see `docs/runbooks/av-scanning.md`)
+- When disabled: documents get `scanStatus=skipped` immediately
+
 ## Known Limitations
 
 - RLS policies not yet defined (application-layer isolation only)
 - `styleSrc` uses `'unsafe-inline'` (required for CSS-in-JS)
-- No malware scanning on file uploads (MIME whitelist + size limit only)
+- AV scanning disabled by default (MIME whitelist + size limit only until ClamAV deployed)
 - Name redaction is heuristic-based (field name matching, not NER)
 
 ## Known Vulnerabilities (no upstream fix)
