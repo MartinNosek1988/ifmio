@@ -96,10 +96,6 @@ export function redactObject<T>(obj: T, strict = false): { output: T; meta: Reda
       for (const [key, v] of Object.entries(val as Record<string, unknown>)) {
         if (PII_FIELD_NAMES.has(key) && typeof v === 'string') {
           result[key] = `[${key.toUpperCase()}]`;
-          const lk = key.toLowerCase();
-          if (lk.includes('email')) meta.maskedEmails++;
-          else if (lk.includes('phone') || lk.includes('tel')) meta.maskedPhones++;
-          else if (lk.includes('iban') || lk.includes('account')) meta.maskedIbans++;
           meta.totalRedactions++;
         } else if (strict && SENSITIVE_NAME_FIELDS.has(key) && typeof v === 'string') {
           // Strict mode: abbreviate names "Jan Novák" → "J. N."

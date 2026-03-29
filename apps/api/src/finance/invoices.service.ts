@@ -102,7 +102,6 @@ export class InvoicesService {
         amountBase: Number(i.amountBase),
         vatAmount: Number(i.vatAmount),
         amountTotal: Number(i.amountTotal),
-        rounding: Number(i.rounding ?? 0),
         paidAmount: i.paidAmount ? Number(i.paidAmount) : null,
         issueDate: i.issueDate.toISOString(),
         duzp: i.duzp?.toISOString() ?? null,

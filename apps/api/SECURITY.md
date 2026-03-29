@@ -94,7 +94,7 @@ AI responses rendered as **plain text** in React JSX (`{msg.content}` with `whit
 - Invoice training samples: stored with PDF hash dedup
 
 ### What is NOT sent to LLM
-- Raw PDFs pro obecný chat/tool responses (PDF obsah je odesílán pouze pro extrakci faktur jako base64 document)
+- Raw PDF documents pro chat/tool summaries — PDFs jsou odesílány LLM pouze pro extrakci faktur přes document input type
 - Database credentials, API keys, or JWT tokens
 - User passwords or password hashes
 - Full database query results (minimized via field allowlists)
@@ -114,7 +114,6 @@ AI responses rendered as **plain text** in React JSX (`{msg.content}` with `whit
 
 ## Known Limitations
 
-- RLS policies not yet defined (application-layer isolation only)
 - `styleSrc` uses `'unsafe-inline'` (required for CSS-in-JS)
 - AV scanning disabled by default (MIME whitelist + size limit only until ClamAV deployed)
 - Name redaction is heuristic-based (field name matching, not NER)
