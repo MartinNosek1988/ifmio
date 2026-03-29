@@ -95,45 +95,44 @@ export function Navigation() {
           <div className="nav-dropdown">
             <button className="landing-nav__link">{t.nav.knowledge} ▾</button>
             <div className="mega-menu mega-menu--knowledge">
-              <div className="mega-menu__section">
-                <div className="mega-menu__section-title">{t.nav.knowledgeCols.col1}</div>
-                {([
-                  ['🏢', 'about', ROUTE_SLUGS.about[locale] ?? 'o-nas'],
-                  ['📣', 'news', ROUTE_SLUGS.blog[locale] ?? 'blog'],
-                  ['🤝', 'partnersLink', `${prSlug}`],
-                  ['💼', 'careers', ROUTE_SLUGS.careers[locale] ?? 'kariera'],
-                ] as const).map(([ico, key, slug]) => (
+              {(() => {
+                const ki = t.nav.knowledgeItems
+                const live = (ico: string, key: string, slug: string) => (
                   <a key={key} href={localePath(`/${slug}`)} className="mega-menu__item">
-                    <div><div className="mega-menu__item-title">{ico} {t.nav.knowledgeItems[key].title}</div><div className="mega-menu__item-desc">{t.nav.knowledgeItems[key].desc}</div></div>
+                    <div><div className="mega-menu__item-title">{ico} {ki[key].title}</div><div className="mega-menu__item-desc">{ki[key].desc}</div></div>
                   </a>
-                ))}
-              </div>
-              <div className="mega-menu__section">
-                <div className="mega-menu__section-title">{t.nav.knowledgeCols.col2}</div>
-                {([
-                  ['📖', 'blog', ROUTE_SLUGS.blog[locale] ?? 'blog'],
-                  ['🎓', 'academy', ROUTE_SLUGS.blog[locale] ?? 'blog'],
-                  ['📋', 'templates', ROUTE_SLUGS.blog[locale] ?? 'blog'],
-                  ['📅', 'webinars', ROUTE_SLUGS.blog[locale] ?? 'blog'],
-                ] as const).map(([ico, key, slug]) => (
-                  <a key={key} href={localePath(`/${slug}`)} className="mega-menu__item">
-                    <div><div className="mega-menu__item-title">{ico} {t.nav.knowledgeItems[key].title}</div><div className="mega-menu__item-desc">{t.nav.knowledgeItems[key].desc}</div></div>
+                )
+                const soon = (ico: string, key: string) => (
+                  <a key={key} href="#" aria-disabled="true" title="Připravujeme" className="mega-menu__item" style={{ opacity: 0.5, pointerEvents: 'none' }} onClick={e => e.preventDefault()}>
+                    <div><div className="mega-menu__item-title">{ico} {ki[key].title}</div><div className="mega-menu__item-desc">{ki[key].desc}</div></div>
                   </a>
-                ))}
-              </div>
-              <div className="mega-menu__section">
-                <div className="mega-menu__section-title">{t.nav.knowledgeCols.col3}</div>
-                {([
-                  ['📚', 'docs', ROUTE_SLUGS.blog[locale] ?? 'blog'],
-                  ['💬', 'helpdesk', ROUTE_SLUGS.contact[locale] ?? 'kontakt'],
-                  ['🔒', 'security', ROUTE_SLUGS.security[locale] ?? 'bezpecnost'],
-                  ['📜', 'legal', ROUTE_SLUGS.legal[locale] ?? 'pravni-dokumenty'],
-                ] as const).map(([ico, key, slug]) => (
-                  <a key={key} href={localePath(`/${slug}`)} className="mega-menu__item">
-                    <div><div className="mega-menu__item-title">{ico} {t.nav.knowledgeItems[key].title}</div><div className="mega-menu__item-desc">{t.nav.knowledgeItems[key].desc}</div></div>
-                  </a>
-                ))}
-              </div>
+                )
+                return (
+                  <>
+                    <div className="mega-menu__section">
+                      <div className="mega-menu__section-title">{t.nav.knowledgeCols.col1}</div>
+                      {live('🏢', 'about', ROUTE_SLUGS.about[locale] ?? 'o-nas')}
+                      {soon('📣', 'news')}
+                      {live('🤝', 'partnersLink', prSlug)}
+                      {live('💼', 'careers', ROUTE_SLUGS.careers[locale] ?? 'kariera')}
+                    </div>
+                    <div className="mega-menu__section">
+                      <div className="mega-menu__section-title">{t.nav.knowledgeCols.col2}</div>
+                      {live('📖', 'blog', ROUTE_SLUGS.blog[locale] ?? 'blog')}
+                      {soon('🎓', 'academy')}
+                      {soon('📋', 'templates')}
+                      {soon('📅', 'webinars')}
+                    </div>
+                    <div className="mega-menu__section">
+                      <div className="mega-menu__section-title">{t.nav.knowledgeCols.col3}</div>
+                      {soon('📚', 'docs')}
+                      {live('💬', 'helpdesk', ROUTE_SLUGS.contact[locale] ?? 'kontakt')}
+                      {live('🔒', 'security', ROUTE_SLUGS.security[locale] ?? 'bezpecnost')}
+                      {live('📜', 'legal', ROUTE_SLUGS.legal[locale] ?? 'pravni-dokumenty')}
+                    </div>
+                  </>
+                )
+              })()}
             </div>
           </div>
 

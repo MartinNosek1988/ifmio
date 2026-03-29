@@ -377,6 +377,12 @@
   grid-template-columns: 1fr 240px;
 }
 
+/* ZNALOSTI — 3 columns, 860px */
+.mega-menu--knowledge {
+  width: 860px;
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
 /* PARTNEŘI — 2 columns + CTA row, 720px */
 .mega-menu--partners {
   width: 720px;
