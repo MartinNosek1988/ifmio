@@ -6,9 +6,27 @@ Tenant isolation is enforced at **two levels**:
 
 1. **Application layer** (primary): `PropertyScopeService` adds `tenantId` WHERE clause to all Prisma queries. Every service method receives `AuthUser` with `tenantId` from JWT.
 
-2. **Database layer** (secondary): RLS is enabled on all tables (migration `20260525700000`) but **no policies are defined**. The API uses Supabase `service_role` key which has `BYPASSRLS` privilege.
+2. **Database layer** (defense-in-depth): RLS enabled + policies defined on **55+ tables** (migration `20260530000000`). Policies check `current_setting('app.current_tenant_id', true)` — when not set, evaluates to FALSE (deny-by-default). The API uses `service_role` key which has `BYPASSRLS` privilege, so policies don't affect normal operation. They protect against direct DB access via analytics, Supabase Dashboard, or read replicas.
 
-> **Warning:** Any direct database connection (analytics, read replicas, data exports) **MUST** use the `anon` or `authenticated` role with proper RLS policies, **NOT** `service_role`.
+### RLS Policy Model
+
+**Tier 1 — Direct tenantId** (39 tables): `properties`, `users`, `invoices`, `documents`, `helpdesk_tickets`, `work_orders`, `bank_accounts`, etc.
+Policy pattern: `"tenantId" = current_setting('app.current_tenant_id', true)::text`
+
+**Tier 2 — Inherited via FK** (17 tables): `units` (→ Property), `mio_messages` (→ MioConversation), `unit_rooms/quantities/equipment` (→ Unit → Property), etc.
+Policy pattern: subquery to parent table's `tenantId`.
+
+**Tier 3 — System tables** (2 tables): `revoked_tokens`, `attendee_keypad_assignments` — deny-all for non-service roles.
+
+### service_role Rules
+
+| Role | RLS Effect | Use Case |
+|------|-----------|----------|
+| `service_role` | **BYPASSED** | API server (NestJS/Prisma) — server-only |
+| `authenticated` | **ENFORCED** | Direct Supabase client access |
+| `anon` | **ENFORCED** | Public access (sees nothing) |
+
+> **Critical:** Never expose `service_role` key to clients. The `SUPABASE_SERVICE_ROLE_KEY` env var must never appear in frontend bundles. See `docs/runbooks/rls-verification.md` for testing procedure.
 
 ## Authentication
 
