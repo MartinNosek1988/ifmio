@@ -12,6 +12,7 @@ const AboutPage = lazy(() => import('../modules/pages/AboutPage'));
 const CareersPage = lazy(() => import('../modules/pages/CareersPage'));
 const BlogPage = lazy(() => import('../modules/pages/BlogPage'));
 const LegalDocsPage = lazy(() => import('../modules/pages/LegalPage'));
+const SecurityPage = lazy(() => import('../modules/pages/SecurityPage'));
 const SolutionPage = lazy(() => import('../modules/solutions/SolutionPage'));
 const PlatformModulePage = lazy(() => import('../modules/platform-modules/PlatformModulePage'));
 const PartnerSearchPage = lazy(() => import('../modules/partners/PartnerSearchPage'));
@@ -126,6 +127,7 @@ export const router = createBrowserRouter([
       { path: 'kariera', element: withBoundary('Kariéra', CareersPage) },
       { path: 'blog', element: withBoundary('Blog', BlogPage) },
       { path: 'pravni-dokumenty', element: withBoundary('Legal', LegalDocsPage) },
+      { path: 'bezpecnost', element: withBoundary('Bezpečnost', SecurityPage) },
       // EN slugs (same components, different URL)
       { path: 'pricing', element: withBoundary('Pricing', PricingPage) },
       { path: 'contact', element: withBoundary('Contact', ContactPage) },
@@ -136,6 +138,7 @@ export const router = createBrowserRouter([
       { path: 'about', element: withBoundary('About', AboutPage) },
       { path: 'careers', element: withBoundary('Careers', CareersPage) },
       { path: 'legal', element: withBoundary('Legal', LegalDocsPage) },
+      { path: 'security', element: withBoundary('Security', SecurityPage) },
     ],
   },
 

@@ -66,6 +66,9 @@ const CODE_EXECUTION_PATTERNS = [
 export function checkPromptInjection(input: string): InjectionCheckResult {
   const clean: InjectionCheckResult = { blocked: false, reason: null, category: null };
 
+  // Kill switch: disable guard without redeploy
+  if (process.env.LLM_GUARD_ENABLED === 'false') return clean;
+
   if (!input || input.length < 5) return clean;
 
   for (const pattern of INSTRUCTION_OVERRIDE_PATTERNS) {
