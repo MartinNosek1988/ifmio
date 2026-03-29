@@ -152,6 +152,9 @@ export class CreateInvoiceDto {
   @IsOptional() @IsString()
   buyerId?: string;
 
+  @IsOptional() @IsNumber()
+  rounding?: number;
+
   @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => InvoiceLineDto)
   lines?: InvoiceLineDto[];
 
@@ -240,6 +243,9 @@ export class UpdateInvoiceDto {
 
   @IsOptional() @IsString()
   buyerId?: string;
+
+  @IsOptional() @IsNumber()
+  rounding?: number;
 
   @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => InvoiceLineDto)
   lines?: InvoiceLineDto[];

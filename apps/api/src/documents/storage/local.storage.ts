@@ -26,6 +26,11 @@ export class LocalStorageProvider implements IStorageProvider {
     }
   }
 
+  async read(key: string): Promise<Buffer> {
+    const filePath = path.join(this.baseDir, key)
+    return fs.readFile(filePath)
+  }
+
   getUrl(key: string): string {
     return `${process.env.API_URL ?? 'http://localhost:3000'}/api/v1/documents/${key}/download`
   }
