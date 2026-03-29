@@ -41,7 +41,12 @@ const sectionTitle: React.CSSProperties = {
 }
 
 function addLineId(line: InvoiceLine): LineWithId {
-  return { ...line, _id: crypto.randomUUID() }
+  const qty = safeNum(line.quantity)
+  const price = safeNum(line.unitPrice)
+  const rate = safeNum(line.vatRate)
+  const lineTotal = line.lineTotal != null ? safeNum(line.lineTotal) : qty * price
+  const vatAmount = line.vatAmount != null ? safeNum(line.vatAmount) : lineTotal * (rate / 100)
+  return { ...line, _id: crypto.randomUUID(), lineTotal, vatAmount }
 }
 
 const safeNum = (v: any): number => { const n = Number(v); return Number.isFinite(n) ? n : 0 }
@@ -144,13 +149,15 @@ function LineItemsEditor({ lines, onChange }: {
     <div>
       {/* Header row */}
       {lines.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: '3fr 1.5fr 1fr 1fr 60px 1fr auto', gap: 4, marginBottom: 4 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '3fr 1.2fr 0.8fr 1fr 55px 1fr 0.8fr 1fr auto', gap: 4, marginBottom: 4 }}>
           <label style={labelStyle}>Popis</label>
           <label style={labelStyle}>Účet</label>
           <label style={labelStyle}>Množství</label>
           <label style={labelStyle}>Cena/ks</label>
           <label style={labelStyle}>Daně</label>
-          <label style={{ ...labelStyle, textAlign: 'right' }}>Částka</label>
+          <label style={{ ...labelStyle, textAlign: 'right' }}>Základ</label>
+          <label style={{ ...labelStyle, textAlign: 'right' }}>DPH</label>
+          <label style={{ ...labelStyle, textAlign: 'right' }}>Celkem</label>
           <div />
         </div>
       )}
@@ -173,7 +180,7 @@ function LineItemsEditor({ lines, onChange }: {
           )
         }
         return (
-          <div key={line._id} style={{ display: 'grid', gridTemplateColumns: '3fr 1.5fr 1fr 1fr 60px 1fr auto', gap: 4, marginBottom: 4, alignItems: 'center' }}>
+          <div key={line._id} style={{ display: 'grid', gridTemplateColumns: '3fr 1.2fr 0.8fr 1fr 55px 1fr 0.8fr 1fr auto', gap: 4, marginBottom: 4, alignItems: 'center' }}>
             <input value={line.description} onChange={e => updateLine(idx, 'description', e.target.value)} style={inputStyle} />
             <input value={line.account ?? ''} onChange={e => updateLine(idx, 'account', e.target.value)} placeholder="518000" style={{ ...inputStyle, fontSize: '.78rem' }} />
             <input type="number" value={line.quantity} onChange={e => updateLine(idx, 'quantity', Number(e.target.value))} style={inputStyle} />
@@ -190,7 +197,9 @@ function LineItemsEditor({ lines, onChange }: {
                 </div>
               )}
             </div>
-            <div style={{ textAlign: 'right', fontSize: '.84rem', fontWeight: 600 }}>{formatKc(safeNum(line.lineTotal))}</div>
+            <div style={{ textAlign: 'right', fontSize: '.82rem', color: 'var(--text-muted)' }}>{formatKc(safeNum(line.lineTotal))}</div>
+            <div style={{ textAlign: 'right', fontSize: '.82rem', color: 'var(--text-muted)' }}>{formatKc(safeNum(line.vatAmount))}</div>
+            <div style={{ textAlign: 'right', fontSize: '.84rem', fontWeight: 600 }}>{formatKc(safeNum(line.lineTotal) + safeNum(line.vatAmount))}</div>
             <button onClick={() => removeLine(idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 4 }}><Trash2 size={13} /></button>
           </div>
         )
@@ -315,11 +324,8 @@ export default function InvoiceReviewPage() {
     setLines(newLines)
     setDirty(true)
     const itemLines = newLines.filter(l => !l.type || l.type === 'item')
-    const base = itemLines.reduce((s, l) =>
-      s + safeNum(l.quantity) * safeNum(l.unitPrice), 0)
-    const vat = itemLines.reduce((s, l) =>
-      s + safeNum(l.quantity) * safeNum(l.unitPrice)
-        * (safeNum(l.vatRate) / 100), 0)
+    const base = itemLines.reduce((s, l) => s + safeNum(l.lineTotal), 0)
+    const vat = itemLines.reduce((s, l) => s + safeNum(l.vatAmount), 0)
     setForm(f => ({
       ...f,
       amountBase: base.toFixed(2),
