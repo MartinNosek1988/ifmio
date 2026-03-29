@@ -51,6 +51,13 @@ export const en = {
     ctaSecondary: 'Contact sales',
   },
   trust: { text: 'Trusted by more than 5,600 owners and tenants' },
+  trustStrip: {
+    gdpr: { label: 'GDPR compliant', desc: 'Data processing in full GDPR compliance' },
+    infra: { label: 'EU infrastructure', desc: 'Hetzner Frankfurt & Supabase EU' },
+    ai: { label: 'Privacy-first AI', desc: 'AI without access to personal data' },
+    tenant: { label: 'Tenant isolation', desc: 'Each client\'s data is strictly separated' },
+    cta: 'Learn about security',
+  },
   features: {
     label: 'EFFICIENCY',
     title: 'What ifmio can do for your management',

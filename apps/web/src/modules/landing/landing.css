@@ -592,6 +592,75 @@
   border-bottom: 1px solid var(--gray-200);
 }
 
+/* --- 6b. Security trust strip --- */
+.security-trust-strip {
+  width: 100%;
+  background: var(--gray-50, #f9fafb);
+  border-bottom: 1px solid var(--gray-200, #e5e7eb);
+  padding: 14px 0;
+}
+
+.security-trust-strip__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 clamp(20px, 5vw, 80px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.security-trust-strip__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.security-trust-strip__icon {
+  color: var(--teal, #0D9B8A);
+  flex-shrink: 0;
+}
+
+.security-trust-strip__label {
+  font-size: 13px;
+  color: var(--gray-500, #6b7280);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.security-trust-strip__divider {
+  color: var(--gray-300, #d1d5db);
+  font-size: 14px;
+  margin: 0 6px;
+  user-select: none;
+}
+
+.security-trust-strip__cta {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--teal, #0D9B8A);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+
+.security-trust-strip__cta:hover {
+  opacity: 0.75;
+}
+
+@media (max-width: 640px) {
+  .security-trust-strip__label {
+    display: none;
+  }
+  .security-trust-strip__divider {
+    display: none;
+  }
+  .security-trust-strip__cta {
+    margin-left: 12px;
+  }
+}
+
 /* --- 7. Bento grid --- */
 .bento-grid {
   display: grid;
