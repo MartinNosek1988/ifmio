@@ -37,6 +37,11 @@ export interface SanitizeResult {
  * Preserves markdown formatting (**, *, `, #, -, etc.).
  */
 export function sanitizeLlmOutput(input: string): SanitizeResult {
+  // Kill switch: disable sanitizer without redeploy
+  if (process.env.LLM_OUTPUT_SANITIZER_ENABLED === 'false') {
+    return { output: input.trim(), stripped: 0 };
+  }
+
   let output = input;
   let stripped = 0;
 

@@ -482,6 +482,9 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async runMioRetention() {
+    // Kill switch
+    if (process.env.MIO_RETENTION_ENABLED === 'false') return;
+
     const raw = process.env.MIO_RETENTION_DAYS;
     let retentionDays = Number.parseInt(raw ?? '', 10);
     if (!Number.isFinite(retentionDays) || retentionDays <= 0) retentionDays = 90;
@@ -490,19 +493,30 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     cutoff.setDate(cutoff.getDate() - retentionDays);
 
     try {
-      // Delete messages first (FK), then conversations
+      // Batch delete: find expired conversation IDs first (bounded query)
+      const expired = await this.prisma.mioConversation.findMany({
+        where: { updatedAt: { lt: cutoff } },
+        select: { id: true },
+        take: BATCH_SIZE,
+      });
+      if (expired.length === 0) return;
+
+      const ids = expired.map(c => c.id);
+
+      // Delete messages first (FK), then conversations — in bounded batches
       const deletedMessages = await this.prisma.mioMessage.deleteMany({
-        where: { conversation: { updatedAt: { lt: cutoff } } },
+        where: { conversationId: { in: ids } },
       });
       const deletedConversations = await this.prisma.mioConversation.deleteMany({
-        where: { updatedAt: { lt: cutoff } },
+        where: { id: { in: ids } },
       });
-      if (deletedConversations.count > 0) {
-        this.logger.log(
-          `Mio retention: deleted ${deletedConversations.count} conversations, ` +
-          `${deletedMessages.count} messages older than ${retentionDays} days`,
-        );
-      }
+
+      // Log only counts, never content
+      this.logger.log(
+        `Mio retention: deleted ${deletedConversations.count} conversations, ` +
+        `${deletedMessages.count} messages older than ${retentionDays} days` +
+        (expired.length >= BATCH_SIZE ? ' (batch limit reached, will continue next run)' : ''),
+      );
     } catch (err) {
       this.logger.error('Mio retention cleanup FAILED', (err as Error).stack);
     }
