@@ -126,7 +126,7 @@ export function Navigation() {
             <button className="landing-nav__link" onClick={() => toggle('knowledge')}>
               {t.nav.knowledge} <span style={chevron('knowledge')}>▾</span>
             </button>
-            <div className="mega-menu mega-menu--knowledge" style={dropStyle('knowledge')}>
+            <div className="mega-menu mega-menu--platform mega-menu--knowledge" style={dropStyle('knowledge')}>
               {(() => {
                 const ki = t.nav.knowledgeItems
                 const live = (ico: string, key: string, slug: string) => (
@@ -135,7 +135,7 @@ export function Navigation() {
                   </a>
                 )
                 const soon = (ico: string, key: string) => (
-                  <a key={key} href="#" aria-disabled="true" title="Připravujeme" className="mega-menu__item" style={{ opacity: 0.5, pointerEvents: 'none' }} onClick={e => e.preventDefault()}>
+                  <a key={key} href="#" aria-disabled="true" title="Připravujeme" className="mega-menu__item mega-menu__item--disabled" onClick={e => e.preventDefault()}>
                     <div><div className="mega-menu__item-title">{ico} {ki[key].title}</div><div className="mega-menu__item-desc">{ki[key].desc}</div></div>
                   </a>
                 )

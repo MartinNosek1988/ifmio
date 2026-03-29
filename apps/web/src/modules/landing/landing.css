@@ -410,6 +410,12 @@
   background-color: var(--gray-50);
 }
 
+.mega-menu__item--disabled {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+
 .mega-menu__item-icon {
   width: 36px;
   height: 36px;
