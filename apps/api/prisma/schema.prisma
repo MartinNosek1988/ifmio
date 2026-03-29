@@ -848,6 +848,7 @@ model Invoice {
   vatRate        Int         @default(0)
   vatAmount      Decimal     @default(0) @db.Decimal(12, 2)
   amountTotal    Decimal     @default(0) @db.Decimal(12, 2)
+  rounding       Decimal     @default(0) @db.Decimal(10, 2)
   currency       String      @default("CZK")
   issueDate      DateTime
   duzp           DateTime?
