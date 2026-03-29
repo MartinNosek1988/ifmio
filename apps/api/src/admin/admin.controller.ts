@@ -42,6 +42,7 @@ export class AdminController {
   }
 
   @Get('integrations')
+  @Roles(...ROLES_MANAGE)
   @ApiOperation({ summary: 'Stav integrací (Fio, ARES, AI, Mailgun, Signi)' })
   getIntegrations(@CurrentUser() user: AuthUser) {
     return this.service.getIntegrationsStatus(user)

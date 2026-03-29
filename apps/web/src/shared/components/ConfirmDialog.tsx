@@ -42,24 +42,31 @@ export function ConfirmDialog({
     return () => document.removeEventListener('keydown', handler)
   }, [isOpen, onClose])
 
+  const cancelRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (isOpen) setTimeout(() => cancelRef.current?.focus(), 50)
+  }, [isOpen])
+
   if (!isOpen) return null
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)' }}
+    <div role="presentation" style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)' }}
       onClick={onClose}>
-      <div style={{ background: 'var(--surface, #fff)', borderRadius: 12, padding: '24px', maxWidth: 420, width: '90%', boxShadow: '0 12px 40px rgba(0,0,0,0.15)' }}
+      <div role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-desc"
+        style={{ background: 'var(--surface, #fff)', borderRadius: 12, padding: '24px', maxWidth: 420, width: '90%', boxShadow: '0 12px 40px rgba(0,0,0,0.15)' }}
         onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 20 }}>
           <div style={{ width: 40, height: 40, borderRadius: '50%', background: colors.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <AlertTriangle size={20} style={{ color: colors.icon }} />
           </div>
           <div>
-            <div style={{ fontWeight: 600, fontSize: '1rem', marginBottom: 4 }}>{title}</div>
-            <div style={{ fontSize: '.88rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>{message}</div>
+            <div id="confirm-dialog-title" style={{ fontWeight: 600, fontSize: '1rem', marginBottom: 4 }}>{title}</div>
+            <div id="confirm-dialog-desc" style={{ fontSize: '.88rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>{message}</div>
           </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button onClick={onClose} disabled={isLoading}
+          <button ref={cancelRef} onClick={onClose} disabled={isLoading}
             style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: '.88rem' }}>
             {cancelLabel}
           </button>
