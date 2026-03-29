@@ -22,11 +22,12 @@ cd apps/api && npx jest --testPathPatterns prompt-injection --no-coverage
 ```
 Confirms: 5 injection categories blocked with safe refusal messages.
 
-### 3. Check WhatsApp bot prompt (no PII) — TODO: testy na jiné větvi
+### 3. Check WhatsApp bot prompt (no PII)
 ```bash
 cd apps/api && npx jest --testPathPatterns whatsapp-bot-pii --no-coverage
 ```
 Confirms: system prompt contains only `role=`, no displayName/propertyName/unitName.
+Poznámka: testy jsou na větvi security/whatsapp-pii-redaction
 
 ## How to debug a specific AI issue
 

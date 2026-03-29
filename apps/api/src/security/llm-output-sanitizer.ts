@@ -10,22 +10,22 @@
  */
 
 // HTML tags that could execute code or load external resources
-const DANGEROUS_TAG_RE = /<\s*\/?\s*(script|iframe|object|embed|applet|form|input|textarea|button|select|link|meta|base|svg|math)\b[^>]*>/gi;
+const DANGEROUS_TAG_RE = /<\s*\/?\s*(script|iframe|object|embed|applet|form|input|textarea|button|select|link|meta|base|svg|math)\b[^>]*>/i;
 
 // Event handlers (onerror, onclick, onload, etc.)
-const EVENT_HANDLER_RE = /\bon[a-z]+\s*=\s*["'][^"']*["']/gi;
+const EVENT_HANDLER_RE = /\bon[a-z]+\s*=\s*["'][^"']*["']/i;
 
 // javascript: / data: / vbscript: URLs
-const DANGEROUS_URL_RE = /(?:javascript|vbscript|data)\s*:/gi;
+const DANGEROUS_URL_RE = /(?:javascript|vbscript|data)\s*:/i;
 
 // HTML entities that decode to dangerous content
-const ENCODED_SCRIPT_RE = /&#(?:x6a|106);?\s*&#(?:x61|97);?\s*&#(?:x76|118);?\s*&#(?:x61|97);?\s*&#(?:x73|115);?\s*&#(?:x63|99);?\s*&#(?:x72|114);?\s*&#(?:x69|105);?\s*&#(?:x70|112);?\s*&#(?:x74|116);?\s*:/gi;
+const ENCODED_SCRIPT_RE = /&#(?:x6a|106);?\s*&#(?:x61|97);?\s*&#(?:x76|118);?\s*&#(?:x61|97);?\s*&#(?:x73|115);?\s*&#(?:x63|99);?\s*&#(?:x72|114);?\s*&#(?:x69|105);?\s*&#(?:x70|112);?\s*&#(?:x74|116);?\s*:/i;
 
 // Style expressions that can execute code (IE-specific but defense-in-depth)
-const STYLE_EXPRESSION_RE = /expression\s*\(/gi;
+const STYLE_EXPRESSION_RE = /expression\s*\(/i;
 
 // Generic HTML tags (for stripping all HTML)
-const ALL_TAG_RE = /<\/?[a-z][a-z0-9]*\b[^>]*>/gi;
+const ALL_TAG_RE = /<\/?[a-z][a-z0-9]*\b[^>]*>/i;
 
 export interface SanitizeResult {
   output: string;
@@ -40,12 +40,13 @@ export function sanitizeLlmOutput(input: string): SanitizeResult {
   let output = input;
   let stripped = 0;
 
-  // Count and remove dangerous patterns
+  // Count and remove dangerous patterns (create global version for replace-all)
   const countAndReplace = (re: RegExp, replacement = '') => {
-    const matches = output.match(re);
+    const global = new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g');
+    const matches = output.match(global);
     if (matches) {
       stripped += matches.length;
-      output = output.replace(re, replacement);
+      output = output.replace(global, replacement);
     }
   };
 

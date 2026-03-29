@@ -76,7 +76,7 @@ AI responses rendered as **plain text** in React JSX (`{msg.content}` with `whit
 - Invoice training samples: stored with PDF hash dedup
 
 ### What is NOT sent to LLM
-- Raw PDF documents (only extraction prompts with document content)
+- Raw PDFs pro obecný chat/tool responses (PDF obsah je odesílán pouze pro extrakci faktur jako base64 document)
 - Database credentials, API keys, or JWT tokens
 - User passwords or password hashes
 - Full database query results (minimized via field allowlists)
