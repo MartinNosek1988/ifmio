@@ -161,7 +161,7 @@ export const cs = {
     solutions: { title: 'Řešení', description: 'Řešení ifmio pro SVJ, správce nemovitostí, facility management a investory.' },
     platform: { title: 'Platforma', description: 'Moduly platformy ifmio — evidence, finance, předpisy, konto, helpdesk, revize a další.' },
     partners: { title: 'Partneři', description: 'Najděte správce, facility manažery, řemeslníky a revizní techniky v ifmio síti.' },
-    security: { title: 'Bezpečnost & Soukromí — ifmio', description: 'Jak ifmio chrání data: tenant izolace, PII redakce, AI guardrails, GDPR compliance.' },
+    security: { title: 'Bezpečnost & Soukromí', description: 'Jak ifmio chrání data: tenant izolace, PII redakce, AI guardrails, GDPR compliance.' },
   },
   security: {
     hero_pill_1: 'Defense-in-depth architektura',

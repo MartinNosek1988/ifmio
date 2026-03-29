@@ -136,16 +136,28 @@ export default function SecurityPage() {
           <div className="grid md:grid-cols-2 gap-8 mt-8">
             {/* Left col */}
             <div>
-              <p className="text-sm leading-relaxed mb-4" style={{ color: '#6B7A8D' }}>
-                {s.s02_p1.split(s.s02_p1_em)[0]}
-                <em className="not-italic font-semibold" style={{ color: '#0D9B8A' }}>{s.s02_p1_em}</em>
-                {s.s02_p1.split(s.s02_p1_em)[1]}
-              </p>
-              <p className="text-sm leading-relaxed mb-6" style={{ color: '#6B7A8D' }}>
-                {s.s02_p2.split(s.s02_p2_em)[0]}
-                <em className="not-italic font-semibold" style={{ color: '#0D9B8A' }}>{s.s02_p2_em}</em>
-                {s.s02_p2.split(s.s02_p2_em)[1]}
-              </p>
+              {(() => {
+                const p1Parts = s.s02_p1.split(s.s02_p1_em);
+                const p1Before = p1Parts[0] ?? '';
+                const p1After = p1Parts.slice(1).join(s.s02_p1_em);
+                const p2Parts = s.s02_p2.split(s.s02_p2_em);
+                const p2Before = p2Parts[0] ?? '';
+                const p2After = p2Parts.slice(1).join(s.s02_p2_em);
+                return (
+                  <>
+                    <p className="text-sm leading-relaxed mb-4" style={{ color: '#6B7A8D' }}>
+                      {p1Before}
+                      <em className="not-italic font-semibold" style={{ color: '#0D9B8A' }}>{s.s02_p1_em}</em>
+                      {p1After}
+                    </p>
+                    <p className="text-sm leading-relaxed mb-6" style={{ color: '#6B7A8D' }}>
+                      {p2Before}
+                      <em className="not-italic font-semibold" style={{ color: '#0D9B8A' }}>{s.s02_p2_em}</em>
+                      {p2After}
+                    </p>
+                  </>
+                );
+              })()}
               <div className="space-y-3">
                 {[s.s02_check1, s.s02_check2, s.s02_check3, s.s02_check4].map((item) => (
                   <div key={item} className="flex items-start gap-3">

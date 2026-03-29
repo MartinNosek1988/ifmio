@@ -161,7 +161,7 @@ export const en = {
     solutions: { title: 'Solutions', description: 'ifmio solutions for HOAs, property managers, facility management and investors.' },
     platform: { title: 'Platform', description: 'ifmio platform modules — registry, finance, payments, accounts, helpdesk, inspections and more.' },
     partners: { title: 'Partners', description: 'Find property managers, facility managers, tradespeople and inspection technicians in the ifmio network.' },
-    security: { title: 'Security & Privacy — ifmio', description: 'How ifmio protects data: tenant isolation, PII redaction, AI guardrails, GDPR compliance.' },
+    security: { title: 'Security & Privacy', description: 'How ifmio protects data: tenant isolation, PII redaction, AI guardrails, GDPR compliance.' },
   },
   security: {
     hero_pill_1: 'Defense-in-depth architecture',
