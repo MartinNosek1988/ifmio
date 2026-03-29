@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import { sanitizeLlmOutput } from '../security/llm-output-sanitizer'
 
 const SYSTEM_PROMPTS: Record<string, string> = {
   cs: `Jsi Mio AI, virtuální asistent platformy ifmio pro správu nemovitostí.
@@ -164,7 +165,7 @@ export class MioPublicService {
       }
 
       const data = await response.json() as { content?: { text?: string }[] }
-      const reply = data.content?.[0]?.text || ''
+      const reply = sanitizeLlmOutput(data.content?.[0]?.text || '').output
 
       // Cache the response
       this.responseCache.set(cacheKey, { reply, timestamp: now })

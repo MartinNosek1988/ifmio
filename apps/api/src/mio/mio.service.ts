@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config'
 import Anthropic from '@anthropic-ai/sdk'
 import type { AuthUser } from '@ifmio/shared-types'
 import { redactObject, minimizeForLLM, isRedactionEnabled } from '../security/pii-redactor'
+import { checkPromptInjection } from '../security/prompt-injection.guard'
+import { sanitizeLlmOutput } from '../security/llm-output-sanitizer'
 import { PrismaService } from '../prisma/prisma.service'
 import { HelpdeskService } from '../helpdesk/helpdesk.service'
 import { WorkOrdersService } from '../work-orders/work-orders.service'
@@ -188,6 +190,16 @@ export class MioService {
       return 'AI asistent není momentálně k dispozici. Kontaktujte administrátora.'
     }
 
+    // Pre-LLM injection guard: check the latest user message
+    const lastUserMsg = messages.filter(m => m.role === 'user').at(-1)
+    if (lastUserMsg) {
+      const injection = checkPromptInjection(lastUserMsg.content)
+      if (injection.blocked) {
+        this.logger.warn(`Prompt injection blocked [${injection.category}] for tenant ${user.tenantId} user ${user.id}`)
+        return injection.reason ?? 'Dotaz byl zablokován z bezpečnostních důvodů.'
+      }
+    }
+
     try {
       const apiMessages: Anthropic.MessageParam[] = messages.map(m => ({
         role: m.role, content: m.content,
@@ -243,7 +255,10 @@ export class MioService {
       }
 
       const textBlock = response.content.find(b => b.type === 'text')
-      return textBlock?.text ?? 'Omlouvám se, nepodařilo se vygenerovat odpověď.'
+      const raw = textBlock?.text ?? 'Omlouvám se, nepodařilo se vygenerovat odpověď.'
+      const { output: sanitized, stripped } = sanitizeLlmOutput(raw)
+      if (stripped > 0) this.logger.warn(`Mio output sanitized: ${stripped} dangerous constructs removed for user ${user.id}`)
+      return sanitized
     } catch (err) {
       this.logger.error(`Mio chat failed for user ${user.id}: ${err}`)
       return 'Omlouvám se, došlo k chybě. Zkuste to prosím znovu.'
@@ -572,6 +587,16 @@ export class MioService {
       return 'AI asistent není momentálně k dispozici. Kontaktujte administrátora.'
     }
 
+    // Pre-LLM injection guard
+    const lastUserMsg = messages.filter(m => m.role === 'user').at(-1)
+    if (lastUserMsg) {
+      const injection = checkPromptInjection(lastUserMsg.content)
+      if (injection.blocked) {
+        this.logger.warn(`Prompt injection blocked [${injection.category}] for tenant ${user.tenantId} user ${user.id}`)
+        return injection.reason ?? 'Dotaz byl zablokován z bezpečnostních důvodů.'
+      }
+    }
+
     try {
       const apiMessages: Anthropic.MessageParam[] = messages.map(m => ({
         role: m.role, content: m.content,
@@ -627,7 +652,10 @@ export class MioService {
       }
 
       const textBlock = response.content.find(b => b.type === 'text')
-      return textBlock?.text ?? 'Omlouvám se, nepodařilo se vygenerovat odpověď.'
+      const raw = textBlock?.text ?? 'Omlouvám se, nepodařilo se vygenerovat odpověď.'
+      const { output: sanitized, stripped } = sanitizeLlmOutput(raw)
+      if (stripped > 0) this.logger.warn(`Mio output sanitized: ${stripped} dangerous constructs removed for user ${user.id}`)
+      return sanitized
     } catch (err) {
       this.logger.error(`Mio chat failed for user ${user.id}: ${err}`)
       return 'Omlouvám se, došlo k chybě. Zkuste to prosím znovu.'
