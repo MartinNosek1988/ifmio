@@ -93,6 +93,7 @@
     "acceptInvitation": {
       "title": "Прийняти запрошення",
       "invitedTo": "Запрошення до <strong>{{tenantName}}</strong>",
+      "youWereInvitedTo": "Вас запрошено до",
       "name": "Ім'я",
       "email": "Електронна пошта",
       "password": "Пароль (мін. 8 символів)",

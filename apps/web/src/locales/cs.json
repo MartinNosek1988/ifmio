@@ -93,6 +93,7 @@
     "acceptInvitation": {
       "title": "Přijetí pozvánky",
       "invitedTo": "Pozvánka do <strong>{{tenantName}}</strong>",
+      "youWereInvitedTo": "Byli jste pozváni do",
       "name": "Jméno",
       "email": "E-mail",
       "password": "Heslo (min. 8 znaků)",

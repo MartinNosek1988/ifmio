@@ -90,7 +90,7 @@ export class SuperAdminService {
       this.prisma.tenant.count({ where }),
     ]);
 
-    return { data, total, page, limit };
+    return { data, total, page, pageSize: limit, totalPages: Math.ceil(total / limit) };
   }
 
   async getTenant(id: string) {
@@ -180,7 +180,7 @@ export class SuperAdminService {
       this.prisma.user.count({ where }),
     ]);
 
-    return { data, total, page, limit };
+    return { data, total, page, pageSize: limit, totalPages: Math.ceil(total / limit) };
   }
 
   /* ─── Audit log (cross-tenant) ──────────────────────────────────── */
@@ -203,6 +203,6 @@ export class SuperAdminService {
       this.prisma.auditLog.count({ where }),
     ]);
 
-    return { data, total, page, limit };
+    return { data, total, page, pageSize: limit, totalPages: Math.ceil(total / limit) };
   }
 }

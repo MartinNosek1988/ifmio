@@ -185,6 +185,6 @@ export class GdprService {
       }),
       this.prisma.auditLog.count({ where: { tenantId, action: 'GDPR_ERASURE' } }),
     ])
-    return { data, total, page, limit }
+    return { data, total, page, pageSize: limit, totalPages: Math.ceil(total / limit) }
   }
 }
