@@ -41,6 +41,7 @@ ORDER BY tablename;
 
 ```sql
 -- As non-service role (e.g., authenticated):
+BEGIN;
 SET LOCAL app.current_tenant_id = '<tenant-A-id>';
 
 -- Should return ONLY tenant A's properties
@@ -49,11 +50,13 @@ SELECT id, name, "tenantId" FROM properties LIMIT 5;
 -- Should return ZERO rows from tenant B
 SELECT COUNT(*) FROM properties WHERE "tenantId" = '<tenant-B-id>';
 -- Expected: 0
+COMMIT;
 ```
 
 ### Step 2: Test inherited tables
 
 ```sql
+BEGIN;
 SET LOCAL app.current_tenant_id = '<tenant-A-id>';
 
 -- Units (inherits via Property)
@@ -68,6 +71,7 @@ SELECT m.id, c."tenantId"
 FROM mio_messages m
 JOIN mio_conversations c ON m."conversationId" = c.id
 LIMIT 5;
+COMMIT;
 ```
 
 ### Step 3: Test with no context (deny-by-default)
@@ -87,12 +91,14 @@ SELECT COUNT(*) FROM invoices;
 ### Step 4: Test INSERT blocking
 
 ```sql
+BEGIN;
 SET LOCAL app.current_tenant_id = '<tenant-A-id>';
 
 -- Try inserting a property for tenant B — should FAIL
 INSERT INTO properties (id, "tenantId", name, address, city, "postalCode", type, ownership)
 VALUES (gen_random_uuid()::text, '<tenant-B-id>', 'Evil', 'Fake', 'City', '00000', 'residential_house', 'SVJ');
 -- Expected: ERROR (WITH CHECK violation)
+ROLLBACK;
 ```
 
 ## Automated Tests

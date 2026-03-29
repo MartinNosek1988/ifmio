@@ -6,9 +6,27 @@ Tenant isolation is enforced at **two levels**:
 
 1. **Application layer** (primary): `PropertyScopeService` adds `tenantId` WHERE clause to all Prisma queries. Every service method receives `AuthUser` with `tenantId` from JWT.
 
-2. **Database layer** (secondary): RLS is enabled on all tables (migration `20260525700000`) but **no policies are defined**. The API uses Supabase `service_role` key which has `BYPASSRLS` privilege.
+2. **Database layer** (defense-in-depth): RLS enabled + policies defined on **55+ tables** (migration `20260530000000`). Policies check `current_setting('app.current_tenant_id', true)` — when not set, evaluates to FALSE (deny-by-default). The API uses `service_role` key which has `BYPASSRLS` privilege, so policies don't affect normal operation. They protect against direct DB access via analytics, Supabase Dashboard, or read replicas.
 
-> **Warning:** Any direct database connection (analytics, read replicas, data exports) **MUST** use the `anon` or `authenticated` role with proper RLS policies, **NOT** `service_role`.
+### RLS Policy Model
+
+**Tier 1 — Direct tenantId** (39 tables): `properties`, `users`, `invoices`, `documents`, `helpdesk_tickets`, `work_orders`, `bank_accounts`, etc.
+Policy pattern: `"tenantId" = current_setting('app.current_tenant_id', true)::text`
+
+**Tier 2 — Inherited via FK** (17 tables): `units` (→ Property), `mio_messages` (→ MioConversation), `unit_rooms/quantities/equipment` (→ Unit → Property), etc.
+Policy pattern: subquery to parent table's `tenantId`.
+
+**Tier 3 — System tables** (2 tables): `revoked_tokens`, `attendee_keypad_assignments` — deny-all for non-service roles.
+
+### service_role Rules
+
+| Role | RLS Effect | Use Case |
+|------|-----------|----------|
+| `service_role` | **BYPASSED** | API server (NestJS/Prisma) — server-only |
+| `authenticated` | **ENFORCED** | Direct Supabase client access |
+| `anon` | **ENFORCED** | Public access (sees nothing) |
+
+> **Critical:** Never expose `service_role` key to clients. The `SUPABASE_SERVICE_ROLE_KEY` env var must never appear in frontend bundles. See `docs/runbooks/rls-verification.md` for testing procedure.
 
 ## Authentication
 
@@ -76,16 +94,28 @@ AI responses rendered as **plain text** in React JSX (`{msg.content}` with `whit
 - Invoice training samples: stored with PDF hash dedup
 
 ### What is NOT sent to LLM
-- Raw PDF documents (only extraction prompts with document content)
+- Raw PDF documents pro chat/tool summaries — PDFs jsou odesílány LLM pouze pro extrakci faktur přes document input type
 - Database credentials, API keys, or JWT tokens
 - User passwords or password hashes
 - Full database query results (minimized via field allowlists)
 
+### Training Data
+- Invoice training samples no longer store raw PDF base64 in DB
+- PDFs > 50 KB stored on disk via `LocalStorageProvider`, only `fileRef` in DB
+- TTL: 180-day expiry, cleaned up by cron (`cleanupExpired()`)
+- Dedup: SHA-256 hash + unique constraint `[tenantId, pdfHash]`
+
+### Document AV Scanning
+- Feature flag: `AV_SCANNING_ENABLED` (default: `false`)
+- Document lifecycle: `pending_scan → quarantined → clean | infected`
+- Download and AI extraction blocked for unscanned/infected documents
+- Scanner interface ready for ClamAV sidecar (see `docs/runbooks/av-scanning.md`)
+- When disabled: documents get `scanStatus=skipped` immediately
+
 ## Known Limitations
 
-- RLS policies not yet defined (application-layer isolation only)
 - `styleSrc` uses `'unsafe-inline'` (required for CSS-in-JS)
-- No malware scanning on file uploads (MIME whitelist + size limit only)
+- AV scanning disabled by default (MIME whitelist + size limit only until ClamAV deployed)
 - Name redaction is heuristic-based (field name matching, not NER)
 
 ## Known Vulnerabilities (no upstream fix)

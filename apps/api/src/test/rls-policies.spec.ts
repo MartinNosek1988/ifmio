@@ -102,7 +102,7 @@ describe('RLS Policies — Schema Verification', () => {
 
     for (const p of policies) {
       if (p.policyname.startsWith('tenant_isolation_')) {
-        if (!p.qual.includes('current_setting') && !p.qual.includes('app.current_tenant_id')) {
+        if (!p.qual.includes('app.current_tenant_id')) {
           badPolicies.push(`${p.tablename}.${p.policyname}`);
         }
       }

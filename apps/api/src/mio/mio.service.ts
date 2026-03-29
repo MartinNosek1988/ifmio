@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import Anthropic from '@anthropic-ai/sdk'
 import type { AuthUser } from '@ifmio/shared-types'
-import { redactObject, minimizeForLLM, isRedactionEnabled } from '../security/pii-redactor'
+import { redactObject, minimizeForLLM, isRedactionEnabled, isStrictRedaction } from '../security/pii-redactor'
 import { checkPromptInjection } from '../security/prompt-injection.guard'
 import { sanitizeLlmOutput } from '../security/llm-output-sanitizer'
 import { PrismaService } from '../prisma/prisma.service'
@@ -228,7 +228,7 @@ export class MioService {
               let result = await this.executeTool(user, block.name, block.input as Record<string, unknown>)
               if (isRedactionEnabled() && result && typeof result === 'object') {
                 result = minimizeForLLM(result as Record<string, unknown>, 'mio-chat')
-                result = redactObject(result).output
+                result = redactObject(result, isStrictRedaction()).output
               }
               return {
                 type: 'tool_result' as const,
@@ -626,7 +626,7 @@ export class MioService {
               let result = await this.executeTool(user, block.name, block.input as Record<string, unknown>)
               if (isRedactionEnabled() && result && typeof result === 'object') {
                 result = minimizeForLLM(result as Record<string, unknown>, 'mio-chat')
-                result = redactObject(result).output
+                result = redactObject(result, isStrictRedaction()).output
               }
               return {
                 type: 'tool_result' as const,
