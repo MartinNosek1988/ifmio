@@ -128,7 +128,7 @@ export function Navigation() {
             </button>
             <div className="mega-menu mega-menu--platform mega-menu--knowledge" style={dropStyle('knowledge')}>
               {(() => {
-                const ki = t.nav.knowledgeItems
+                const ki = t.nav.knowledgeItems as Record<string, { title: string; desc: string }>
                 const live = (ico: string, key: string, slug: string) => (
                   <a key={key} href={localePath(`/${slug}`)} className="mega-menu__item">
                     <div><div className="mega-menu__item-title">{ico} {ki[key].title}</div><div className="mega-menu__item-desc">{ki[key].desc}</div></div>
