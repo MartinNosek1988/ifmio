@@ -335,11 +335,9 @@
   height: 24px;
   display: none;
 }
-.nav-dropdown:hover::after {
-  display: block;
-}
+/* hover bridge disabled — dropdowns controlled via JS click toggle */
 
-/* Mega menu — CSS driven, no JS toggle */
+/* Mega menu — JS click toggle (opacity/visibility set via inline style) */
 .mega-menu {
   position: absolute;
   top: 100%;
@@ -357,12 +355,6 @@
   transition: opacity 0.2s ease, visibility 0.2s ease;
   z-index: 1000;
   display: grid;
-}
-
-.nav-dropdown:hover .mega-menu {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
 }
 
 /* PLATFORMA — 3 columns, 860px */

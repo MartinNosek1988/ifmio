@@ -19,9 +19,12 @@ const PLATFORM_PATH: Record<string, string> = {
 const SOLUTION_PATH: Record<string, string> = { svj: 'svj', spravce: 'spravce', fm: 'facility-management', udrzba: 'udrzba', investori: 'investori' }
 const PARTNER_PATH: Record<string, string> = { spravci: 'spravci', fm: 'facility-management', remeslnici: 'remeslnici', revizni: 'revizni-technici' }
 
+type MenuKey = 'platform' | 'solutions' | 'knowledge' | 'partners'
+
 export function Navigation() {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [openMenu, setOpenMenu] = useState<MenuKey | null>(null)
   const { locale, t, localePath } = useI18n()
 
   useEffect(() => {
@@ -29,6 +32,29 @@ export function Navigation() {
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (!(e.target as Element).closest('.nav-dropdown')) {
+        setOpenMenu(null)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const toggle = (key: MenuKey) => setOpenMenu(openMenu === key ? null : key)
+  const chevron = (key: MenuKey) => ({
+    display: 'inline-block',
+    transform: openMenu === key ? 'rotate(180deg)' : 'none',
+    transition: 'transform 0.2s',
+  })
+  const dropStyle = (key: MenuKey): React.CSSProperties => ({
+    opacity: openMenu === key ? 1 : 0,
+    visibility: openMenu === key ? 'visible' : 'hidden',
+    pointerEvents: openMenu === key ? 'auto' : 'none',
+  })
 
   const pSlug = ROUTE_SLUGS.platform[locale] ?? 'platforma'
   const sSlug = ROUTE_SLUGS.solutions[locale] ?? 'reseni'
@@ -50,8 +76,10 @@ export function Navigation() {
         <div className={`landing-nav__links${menuOpen ? ' is-open' : ''}`}>
           {/* Platform */}
           <div className="nav-dropdown">
-            <button className="landing-nav__link">{t.nav.platform} ▾</button>
-            <div className="mega-menu mega-menu--platform">
+            <button className="landing-nav__link" onClick={() => toggle('platform')}>
+              {t.nav.platform} <span style={chevron('platform')}>▾</span>
+            </button>
+            <div className="mega-menu mega-menu--platform" style={dropStyle('platform')}>
               {[
                 { label: cols.col1, keys: COL1_KEYS },
                 { label: cols.col2, keys: COL2_KEYS },
@@ -74,8 +102,10 @@ export function Navigation() {
 
           {/* Solutions */}
           <div className="nav-dropdown">
-            <button className="landing-nav__link">{t.nav.solutions} ▾</button>
-            <div className="mega-menu mega-menu--solutions">
+            <button className="landing-nav__link" onClick={() => toggle('solutions')}>
+              {t.nav.solutions} <span style={chevron('solutions')}>▾</span>
+            </button>
+            <div className="mega-menu mega-menu--solutions" style={dropStyle('solutions')}>
               <div className="mega-menu__section">
                 {SOLUTION_KEYS.map(k => (
                   <a key={k} href={localePath(`/${sSlug}/${SOLUTION_PATH[k]}`)} className="mega-menu__item">
@@ -93,8 +123,10 @@ export function Navigation() {
 
           {/* Knowledge */}
           <div className="nav-dropdown">
-            <button className="landing-nav__link">{t.nav.knowledge} ▾</button>
-            <div className="mega-menu mega-menu--knowledge">
+            <button className="landing-nav__link" onClick={() => toggle('knowledge')}>
+              {t.nav.knowledge} <span style={chevron('knowledge')}>▾</span>
+            </button>
+            <div className="mega-menu mega-menu--knowledge" style={dropStyle('knowledge')}>
               {(() => {
                 const ki = t.nav.knowledgeItems
                 const live = (ico: string, key: string, slug: string) => (
@@ -138,8 +170,10 @@ export function Navigation() {
 
           {/* Partners */}
           <div className="nav-dropdown">
-            <button className="landing-nav__link">{t.nav.partners} ▾</button>
-            <div className="mega-menu mega-menu--partners">
+            <button className="landing-nav__link" onClick={() => toggle('partners')}>
+              {t.nav.partners} <span style={chevron('partners')}>▾</span>
+            </button>
+            <div className="mega-menu mega-menu--partners" style={dropStyle('partners')}>
               {[
                 { label: t.nav.partnerCols.col1, keys: PARTNER_COL1 },
                 { label: t.nav.partnerCols.col2, keys: PARTNER_COL2 },
@@ -160,8 +194,8 @@ export function Navigation() {
             </div>
           </div>
 
-          <a href={localePath(`/${ROUTE_SLUGS.pricing[locale] ?? 'cenik'}`)} className="landing-nav__link" onClick={() => setMenuOpen(false)}>{t.nav.pricing}</a>
-          <a href={localePath(`/${ROUTE_SLUGS.contact[locale] ?? 'kontakt'}`)} className="landing-nav__link" onClick={() => setMenuOpen(false)}>{t.nav.contact}</a>
+          <a href={localePath(`/${ROUTE_SLUGS.pricing[locale] ?? 'cenik'}`)} className="landing-nav__link" onClick={() => { setMenuOpen(false); setOpenMenu(null) }}>{t.nav.pricing}</a>
+          <a href={localePath(`/${ROUTE_SLUGS.contact[locale] ?? 'kontakt'}`)} className="landing-nav__link" onClick={() => { setMenuOpen(false); setOpenMenu(null) }}>{t.nav.contact}</a>
         </div>
 
         <div className="landing-nav__ctas">
