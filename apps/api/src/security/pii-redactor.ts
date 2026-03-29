@@ -19,8 +19,6 @@ const PATTERNS = {
   ks: /(?:KS|konstantní\s+symbol)\s*[:=]?\s*\d{1,4}/gi,
 } as const;
 
-type PatternKey = keyof typeof PATTERNS;
-
 export interface RedactionMeta {
   maskedEmails: number;
   maskedPhones: number;
@@ -125,8 +123,11 @@ const FIELD_ALLOWLISTS: Record<Purpose, Set<string>> = {
     'id', 'title', 'status', 'priority', 'description', 'category',
     'createdAt', 'updatedAt', 'deadline', 'completedAt', 'count',
     'propertyName', 'unitName', 'assetName', 'type', 'workType',
-    'number', 'protocolType', 'date', 'dateTo', 'eventType',
-    '_status',
+    'number', 'protocolType', 'date', 'dateTo', 'eventType', '_status',
+    // tool result shapes:
+    'tickets', 'workOrders', 'events', 'total', 'showing',
+    'property', 'assets', 'meters', 'transactions', 'invoices',
+    'name', 'assignee', 'location', 'notes',
   ]),
   'whatsapp-intent': new Set([
     'role', 'unitName', 'propertyName',

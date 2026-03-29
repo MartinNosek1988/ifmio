@@ -40,7 +40,7 @@ Before any data is sent to Anthropic API, the PII redaction layer:
 - **Name abbreviation** (strict mode): "Jan Novák" → "J. N."
 
 Feature flags:
-- `LLM_REDACTION_ENABLED` (default: `true` in production)
+- `LLM_REDACTION_ENABLED` (default: `true` ve všech prostředích; nastavte na `'false'` pro vypnutí)
 - `LLM_REDACTION_STRICT` (optional, more aggressive masking)
 
 ### Prompt Injection Defense

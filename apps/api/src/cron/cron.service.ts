@@ -33,6 +33,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
   private recurringGenInterval: ReturnType<typeof setInterval> | null = null;
   private bankingSyncInterval: ReturnType<typeof setInterval> | null = null;
   private batchPollInterval: ReturnType<typeof setInterval> | null = null;
+  private mioRetentionInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private readonly config: ConfigService,
@@ -104,6 +105,10 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     if (this.batchPollInterval) {
       clearInterval(this.batchPollInterval);
       this.batchPollInterval = null;
+    }
+    if (this.mioRetentionInterval) {
+      clearInterval(this.mioRetentionInterval);
+      this.mioRetentionInterval = null;
     }
     this.logger.log('Cron intervals cleared');
   }
@@ -472,11 +477,15 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
 
   private initMioRetention() {
     this.logger.log('Mio retention cleanup enabled — daily');
-    setInterval(() => this.runMioRetention(), TWENTY_FOUR_HOURS);
+    this.mioRetentionInterval = setInterval(() => this.runMioRetention(), TWENTY_FOUR_HOURS);
+    setTimeout(() => this.runMioRetention(), 5 * 60 * 1000);
   }
 
   private async runMioRetention() {
-    const retentionDays = parseInt(process.env.MIO_RETENTION_DAYS ?? '90', 10);
+    const raw = process.env.MIO_RETENTION_DAYS;
+    let retentionDays = Number.parseInt(raw ?? '', 10);
+    if (!Number.isFinite(retentionDays) || retentionDays <= 0) retentionDays = 90;
+    else if (retentionDays > 365) retentionDays = 365;
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - retentionDays);
 

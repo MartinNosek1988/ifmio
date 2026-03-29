@@ -143,9 +143,16 @@ export default function PdfViewer({ pdfBase64, onTextSelected, highlightedTexts,
       span.style.userSelect = 'text'
       span.style.pointerEvents = 'auto'
 
+      if (highlightedTexts?.length && highlightedTexts.length > 0) {
+        const lower = item.str.toLowerCase()
+        if (highlightedTexts.some(n => n && lower.includes(n.toLowerCase()))) {
+          span.style.backgroundColor = 'rgba(252, 211, 77, 0.6)'
+        }
+      }
+
       textLayerDiv.appendChild(span)
     }
-  }, [pageNum, highlightedTexts, zoomMode, scaleProp, containerSize])
+  }, [pageNum, zoomMode, scaleProp, containerSize])
 
   useEffect(() => {
     if (pdfDocRef.current) renderPage()
