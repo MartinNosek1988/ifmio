@@ -20,13 +20,13 @@ const TIER1_TABLES_WITH_DIRECT_TENANT_ID = [
   'mio_conversations', 'api_keys', 'portal_access', 'portal_messages',
   'assemblies', 'per_rollam_votings', 'sipo_configs', 'sipo_exports',
   'floor_plans', 'kanban_tasks', 'initial_balances', 'accounting_presets',
-  'login_risk_logs', 'hardware_voting_sessions', 'unit_groups',
+  'login_risk_logs', 'hardware_voting_sessions', 'unit_groups', 'sipo_payments',
 ];
 
 const TIER2_INHERITED_TABLES = [
   'units', 'mio_messages', 'unit_rooms', 'unit_quantities',
   'unit_equipment', 'unit_management_fees', 'unit_group_memberships',
-  'user_features', 'invoice_cost_allocations', 'sipo_payments',
+  'user_features', 'invoice_cost_allocations',
   'assembly_attendees', 'assembly_agenda_items', 'assembly_votes',
   'per_rollam_items', 'per_rollam_ballots', 'per_rollam_responses',
   'floor_plan_zones',
