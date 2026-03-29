@@ -4,6 +4,7 @@ import { getLocalePair } from '../../i18n/routes'
 import { Navigation } from './components/Navigation'
 import { Hero } from './components/Hero'
 import { TrustLine } from './components/TrustLine'
+import { SecurityTrustStrip } from './components/SecurityTrustStrip'
 import { Features } from './components/Features'
 import { Stats } from './components/Stats'
 import { Platform } from './components/Platform'
@@ -23,6 +24,7 @@ export default function LandingPage() {
       <Navigation />
       <Hero />
       <TrustLine />
+      <SecurityTrustStrip />
       <Features />
       <Stats />
       <Platform />
