@@ -397,11 +397,15 @@ CREATE POLICY "tenant_isolation_invoice_cost_allocations" ON public.invoice_cost
     )
   );
 
--- Sipo Payments (has direct tenantId)
+-- Sipo Payments → SipoExport.tenantId
 CREATE POLICY "tenant_isolation_sipo_payments" ON public.sipo_payments
   FOR ALL
-  USING ("tenantId" = current_setting('app.current_tenant_id', true)::text)
-  WITH CHECK ("tenantId" = current_setting('app.current_tenant_id', true)::text);
+  USING (
+    "sipoExportId" IN (
+      SELECT id FROM public.sipo_exports
+      WHERE "tenantId" = current_setting('app.current_tenant_id', true)::text
+    )
+  );
 
 -- Assembly-related (inherited from Assembly.tenantId)
 CREATE POLICY "tenant_isolation_assembly_attendees" ON public.assembly_attendees
