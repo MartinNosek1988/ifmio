@@ -2,6 +2,7 @@ import {
   Controller, Get, Post, Put, Patch, Delete, Body, Query, Param, Req, Res, HttpCode, HttpStatus, BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { FinanceService } from './finance.service';
 import { InvoicesService } from './invoices.service';
 import { AiBatchService } from './ai-batch.service';
@@ -343,6 +344,7 @@ export class FinanceController {
 
   @Post('invoices/extract-pdf')
   @Roles(...ROLES_FINANCE)
+  @Throttle({ default: { ttl: 60_000, limit: 30 } })
   @ApiOperation({ summary: 'Extrakce dat z PDF faktury pomocí AI' })
   extractPdf(@CurrentUser() user: AuthUser, @Body() body: { pdfBase64: string; fileName?: string }) {
     return this.invoicesService.extractFromPdf(user, body.pdfBase64, body.fileName);
@@ -405,6 +407,7 @@ export class FinanceController {
 
   @Post('invoices/batch-extract')
   @Roles(...ROLES_FINANCE)
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @ApiOperation({ summary: 'Dávkové zpracování PDF faktur přes Batch API' })
   createBatchExtract(
     @CurrentUser() user: AuthUser,
