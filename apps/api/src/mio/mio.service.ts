@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config'
 import Anthropic from '@anthropic-ai/sdk'
 import type { AuthUser } from '@ifmio/shared-types'
 import { redactObject, minimizeForLLM, isRedactionEnabled } from '../security/pii-redactor'
+import { checkPromptInjection } from '../security/prompt-injection.guard'
 import { PrismaService } from '../prisma/prisma.service'
 import { HelpdeskService } from '../helpdesk/helpdesk.service'
 import { WorkOrdersService } from '../work-orders/work-orders.service'
@@ -186,6 +187,16 @@ export class MioService {
   async chat(user: AuthUser, messages: { role: 'user' | 'assistant'; content: string }[]): Promise<string> {
     if (!this.client) {
       return 'AI asistent není momentálně k dispozici. Kontaktujte administrátora.'
+    }
+
+    // Pre-LLM injection guard: check the latest user message
+    const lastUserMsg = messages.filter(m => m.role === 'user').at(-1)
+    if (lastUserMsg) {
+      const injection = checkPromptInjection(lastUserMsg.content)
+      if (injection.blocked) {
+        this.logger.warn(`Prompt injection blocked [${injection.category}] for user ${user.id}`)
+        return injection.reason!
+      }
     }
 
     try {
@@ -570,6 +581,16 @@ export class MioService {
   ): Promise<string> {
     if (!this.client) {
       return 'AI asistent není momentálně k dispozici. Kontaktujte administrátora.'
+    }
+
+    // Pre-LLM injection guard
+    const lastUserMsg = messages.filter(m => m.role === 'user').at(-1)
+    if (lastUserMsg) {
+      const injection = checkPromptInjection(lastUserMsg.content)
+      if (injection.blocked) {
+        this.logger.warn(`Prompt injection blocked [${injection.category}] for user ${user.id}`)
+        return injection.reason!
+      }
     }
 
     try {
