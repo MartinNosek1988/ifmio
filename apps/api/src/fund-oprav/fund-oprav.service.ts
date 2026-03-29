@@ -46,29 +46,24 @@ export class FundOpravService {
     };
   }
 
+  // TODO: For large portfolios (1000+ entries) refactor to DB-level UNION query
   /** Ledger entries for a fund component */
   async getEntries(user: AuthUser, propertyId: string, page = 1, limit = 50) {
     const funds = await this.getFundComponents(user.tenantId, propertyId);
-    if (funds.length === 0) return { data: [], total: 0, page, limit };
+    if (funds.length === 0) return { data: [], total: 0, page, pageSize: limit, totalPages: 0 };
 
     const componentIds = funds.map(f => f.id);
 
-    // Get prescription income entries
+    // Fetch ALL entries (no skip/take) to merge correctly, then paginate
     const [incomeItems, expenseItems] = await Promise.all([
       this.prisma.prescriptionItem.findMany({
         where: { componentId: { in: componentIds } },
-        orderBy: { createdAt: 'desc' },
-        take: limit,
-        skip: (page - 1) * limit,
         include: {
           prescription: { select: { id: true, description: true, validFrom: true } },
         },
       }),
       this.prisma.invoiceCostAllocation.findMany({
         where: { componentId: { in: componentIds }, invoice: { deletedAt: null } },
-        orderBy: { createdAt: 'desc' },
-        take: limit,
-        skip: (page - 1) * limit,
         include: {
           invoice: { select: { number: true, supplierName: true, issueDate: true, description: true } },
         },
@@ -76,7 +71,7 @@ export class FundOpravService {
     ]);
 
     // Merge and sort
-    const entries = [
+    const allEntries = [
       ...incomeItems.map(i => ({
         id: i.id,
         type: 'CONTRIBUTION' as const,
@@ -95,7 +90,11 @@ export class FundOpravService {
       })),
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    return { data: entries.slice(0, limit), total: entries.length, page, limit };
+    const total = allEntries.length;
+    const skip = (page - 1) * limit;
+    const data = allEntries.slice(skip, skip + limit);
+
+    return { data, total, page, pageSize: limit, totalPages: Math.ceil(total / limit) };
   }
 
   /** Annual report data for a fund */

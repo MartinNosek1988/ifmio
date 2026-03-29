@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service'
 import { PropertyScopeService } from '../common/services/property-scope.service'
 import { EmailService } from '../email/email.service'
 import type { AuthUser } from '@ifmio/shared-types'
+import { escHtml } from '../common/helpers/html-escape.helper'
 
 const USER_SELECT = { id: true, name: true, email: true } as const
 
@@ -623,11 +624,11 @@ export class WorkOrdersService {
 
     // Send email to supplier
     if (dto.sendEmail !== false && supplier.email) {
-      const subject = `Pracovní úkol: ${updated.title}`;
+      const subject = `Pracovní úkol: ${escHtml(updated.title)}`;
       const html = `<p>Dobrý den,</p>
-        <p>Byl Vám přiřazen pracovní úkol <strong>${updated.title}</strong>.</p>
-        ${dto.supplierNote ? `<p>Poznámka: ${dto.supplierNote}</p>` : ''}
-        <p>Priorita: ${updated.priority}</p>
+        <p>Byl Vám přiřazen pracovní úkol <strong>${escHtml(updated.title)}</strong>.</p>
+        ${dto.supplierNote ? `<p>Poznámka: ${escHtml(dto.supplierNote)}</p>` : ''}
+        <p>Priorita: ${escHtml(String(updated.priority))}</p>
         ${updated.deadline ? `<p>Termín: ${updated.deadline.toISOString().slice(0, 10)}</p>` : ''}
         <p>Prosím potvrďte přijetí nebo odmítněte úkol.</p>`;
       this.email.send({ to: supplier.email, subject, html }).catch(err =>

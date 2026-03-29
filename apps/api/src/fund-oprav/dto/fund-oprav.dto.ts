@@ -1,6 +1,8 @@
 import { IsString, IsOptional, IsDateString, IsNumber, IsInt, IsEnum, Min } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class FundOpravQueryDto {
+  @Type(() => Number)
   @IsInt() @IsOptional()
   year?: number;
 

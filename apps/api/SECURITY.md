@@ -32,3 +32,12 @@ Tenant isolation is enforced at **two levels**:
 - RLS policies not yet defined (application-layer isolation only)
 - `styleSrc` uses `'unsafe-inline'` (required for CSS-in-JS)
 - No malware scanning on file uploads (MIME whitelist + size limit only)
+
+## Known Vulnerabilities (no upstream fix)
+
+### fastify <= 5.8.2 — GHSA-444r-cwp2-x5xf (moderate)
+
+X-Forwarded-Proto/Host spoofable from untrusted connections.
+**Mitigation:** ifmio runs behind Caddy reverse proxy which strips
+and re-sets X-Forwarded headers before they reach Fastify.
+**Status:** Waiting for upstream fix in fastify > 5.8.2.

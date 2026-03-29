@@ -3,6 +3,8 @@ export interface PaginatedResponse<T> {
   total: number;
   page: number;
   pageSize: number;
+  /** @deprecated Use pageSize instead. Will be removed in v2. */
+  limit: number;
   totalPages: number;
 }
 
@@ -17,6 +19,7 @@ export function paginate<T>(
     total,
     page,
     pageSize,
+    limit: pageSize,
     totalPages: Math.ceil(total / pageSize),
   };
 }
