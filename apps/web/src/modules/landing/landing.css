@@ -335,11 +335,9 @@
   height: 24px;
   display: none;
 }
-.nav-dropdown:hover::after {
-  display: block;
-}
+/* hover bridge disabled — dropdowns controlled via JS click toggle */
 
-/* Mega menu — CSS driven, no JS toggle */
+/* Mega menu — JS click toggle (opacity/visibility set via inline style) */
 .mega-menu {
   position: absolute;
   top: 100%;
@@ -359,12 +357,6 @@
   display: grid;
 }
 
-.nav-dropdown:hover .mega-menu {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-}
-
 /* PLATFORMA — 3 columns, 860px */
 .mega-menu--platform {
   width: 860px;
@@ -375,6 +367,12 @@
 .mega-menu--solutions {
   width: 720px;
   grid-template-columns: 1fr 240px;
+}
+
+/* ZNALOSTI — 3 columns, 860px */
+.mega-menu--knowledge {
+  width: 860px;
+  grid-template-columns: 1fr 1fr 1fr;
 }
 
 /* PARTNEŘI — 2 columns + CTA row, 720px */
