@@ -2,9 +2,10 @@ import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import Anthropic from '@anthropic-ai/sdk'
 import type { AuthUser } from '@ifmio/shared-types'
-import { redactObject, minimizeForLLM, isRedactionEnabled } from '../security/pii-redactor'
+import { redactObject, minimizeForLLM, isRedactionEnabled, isStrictRedaction } from '../security/pii-redactor'
 import { checkPromptInjection } from '../security/prompt-injection.guard'
 import { sanitizeLlmOutput } from '../security/llm-output-sanitizer'
+import { logLlmEvent } from '../security/llm-telemetry'
 import { PrismaService } from '../prisma/prisma.service'
 import { HelpdeskService } from '../helpdesk/helpdesk.service'
 import { WorkOrdersService } from '../work-orders/work-orders.service'
@@ -195,7 +196,7 @@ export class MioService {
     if (lastUserMsg) {
       const injection = checkPromptInjection(lastUserMsg.content)
       if (injection.blocked) {
-        this.logger.warn(`Prompt injection blocked [${injection.category}] for tenant ${user.tenantId} user ${user.id}`)
+        logLlmEvent({ pipeline: 'mio-chat', tenantId: user.tenantId, userId: user.id, injectionBlocked: true, injectionCategory: injection.category ?? undefined })
         return injection.reason ?? 'Dotaz byl zablokován z bezpečnostních důvodů.'
       }
     }
@@ -228,7 +229,9 @@ export class MioService {
               let result = await this.executeTool(user, block.name, block.input as Record<string, unknown>)
               if (isRedactionEnabled() && result && typeof result === 'object') {
                 result = minimizeForLLM(result as Record<string, unknown>, 'mio-chat')
-                result = redactObject(result).output
+                const { output, meta } = redactObject(result, isStrictRedaction())
+                result = output
+                logLlmEvent({ pipeline: 'mio-chat', tenantId: user.tenantId, userId: user.id, toolName: block.name, redaction: meta })
               }
               return {
                 type: 'tool_result' as const,
@@ -257,7 +260,7 @@ export class MioService {
       const textBlock = response.content.find(b => b.type === 'text')
       const raw = textBlock?.text ?? 'Omlouvám se, nepodařilo se vygenerovat odpověď.'
       const { output: sanitized, stripped } = sanitizeLlmOutput(raw)
-      if (stripped > 0) this.logger.warn(`Mio output sanitized: ${stripped} dangerous constructs removed for user ${user.id}`)
+      if (stripped > 0) logLlmEvent({ pipeline: 'mio-chat', tenantId: user.tenantId, userId: user.id, outputStripped: stripped })
       return sanitized
     } catch (err) {
       this.logger.error(`Mio chat failed for user ${user.id}: ${err}`)
@@ -592,7 +595,7 @@ export class MioService {
     if (lastUserMsg) {
       const injection = checkPromptInjection(lastUserMsg.content)
       if (injection.blocked) {
-        this.logger.warn(`Prompt injection blocked [${injection.category}] for tenant ${user.tenantId} user ${user.id}`)
+        logLlmEvent({ pipeline: 'mio-chat', tenantId: user.tenantId, userId: user.id, injectionBlocked: true, injectionCategory: injection.category ?? undefined })
         return injection.reason ?? 'Dotaz byl zablokován z bezpečnostních důvodů.'
       }
     }
@@ -626,7 +629,9 @@ export class MioService {
               let result = await this.executeTool(user, block.name, block.input as Record<string, unknown>)
               if (isRedactionEnabled() && result && typeof result === 'object') {
                 result = minimizeForLLM(result as Record<string, unknown>, 'mio-chat')
-                result = redactObject(result).output
+                const { output, meta } = redactObject(result, isStrictRedaction())
+                result = output
+                logLlmEvent({ pipeline: 'mio-chat', tenantId: user.tenantId, userId: user.id, toolName: block.name, redaction: meta })
               }
               return {
                 type: 'tool_result' as const,
@@ -654,7 +659,7 @@ export class MioService {
       const textBlock = response.content.find(b => b.type === 'text')
       const raw = textBlock?.text ?? 'Omlouvám se, nepodařilo se vygenerovat odpověď.'
       const { output: sanitized, stripped } = sanitizeLlmOutput(raw)
-      if (stripped > 0) this.logger.warn(`Mio output sanitized: ${stripped} dangerous constructs removed for user ${user.id}`)
+      if (stripped > 0) logLlmEvent({ pipeline: 'mio-chat', tenantId: user.tenantId, userId: user.id, outputStripped: stripped })
       return sanitized
     } catch (err) {
       this.logger.error(`Mio chat failed for user ${user.id}: ${err}`)

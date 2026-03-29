@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service'
 import { HelpdeskService } from '../helpdesk/helpdesk.service'
 import { WhatsAppProvider } from '../communication/channels/whatsapp.provider'
 import { redactString, isRedactionEnabled } from '../security/pii-redactor'
+import { logLlmEvent } from '../security/llm-telemetry'
 import type { AuthUser } from '@ifmio/shared-types'
 
 interface SenderContext {
@@ -211,7 +212,14 @@ JSON: {"action":"...","data":{...},"confidence":0.0-1.0,"directResponse":"..."}`
 
     // Redact PII from conversation history + current message before sending to LLM
     const redact = isRedactionEnabled()
-    const safeContent = (s: string) => redact ? redactString(s).output : s
+    const safeContent = (s: string) => {
+      if (!redact) return s
+      const { output, meta } = redactString(s)
+      if (meta.totalRedactions > 0) {
+        logLlmEvent({ pipeline: 'whatsapp-intent', tenantId: sender.tenantId, redaction: meta })
+      }
+      return output
+    }
 
     const messages = [
       ...recent.map(m => ({ role: m.role as 'user' | 'assistant', content: safeContent(m.content) })),
