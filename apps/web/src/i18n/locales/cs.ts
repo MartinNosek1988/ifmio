@@ -51,6 +51,13 @@ export const cs = {
     ctaSecondary: 'Kontaktovat obchod',
   },
   trust: { text: 'Důvěřuje nám více než 5 600 vlastníků a nájemníků' },
+  trustStrip: {
+    gdpr: { label: 'GDPR compliant', desc: 'Zpracování dat v souladu s GDPR' },
+    infra: { label: 'EU infrastruktura', desc: 'Hetzner Frankfurt & Supabase EU' },
+    ai: { label: 'Privacy-first AI', desc: 'AI bez přístupu k osobním údajům' },
+    tenant: { label: 'Tenant izolace', desc: 'Data každého klienta striktně oddělena' },
+    cta: 'Více o bezpečnosti',
+  },
   features: {
     label: 'EFEKTIVITA',
     title: 'Co ifmio umí pro vaši správu',
