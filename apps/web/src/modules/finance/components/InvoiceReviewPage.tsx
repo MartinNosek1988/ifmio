@@ -102,9 +102,10 @@ function SupplierAutocomplete({ value, onChange, onSelect }: {
 
 const VAT_RATES = [0, 12, 15, 21]
 
-function LineItemsEditor({ lines, onChange }: {
+function LineItemsEditor({ lines, onChange, rounding = 0 }: {
   lines: LineWithId[]
   onChange: (lines: LineWithId[]) => void
+  rounding?: number
 }) {
   const [vatMenu, setVatMenu] = useState<number | null>(null)
 
@@ -226,9 +227,15 @@ function LineItemsEditor({ lines, onChange }: {
                 <strong>{formatKc(vat)}</strong>
               </div>
             ))}
+            {Math.abs(rounding) > 0.001 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: '.82rem', color: 'var(--text-muted)' }}>
+                <span>Zaokrouhlení</span>
+                <span>{rounding >= 0 ? '+' : ''}{rounding.toFixed(2).replace('.', ',')} Kč</span>
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 6, borderTop: '1px solid var(--border)', fontWeight: 700 }}>
               <span>Celkem</span>
-              <span>{formatKc(totalBase + totalVat)}</span>
+              <span>{formatKc(totalBase + totalVat + rounding)}</span>
             </div>
           </div>
         </div>
@@ -292,6 +299,7 @@ export default function InvoiceReviewPage() {
         vatRate: invoice.vatRate,
         vatAmount: invoice.vatAmount,
         amountTotal: invoice.amountTotal,
+        rounding: invoice.rounding ?? 0,
         currency: invoice.currency,
         issueDate: invoice.issueDate?.slice(0, 10) ?? '',
         duzp: invoice.duzp?.slice(0, 10) ?? '',
@@ -330,7 +338,7 @@ export default function InvoiceReviewPage() {
       ...f,
       amountBase: base.toFixed(2),
       vatAmount: vat.toFixed(2),
-      amountTotal: (base + vat).toFixed(2),
+      amountTotal: (base + vat + safeNum(f.rounding)).toFixed(2),
     }))
   }
 
@@ -650,7 +658,7 @@ export default function InvoiceReviewPage() {
 
           {lineTab === 'lines' && (
             <div style={{ marginBottom: 14 }}>
-              <LineItemsEditor lines={lines} onChange={handleLinesChange} />
+              <LineItemsEditor lines={lines} onChange={handleLinesChange} rounding={safeNum(form.rounding)} />
             </div>
           )}
 
