@@ -86,8 +86,9 @@ export default function AcceptInvitationPage() {
 
         {info && !success && (
           <form onSubmit={handleSubmit}>
-            <div style={{ background: '#1e1b4b', borderRadius: '8px', padding: '12px 16px', marginBottom: '20px', fontSize: '0.85rem', color: '#c4b5fd' }}
-              dangerouslySetInnerHTML={{ __html: t('auth.acceptInvitation.invitedTo', { tenantName: info.tenantName }) }} />
+            <div style={{ background: '#1e1b4b', borderRadius: '8px', padding: '12px 16px', marginBottom: '20px', fontSize: '0.85rem', color: '#c4b5fd' }}>
+              {t('auth.acceptInvitation.youWereInvitedTo')} <strong>{info.tenantName}</strong>
+            </div>
             <OAuthButtons dividerText="nebo přijměte pozvánku přes" />
 
             <div style={{ marginBottom: '14px' }}>

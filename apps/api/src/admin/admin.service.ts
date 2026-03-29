@@ -657,4 +657,59 @@ export class AdminService {
       select: { id: true, name: true, passwordExpiresAt: true },
     })
   }
+
+  // ─── INTEGRATIONS STATUS ──────────────────────────────────────
+
+  async getIntegrationsStatus(user: AuthUser) {
+    const tenantId = user.tenantId
+    const now = new Date()
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+
+    const [
+      bankAccounts,
+      aiLogs,
+    ] = await Promise.all([
+      this.prisma.bankAccount.findMany({
+        where: { tenantId, isActive: true },
+        select: { id: true, syncEnabled: true, lastSyncAt: true, syncStatus: true },
+      }),
+      this.prisma.aiExtractionLog.aggregate({
+        where: { tenantId, createdAt: { gte: monthStart }, success: true },
+        _count: true,
+        _sum: { costUsd: true },
+      }),
+    ])
+
+    const fioConnected = bankAccounts.some(a => a.syncEnabled)
+    const fioLastSync = bankAccounts
+      .filter(a => a.lastSyncAt)
+      .sort((a, b) => (b.lastSyncAt?.getTime() ?? 0) - (a.lastSyncAt?.getTime() ?? 0))[0]?.lastSyncAt ?? null
+
+    const anthropicConfigured = !!process.env.ANTHROPIC_API_KEY
+    const aiCount = aiLogs._count ?? 0
+    const aiCostUsd = aiLogs._sum.costUsd ? Number(aiLogs._sum.costUsd) : 0
+
+    return {
+      fio: {
+        connected: fioConnected,
+        lastSyncAt: fioLastSync,
+        accountCount: bankAccounts.filter(a => a.syncEnabled).length,
+      },
+      ares: {
+        available: true,
+      },
+      anthropic: {
+        configured: anthropicConfigured,
+        invoicesProcessed: aiCount,
+        costThisMonth: Math.round(aiCostUsd * 23 * 100) / 100, // USD → CZK
+      },
+      mailgun: {
+        connected: !!process.env.MAILGUN_API_KEY,
+        inboundAddress: process.env.MAILGUN_INBOUND_ADDRESS ?? null,
+      },
+      signi: {
+        connected: !!process.env.SIGNI_API_KEY,
+      },
+    }
+  }
 }

@@ -41,6 +41,12 @@ export class AdminController {
     return this.service.dismissOnboarding(user)
   }
 
+  @Get('integrations')
+  @ApiOperation({ summary: 'Stav integrací (Fio, ARES, AI, Mailgun, Signi)' })
+  getIntegrations(@CurrentUser() user: AuthUser) {
+    return this.service.getIntegrationsStatus(user)
+  }
+
   @Get('tenant')
   @ApiOperation({ summary: 'Info o tenantovi' })
   getTenantInfo(@CurrentUser() user: AuthUser) {

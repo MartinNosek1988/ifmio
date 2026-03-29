@@ -165,6 +165,7 @@ model User {
   assignedWorkOrders      WorkOrder[]               @relation("WOAssignee")
   requestedWorkOrders     WorkOrder[]               @relation("WORequester")
   dispatchedWorkOrders    WorkOrder[]               @relation("WODispatcher")
+  woDispatchedBy          WorkOrder[]               @relation("WODispatchedBy")
   reportSubscriptions     ScheduledReportSubscription[]
   assignedRecurringPlans  RecurringActivityPlan[]       @relation("RecurringPlanAssignee")
   mioDigestLogs           MioDigestLog[]
@@ -174,6 +175,10 @@ model User {
   apiKeys                 ApiKey[]
   paymentOrders           PaymentOrder[]
   invoiceComments         InvoiceComment[]
+  chatMessages            ChatMessage[]    @relation("ChatAuthor")
+  chatMentions            ChatMention[]    @relation("ChatMentioned")
+  assignedActivities      Activity[]       @relation("ActivityAssigned")
+  doneActivities          Activity[]       @relation("ActivityDone")
 
   @@unique([tenantId, email])
   @@unique([oauthProvider, oauthId])
@@ -2489,6 +2494,22 @@ model WorkOrder {
   requireSummary   Boolean    @default(false)
   requireProtocol  Boolean    @default(false)
 
+  // Dispatch to supplier
+  supplierId              String?
+  dispatchedAt            DateTime?
+  dispatchedById          String?
+  supplierNote            String?    @db.Text
+  supplierConfirmedAt     DateTime?
+  supplierEta             DateTime?
+  supplierDeclinedAt      DateTime?
+  supplierDeclineReason   String?
+
+  // Completion
+  completedPhotos  Json?
+  completionNote   String?    @db.Text
+  csatScore        Int?
+  csatComment      String?
+
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 
@@ -2500,6 +2521,8 @@ model WorkOrder {
   assigneeUser    User?              @relation("WOAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull)
   requesterUser   User?              @relation("WORequester", fields: [requesterUserId], references: [id], onDelete: SetNull)
   dispatcherUser  User?              @relation("WODispatcher", fields: [dispatcherUserId], references: [id], onDelete: SetNull)
+  supplier        Party?             @relation("WorkOrderSupplier", fields: [supplierId], references: [id], onDelete: SetNull)
+  dispatchedByUser User?             @relation("WODispatchedBy", fields: [dispatchedById], references: [id], onDelete: SetNull)
   comments        WorkOrderComment[]
 
   @@index([tenantId])
@@ -3059,6 +3082,7 @@ model Party {
   users                 User[]             @relation("UserParty")
   assemblyAttendances   AssemblyAttendee[]
   perRollamBallots      PerRollamBallot[]
+  suppliedWorkOrders    WorkOrder[]        @relation("WorkOrderSupplier")
 
   @@index([tenantId, displayName])
   @@index([tenantId, ic])
@@ -4259,4 +4283,120 @@ model InvoiceComment {
   @@index([invoiceId, createdAt])
   @@index([tenantId])
   @@map("invoice_comments")
+}
+
+// ═══════════════════════════════════════════════════
+// CHATTER — generic communication log on any entity
+// ═══════════════════════════════════════════════════
+
+enum ChatMessageType {
+  USER_MESSAGE
+  SYSTEM_LOG
+  EMAIL_INBOUND
+  EMAIL_OUTBOUND
+}
+
+model ChatMessage {
+  id           String          @id @default(cuid())
+  tenantId     String
+  entityType   String
+  entityId     String
+  type         ChatMessageType @default(USER_MESSAGE)
+  body         String          @db.Text
+  htmlBody     String?         @db.Text
+  authorId     String?
+  author       User?           @relation("ChatAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  emailFrom    String?
+  emailTo      String?
+  emailSubject String?
+  emailMsgId   String?
+  attachments  ChatAttachment[]
+  mentions     ChatMention[]
+  createdAt    DateTime        @default(now())
+
+  @@index([tenantId, entityType, entityId])
+  @@map("chat_messages")
+}
+
+model ChatAttachment {
+  id         String      @id @default(cuid())
+  messageId  String
+  message    ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  fileName   String
+  mimeType   String
+  storageKey String
+  sizeBytes  Int?
+  createdAt  DateTime    @default(now())
+
+  @@map("chat_attachments")
+}
+
+model ChatMention {
+  id        String      @id @default(cuid())
+  messageId String
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation("ChatMentioned", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("chat_mentions")
+}
+
+// ═══════════════════════════════════════════════════
+// ACTIVITY — structured tasks on any entity
+// ═══════════════════════════════════════════════════
+
+enum ActivityKind {
+  EMAIL
+  CALL
+  MEETING
+  TASK
+  DOCUMENT_UPLOAD
+  SIGN_REQUEST
+  REMINDER
+}
+
+enum ActivityStatus {
+  PLANNED
+  DONE
+  CANCELLED
+  OVERDUE
+}
+
+model ActivityType {
+  id            String       @id @default(cuid())
+  tenantId      String
+  name          String
+  kind          ActivityKind
+  defaultDays   Int?
+  icon          String?
+  color         String?
+  activities    Activity[]
+  createdAt     DateTime     @default(now())
+
+  @@unique([tenantId, name])
+  @@map("activity_types")
+}
+
+model Activity {
+  id             String         @id @default(cuid())
+  tenantId       String
+  entityType     String
+  entityId       String
+  activityTypeId String
+  activityType   ActivityType   @relation(fields: [activityTypeId], references: [id])
+  title          String
+  note           String?        @db.Text
+  deadline       DateTime
+  assignedToId   String
+  assignedTo     User           @relation("ActivityAssigned", fields: [assignedToId], references: [id])
+  status         ActivityStatus @default(PLANNED)
+  doneAt         DateTime?
+  doneById       String?
+  doneBy         User?          @relation("ActivityDone", fields: [doneById], references: [id], onDelete: SetNull)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([tenantId, entityType, entityId])
+  @@index([tenantId, assignedToId, status, deadline])
+  @@map("activities")
 }

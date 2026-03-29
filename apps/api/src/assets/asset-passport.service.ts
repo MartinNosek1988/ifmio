@@ -244,7 +244,7 @@ export class AssetPassportService {
       this.prisma.revisionEvent.count({ where }),
     ])
 
-    return { data, total, page, limit }
+    return { data, total, page, pageSize: limit, totalPages: Math.ceil(total / limit) }
   }
 
   // ─── Audit timeline ────────────────────────────────────────────
@@ -279,7 +279,7 @@ export class AssetPassportService {
       this.prisma.auditLog.count({ where }),
     ])
 
-    return { data, total, page, limit }
+    return { data, total, page, pageSize: limit, totalPages: Math.ceil(total / limit) }
   }
 
   // ─── Helpers ───────────────────────────────────────────────────

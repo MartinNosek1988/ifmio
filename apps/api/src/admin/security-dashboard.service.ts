@@ -56,7 +56,7 @@ export class SecurityDashboardService {
       }),
       this.prisma.auditLog.count({ where: { tenantId, action: 'LOGIN_FAIL' } }),
     ])
-    return { data, total, page, limit }
+    return { data, total, page, pageSize: limit, totalPages: Math.ceil(total / limit) }
   }
 
   async getActiveSessions(user: AuthUser) {

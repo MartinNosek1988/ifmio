@@ -7,7 +7,7 @@ import { useInvoice, useUpdateInvoice, useSubmitInvoice, useApproveInvoice, useR
 import { formatKc } from '../../../shared/utils/format'
 import { partiesApi } from '../../parties/api/parties.api'
 import type { InvoiceLine } from '../api/finance.api'
-import { InvoiceChatter } from './InvoiceChatter'
+import { GenericChatter } from '../../../shared/components/chatter/GenericChatter'
 
 const PdfViewer = React.lazy(() => import('./PdfViewer'))
 
@@ -668,7 +668,7 @@ export default function InvoiceReviewPage() {
           )}
 
           {/* Chatter */}
-          {id && <InvoiceChatter invoiceId={id} />}
+          {id && <GenericChatter entityType="Invoice" entityId={id} />}
         </div>
       </div>
     </div>

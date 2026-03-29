@@ -102,6 +102,13 @@ export class PortalController {
     return this.accessService.bulkGenerateAccess(user.tenantId, propertyId)
   }
 
+  @Post('admin/refresh-access/:id')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Prodloužit platnost portálového přístupu o 90 dní' })
+  refreshAccess(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.accessService.refreshAccess(user.tenantId, id)
+  }
+
   @Delete('admin/revoke/:id')
   @Roles(...ROLES_MANAGE)
   @ApiOperation({ summary: 'Zrušit přístup do portálu' })

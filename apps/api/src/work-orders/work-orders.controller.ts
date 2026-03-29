@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { WorkOrdersService } from './work-orders.service'
+import { DispatchWorkOrderDto, ConfirmWorkOrderDto, DeclineWorkOrderDto, CompleteWorkOrderDto, CsatDto } from './dto/dispatch.dto'
 import { Roles } from '../common/decorators/roles.decorator'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
 import { AuditAction } from '../common/decorators/audit.decorator'
@@ -187,5 +188,39 @@ export class HelpdeskWorkOrderController {
     @Param('ticketId') ticketId: string,
   ) {
     return this.service.listForTicket(user, ticketId)
+  }
+
+  // ─── DISPATCH WORKFLOW ────────────────────────────────────────
+
+  @Post(':id/dispatch')
+  @Roles(...ROLES_OPS)
+  @AuditAction('workOrder', 'dispatch')
+  @ApiOperation({ summary: 'Odeslat pracovní úkol dodavateli' })
+  dispatch(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: DispatchWorkOrderDto) {
+    return this.service.dispatchToSupplier(user, id, dto)
+  }
+
+  @Post(':id/confirm')
+  @ApiOperation({ summary: 'Dodavatel potvrdí pracovní úkol' })
+  confirm(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: ConfirmWorkOrderDto) {
+    return this.service.confirmBySupplier(user, id, dto)
+  }
+
+  @Post(':id/decline')
+  @ApiOperation({ summary: 'Dodavatel odmítne pracovní úkol' })
+  decline(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: DeclineWorkOrderDto) {
+    return this.service.declineBySupplier(user, id, dto)
+  }
+
+  @Post(':id/complete')
+  @ApiOperation({ summary: 'Dodavatel hlásí dokončení pracovního úkolu' })
+  complete(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: CompleteWorkOrderDto) {
+    return this.service.completeBySupplier(user, id, dto)
+  }
+
+  @Post(':id/csat')
+  @ApiOperation({ summary: 'Hodnocení dokončeného pracovního úkolu (CSAT)' })
+  csat(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: CsatDto) {
+    return this.service.submitCsat(user, id, dto)
   }
 }

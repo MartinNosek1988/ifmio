@@ -630,7 +630,7 @@ export class MioService {
       }),
       this.prisma.mioConversation.count({ where }),
     ])
-    return { data, total, page, limit }
+    return { data, total, page, pageSize: limit, totalPages: Math.ceil(total / limit) }
   }
 
   async createConversation(user: AuthUser, title?: string, context?: Record<string, unknown>) {
