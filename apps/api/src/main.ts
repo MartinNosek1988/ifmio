@@ -48,7 +48,7 @@ async function bootstrap() {
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: process.env.NODE_ENV === 'production' ? ["'self'"] : ["'self'", "'unsafe-inline'"],
+        scriptSrc: process.env.NODE_ENV === 'development' ? ["'self'", "'unsafe-inline'"] : ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'"],  // styles need unsafe-inline for CSS-in-JS
         imgSrc: ["'self'", "data:", "blob:"],
         connectSrc: ["'self'", "https://ags.cuzk.gov.cz", "https://ares.gov.cz"],
