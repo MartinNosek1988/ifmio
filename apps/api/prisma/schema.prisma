@@ -1973,6 +1973,8 @@ model Document {
   category     DocCategory @default(other)
   description  String?
   isPublic     Boolean     @default(false)
+  scanStatus   ScanStatus  @default(pending_scan)
+  scannedAt    DateTime?
   createdById  String?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
@@ -1987,7 +1989,17 @@ model Document {
   @@index([tenantId])
   @@index([tenantId, category])
   @@index([tenantId, createdAt])
+  @@index([scanStatus])
   @@map("documents")
+}
+
+enum ScanStatus {
+  pending_scan   // uploaded, awaiting scan
+  quarantined    // scan in progress
+  clean          // scanned, no threats
+  infected       // scan found malware — blocked
+  scan_error     // scanner failed — retry
+  skipped        // scanning disabled via feature flag
 }
 
 enum StorageType {
