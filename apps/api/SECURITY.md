@@ -60,8 +60,7 @@ Pre-LLM heuristic that blocks known injection patterns before any tool call or L
 - Refuse "ignore instructions" attempts
 - No executable code in responses
 
-**Layer 3 — Output sanitizer** (`src/security/llm-output-sanitizer.ts`):
-Server-side defense-in-depth that strips dangerous HTML (script, iframe, svg, event handlers, javascript: URLs) from LLM output before it reaches any client.
+**Layer 3 — Frontend rendering**: LLM výstup je renderován jako plain text v React JSX (bez `dangerouslySetInnerHTML`, bez `innerHTML`), takže HTML/JS v odpovědi LLM je automaticky escapováno a nikdy nespuštěno v prohlížeči.
 
 ### Tool Output Firewall
 - **Field allowlists** (`minimizeForLLM`): tool results filtered to whitelisted fields per purpose (mio-chat, whatsapp-intent, invoice-extract, batch)

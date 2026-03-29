@@ -194,8 +194,8 @@ export class MioService {
     if (lastUserMsg) {
       const injection = checkPromptInjection(lastUserMsg.content)
       if (injection.blocked) {
-        this.logger.warn(`Prompt injection blocked [${injection.category}] for user ${user.id}`)
-        return injection.reason!
+        this.logger.warn(`Prompt injection blocked [${injection.category}] for tenant ${user.tenantId} user ${user.id}`)
+        return injection.reason ?? 'Dotaz byl zablokován z bezpečnostních důvodů.'
       }
     }
 
@@ -588,8 +588,8 @@ export class MioService {
     if (lastUserMsg) {
       const injection = checkPromptInjection(lastUserMsg.content)
       if (injection.blocked) {
-        this.logger.warn(`Prompt injection blocked [${injection.category}] for user ${user.id}`)
-        return injection.reason!
+        this.logger.warn(`Prompt injection blocked [${injection.category}] for tenant ${user.tenantId} user ${user.id}`)
+        return injection.reason ?? 'Dotaz byl zablokován z bezpečnostních důvodů.'
       }
     }
 

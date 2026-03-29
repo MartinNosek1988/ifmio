@@ -14,21 +14,15 @@ Debug Mio / WhatsApp / invoice extraction AI issues without exposing personal da
 ```bash
 cd apps/api && npx jest --testPathPatterns pii-redactor --no-coverage
 ```
-Confirms: emails, phones, IBANs, bank accounts, rodna cisla, symbols all masked.
+Confirms: emails, phones, IBANs, bank accounts, rodná čísla, symbols all masked.
 
 ### 2. Run prompt injection regression tests
 ```bash
 cd apps/api && npx jest --testPathPatterns prompt-injection --no-coverage
 ```
-Confirms: 6 injection categories blocked with safe refusal messages.
+Confirms: 5 injection categories blocked with safe refusal messages.
 
-### 3. Run output sanitizer tests
-```bash
-cd apps/api && npx jest --testPathPatterns llm-output-sanitizer --no-coverage
-```
-Confirms: script, iframe, event handlers, javascript: URLs stripped from output.
-
-### 4. Check WhatsApp bot prompt (no PII)
+### 3. Check WhatsApp bot prompt (no PII) — TODO: testy na jiné větvi
 ```bash
 cd apps/api && npx jest --testPathPatterns whatsapp-bot-pii --no-coverage
 ```
@@ -40,8 +34,7 @@ Confirms: system prompt contains only `role=`, no displayName/propertyName/unitN
 1. Check `toolsUsed` in the API response — which tools were called?
 2. Check API logs for `Mio tool <name> for user <id> [<ms>ms]`
 3. If tool returned error: `Mio tool <name> failed for user <id>: <error>`
-4. If output was sanitized: `Mio output sanitized: N dangerous constructs removed`
-5. If injection was blocked: `Prompt injection blocked [<category>] for user <id>`
+4. If injection was blocked: `Prompt injection blocked [<category>] for tenant <tenantId> user <id>`
 
 ### WhatsApp bot misclassifies intent
 1. Check `outboxLog` table: `channel = 'whatsapp_incoming'`, `subject` shows `[ACTION] text...`
@@ -51,7 +44,6 @@ Confirms: system prompt contains only `role=`, no displayName/propertyName/unitN
 ### Metrics to monitor
 - `pii-redactor`: `meta.totalRedactions` per request (should be > 0 for real data)
 - `prompt-injection.guard`: `blocked` count by `category` (Sentry breadcrumbs or structured log)
-- `llm-output-sanitizer`: `stripped` count (should be 0 in normal operation; > 0 = possible injection)
 
 ## Feature flags
 | Flag | Default | Effect |

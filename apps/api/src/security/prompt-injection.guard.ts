@@ -52,13 +52,13 @@ const INSTRUCTION_OVERRIDE_PATTERNS = [
   /(?:you are|jsi)\s+(?:now|teď|nyní)\s+(?:a different|jiný|nový)\s+(?:AI|assistant|asistent|bot)/i,
   /(?:pretend|předstírej|act as|chovej se jako)\s+(?:you|ty)?\s*(?:have|máš|don't have|nemáš)\s+(?:no|žádné?)\s*(?:restrictions?|omezení|rules?|pravidla)/i,
   /odpovídej\s+bez\s+(?:omezení|pravidel|restrikcí)/i,
-  /(?:DAN|jailbreak|escape\s+mode)/i,
+  /(?:\bDAN\b(?:\s+mode)?|jailbreak|escape\s+mode)/i,
 ];
 
 const CODE_EXECUTION_PATTERNS = [
   /(?:execute|spusť|run|vykonej)\s+(?:this|tento|following|následující)\s+(?:code|kód|sql|query|script|příkaz)/i,
   /(?:sql|select|insert|update|delete|drop|alter)\s+(?:from|into|table|where)/i,
-  /(?:eval|exec|system|os\.popen|subprocess|child_process)/i,
+  /(?:\beval\s*\(|\bexec\s*\(|\bsystem\s*\(|\bos\.popen\s*\(|\bsubprocess\.\w+\s*\(|\bchild_process\b)/i,
 ];
 
 // ─── MAIN CHECK ─────────────────────────────────────────────────
