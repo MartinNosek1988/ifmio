@@ -22,6 +22,7 @@ export default function PdfViewer({ pdfBase64, onTextSelected, highlightedTexts,
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const textLayerRef = useRef<HTMLDivElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
+  const sizeRef = useRef<HTMLDivElement>(null)
   const [pageNum, setPageNum] = useState(pageProp ?? 1)
   const [numPages, setNumPages] = useState(0)
   const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null)
@@ -75,6 +76,7 @@ export default function PdfViewer({ pdfBase64, onTextSelected, highlightedTexts,
     const doc = pdfDocRef.current
     const canvas = canvasRef.current
     const textLayerDiv = textLayerRef.current
+    const sizeDiv = sizeRef.current
     if (!doc || !canvas || !textLayerDiv) return
 
     const page = await doc.getPage(pageNum)
@@ -93,21 +95,33 @@ export default function PdfViewer({ pdfBase64, onTextSelected, highlightedTexts,
     }
 
     const viewport = page.getViewport({ scale })
+    const w = viewport.width
+    const h = viewport.height
 
-    canvas.width = viewport.width
-    canvas.height = viewport.height
-    canvas.style.width = viewport.width + 'px'
-    canvas.style.height = viewport.height + 'px'
+    // Set size wrapper to hold space (prevents jumping)
+    if (sizeDiv) {
+      sizeDiv.style.width = w + 'px'
+      sizeDiv.style.height = h + 'px'
+    }
 
+    // Render to offscreen canvas first (no flicker)
+    const offscreen = document.createElement('canvas')
+    offscreen.width = w
+    offscreen.height = h
+    const offCtx = offscreen.getContext('2d')!
+    await (page.render as any)({ canvasContext: offCtx, viewport }).promise
+
+    // Copy to visible canvas
+    canvas.width = w
+    canvas.height = h
     const ctx = canvas.getContext('2d')!
-    await (page.render as any)({ canvasContext: ctx, viewport }).promise
+    ctx.drawImage(offscreen, 0, 0)
 
-    // Clear old text layer
+    // Rebuild text layer
     textLayerDiv.innerHTML = ''
-    textLayerDiv.style.width = viewport.width + 'px'
-    textLayerDiv.style.height = viewport.height + 'px'
+    textLayerDiv.style.width = w + 'px'
+    textLayerDiv.style.height = h + 'px'
 
-    // Build text layer
     const textContent = await page.getTextContent()
     for (const item of textContent.items) {
       if (!('str' in item) || !item.str) continue
@@ -119,18 +133,15 @@ export default function PdfViewer({ pdfBase64, onTextSelected, highlightedTexts,
       const [a, b, , , e, f] = tx
       span.style.position = 'absolute'
       span.style.left = e + 'px'
-      span.style.top = (viewport.height - f) + 'px'
+      span.style.top = (h - f) + 'px'
       span.style.fontSize = Math.sqrt(a * a + b * b) + 'px'
       span.style.fontFamily = ('fontName' in item ? item.fontName : null) || 'sans-serif'
       span.style.whiteSpace = 'nowrap'
-      span.style.cursor = 'pointer'
+      span.style.cursor = 'text'
       span.style.color = 'transparent'
+      span.style.backgroundColor = 'transparent'
       span.style.userSelect = 'text'
       span.style.pointerEvents = 'auto'
-
-      if (highlightedTexts?.some(t => t.includes(item.str))) {
-        span.style.backgroundColor = 'rgba(29, 158, 117, 0.2)'
-      }
 
       textLayerDiv.appendChild(span)
     }
@@ -170,22 +181,19 @@ export default function PdfViewer({ pdfBase64, onTextSelected, highlightedTexts,
         </div>
       )}
 
-      {/* PDF canvas + text layer */}
+      {/* Scrollable container */}
       <div
         ref={wrapperRef}
-        style={{
-          position: 'relative', overflow: 'auto', flex: 1,
-          background: '#f0f0f0',
-        }}
+        style={{ overflow: 'auto', flex: 1, background: '#f0f0f0', padding: 8 }}
       >
-        <canvas ref={canvasRef} style={{ display: 'block' }} />
-        <div
-          ref={textLayerRef}
-          style={{
-            position: 'absolute', top: 0, left: 0,
-            pointerEvents: 'none',
-          }}
-        />
+        {/* Size holder — prevents jumping on re-render */}
+        <div ref={sizeRef} style={{ position: 'relative', display: 'inline-block', minWidth: '100%' }}>
+          <canvas ref={canvasRef} style={{ display: 'block' }} />
+          <div
+            ref={textLayerRef}
+            style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}
+          />
+        </div>
       </div>
     </div>
   )
