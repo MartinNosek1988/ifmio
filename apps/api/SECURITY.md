@@ -18,6 +18,11 @@ Policy pattern: subquery to parent table's `tenantId`.
 
 **Tier 3 — System tables** (2 tables): `revoked_tokens`, `attendee_keypad_assignments` — deny-all for non-service roles.
 
+**Tier 4 — deny_all for anon + authenticated** (all tables):
+`RESTRICTIVE` policies that block all access for `anon` and `authenticated` Supabase roles.
+Migration: `supabase/migrations/20260329151600_rls_deny_all_policies.sql` (run manually in SQL Editor).
+This prevents direct DB access via Supabase dashboard, analytics tools, or Supabase client with anon key.
+
 ### service_role Rules
 
 | Role | RLS Effect | Use Case |
@@ -111,6 +116,23 @@ AI responses rendered as **plain text** in React JSX (`{msg.content}` with `whit
 - Download and AI extraction blocked for unscanned/infected documents
 - Scanner interface ready for ClamAV sidecar (see `docs/runbooks/av-scanning.md`)
 - When disabled: documents get `scanStatus=skipped` immediately
+
+## Kill Switches (env vars, no redeploy)
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `LLM_GUARD_ENABLED` | `true` | `false` → bypass prompt injection guard |
+| `LLM_OUTPUT_SANITIZER_ENABLED` | `true` | `false` → bypass HTML stripping |
+| `LLM_REDACTION_ENABLED` | `true` | `false` → bypass PII redaction |
+| `MIO_RETENTION_ENABLED` | `true` | `false` → skip retention cron |
+| `AV_SCANNING_ENABLED` | `false` | `true` → enable document quarantine + scanning |
+
+## Incident Response
+
+1. Identifikovat typ incidentu přes telemetrii (`logLlmEvent` — events, ne obsah)
+2. Při AI incidentu: nastavit příslušný kill switch bez redeploye
+3. PII není v logách → žádná sekundární expozice
+4. Kontakt: security@ifmio.com
 
 ## Known Limitations
 
