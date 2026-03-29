@@ -100,7 +100,7 @@ export default function PdfViewer({ pdfBase64, onTextSelected, highlightedTexts,
     canvas.style.height = viewport.height + 'px'
 
     const ctx = canvas.getContext('2d')!
-    await page.render({ canvas, canvasContext: ctx, viewport }).promise
+    await (page.render as any)({ canvasContext: ctx, viewport }).promise
 
     // Clear old text layer
     textLayerDiv.innerHTML = ''
