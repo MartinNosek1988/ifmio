@@ -176,7 +176,7 @@ export class InvoicesService {
         vatRate: dto.vatRate || 0,
         vatAmount: dto.vatAmount || 0,
         amountTotal: dto.amountTotal || 0,
-        rounding: (dto as any).rounding || 0,
+        rounding: dto.rounding ?? 0,
         currency: dto.currency || 'CZK',
         issueDate: new Date(dto.issueDate),
         duzp: dto.duzp ? new Date(dto.duzp) : null,
