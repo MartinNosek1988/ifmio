@@ -11,6 +11,8 @@ export const ROUTE_SLUGS: Record<string, Record<string, string>> = {
   careers: { cs: 'kariera', en: 'careers' },
   blog: { cs: 'blog', en: 'blog' },
   legal: { cs: 'pravni-dokumenty', en: 'legal' },
+  privacy: { cs: 'zasady-ochrany-soukromi', en: 'privacy-policy' },
+  terms: { cs: 'obchodni-podminky', en: 'terms' },
   security: { cs: 'bezpecnost', en: 'security' },
   partnerRegister: { cs: 'registrace', en: 'register' },
 }
