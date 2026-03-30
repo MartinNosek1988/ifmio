@@ -7,16 +7,18 @@ import {
 import { adminApi } from '../admin/api/admin.api';
 import { LoadingState, ErrorState, Button } from '../../shared/components';
 import {
-  Building2, Mail, FileText, Bell, Palette, Download, Bot,
+  Building2, Mail, FileText, Bell, Palette, Download, Bot, Inbox,
   Save, Upload, X, Check, RotateCcw, Search,
 } from 'lucide-react';
 import { integrationsApi } from '../integrations/api/integrations.api';
+import { EmailInboundSettings } from './email-inbound/EmailInboundSettings';
 
-type TabKey = 'firma' | 'email' | 'fakturace' | 'upominky' | 'vzhled' | 'mio' | 'export';
+type TabKey = 'firma' | 'email' | 'fakturace' | 'upominky' | 'vzhled' | 'mio' | 'inbound' | 'export';
 
 const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
   { key: 'firma', label: 'Firma & Branding', icon: <Building2 size={15} /> },
   { key: 'email', label: 'Email & Notifikace', icon: <Mail size={15} /> },
+  { key: 'inbound', label: 'Příjem faktur emailem', icon: <Inbox size={15} /> },
   { key: 'fakturace', label: 'Fakturace', icon: <FileText size={15} /> },
   { key: 'upominky', label: 'Upomínky', icon: <Bell size={15} /> },
   { key: 'vzhled', label: 'Vzhled', icon: <Palette size={15} /> },
@@ -72,6 +74,7 @@ export default function SettingsPage() {
         {tab === 'upominky' && <UpominkyTab settings={settings} onSave={handleSave} saving={updateMutation.isPending} />}
         {tab === 'vzhled' && <VzhledTab settings={settings} onSave={handleSave} saving={updateMutation.isPending} />}
         {tab === 'mio' && <MioGovernanceTab />}
+        {tab === 'inbound' && <EmailInboundSettings />}
         {tab === 'export' && <ExportTab />}
       </div>
     </div>

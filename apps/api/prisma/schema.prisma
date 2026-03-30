@@ -100,6 +100,8 @@ model Tenant {
   aiExtractionBatches        AiExtractionBatch[]
   invoiceTrainingSamples     InvoiceTrainingSample[]
   invoiceComments            InvoiceComment[]
+  emailInboundConfig         EmailInboundConfig?
+  emailInboundLogs           EmailInboundLog[]
   pvkCredentials             PvkCredential[]
   pvkSyncLogs                PvkSyncLog[]
 
@@ -872,6 +874,9 @@ model Invoice {
   pdfBase64      String?     @db.Text
   note           String?
   tags           String[]    @default([])
+  source         String?     // "manual" | "pdf_upload" | "isdoc_upload" | "email" | "batch" | "pvk"
+  emailFrom      String?     // sender email (for source="email")
+  emailSubject   String?     // email subject
   deletedAt      DateTime?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
@@ -4417,6 +4422,42 @@ model Activity {
   @@index([tenantId, entityType, entityId])
   @@index([tenantId, assignedToId, status, deadline])
   @@map("activities")
+}
+
+// ─── EMAIL INBOUND ────────────────────────────────────────────────
+
+model EmailInboundConfig {
+  id           String   @id @default(cuid())
+  tenantId     String   @unique
+  slug         String   @unique  // "svj789" → invoice@svj789.ifmio.com
+  isActive     Boolean  @default(true)
+  autoApprove  Boolean  @default(false)
+  allowedFrom  String[] @default([])  // empty = accept all
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("email_inbound_configs")
+}
+
+model EmailInboundLog {
+  id              String   @id @default(cuid())
+  tenantId        String
+  messageId       String?  // Mailgun Message-Id
+  fromEmail       String
+  fromName        String?
+  subject         String?
+  attachments     Int      @default(0)
+  status          String   // "processed" | "failed" | "rejected" | "no_attachments"
+  errorMessage    String?
+  invoicesCreated Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@map("email_inbound_logs")
 }
 
 // ─── PVK INTEGRATION ──────────────────────────────────────────────
