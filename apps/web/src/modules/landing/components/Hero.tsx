@@ -23,11 +23,7 @@ export function Hero() {
           {h.h1Before}<em>{h.h1Em}</em>
         </h1>
         <p className="hero__subhead animate-on-scroll visible" style={{ animationDelay: '0.3s' }}>{h.subhead}</p>
-        <div className="hero__ctas animate-on-scroll visible" style={{ animationDelay: '0.45s' }}>
-          <a href={localePath(`/${ROUTE_SLUGS.demo[locale] ?? 'demo'}`)} className="btn btn--primary btn--lg">{h.ctaPrimary}</a>
-          <a href={localePath(`/${ROUTE_SLUGS.contact[locale] ?? 'kontakt'}`)} className="btn btn--ghost">{h.ctaSecondary}</a>
-        </div>
-        <div className="hero-email-capture animate-on-scroll visible" style={{ animationDelay: '0.6s' }}>
+        <div className="hero-email-capture animate-on-scroll visible" style={{ animationDelay: '0.45s' }}>
           <input
             type="email"
             placeholder={h.emailPlaceholder}
