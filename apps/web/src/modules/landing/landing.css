@@ -323,6 +323,7 @@
 }
 
 /* Nav dropdown — container for button + mega-menu */
+/* position: static so mega-menu centers relative to full nav width */
 .nav-dropdown {
   position: static;
 }
