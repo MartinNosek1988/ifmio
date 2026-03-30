@@ -65,6 +65,7 @@ import { PaymentOrdersModule } from './finance/payment-orders/payment-orders.mod
 import { ChatterModule } from './chatter/chatter.module';
 import { FundOpravModule } from './fund-oprav/fund-oprav.module';
 import { EmailInboundModule } from './email-inbound/email-inbound.module';
+import { PvkModule } from './pvk/pvk.module';
 import { E2eSeedModule } from './e2e-seed/e2e-seed.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -162,6 +163,7 @@ import { FieldEncryptionService } from './common/crypto/field-encryption.service
     ChatterModule,
     FundOpravModule,
     EmailInboundModule,
+    PvkModule,
     ...(process.env.NODE_ENV === 'test' || process.env.E2E_SEED_ENABLED === 'true' ? [E2eSeedModule] : []),
   ],
   providers: [

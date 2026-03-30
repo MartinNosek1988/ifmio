@@ -9,9 +9,10 @@ import { MioModule } from '../mio/mio.module';
 import { BankingModule } from '../banking/banking.module';
 import { WhatsAppModule } from '../whatsapp/whatsapp.module';
 import { FinanceModule } from '../finance/finance.module';
+import { PvkModule } from '../pvk/pvk.module';
 
 @Module({
-  imports: [HelpdeskModule, RevisionsModule, ReportsModule, RecurringPlansModule, MioModule, BankingModule, WhatsAppModule, FinanceModule],
+  imports: [HelpdeskModule, RevisionsModule, ReportsModule, RecurringPlansModule, MioModule, BankingModule, WhatsAppModule, FinanceModule, PvkModule],
   providers: [CronService, RetentionService],
   exports: [CronService],
 })
