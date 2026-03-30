@@ -65,6 +65,8 @@ export const en = {
     subhead: 'Automate routine tasks, get instant overview of every unit and let Mio AI handle repetitive work — less time on administration, more time for decisions.',
     ctaPrimary: 'Try demo for free',
     ctaSecondary: 'Contact sales',
+    ctaEmail: 'Try demo for free',
+    emailPlaceholder: 'your@email.com',
   },
   trust: { text: 'Trusted by more than 5,600 owners and tenants' },
   trustStrip: {

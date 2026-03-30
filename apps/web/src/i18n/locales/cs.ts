@@ -65,6 +65,8 @@ export const cs = {
     subhead: 'Automatizujte rutinní úkony, získejte okamžitý přehled nad každou jednotkou a nechte Mio AI řešit opakující se úkoly — méně času na administrativu, více na rozhodování.',
     ctaPrimary: 'Vyzkoušet demo zdarma',
     ctaSecondary: 'Kontaktovat obchod',
+    ctaEmail: 'Vyzkoušet demo zdarma',
+    emailPlaceholder: 'váš@email.cz',
   },
   trust: { text: 'Důvěřuje nám více než 5 600 vlastníků a nájemníků' },
   trustStrip: {
