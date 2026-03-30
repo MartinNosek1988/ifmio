@@ -28,3 +28,24 @@ CREATE TABLE IF NOT EXISTS public.pvk_sync_logs (
 );
 
 CREATE INDEX IF NOT EXISTS "pvk_sync_logs_tenantId_syncedAt_idx" ON public.pvk_sync_logs ("tenantId", "syncedAt");
+
+CREATE TABLE IF NOT EXISTS public.pvk_water_deductions (
+  "id" TEXT NOT NULL PRIMARY KEY,
+  "tenantId" TEXT NOT NULL,
+  "pvkPlaceId" INTEGER NOT NULL,
+  "placeAddress" TEXT NOT NULL,
+  "dateFrom" TIMESTAMPTZ NOT NULL,
+  "dateTo" TIMESTAMPTZ NOT NULL,
+  "meterNumber" TEXT NOT NULL,
+  "valueFrom" DOUBLE PRECISION NOT NULL,
+  "valueTo" DOUBLE PRECISION NOT NULL,
+  "amountM3" DOUBLE PRECISION NOT NULL,
+  "avgPerDay" DOUBLE PRECISION NOT NULL,
+  "measurementType" TEXT NOT NULL,
+  "intervalDays" INTEGER NOT NULL,
+  "syncedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "pvk_water_deductions_tenant_place_date_meter_key"
+  ON public.pvk_water_deductions ("tenantId", "pvkPlaceId", "dateFrom", "meterNumber");
+CREATE INDEX IF NOT EXISTS "pvk_water_deductions_tenantId_idx" ON public.pvk_water_deductions ("tenantId");

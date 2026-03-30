@@ -57,6 +57,25 @@ export interface PvkPayment {
   accountingInfo?: string;
 }
 
+export interface PvkWaterDeduction {
+  id: number;
+  measuredDateFrom: string;
+  measuredDateTo: string;
+  waterMeterNumber: string;
+  measuredValueFrom: number;
+  measuredValueTo: number;
+  amount: number; // m³
+  averagePerDay: number;
+  measurementType: string;
+  intervalLengthDays: number;
+}
+
+export interface PvkAttachment {
+  documentId: number;
+  fileName: string;
+  fileType: string;
+}
+
 export interface PvkPagedResponse<T> {
   content: T[];
   totalElements: number;
@@ -216,4 +235,59 @@ export async function getAllPayments(
   }
 
   return all;
+}
+
+// ─── Water deductions ───────────────────────────────────────
+
+export async function getWaterDeductions(
+  token: string,
+  consumptionPlaceId: number,
+  page = 0,
+  size = 50,
+): Promise<PvkPagedResponse<PvkWaterDeduction>> {
+  return apiGet(
+    `/api/web/protected/consumptionPlace/${consumptionPlaceId}/waterDeduction/pagedList?page=${page}&size=${size}`,
+    token,
+  );
+}
+
+export async function getAllWaterDeductions(
+  token: string,
+  consumptionPlaceId: number,
+): Promise<PvkWaterDeduction[]> {
+  const all: PvkWaterDeduction[] = [];
+  let page = 0;
+  let totalPages = 1;
+
+  while (page < totalPages) {
+    const res = await getWaterDeductions(token, consumptionPlaceId, page);
+    all.push(...res.content);
+    totalPages = res.totalPages;
+    page++;
+  }
+
+  return all;
+}
+
+// ─── Invoice PDF attachments ────────────────────────────────
+
+export async function getInvoiceAttachments(
+  token: string,
+  invoiceId: number,
+  customerAccountId: number,
+  consumptionPlaceId: number,
+): Promise<PvkAttachment[]> {
+  return apiGet(
+    `/api/web/protected/invoice/${invoiceId}/attachment/list?customerAccountId=${customerAccountId}&consumptionPlaceId=${consumptionPlaceId}`,
+    token,
+  );
+}
+
+export async function downloadDocument(token: string, documentId: number): Promise<Buffer> {
+  await sleep(RATE_LIMIT_MS);
+  const res = await fetchWithTimeout(`${API_BASE}/api/web/protected/document/${documentId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`PVK document download failed (${res.status})`);
+  return Buffer.from(await res.arrayBuffer());
 }

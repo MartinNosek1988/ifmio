@@ -57,7 +57,7 @@ export class PvkService {
 
   // ─── Sync ───────────────────────────────────────────────────
 
-  async syncTenant(tenantId: string): Promise<{ invoices: number; payments: number }> {
+  async syncTenant(tenantId: string): Promise<{ invoices: number; payments: number; deductions: number; pdfs: number }> {
     const startMs = Date.now();
     const credentials = await this.prisma.pvkCredential.findMany({
       where: { tenantId },
@@ -69,27 +69,67 @@ export class PvkService {
 
     let totalInvoices = 0;
     let totalPayments = 0;
+    let totalDeductions = 0;
+    let totalPdfs = 0;
 
     for (const cred of credentials) {
       try {
         const password = this.crypto.decrypt(cred.passwordEncrypted);
         const tokenRes = await api.getToken(cred.email, password);
-        const token = tokenRes.access_token;
+        let token = tokenRes.access_token;
+        const refresh = tokenRes.refresh_token;
+        const tokenExpiry = Date.now() + (tokenRes.expires_in - 30) * 1000;
 
-        // Get consumption places for invoices
-        const places = await api.getConsumptionPlaces(token);
+        // Helper: refresh token if close to expiry
+        const ensureToken = async () => {
+          if (Date.now() > tokenExpiry) {
+            const refreshed = await api.refreshAccessToken(refresh);
+            token = refreshed.access_token;
+          }
+          return token;
+        };
+
+        // Get customer accounts (needed for attachment downloads)
+        const accounts = await api.getCustomerAccounts(await ensureToken());
+        const firstAccountId = accounts[0]?.id;
+
+        // Get consumption places
+        const places = await api.getConsumptionPlaces(await ensureToken());
+
         for (const place of places) {
-          const invoices = await api.getAllInvoices(token, place.id);
+          // Sync invoices
+          const invoices = await api.getAllInvoices(await ensureToken(), place.id);
           for (const inv of invoices) {
-            await this.upsertInvoice(tenantId, inv, place);
-            totalInvoices++;
+            const isNew = await this.upsertInvoice(tenantId, inv, place);
+            if (isNew) totalInvoices++;
+
+            // Download PDF attachment for invoices that have one
+            if (inv.hasAttachment && firstAccountId) {
+              try {
+                const pdfBuf = await this.downloadInvoicePdf(
+                  await ensureToken(), inv.id, firstAccountId, place.id,
+                );
+                if (pdfBuf) {
+                  await this.attachPdfToInvoice(tenantId, inv.variableSymbol, pdfBuf);
+                  totalPdfs++;
+                }
+              } catch (pdfErr) {
+                this.logger.warn(`PDF download failed for invoice ${inv.id}: ${(pdfErr as Error).message}`);
+              }
+            }
+          }
+
+          // Sync water deductions
+          const deductions = await api.getAllWaterDeductions(await ensureToken(), place.id);
+          for (const ded of deductions) {
+            await this.upsertWaterDeduction(tenantId, ded, place);
+            totalDeductions++;
           }
         }
 
-        // Get customer accounts for payments
-        const accounts = await api.getCustomerAccounts(token);
+        // Count payments
         for (const acc of accounts) {
-          const payments = await api.getAllPayments(token, acc.id);
+          const payments = await api.getAllPayments(await ensureToken(), acc.id);
           totalPayments += payments.length;
         }
 
@@ -129,19 +169,17 @@ export class PvkService {
       },
     });
 
-    this.logger.log(`PVK sync OK for tenant ${tenantId}: ${totalInvoices} invoices, ${totalPayments} payments [${Date.now() - startMs}ms]`);
+    this.logger.log(`PVK sync OK for tenant ${tenantId}: ${totalInvoices} invoices, ${totalDeductions} deductions, ${totalPdfs} PDFs [${Date.now() - startMs}ms]`);
 
-    return { invoices: totalInvoices, payments: totalPayments };
+    return { invoices: totalInvoices, payments: totalPayments, deductions: totalDeductions, pdfs: totalPdfs };
   }
 
+  /** Returns true if invoice was newly created */
   private async upsertInvoice(
     tenantId: string,
     inv: api.PvkInvoice,
     place: api.PvkConsumptionPlace,
-  ) {
-    const externalRef = `pvk:${inv.id}`;
-
-    // Check if already imported (by variableSymbol + supplier)
+  ): Promise<boolean> {
     const existing = await this.prisma.invoice.findFirst({
       where: {
         tenantId,
@@ -150,7 +188,7 @@ export class PvkService {
       },
     });
 
-    if (existing) return; // already imported
+    if (existing) return false;
 
     await this.prisma.invoice.create({
       data: {
@@ -160,16 +198,84 @@ export class PvkService {
         supplierName: 'Pražské vodovody a kanalizace, a.s.',
         supplierIco: '25656635',
         description: `Vodné/stočné — ${place.address} (${inv.periodFrom} – ${inv.periodTo})`,
-        amountTotal: inv.total / 100, // haléře → CZK
+        amountTotal: inv.total / 100,
         currency: 'CZK',
         issueDate: new Date(inv.created),
         dueDate: new Date(inv.due),
         isPaid: inv.state === 'paid',
         paymentDate: inv.state === 'paid' ? new Date(inv.due) : null,
         variableSymbol: inv.variableSymbol,
-        note: `PVK import (${externalRef}), odběrné místo: ${place.address}`,
+        note: `PVK import (pvk:${inv.id}), odběrné místo: ${place.address}`,
         tags: ['pvk', 'vodné-stočné'],
         approvalStatus: 'draft',
+      },
+    });
+    return true;
+  }
+
+  private async downloadInvoicePdf(
+    token: string,
+    invoiceId: number,
+    customerAccountId: number,
+    consumptionPlaceId: number,
+  ): Promise<Buffer | null> {
+    const attachments = await api.getInvoiceAttachments(
+      token, invoiceId, customerAccountId, consumptionPlaceId,
+    );
+    const pdfAtt = attachments.find(a => a.fileType === 'application/pdf' || a.fileName.endsWith('.pdf'));
+    if (!pdfAtt) return null;
+    return api.downloadDocument(token, pdfAtt.documentId);
+  }
+
+  private async attachPdfToInvoice(
+    tenantId: string,
+    variableSymbol: string,
+    pdfBuffer: Buffer,
+  ) {
+    const invoice = await this.prisma.invoice.findFirst({
+      where: { tenantId, variableSymbol, supplierName: 'Pražské vodovody a kanalizace, a.s.' },
+    });
+    if (!invoice || invoice.pdfBase64) return; // already has PDF
+
+    await this.prisma.invoice.update({
+      where: { id: invoice.id },
+      data: { pdfBase64: pdfBuffer.toString('base64') },
+    });
+  }
+
+  private async upsertWaterDeduction(
+    tenantId: string,
+    ded: api.PvkWaterDeduction,
+    place: api.PvkConsumptionPlace,
+  ) {
+    await this.prisma.pvkWaterDeduction.upsert({
+      where: {
+        tenantId_pvkPlaceId_dateFrom_meterNumber: {
+          tenantId,
+          pvkPlaceId: place.id,
+          dateFrom: new Date(ded.measuredDateFrom),
+          meterNumber: ded.waterMeterNumber,
+        },
+      },
+      create: {
+        tenantId,
+        pvkPlaceId: place.id,
+        placeAddress: place.address,
+        dateFrom: new Date(ded.measuredDateFrom),
+        dateTo: new Date(ded.measuredDateTo),
+        meterNumber: ded.waterMeterNumber,
+        valueFrom: ded.measuredValueFrom,
+        valueTo: ded.measuredValueTo,
+        amountM3: ded.amount,
+        avgPerDay: ded.averagePerDay,
+        measurementType: ded.measurementType,
+        intervalDays: ded.intervalLengthDays,
+      },
+      update: {
+        valueTo: ded.measuredValueTo,
+        amountM3: ded.amount,
+        avgPerDay: ded.averagePerDay,
+        syncedAt: new Date(),
       },
     });
   }

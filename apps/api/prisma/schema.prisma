@@ -4453,3 +4453,24 @@ model PvkSyncLog {
   @@index([tenantId, syncedAt])
   @@map("pvk_sync_logs")
 }
+
+model PvkWaterDeduction {
+  id              String   @id @default(cuid())
+  tenantId        String
+  pvkPlaceId      Int      // PVK consumptionPlace ID
+  placeAddress    String
+  dateFrom        DateTime
+  dateTo          DateTime
+  meterNumber     String
+  valueFrom       Float
+  valueTo         Float
+  amountM3        Float
+  avgPerDay       Float
+  measurementType String
+  intervalDays    Int
+  syncedAt        DateTime @default(now())
+
+  @@unique([tenantId, pvkPlaceId, dateFrom, meterNumber])
+  @@index([tenantId])
+  @@map("pvk_water_deductions")
+}
