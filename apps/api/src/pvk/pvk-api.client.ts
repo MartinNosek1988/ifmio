@@ -100,6 +100,15 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// ─── Errors ─────────────────────────────────────────────────────
+
+export class PvkAuthError extends Error {
+  constructor(status: number) {
+    super(`PVK authentication failed (HTTP ${status})`);
+    this.name = 'PvkAuthError';
+  }
+}
+
 // ─── Auth ───────────────────────────────────────────────────────
 
 export async function getToken(email: string, password: string): Promise<PvkTokenResponse> {
@@ -117,8 +126,8 @@ export async function getToken(email: string, password: string): Promise<PvkToke
   });
 
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`PVK auth failed (${res.status}): ${text.slice(0, 200)}`);
+    if (res.status === 401 || res.status === 403) throw new PvkAuthError(res.status);
+    throw new Error(`PVK auth failed (${res.status})`);
   }
 
   return res.json();
@@ -149,6 +158,7 @@ async function apiGet<T>(path: string, token: string): Promise<T> {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
+    if (res.status === 401 || res.status === 403) throw new PvkAuthError(res.status);
     throw new Error(`PVK API ${path} failed (${res.status})`);
   }
   return res.json();

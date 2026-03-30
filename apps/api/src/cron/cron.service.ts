@@ -113,6 +113,10 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
       clearInterval(this.mioRetentionInterval);
       this.mioRetentionInterval = null;
     }
+    if (this.pvkSyncInterval) {
+      clearInterval(this.pvkSyncInterval);
+      this.pvkSyncInterval = null;
+    }
     this.logger.log('Cron intervals cleared');
   }
 
