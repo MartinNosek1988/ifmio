@@ -322,20 +322,11 @@
   margin-left: 16px;
 }
 
-/* Nav dropdown — hover bridge prevents gap disconnect */
+/* Nav dropdown — container for button + mega-menu */
+/* position: static so mega-menu centers relative to full nav width */
 .nav-dropdown {
-  position: relative;
+  position: static;
 }
-.nav-dropdown::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: -200px;
-  right: -200px;
-  height: 24px;
-  display: none;
-}
-/* hover bridge disabled — dropdowns controlled via JS click toggle */
 
 /* Mega menu — JS click toggle (opacity/visibility set via inline style) */
 .mega-menu {
@@ -351,7 +342,6 @@
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  overflow: hidden;
   transition: opacity 0.2s ease, visibility 0.2s ease;
   z-index: 1000;
   display: grid;
