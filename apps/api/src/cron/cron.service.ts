@@ -13,6 +13,7 @@ import { BankingService } from '../banking/banking.service';
 import { WhatsAppAutomationService } from '../whatsapp/whatsapp-automation.service';
 import { AiBatchService } from '../finance/ai-batch.service';
 import { RetentionService } from './retention.service';
+import { PvkService } from '../pvk/pvk.service';
 
 const ONE_HOUR = 60 * 60 * 1000;
 const FIFTEEN_MIN = 15 * 60 * 1000;
@@ -50,6 +51,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     private readonly waAutomation: WhatsAppAutomationService,
     private readonly aiBatch: AiBatchService,
     private readonly retention: RetentionService,
+    private readonly pvk: PvkService,
   ) {}
 
   onModuleInit() {
@@ -67,6 +69,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     this.initWhatsAppAutomation();
     this.initBatchPolling();
     this.initMioRetention();
+    this.initPvkSync();
   }
 
   onModuleDestroy() {
@@ -519,6 +522,42 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
       );
     } catch (err) {
       this.logger.error('Mio retention cleanup FAILED', (err as Error).stack);
+    }
+  }
+
+  // ─── PVK Sync (monthly, 1st at 6:00) ──────────────────────────
+
+  private pvkSyncInterval: ReturnType<typeof setInterval> | null = null;
+  private lastPvkSyncMonth = '';
+
+  private initPvkSync() {
+    this.logger.log('PVK sync enabled — monthly on 1st at 6:00');
+    // Check every hour; run on 1st of month between 5:00-8:00
+    this.pvkSyncInterval = setInterval(() => this.maybeRunPvkSync(), ONE_HOUR);
+  }
+
+  private async maybeRunPvkSync() {
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 7); // YYYY-MM
+    if (now.getDate() !== 1 || now.getHours() < 5 || now.getHours() > 8) return;
+    if (dateStr === this.lastPvkSyncMonth) return;
+
+    this.lastPvkSyncMonth = dateStr;
+    try {
+      const tenants = await this.prisma.pvkCredential.findMany({
+        select: { tenantId: true },
+        distinct: ['tenantId'],
+      });
+      for (const { tenantId } of tenants) {
+        try {
+          await this.pvk.syncTenant(tenantId);
+        } catch (err) {
+          this.logger.error(`PVK sync failed for tenant ${tenantId}: ${(err as Error).message}`);
+        }
+      }
+      this.logger.log(`PVK monthly sync: ${tenants.length} tenants processed`);
+    } catch (err) {
+      this.logger.error('PVK sync job FAILED', (err as Error).stack);
     }
   }
 }

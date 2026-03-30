@@ -100,6 +100,8 @@ model Tenant {
   aiExtractionBatches        AiExtractionBatch[]
   invoiceTrainingSamples     InvoiceTrainingSample[]
   invoiceComments            InvoiceComment[]
+  pvkCredentials             PvkCredential[]
+  pvkSyncLogs                PvkSyncLog[]
 
   @@map("tenants")
 }
@@ -4415,4 +4417,39 @@ model Activity {
   @@index([tenantId, entityType, entityId])
   @@index([tenantId, assignedToId, status, deadline])
   @@map("activities")
+}
+
+// ─── PVK INTEGRATION ──────────────────────────────────────────────
+
+model PvkCredential {
+  id                String    @id @default(cuid())
+  tenantId          String
+  email             String
+  passwordEncrypted String    // AES-256-GCM via CryptoService
+  lastSyncAt        DateTime?
+  lastSyncStatus    String?   // "ok" | "auth_error" | "api_error"
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  tenant            Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@map("pvk_credentials")
+}
+
+model PvkSyncLog {
+  id         String   @id @default(cuid())
+  tenantId   String
+  syncedAt   DateTime @default(now())
+  invoices   Int      @default(0)
+  payments   Int      @default(0)
+  status     String   // "ok" | "auth_error" | "api_error"
+  error      String?
+  durationMs Int?
+
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, syncedAt])
+  @@map("pvk_sync_logs")
 }
