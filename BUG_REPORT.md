@@ -42,57 +42,37 @@
 
 ---
 
-## 🐛 REAL BUGS — Prioritizovaný seznam
+## ✅ FIXED — Opravené bugy (commit a6d87a2)
 
-### Priorita: HIGH (chybějící validace → 500 Internal Server Error)
+### BUG-001: Work Order validace — title ✅ FIXED
+- **Problém:** POST /work-orders bez title → 500 místo 400
+- **Fix:** Nový `CreateWorkOrderDto` s `@IsNotEmpty()` na title
 
-#### BUG-001: Work Order validace vrací 500 místo 400 při chybějícím title
+### BUG-002: Work Order validace — workType ✅ FIXED
+- **Problém:** Neplatný workType → 500
+- **Fix:** `@IsEnum(['corrective','preventive','inspection','emergency'])` v CreateWorkOrderDto
 
-| Atribut | Hodnota |
-|---------|---------|
-| **Test** | `work-orders-extended.spec.ts` → "WO bez title → 400" |
-| **Modul** | Work Orders |
-| **Severity** | HIGH |
-| **Popis** | POST /work-orders bez title pole vrací 500 Internal Server Error místo 400 Bad Request |
-| **Expected** | 400 s validační chybovou zprávou |
-| **Actual** | 500 Internal Server Error (unhandled) |
-| **Root Cause** | DTO `CreateWorkOrderDto` nemá `@IsNotEmpty()` na `title` poli, nebo chybí validace v service vrstvě. Prisma throw na NOT NULL constraint. |
-| **Fix** | Přidat `@IsNotEmpty()` na `title` v CreateWorkOrderDto, nebo přidat `@IsString() @MinLength(1)` |
-| **Impact** | UX — uživatel vidí generickou chybu místo srozumitelné validační zprávy |
+### BUG-003: Work Order validace — priority ✅ FIXED
+- **Problém:** Neplatná priority → 500
+- **Fix:** `@IsEnum(['nizka','normalni','vysoka','kriticka'])` v CreateWorkOrderDto
 
-#### BUG-002: Work Order validace vrací 500 při neplatném workType
+### BUG-004: Asset validace — name + category ✅ FIXED
+- **Problém:** POST /assets bez name nebo s neplatnou category → 500
+- **Fix:** Nový `CreateAssetDto` s `@IsNotEmpty()` + `@IsEnum(AssetCategory)`
 
-| Atribut | Hodnota |
-|---------|---------|
-| **Test** | `work-orders-extended.spec.ts` → "WO s neplatným workType → 400" |
-| **Modul** | Work Orders |
-| **Severity** | HIGH |
-| **Popis** | POST /work-orders s neplatným workType (např. 'demolition') vrací 500 místo 400 |
-| **Expected** | 400 s enum validační chybou |
-| **Actual** | 500 Internal Server Error |
-| **Root Cause** | workType pole nemá `@IsEnum(WorkType)` validátor v DTO |
-| **Fix** | Přidat `@IsEnum(WorkType)` dekorátor na workType pole v CreateWorkOrderDto |
-| **Impact** | Nevalidní data mohou způsobit DB error |
+### BUG-006: Meter validace — name + meterType ✅ FIXED
+- **Problém:** POST /meters bez name nebo s neplatným meterType → 500
+- **Fix:** Nový `CreateMeterDto` s `@IsNotEmpty()` + `@IsEnum(MeterType)`
 
-#### BUG-003: Work Order validace vrací 500 při neplatné priority
+### BUG-007: Bank Account validace — name ✅ FIXED
+- **Problém:** POST /finance/bank-accounts bez name → 500
+- **Fix:** Nový `CreateBankAccountDto` s `@IsNotEmpty()` na name
 
-| Atribut | Hodnota |
-|---------|---------|
-| **Test** | `work-orders-extended.spec.ts` → "WO s neplatnou priority → 400" |
-| **Severity** | HIGH |
-| **Root Cause** | priority pole nemá `@IsEnum(WOPriority)` validátor v DTO |
-| **Fix** | Přidat `@IsEnum(WOPriority)` dekorátor |
+---
 
-#### BUG-004: Asset validace vrací 500 při chybějícím name a neplatné category
+## 🐛 OPEN BUGS — Zbývající
 
-| Atribut | Hodnota |
-|---------|---------|
-| **Test** | `assets-extended.spec.ts` → "asset bez name → 400" + "asset s neplatnou category → 400" |
-| **Modul** | Assets |
-| **Severity** | HIGH |
-| **Popis** | POST /assets bez name nebo s neplatnou category vrací 500 místo 400 |
-| **Root Cause** | DTO nemá `@IsNotEmpty()` na name a `@IsEnum(AssetCategory)` na category |
-| **Fix** | Přidat validátory do CreateAssetDto |
+### Priorita: MEDIUM (backlog)
 
 #### BUG-005: Asset CSV export vrací 500
 
@@ -100,27 +80,21 @@
 |---------|---------|
 | **Test** | `assets-extended.spec.ts` → "GET /assets/export → CSV export" |
 | **Severity** | MEDIUM |
+| **Status** | OPEN / BACKLOG |
 | **Popis** | GET /assets/export vrací 500 Internal Server Error |
 | **Root Cause** | Pravděpodobně chybí implementace nebo závislost v export service |
 | **Fix** | Prověřit `assets.service.ts` export metodu |
 
-#### BUG-006: Meter validace vrací 500 při chybějícím name a neplatném meterType
+#### BUG-008: Financial-calc allocation test — component route
 
 | Atribut | Hodnota |
 |---------|---------|
-| **Test** | `meters-extended.spec.ts` → "meter bez name → 400" + "meter s neplatným meterType → 400" |
-| **Severity** | HIGH |
-| **Root Cause** | DTO nemá validátory pro required/enum pole |
-| **Fix** | Přidat `@IsNotEmpty()` a `@IsEnum(MeterType)` |
-
-#### BUG-007: Bank Account DELETE bez validace name vrací 500
-
-| Atribut | Hodnota |
-|---------|---------|
-| **Test** | `finance-extended.spec.ts` → "POST bez name → 400" |
-| **Severity** | MEDIUM |
-| **Popis** | POST /finance/bank-accounts bez name vrací 500 místo 400 |
-| **Root Cause** | DTO nemá `@IsNotEmpty()` na name poli |
+| **Test** | `financial-calc.spec.ts` → "dvě alokace pokryjí celkovou částku" |
+| **Severity** | LOW |
+| **Status** | OPEN / BACKLOG |
+| **Popis** | Allocation test selže kvůli neznámé route pro vytvoření PrescriptionComponent v test kontextu |
+| **Root Cause** | Route `/finance/components` nemusí existovat nebo vyžaduje propertyId v jiném formátu |
+| **Fix** | Prověřit component CRUD route a opravit test setup |
 
 ---
 
