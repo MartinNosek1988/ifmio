@@ -12,6 +12,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuditAction } from '../common/decorators/audit.decorator';
 import { ROLES_MANAGE, ROLES_FINANCE, ROLES_FINANCE_DRAFT } from '../common/constants/roles.constants';
 import { CreateInvoiceDto, UpdateInvoiceDto, InvoiceListQueryDto, MarkPaidDto, ReturnToDraftDto, CreateAllocationDto, UpdateAllocationDto, AddInvoiceCommentDto } from './dto/invoice.dto';
+import { CreateBankAccountDto, UpdateBankAccountDto } from './dto/bank-account.dto';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { AuthUser } from '@ifmio/shared-types';
 
@@ -48,10 +49,7 @@ export class FinanceController {
   @Roles(...ROLES_FINANCE)
   @AuditAction('bankAccount', 'create')
   @ApiOperation({ summary: 'Přidat bankovní účet' })
-  createBankAccount(@CurrentUser() user: AuthUser, @Body() dto: {
-    name: string; accountNumber: string; iban?: string;
-    bankCode?: string; currency?: string; propertyId?: string;
-  }) {
+  createBankAccount(@CurrentUser() user: AuthUser, @Body() dto: CreateBankAccountDto) {
     return this.service.createBankAccount(user, dto);
   }
 
@@ -71,11 +69,7 @@ export class FinanceController {
   updateBankAccount(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
-    @Body() dto: {
-      name?: string; accountNumber?: string; bankCode?: string;
-      iban?: string; currency?: string; isDefault?: boolean;
-      accountType?: string; isActive?: boolean;
-    },
+    @Body() dto: UpdateBankAccountDto,
   ) {
     return this.service.updateBankAccount(user, id, dto);
   }

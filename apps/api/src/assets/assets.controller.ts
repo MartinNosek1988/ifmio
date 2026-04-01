@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AssetsService } from './assets.service';
+import { CreateAssetDto, UpdateAssetDto } from './dto/asset.dto';
 import { AssetPlanInstantiationService } from '../asset-types/asset-plan-instantiation.service';
 import { AssetPassportService } from './asset-passport.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -57,7 +58,7 @@ export class AssetsController {
 
   @Post()
   @ApiOperation({ summary: 'Vytvořit aktivum' })
-  create(@CurrentUser() user: AuthUser, @Body() body: Record<string, unknown>) {
+  create(@CurrentUser() user: AuthUser, @Body() body: CreateAssetDto) {
     return this.service.create(user, body as any);
   }
 
@@ -66,7 +67,7 @@ export class AssetsController {
   update(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
-    @Body() body: Record<string, unknown>,
+    @Body() body: UpdateAssetDto,
   ) {
     return this.service.update(user, id, body);
   }

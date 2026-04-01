@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { WorkOrdersService } from './work-orders.service'
+import { CreateWorkOrderDto, UpdateWorkOrderDto, ChangeStatusDto, AddCommentDto } from './dto/work-order.dto'
 import { DispatchWorkOrderDto, ConfirmWorkOrderDto, DeclineWorkOrderDto, CompleteWorkOrderDto, CsatDto } from './dto/dispatch.dto'
 import { Roles } from '../common/decorators/roles.decorator'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
@@ -51,26 +52,7 @@ export class WorkOrdersController {
   @Roles(...ROLES_OPS)
   @AuditAction('workOrder', 'create')
   @ApiOperation({ summary: 'Vytvořit WO' })
-  create(@CurrentUser() user: AuthUser, @Body() dto: {
-    title: string
-    description?: string
-    workType?: string
-    priority?: string
-    propertyId?: string
-    unitId?: string
-    assetId?: string
-    helpdeskTicketId?: string
-    assignee?: string
-    requester?: string
-    assigneeUserId?: string
-    requesterUserId?: string
-    dispatcherUserId?: string
-    deadline?: string
-    estimatedHours?: number
-    laborCost?: number
-    materialCost?: number
-    note?: string
-  }) {
+  create(@CurrentUser() user: AuthUser, @Body() dto: CreateWorkOrderDto) {
     return this.service.create(user, dto)
   }
 
@@ -81,33 +63,7 @@ export class WorkOrdersController {
   update(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
-    @Body() dto: {
-      title?: string
-      description?: string
-      workType?: string
-      priority?: string
-      propertyId?: string
-      unitId?: string
-      assetId?: string
-      assignee?: string
-      requester?: string
-      assigneeUserId?: string
-      requesterUserId?: string
-      dispatcherUserId?: string
-      deadline?: string
-      estimatedHours?: number
-      actualHours?: number
-      laborCost?: number
-      materialCost?: number
-      note?: string
-      workSummary?: string
-      findings?: string
-      recommendation?: string
-      requirePhoto?: boolean
-      requireHours?: boolean
-      requireSummary?: boolean
-      requireProtocol?: boolean
-    },
+    @Body() dto: UpdateWorkOrderDto,
   ) {
     return this.service.update(user, id, dto)
   }
@@ -119,7 +75,7 @@ export class WorkOrdersController {
   changeStatus(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
-    @Body() dto: { status: string },
+    @Body() dto: ChangeStatusDto,
   ) {
     return this.service.changeStatus(user, id, dto.status)
   }
@@ -139,7 +95,7 @@ export class WorkOrdersController {
   addComment(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
-    @Body() dto: { text: string },
+    @Body() dto: AddCommentDto,
   ) {
     return this.service.addComment(user, id, dto.text)
   }
