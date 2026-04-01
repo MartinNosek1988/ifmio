@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { LoadingSpinner } from '../shared/components';
 import { Breadcrumbs as BreadcrumbsNav } from '../shared/components/Breadcrumbs';
+import { OfflineBanner } from '../shared/components/OfflineBanner';
 import { GlobalSearch } from '../modules/search/GlobalSearch';
 import { PropertyPicker } from '../core/components/PropertyPicker';
 import { usePropertyPickerStore } from '../core/stores/property-picker.store';
@@ -478,6 +479,7 @@ export default function AppShell() {
             </div>
           </div>
         )}
+        <OfflineBanner />
         <BreadcrumbsNav />
         <Suspense fallback={<LoadingSpinner />}>
           <Outlet />
