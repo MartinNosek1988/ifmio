@@ -49,9 +49,30 @@
   --border-hover: #D1D5DB;
   --hover-bg: var(--primary-50);
 
+  /* Finance — sémantické barvy pro finanční UI */
+  --color-finance-positive: #16a34a;
+  --color-finance-negative: #dc2626;
+  --color-finance-neutral: #6b7280;
+
+  /* SLA — barvy pro SLA countdown */
+  --color-sla-ok: #16a34a;
+  --color-sla-warning: #f59e0b;
+  --color-sla-breach: #dc2626;
+
+  /* PII — GDPR indikátor */
+  --color-pii-badge: #f59e0b;
+  --color-pii-bg: #fef3c7;
+
+  /* Surface — sémantické povrchy */
+  --color-surface: var(--white);
+  --color-surface-elevated: var(--white);
+  --color-border-default: var(--gray-200);
+  --color-border-strong: var(--primary);
+
   /* Typography */
   --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   --font-body: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
 
   /* Radius */
   --radius-sm: 8px;
