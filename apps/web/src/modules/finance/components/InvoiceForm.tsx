@@ -2,6 +2,10 @@ import { useState } from 'react';
 import { Users, Search } from 'lucide-react';
 import { integrationsApi } from '../../integrations/api/integrations.api';
 import { Modal, Button } from '../../../shared/components';
+import { FormSection, FormFooter } from '../../../shared/components/FormSection';
+import { FormField } from '../../../shared/components/FormField';
+import { CurrencyInput } from '../../../shared/components/CurrencyInput';
+import { CurrencyDisplay } from '../../../shared/components/CurrencyDisplay';
 import { formatKc, formatCzDate } from '../../../shared/utils/format';
 import type { ApiInvoice } from '../api/finance.api';
 import type { FinTransaction } from '../types';
@@ -21,7 +25,6 @@ export function InvoiceForm({ invoice, transactions, onClose }: {
   const isEdit = !!invoice;
   const [showContactPicker, setShowContactPicker] = useState<'supplier' | 'buyer' | null>(null);
 
-  // Initialize lines from existing invoice
   const initLines = (): LineItem[] => {
     if (invoice?.lines && invoice.lines.length > 0) {
       return invoice.lines.map(l => ({
@@ -46,10 +49,10 @@ export function InvoiceForm({ invoice, transactions, onClose }: {
     buyerIco: invoice?.buyerIco || '',
     buyerDic: invoice?.buyerDic || '',
     description: invoice?.description || '',
-    amountBase: invoice?.amountBase?.toString() || '',
+    amountBase: invoice?.amountBase != null ? Number(invoice.amountBase) : null,
     vatRate: invoice?.vatRate?.toString() || '0',
-    vatAmount: invoice?.vatAmount?.toString() || '',
-    amountTotal: invoice?.amountTotal?.toString() || '',
+    vatAmount: invoice?.vatAmount != null ? Number(invoice.vatAmount) : null,
+    amountTotal: invoice?.amountTotal != null ? Number(invoice.amountTotal) : null,
     issueDate: invoice?.issueDate?.slice(0, 10) || new Date().toISOString().slice(0, 10),
     duzp: invoice?.duzp?.slice(0, 10) || '',
     dueDate: invoice?.dueDate?.slice(0, 10) || '',
@@ -88,7 +91,6 @@ export function InvoiceForm({ invoice, transactions, onClose }: {
     finally { setAresLoading(null); }
   };
 
-  // When lines change, auto-sync totals
   const handleLinesChange = (newLines: LineItem[]) => {
     setLines(newLines);
     if (newLines.length > 0) {
@@ -96,28 +98,22 @@ export function InvoiceForm({ invoice, transactions, onClose }: {
         const c = calcLine(l);
         return { base: acc.base + c.base, vat: acc.vat + c.vat, total: acc.total + c.total };
       }, { base: 0, vat: 0, total: 0 });
-      setForm(f => ({
-        ...f,
-        amountBase: String(totals.base),
-        vatAmount: String(totals.vat),
-        amountTotal: String(totals.total),
-        vatRate: '0', // mixed rates
-      }));
+      setForm(f => ({ ...f, amountBase: totals.base, vatAmount: totals.vat, amountTotal: totals.total, vatRate: '0' }));
     }
   };
 
-  const recalcVat = (base: string, rate: string) => {
-    const b = parseFloat(base) || 0;
+  const recalcVat = (base: number | null, rate: string) => {
+    const b = base ?? 0;
     const r = parseInt(rate) || 0;
-    const vat = Math.round(b * r / 100);
-    setForm(f => ({ ...f, amountBase: base, vatRate: rate, vatAmount: String(vat), amountTotal: String(b + vat) }));
+    const vat = Math.round(b * r / 100 * 100) / 100;
+    setForm(f => ({ ...f, amountBase: base, vatRate: rate, vatAmount: vat, amountTotal: b + vat }));
   };
 
   const validate = () => {
     const errs: Record<string, string> = {};
-    if (!form.number.trim()) errs.number = 'Povinné';
-    if ((!form.amountBase || Number(form.amountBase) <= 0) && lines.length === 0) errs.amountBase = 'Zadejte částku nebo přidejte položky';
-    if (!form.issueDate) errs.issueDate = 'Povinné';
+    if (!form.number.trim()) errs.number = 'Číslo dokladu je povinné';
+    if ((!form.amountBase || form.amountBase <= 0) && lines.length === 0) errs.amountBase = 'Zadejte částku nebo přidejte položky';
+    if (!form.issueDate) errs.issueDate = 'Datum vystavení je povinné';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -134,10 +130,10 @@ export function InvoiceForm({ invoice, transactions, onClose }: {
       buyerIco: form.buyerIco || undefined,
       buyerDic: form.buyerDic || undefined,
       description: form.description || undefined,
-      amountBase: Number(form.amountBase) || 0,
+      amountBase: form.amountBase ?? 0,
       vatRate: Number(form.vatRate) || 0,
-      vatAmount: Number(form.vatAmount) || 0,
-      amountTotal: Number(form.amountTotal) || Number(form.amountBase) || 0,
+      vatAmount: form.vatAmount ?? 0,
+      amountTotal: form.amountTotal ?? form.amountBase ?? 0,
       issueDate: form.issueDate,
       duzp: form.duzp || undefined,
       dueDate: form.dueDate || undefined,
@@ -172,195 +168,158 @@ export function InvoiceForm({ invoice, transactions, onClose }: {
     background: 'var(--surface-2, var(--surface))', color: 'var(--text)',
   });
 
+  const monoStyle = (field?: string) => ({ ...inputStyle(field), fontFamily: 'var(--font-mono, monospace)' });
+
+  const partySection = (prefix: 'supplier' | 'buyer', label: string) => (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+        <span className="form-label" style={{ margin: 0, fontWeight: 600 }}>{label}</span>
+        <button type="button" onClick={() => setShowContactPicker(prefix)}
+          style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer', color: 'var(--accent)', fontSize: '0.78rem', padding: '2px 8px', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <Users size={12} /> Z adresáře
+        </button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12 }}>
+        <FormField label="Název" name={`${prefix}Name`} required={false}>
+          <input value={form[`${prefix}Name` as keyof typeof form] as string} onChange={e => set(`${prefix}Name`, e.target.value)} style={inputStyle()} placeholder="Název firmy" />
+        </FormField>
+        <div>
+          <FormField label="IČO" name={`${prefix}Ico`} required={false}>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <input value={form[`${prefix}Ico` as keyof typeof form] as string} onChange={e => set(`${prefix}Ico`, e.target.value)} style={{ ...monoStyle(), flex: 1 }} />
+              <button type="button" onClick={() => handleAresLookup(prefix)} disabled={aresLoading === prefix}
+                style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+                <Search size={11} /> {aresLoading === prefix ? '...' : 'ARES'}
+              </button>
+            </div>
+          </FormField>
+          {aresError[prefix] && <div style={{ color: 'var(--danger)', fontSize: '0.75rem', marginTop: -8, marginBottom: 4 }}>{aresError[prefix]}</div>}
+          {aresDefunct[prefix] && <div style={{ color: 'var(--danger)', fontSize: '0.75rem', marginTop: -8, marginBottom: 4 }}>Zaniklý subjekt ({aresDefunct[prefix]})</div>}
+        </div>
+        <FormField label="DIČ" name={`${prefix}Dic`} required={false}>
+          <input value={form[`${prefix}Dic` as keyof typeof form] as string} onChange={e => set(`${prefix}Dic`, e.target.value)} style={monoStyle()} />
+        </FormField>
+      </div>
+    </>
+  );
+
   return (
     <Modal open onClose={onClose} title={isEdit ? 'Upravit doklad' : 'Nový doklad'} wide
-      footer={
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <Button onClick={onClose} data-testid="finance-doklad-form-cancel">Zrušit</Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={isPending} data-testid="finance-doklad-form-save">
-            {isPending ? 'Ukládám...' : isEdit ? 'Uložit' : 'Vytvořit'}
-          </Button>
-        </div>
-      }>
+      footer={<FormFooter onCancel={onClose} onSubmit={handleSubmit} isSubmitting={isPending} submitLabel={isEdit ? 'Uložit' : 'Vytvořit'} />}>
 
-      {/* Row 1: number + type */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-        <div>
-          <label className="form-label">Číslo dokladu *</label>
-          <input data-testid="finance-doklad-form-number" value={form.number} onChange={e => set('number', e.target.value)} style={inputStyle('number')} />
-          {errors.number && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.number}</div>}
+      {/* ── Sekce 1: Identifikace (vždy otevřená) ─────────────── */}
+      <FormSection title="Identifikace dokladu" collapsible={false}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <FormField label="Číslo dokladu" name="number" error={errors.number}>
+            <input data-testid="finance-doklad-form-number" value={form.number} onChange={e => set('number', e.target.value)} style={monoStyle('number')} />
+          </FormField>
+          <FormField label="Typ" name="type">
+            <select data-testid="finance-doklad-form-type" value={form.type} onChange={e => set('type', e.target.value)} style={inputStyle()}>
+              {Object.entries(INVOICE_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </FormField>
         </div>
-        <div>
-          <label className="form-label">Typ</label>
-          <select data-testid="finance-doklad-form-type" value={form.type} onChange={e => set('type', e.target.value)} style={inputStyle()}>
-            {Object.entries(INVOICE_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
-        </div>
-      </div>
 
-      {/* Row 2: supplier */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-        <span className="form-label" style={{ margin: 0, fontWeight: 600 }}>Dodavatel</span>
-        <button type="button" onClick={() => setShowContactPicker('supplier')}
-          style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer', color: 'var(--accent)', fontSize: '0.78rem', padding: '2px 8px', display: 'flex', alignItems: 'center', gap: 4 }}>
-          <Users size={12} /> Z adresáře
-        </button>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
-        <div>
-          <label className="form-label">Název</label>
-          <input value={form.supplierName} onChange={e => set('supplierName', e.target.value)} style={inputStyle()} placeholder="Název firmy" />
-        </div>
-        <div>
-          <label className="form-label">IČO</label>
-          <div style={{ display: 'flex', gap: 4 }}>
-            <input value={form.supplierIco} onChange={e => set('supplierIco', e.target.value)} style={{ ...inputStyle(), flex: 1 }} />
-            <button type="button" onClick={() => handleAresLookup('supplier')} disabled={aresLoading === 'supplier'}
-              style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
-              <Search size={11} /> {aresLoading === 'supplier' ? '...' : 'ARES'}
-            </button>
+        {partySection('supplier', 'Dodavatel')}
+        <div style={{ marginTop: 8 }} />
+        {partySection('buyer', 'Odběratel')}
+
+        <FormField label="Popis" name="description" required={false}>
+          <input value={form.description} onChange={e => set('description', e.target.value)} style={inputStyle()} placeholder="Co je fakturováno..." />
+        </FormField>
+      </FormSection>
+
+      {/* ── Sekce 2: Položky a částky (vždy otevřená) ─────────── */}
+      <FormSection title="Položky a částky" collapsible={false}>
+        <InvoiceLinesEditor lines={lines} onChange={handleLinesChange} />
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginTop: 8 }}>
+          <div>
+            <CurrencyInput
+              label="Základ (Kč)"
+              value={form.amountBase}
+              onChange={(v) => recalcVat(v, form.vatRate)}
+              error={errors.amountBase}
+              required
+              name="amountBase"
+            />
           </div>
-          {aresError.supplier && <div style={{ color: 'var(--danger)', fontSize: '0.75rem', marginTop: 2 }}>{aresError.supplier}</div>}
-          {aresDefunct.supplier && <div style={{ color: 'var(--danger)', fontSize: '0.75rem', marginTop: 2 }}>Zaniklý subjekt ({aresDefunct.supplier})</div>}
+          <FormField label="DPH sazba" name="vatRate">
+            <select value={form.vatRate} onChange={e => recalcVat(form.amountBase, e.target.value)} style={inputStyle()}>
+              <option value="0">0%</option>
+              <option value="12">12%</option>
+              <option value="21">21%</option>
+            </select>
+          </FormField>
+          <FormField label="DPH (Kč)" name="vatAmount" computed computedSource="základ × sazba">
+            <div style={{ padding: '8px 12px', background: 'var(--gray-50)', borderRadius: 6, border: '1px solid var(--border)', textAlign: 'right' }}>
+              <CurrencyDisplay amount={form.vatAmount ?? 0} colorize={false} size="sm" />
+            </div>
+          </FormField>
+          <FormField label="Celkem s DPH" name="amountTotal" computed computedSource="základ + DPH">
+            <div style={{ padding: '8px 12px', background: 'var(--gray-50)', borderRadius: 6, border: '1px solid var(--border)', textAlign: 'right' }}>
+              <CurrencyDisplay amount={form.amountTotal ?? 0} colorize={false} size="sm" />
+            </div>
+          </FormField>
         </div>
-        <div>
-          <label className="form-label">DIČ</label>
-          <input value={form.supplierDic} onChange={e => set('supplierDic', e.target.value)} style={inputStyle()} />
-        </div>
-      </div>
+      </FormSection>
 
-      {/* Row 3: buyer */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-        <span className="form-label" style={{ margin: 0, fontWeight: 600 }}>Odběratel</span>
-        <button type="button" onClick={() => setShowContactPicker('buyer')}
-          style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer', color: 'var(--accent)', fontSize: '0.78rem', padding: '2px 8px', display: 'flex', alignItems: 'center', gap: 4 }}>
-          <Users size={12} /> Z adresáře
-        </button>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
-        <div>
-          <label className="form-label">Název</label>
-          <input value={form.buyerName} onChange={e => set('buyerName', e.target.value)} style={inputStyle()} placeholder="Název firmy" />
+      {/* ── Sekce 3: Datumy a symboly (collapsible) ──────────── */}
+      <FormSection title="Datumy a platební symboly" defaultExpanded={isEdit}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+          <FormField label="Datum vystavení" name="issueDate" error={errors.issueDate}>
+            <input data-testid="finance-doklad-form-issueDate" type="date" value={form.issueDate} onChange={e => set('issueDate', e.target.value)} style={inputStyle('issueDate')} />
+          </FormField>
+          <FormField label="DÚZP" name="duzp" required={false}>
+            <input type="date" value={form.duzp} onChange={e => set('duzp', e.target.value)} style={inputStyle()} />
+          </FormField>
+          <FormField label="Splatnost" name="dueDate" required={false}>
+            <input type="date" value={form.dueDate} onChange={e => set('dueDate', e.target.value)} style={inputStyle()} />
+          </FormField>
         </div>
-        <div>
-          <label className="form-label">IČO</label>
-          <div style={{ display: 'flex', gap: 4 }}>
-            <input value={form.buyerIco} onChange={e => set('buyerIco', e.target.value)} style={{ ...inputStyle(), flex: 1 }} />
-            <button type="button" onClick={() => handleAresLookup('buyer')} disabled={aresLoading === 'buyer'}
-              style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
-              <Search size={11} /> {aresLoading === 'buyer' ? '...' : 'ARES'}
-            </button>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+          <FormField label="Variabilní symbol" name="variableSymbol" required={false}>
+            <input value={form.variableSymbol} onChange={e => set('variableSymbol', e.target.value)} style={monoStyle()} />
+          </FormField>
+          <FormField label="Konstantní symbol" name="constantSymbol" required={false}>
+            <input value={form.constantSymbol} onChange={e => set('constantSymbol', e.target.value)} style={monoStyle()} />
+          </FormField>
+          <FormField label="Specifický symbol" name="specificSymbol" required={false}>
+            <input value={form.specificSymbol} onChange={e => set('specificSymbol', e.target.value)} style={monoStyle()} />
+          </FormField>
+        </div>
+        <FormField label="IBAN pro platbu" name="paymentIban" required={false} helpText="IBAN účtu příjemce pro generování QR platby">
+          <input value={form.paymentIban} onChange={e => set('paymentIban', e.target.value)} style={monoStyle()} placeholder="CZ74 5500 0000 0002 0218 8785" />
+        </FormField>
+      </FormSection>
+
+      {/* ── Sekce 4: Poznámky a stav (collapsed) ─────────────── */}
+      <FormSection title="Ostatní" defaultExpanded={false}>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
+          <FormField label="Propojit s transakcí" name="transactionId" required={false}>
+            <select value={form.transactionId} onChange={e => set('transactionId', e.target.value)} style={inputStyle()}>
+              <option value="">— Žádná —</option>
+              {transactions.map(t => (
+                <option key={t.id} value={t.id}>{formatCzDate(t.datum)} | {t.popis} | {formatKc(t.castka)}</option>
+              ))}
+            </select>
+          </FormField>
+          <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 16 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem', cursor: 'pointer' }}>
+              <input type="checkbox" checked={form.isPaid} onChange={e => set('isPaid', e.target.checked)} style={{ accentColor: 'var(--accent)' }} />
+              Uhrazeno
+            </label>
           </div>
-          {aresError.buyer && <div style={{ color: 'var(--danger)', fontSize: '0.75rem', marginTop: 2 }}>{aresError.buyer}</div>}
-          {aresDefunct.buyer && <div style={{ color: 'var(--danger)', fontSize: '0.75rem', marginTop: 2 }}>Zaniklý subjekt ({aresDefunct.buyer})</div>}
         </div>
-        <div>
-          <label className="form-label">DIČ</label>
-          <input value={form.buyerDic} onChange={e => set('buyerDic', e.target.value)} style={inputStyle()} />
-        </div>
-      </div>
-
-      {/* Row 4: description */}
-      <div style={{ marginBottom: 14 }}>
-        <label className="form-label">Popis</label>
-        <input value={form.description} onChange={e => set('description', e.target.value)} style={inputStyle()} placeholder="Co je fakturováno..." />
-      </div>
-
-      {/* Row 4.5: Invoice lines */}
-      <InvoiceLinesEditor lines={lines} onChange={handleLinesChange} />
-
-      {/* Row 5: amounts */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
-        <div>
-          <label className="form-label">Základ (Kč) *</label>
-          <input data-testid="finance-doklad-form-amount" type="number" value={form.amountBase} onChange={e => recalcVat(e.target.value, form.vatRate)} style={inputStyle('amountBase')} placeholder="0" />
-          {errors.amountBase && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.amountBase}</div>}
-        </div>
-        <div>
-          <label className="form-label">DPH sazba</label>
-          <select value={form.vatRate} onChange={e => recalcVat(form.amountBase, e.target.value)} style={inputStyle()}>
-            <option value="0">0%</option>
-            <option value="12">12%</option>
-            <option value="21">21%</option>
-          </select>
-        </div>
-        <div>
-          <label className="form-label">DPH (Kč)</label>
-          <input type="number" value={form.vatAmount} onChange={e => set('vatAmount', e.target.value)} style={inputStyle()} />
-        </div>
-        <div>
-          <label className="form-label">Celkem s DPH</label>
-          <input type="number" value={form.amountTotal} onChange={e => set('amountTotal', e.target.value)} style={inputStyle()} />
-        </div>
-      </div>
-
-      {/* Row 6: dates */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
-        <div>
-          <label className="form-label">Datum vystavení *</label>
-          <input data-testid="finance-doklad-form-issueDate" type="date" value={form.issueDate} onChange={e => set('issueDate', e.target.value)} style={inputStyle('issueDate')} />
-          {errors.issueDate && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.issueDate}</div>}
-        </div>
-        <div>
-          <label className="form-label">DÚZP</label>
-          <input type="date" value={form.duzp} onChange={e => set('duzp', e.target.value)} style={inputStyle()} />
-        </div>
-        <div>
-          <label className="form-label">Splatnost</label>
-          <input type="date" value={form.dueDate} onChange={e => set('dueDate', e.target.value)} style={inputStyle()} />
-        </div>
-        <div>
-          <label className="form-label">Variabilní symbol</label>
-          <input value={form.variableSymbol} onChange={e => set('variableSymbol', e.target.value)} style={inputStyle()} />
-        </div>
-        <div>
-          <label className="form-label">Konstantní symbol</label>
-          <input value={form.constantSymbol} onChange={e => set('constantSymbol', e.target.value)} style={inputStyle()} />
-        </div>
-        <div>
-          <label className="form-label">Specifický symbol</label>
-          <input value={form.specificSymbol} onChange={e => set('specificSymbol', e.target.value)} style={inputStyle()} />
-        </div>
-      </div>
-
-      {/* Row 6.5: IBAN for QR payment */}
-      <div style={{ marginBottom: 14 }}>
-        <label className="form-label">IBAN pro platbu</label>
-        <input value={form.paymentIban} onChange={e => set('paymentIban', e.target.value)} style={inputStyle()} placeholder="CZ74 5500 0000 0002 0218 8785" />
-        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>IBAN účtu příjemce pro generování QR platby</div>
-      </div>
-
-      {/* Row 7: transaction link + paid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12, marginBottom: 14 }}>
-        <div>
-          <label className="form-label">Propojit s transakcí</label>
-          <select value={form.transactionId} onChange={e => set('transactionId', e.target.value)} style={inputStyle()}>
-            <option value="">— Žádná —</option>
-            {transactions.map(t => (
-              <option key={t.id} value={t.id}>{formatCzDate(t.datum)} | {t.popis} | {formatKc(t.castka)}</option>
-            ))}
-          </select>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 4 }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem', cursor: 'pointer' }}>
-            <input type="checkbox" checked={form.isPaid} onChange={e => set('isPaid', e.target.checked)}
-              style={{ accentColor: 'var(--accent)' }} />
-            Uhrazeno
-          </label>
-        </div>
-      </div>
-
-      {/* Row 8: note */}
-      <div>
-        <label className="form-label">Poznámka</label>
-        <textarea value={form.note} onChange={e => set('note', e.target.value)} style={{ ...inputStyle(), minHeight: 50 }} />
-      </div>
+        <FormField label="Poznámka" name="note" required={false}>
+          <textarea value={form.note} onChange={e => set('note', e.target.value)} style={{ ...inputStyle(), minHeight: 50 }} />
+        </FormField>
+      </FormSection>
 
       {(createMut.isError || updateMut.isError) && (
         <div style={{ color: 'var(--danger)', fontSize: '0.85rem', marginTop: 12 }}>Nepodařilo se uložit doklad.</div>
       )}
 
-      {/* Contact picker modal */}
       {showContactPicker && (
         <ContactPickerModal
           onClose={() => setShowContactPicker(null)}
