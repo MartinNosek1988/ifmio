@@ -69,7 +69,7 @@ export class AssetsController {
     @Param('id') id: string,
     @Body() body: UpdateAssetDto,
   ) {
-    return this.service.update(user, id, body as Record<string, unknown>);
+    return this.service.update(user, id, body as any);
   }
 
   @Delete(':id')
