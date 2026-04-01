@@ -166,6 +166,25 @@ P2 zbylé + P3.
 
 ---
 
+## ✅ DONE — Sprint UX-4 Polish (commit 41f8aad, 2026-04-01)
+
+| ID | Task | Status |
+|----|------|--------|
+| UX-021 | Kanban Helpdesk | ✅ KanbanBoard — generic drag&drop (HTML5 native), sloupce s kartami |
+| UX-022 | Responsive tabulky | ✅ ResponsiveTable — tabulka↔card na 768px, isPrimary/isSecondary columns |
+| UX-023 | GDPR Erasure Wizard | ✅ 5-krokový wizard (search→preview→retained→confirm→result+PDF) |
+| UX-024 | Terminologický slovník | ✅ 35+ mapování, contextTerms, getTermLabel() |
+| UX-025 | Dark mode | ✅ CSS variables [data-theme="dark"], useTheme (light/dark/system) |
+| UX-026 | Audit trail timeline | ✅ AuditTimeline — ikony per akce, PII highlight, relative dates |
+| UX-027 | A11y (focus trap) | ✅ useFocusTrap — Tab cycling, auto-focus, return focus |
+| UX-028 | URL sync filtry | ✅ useUrlFilters — URL params sync, type-safe, reset, activeCount |
+
+**10 nových souborů, 1031 řádků, TSC clean.**
+
+---
+
+## Všechny 4 sprinty DONE — 28/42 tasků implementováno ✅
+
 ## P0 — CRITICAL (všechny DONE ✅)
 
 ### UX-001: Sémantické design tokeny (finance, SLA, PII)
