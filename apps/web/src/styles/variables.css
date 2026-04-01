@@ -105,6 +105,11 @@
   --card-shadow: var(--shadow-card);
   --card-radius: var(--radius-lg);
 
+  /* Surface — readable aliases */
+  --surface: var(--white);
+  --surface-2: var(--gray-50);
+  --text: var(--dark);
+
   /* Spacing shortcuts (backward compat) */
   --sp-1: 4px;
   --sp-2: 8px;
@@ -112,4 +117,55 @@
   --sp-4: 16px;
   --sp-5: 24px;
   --sp-6: 32px;
+}
+
+/* ── Dark Mode ──────────────────────────────────────────────── */
+
+[data-theme="dark"] {
+  --dark: #f9fafb;
+  --white: #111827;
+  --gray-50: #1f2937;
+  --gray-100: #374151;
+  --gray-200: #4b5563;
+  --gray-300: #6b7280;
+  --gray-400: #9ca3af;
+  --gray-500: #d1d5db;
+  --gray-600: #e5e7eb;
+  --gray-700: #f3f4f6;
+  --gray-800: #f9fafb;
+
+  --text-primary: #f9fafb;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  --border: #374151;
+  --border-hover: #4b5563;
+
+  --surface: #1f2937;
+  --surface-2: #111827;
+  --text: #f9fafb;
+
+  --color-surface: #1f2937;
+  --color-surface-elevated: #374151;
+  --color-border-default: #4b5563;
+
+  --content-bg: #111827;
+  --card-bg: #1f2937;
+
+  --sidebar-bg: #111827;
+  --sidebar-border: #374151;
+  --sidebar-text: #9ca3af;
+  --sidebar-text-hover: #e5e7eb;
+  --sidebar-hover: #1f2937;
+  --sidebar-logo-color: #f9fafb;
+
+  --color-finance-positive: #4ade80;
+  --color-finance-negative: #f87171;
+  --color-finance-neutral: #9ca3af;
+
+  --color-sla-ok: #4ade80;
+  --color-sla-warning: #fbbf24;
+  --color-sla-breach: #f87171;
+
+  --color-pii-badge: #fbbf24;
+  --color-pii-bg: #422006;
 }

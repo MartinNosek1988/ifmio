@@ -26,3 +26,8 @@ export { WhatIfPreview } from './WhatIfPreview';
 export { SlaBadge, SlaProgressBar } from './SlaBadge';
 export { LoadingSkeleton } from './LoadingSkeleton';
 export { OfflineBanner } from './OfflineBanner';
+export { KanbanBoard } from './KanbanBoard';
+export { ResponsiveTable } from './ResponsiveTable';
+export type { RColumn } from './ResponsiveTable';
+export { AuditTimeline } from './AuditTimeline';
+export { GdprErasureWizard } from './GdprErasureWizard';
