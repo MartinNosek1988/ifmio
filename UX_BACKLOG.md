@@ -138,6 +138,18 @@ P2 zbylé + P3.
 
 **12 nových souborů, 1020 řádků, TSC clean. Žádné breaking changes.**
 
+## ✅ DONE — Sprint UX-2 Core Flows (commity b3a8d6a → 6b2ff49, 2026-04-01)
+
+| ID | Task | Status |
+|----|------|--------|
+| UX-007 | PropertyForm refaktor | ✅ 4 FormSection, inline validace, podmíněná viditelnost, PII badge, FormFooter |
+| UX-008 | InvoiceForm refaktor | ✅ 4 sekce, CurrencyInput/Display, computed DPH/celkem, mono font na symbolech |
+| UX-009 | UnitForm refaktor | ✅ 4 FormSection, podmíněná viditelnost dle spaceType, FormFooter |
+| UX-010 | ResidentForm PII | ✅ PiiBadge na 8 PII polích (jméno, email, telefon, datum narození, adresa) |
+| UX-011 | Konto CurrencyDisplay | ✅ Summary + detail modal CurrencyDisplay, čistý stav size="lg", mono font |
+| UX-012 | Breadcrumbs | ✅ Auto-generace z URL, 30+ route labels, mobile back link, AppShell integrace |
+| UX-013 | i18n property | ✅ 50+ klíčů v cs.json namespace "property" |
+
 ---
 
 ## P0 — CRITICAL (všechny DONE ✅)
