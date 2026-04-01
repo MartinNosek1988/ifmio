@@ -150,6 +150,20 @@ P2 zbylé + P3.
 | UX-012 | Breadcrumbs | ✅ Auto-generace z URL, 30+ route labels, mobile back link, AppShell integrace |
 | UX-013 | i18n property | ✅ 50+ klíčů v cs.json namespace "property" |
 
+## ✅ DONE — Sprint UX-3 Consistency (commit a1cf653, 2026-04-01)
+
+| ID | Task | Status |
+|----|------|--------|
+| UX-014 | Finance Explain Layer | ✅ ExplainTooltip — (i) ikona, popover s breakdown, CurrencyDisplay |
+| UX-015 | What-If Preview Dialog | ✅ WhatIfPreview — impacts, warnings, CTA, CurrencyDisplay |
+| UX-016 | SLA barvy v helpdesku | ✅ SlaBadge + SlaProgressBar — countdown, ok/warning/breach, blikání |
+| UX-017 | Empty/Error/Loading States | ✅ LoadingSkeleton (table/detail/card) s pulse animací |
+| UX-018 | Confirmation dialogy | ✅ Existující ConfirmDialog zachován (již kompletní) |
+| UX-019 | i18n helpdesk + WO | ✅ 150+ klíčů v cs.json (helpdesk, workOrder, finance namespaces) |
+| UX-020 | Error handling | ✅ handleApiError per HTTP status + parseApiError + OfflineBanner |
+
+**7 nových komponent/utilit, 649 řádků, TSC clean.**
+
 ---
 
 ## P0 — CRITICAL (všechny DONE ✅)
