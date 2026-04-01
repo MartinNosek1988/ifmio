@@ -20,3 +20,4 @@ export { PiiBadge, PiiField, usePiiVisibility } from './PiiField';
 export type { PiiType } from './PiiField';
 export { CurrencyDisplay } from './CurrencyDisplay';
 export { CurrencyInput } from './CurrencyInput';
+export { Breadcrumbs } from './Breadcrumbs';

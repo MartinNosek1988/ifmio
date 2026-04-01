@@ -147,5 +147,52 @@
     "sk": "Slovenčina",
     "de": "Deutsch",
     "uk": "Українська"
+  },
+  "property": {
+    "title": "Nemovitosti",
+    "create": "Nová nemovitost",
+    "edit": "Upravit nemovitost",
+    "delete": "Smazat nemovitost",
+    "deleteConfirm": "Opravdu chcete smazat nemovitost {{name}}?",
+    "fields": {
+      "name": "Název",
+      "type": "Typ nemovitosti",
+      "ownership": "Typ vlastnictví",
+      "address": "Adresa",
+      "city": "Město",
+      "postalCode": "PSČ",
+      "ico": "IČ",
+      "dic": "DIČ",
+      "isVatPayer": "Plátce DPH",
+      "legalMode": "Právní forma",
+      "accountingSystem": "Účetní systém",
+      "contactName": "Kontaktní osoba",
+      "contactEmail": "Kontaktní email",
+      "contactPhone": "Kontaktní telefon",
+      "managedFrom": "Ve správě od",
+      "managedTo": "Ve správě do",
+      "cadastralArea": "Katastrální území",
+      "landRegistrySheet": "List vlastnictví (LV)",
+      "note": "Poznámka"
+    },
+    "sections": {
+      "identification": "Identifikace",
+      "legal": "Právní a účetní údaje",
+      "legalSubtitle": "Právní forma, IČ, DIČ, účetní systém",
+      "contacts": "Kontaktní údaje",
+      "contactsSubtitle": "Kontaktní osoba pro nemovitost",
+      "management": "Správa a katastr"
+    },
+    "empty": {
+      "title": "Zatím žádné nemovitosti",
+      "description": "Začněte přidáním první nemovitosti do systému.",
+      "cta": "Přidat nemovitost"
+    },
+    "toast": {
+      "created": "Nemovitost vytvořena",
+      "updated": "Nemovitost uložena",
+      "deleted": "Nemovitost smazána",
+      "error": "Nepodařilo se uložit nemovitost"
+    }
   }
 }
