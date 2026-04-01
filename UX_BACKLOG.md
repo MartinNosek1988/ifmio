@@ -125,7 +125,22 @@ P2 zbylé + P3.
 
 ---
 
-## P0 — CRITICAL
+## ✅ DONE — Sprint UX-1 Foundation (commit 55c8f82, 2026-04-01)
+
+| ID | Task | Status |
+|----|------|--------|
+| UX-001 | Sémantické design tokeny | ✅ variables.css rozšířen o finance/SLA/PII/surface/mono tokeny |
+| UX-002 | FormSection component | ✅ FormSection + FormHeader + FormFooter |
+| UX-003 | RoleGate + usePermission | ✅ usePermission hook + RoleGate component |
+| UX-004 | PII badge + maskování | ✅ PiiBadge + PiiField + usePiiVisibility (auto-hide 30s) |
+| UX-005 | CurrencyInput/Display | ✅ CurrencyInput (CZ formát) + CurrencyDisplay (colorized) + currency utils |
+| UX-006 | Inline validace pattern | ✅ FormField + useFieldValidation (blur-first) + 14 validators |
+
+**12 nových souborů, 1020 řádků, TSC clean. Žádné breaking changes.**
+
+---
+
+## P0 — CRITICAL (všechny DONE ✅)
 
 ### UX-001: Sémantické design tokeny (finance, SLA, PII)
 
