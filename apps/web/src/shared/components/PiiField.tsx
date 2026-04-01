@@ -90,7 +90,7 @@ export function usePiiVisibility(piiType: PiiType) {
   const alwaysVisible = vis.visible.includes('*') || (currentRole && vis.visible.includes(currentRole))
   const isVisible = alwaysVisible || revealed || isAdmin
 
-  const canReveal = !alwaysVisible && !isAdmin && currentRole !== null
+  const canReveal = !alwaysVisible && !isAdmin && currentRole !== null && vis.masked.includes(currentRole)
   const reveal = useCallback(() => setRevealed(true), [])
   const hide = useCallback(() => setRevealed(false), [])
 

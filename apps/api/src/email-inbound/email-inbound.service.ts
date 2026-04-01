@@ -42,7 +42,15 @@ export class EmailInboundService {
     const hmac = crypto.createHmac('sha256', this.signingKey);
     hmac.update(timestamp + token);
     const expected = hmac.digest('hex');
-    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+    try {
+      const signatureBuf = Buffer.from(signature, 'hex');
+      const expectedBuf = Buffer.from(expected, 'hex');
+      if (signatureBuf.length !== expectedBuf.length) return false;
+      return crypto.timingSafeEqual(signatureBuf, expectedBuf);
+    } catch {
+      this.logger.warn('Invalid Mailgun signature format');
+      return false;
+    }
   }
 
   // ─── Main handler ─────────────────────────────────────────

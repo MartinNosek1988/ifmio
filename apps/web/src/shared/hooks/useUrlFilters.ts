@@ -26,9 +26,11 @@ export function useUrlFilters<T extends Record<string, unknown>>(config: FilterC
         continue
       }
       switch (cfg.type) {
-        case 'number':
-          result[key] = Number(raw) || cfg.default
+        case 'number': {
+          const n = Number(raw)
+          result[key] = Number.isNaN(n) ? cfg.default : n
           break
+        }
         case 'boolean':
           result[key] = raw === 'true'
           break

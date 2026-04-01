@@ -1,7 +1,7 @@
 import {
   IsString,
   IsOptional,
-  IsEnum,
+  IsIn,
   IsNotEmpty,
   IsNumber,
   IsDateString,
@@ -18,13 +18,13 @@ export class CreateWorkOrderDto {
   description?: string
 
   @IsOptional()
-  @IsEnum(['corrective', 'preventive', 'inspection', 'emergency'], {
+  @IsIn(['corrective', 'preventive', 'inspection', 'emergency'], {
     message: 'workType musí být: corrective, preventive, inspection, emergency',
   })
   workType?: string
 
   @IsOptional()
-  @IsEnum(['nizka', 'normalni', 'vysoka', 'kriticka'], {
+  @IsIn(['nizka', 'normalni', 'vysoka', 'kriticka'], {
     message: 'priority musí být: nizka, normalni, vysoka, kriticka',
   })
   priority?: string
@@ -96,11 +96,11 @@ export class UpdateWorkOrderDto {
   description?: string
 
   @IsOptional()
-  @IsEnum(['corrective', 'preventive', 'inspection', 'emergency'])
+  @IsIn(['corrective', 'preventive', 'inspection', 'emergency'])
   workType?: string
 
   @IsOptional()
-  @IsEnum(['nizka', 'normalni', 'vysoka', 'kriticka'])
+  @IsIn(['nizka', 'normalni', 'vysoka', 'kriticka'])
   priority?: string
 
   @IsOptional()
@@ -190,7 +190,7 @@ export class UpdateWorkOrderDto {
 
 export class ChangeStatusDto {
   @IsString()
-  @IsEnum(['nova', 'v_reseni', 'vyresena', 'uzavrena', 'zrusena'], {
+  @IsIn(['nova', 'v_reseni', 'vyresena', 'uzavrena', 'zrusena'], {
     message: 'status musí být: nova, v_reseni, vyresena, uzavrena, zrusena',
   })
   status!: string

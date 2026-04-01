@@ -1,7 +1,7 @@
 import {
   IsString,
   IsOptional,
-  IsEnum,
+  IsIn,
   IsNotEmpty,
   IsNumber,
   IsDateString,
@@ -14,7 +14,7 @@ export class CreateAssetDto {
   @IsNotEmpty({ message: 'Název zařízení je povinný' })
   name!: string
 
-  @IsEnum(['tzb', 'stroje', 'vybaveni', 'vozidla', 'it', 'ostatni'], {
+  @IsIn(['tzb', 'stroje', 'vybaveni', 'vozidla', 'it', 'ostatni'], {
     message: 'category musí být: tzb, stroje, vybaveni, vozidla, it, ostatni',
   })
   category!: string
@@ -48,7 +48,7 @@ export class CreateAssetDto {
   location?: string
 
   @IsOptional()
-  @IsEnum(['aktivni', 'servis', 'vyrazeno', 'neaktivni'])
+  @IsIn(['aktivni', 'servis', 'vyrazeno', 'neaktivni'])
   status?: string
 
   @IsOptional()
@@ -80,7 +80,7 @@ export class UpdateAssetDto {
   name?: string
 
   @IsOptional()
-  @IsEnum(['tzb', 'stroje', 'vybaveni', 'vozidla', 'it', 'ostatni'])
+  @IsIn(['tzb', 'stroje', 'vybaveni', 'vozidla', 'it', 'ostatni'])
   category?: string
 
   @IsOptional()
@@ -112,7 +112,7 @@ export class UpdateAssetDto {
   location?: string
 
   @IsOptional()
-  @IsEnum(['aktivni', 'servis', 'vyrazeno', 'neaktivni'])
+  @IsIn(['aktivni', 'servis', 'vyrazeno', 'neaktivni'])
   status?: string
 
   @IsOptional()

@@ -1,7 +1,7 @@
 import {
   IsString,
   IsOptional,
-  IsEnum,
+  IsIn,
   IsNotEmpty,
   IsDateString,
   IsBoolean,
@@ -17,7 +17,7 @@ export class CreateMeterDto {
   serialNumber!: string
 
   @IsOptional()
-  @IsEnum(['elektrina', 'voda_studena', 'voda_tepla', 'plyn', 'teplo'], {
+  @IsIn(['elektrina', 'voda_studena', 'voda_tepla', 'plyn', 'teplo'], {
     message: 'meterType musí být: elektrina, voda_studena, voda_tepla, plyn, teplo',
   })
   meterType?: string
@@ -65,7 +65,7 @@ export class UpdateMeterDto {
   serialNumber?: string
 
   @IsOptional()
-  @IsEnum(['elektrina', 'voda_studena', 'voda_tepla', 'plyn', 'teplo'])
+  @IsIn(['elektrina', 'voda_studena', 'voda_tepla', 'plyn', 'teplo'])
   meterType?: string
 
   @IsOptional()
