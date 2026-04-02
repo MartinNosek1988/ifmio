@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { MetersService } from './meters.service'
+import { CreateMeterDto, UpdateMeterDto } from './dto/meter.dto'
 import { Roles } from '../common/decorators/roles.decorator'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
 import { AuditAction } from '../common/decorators/audit.decorator'
@@ -43,19 +44,7 @@ export class MetersController {
   @Roles(...ROLES_OPS)
   @AuditAction('meter', 'create')
   @ApiOperation({ summary: 'Vytvořit měřidlo' })
-  create(@CurrentUser() user: AuthUser, @Body() dto: {
-    name: string
-    serialNumber: string
-    meterType?: string
-    unit?: string
-    propertyId?: string
-    unitId?: string
-    installDate?: string
-    calibrationDue?: string
-    manufacturer?: string
-    location?: string
-    note?: string
-  }) {
+  create(@CurrentUser() user: AuthUser, @Body() dto: CreateMeterDto) {
     return this.service.create(user, dto)
   }
 
@@ -66,20 +55,7 @@ export class MetersController {
   update(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
-    @Body() dto: {
-      name?: string
-      serialNumber?: string
-      meterType?: string
-      unit?: string
-      propertyId?: string
-      unitId?: string
-      installDate?: string
-      calibrationDue?: string
-      manufacturer?: string
-      location?: string
-      isActive?: boolean
-      note?: string
-    },
+    @Body() dto: UpdateMeterDto,
   ) {
     return this.service.update(user, id, dto)
   }

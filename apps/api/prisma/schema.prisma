@@ -100,6 +100,10 @@ model Tenant {
   aiExtractionBatches        AiExtractionBatch[]
   invoiceTrainingSamples     InvoiceTrainingSample[]
   invoiceComments            InvoiceComment[]
+  emailInboundConfig         EmailInboundConfig?
+  emailInboundLogs           EmailInboundLog[]
+  pvkCredentials             PvkCredential[]
+  pvkSyncLogs                PvkSyncLog[]
 
   @@map("tenants")
 }
@@ -870,6 +874,9 @@ model Invoice {
   pdfBase64      String?     @db.Text
   note           String?
   tags           String[]    @default([])
+  source         String?     // "manual" | "pdf_upload" | "isdoc_upload" | "email" | "batch" | "pvk"
+  emailFrom      String?     // sender email (for source="email")
+  emailSubject   String?     // email subject
   deletedAt      DateTime?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
@@ -4415,4 +4422,96 @@ model Activity {
   @@index([tenantId, entityType, entityId])
   @@index([tenantId, assignedToId, status, deadline])
   @@map("activities")
+}
+
+// ─── EMAIL INBOUND ────────────────────────────────────────────────
+
+model EmailInboundConfig {
+  id           String   @id @default(cuid())
+  tenantId     String   @unique
+  slug         String   @unique  // "svj789" → invoice@svj789.ifmio.com
+  isActive     Boolean  @default(true)
+  autoApprove  Boolean  @default(false)
+  allowedFrom  String[] @default([])  // empty = accept all
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("email_inbound_configs")
+}
+
+model EmailInboundLog {
+  id              String   @id @default(cuid())
+  tenantId        String
+  messageId       String?  // Mailgun Message-Id
+  fromEmail       String
+  fromName        String?
+  subject         String?
+  attachments     Int      @default(0)
+  status          String   // "processed" | "failed" | "rejected" | "no_attachments"
+  errorMessage    String?
+  invoicesCreated Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@map("email_inbound_logs")
+}
+
+// ─── PVK INTEGRATION ──────────────────────────────────────────────
+
+model PvkCredential {
+  id                String    @id @default(cuid())
+  tenantId          String
+  email             String
+  passwordEncrypted String    // AES-256-GCM via CryptoService
+  lastSyncAt        DateTime?
+  lastSyncStatus    String?   // "ok" | "auth_error" | "api_error"
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  tenant            Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@map("pvk_credentials")
+}
+
+model PvkSyncLog {
+  id         String   @id @default(cuid())
+  tenantId   String
+  syncedAt   DateTime @default(now())
+  invoices   Int      @default(0)
+  payments   Int      @default(0)
+  status     String   // "ok" | "auth_error" | "api_error"
+  error      String?
+  durationMs Int?
+
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, syncedAt])
+  @@map("pvk_sync_logs")
+}
+
+model PvkWaterDeduction {
+  id              String   @id @default(cuid())
+  tenantId        String
+  pvkPlaceId      Int      // PVK consumptionPlace ID
+  placeAddress    String
+  dateFrom        DateTime
+  dateTo          DateTime
+  meterNumber     String
+  valueFrom       Float
+  valueTo         Float
+  amountM3        Float
+  avgPerDay       Float
+  measurementType String
+  intervalDays    Int
+  syncedAt        DateTime @default(now())
+
+  @@unique([tenantId, pvkPlaceId, dateFrom, meterNumber])
+  @@index([tenantId])
+  @@map("pvk_water_deductions")
 }

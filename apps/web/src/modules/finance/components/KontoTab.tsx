@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Badge, Button, Modal, LoadingState, EmptyState } from '../../../shared/components';
+import { CurrencyDisplay } from '../../../shared/components/CurrencyDisplay';
 import OpeningBalanceWizard from './OpeningBalanceWizard';
 import { kontoApi } from '../api/konto.api';
 import type { OwnerAccountSummary as AccountForExport } from '../api/konto.api';
@@ -61,11 +62,20 @@ export default function KontoTab() {
       {accounts.length === 0 ? <EmptyState title="Žádná konta" description="Konta se vytvoří automaticky při generování předpisů." /> : null}
       {accounts.length === 0 ? null : <>
 
-      {/* Summary */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 16, fontSize: '0.85rem' }}>
-        <span>Celkem dluh: <strong style={{ color: '#ef4444' }}>{fmtCzk(totalDebt)}</strong></span>
-        <span>Celkem přeplatky: <strong style={{ color: '#10b981' }}>{fmtCzk(totalCredit)}</strong></span>
-        <span>Čistý stav: <strong style={{ color: balanceColor(net) }}>{fmtCzk(net)}</strong></span>
+      {/* Summary — CurrencyDisplay */}
+      <div style={{ display: 'flex', gap: 24, marginBottom: 16, flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 2 }}>Celkem dluh</div>
+          <CurrencyDisplay amount={-totalDebt} size="md" />
+        </div>
+        <div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 2 }}>Celkem přeplatky</div>
+          <CurrencyDisplay amount={totalCredit} size="md" />
+        </div>
+        <div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 2 }}>Čistý stav</div>
+          <CurrencyDisplay amount={-net} size="lg" />
+        </div>
       </div>
 
       {/* Accounts table */}
@@ -88,7 +98,7 @@ export default function KontoTab() {
                 <tr key={a.id} onClick={() => setSelectedAccount(a)} style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }}>
                   <td style={td}><span style={{ fontWeight: 500 }}>{name}</span></td>
                   <td style={td}>{a.unit.name}{a.unit.knDesignation ? ` (${a.unit.knDesignation})` : ''}</td>
-                  <td style={{ ...td, textAlign: 'right', fontWeight: 600, fontFamily: 'monospace', color: balanceColor(bal) }}>{fmtCzk(bal)}</td>
+                  <td style={{ ...td, textAlign: 'right' }}><CurrencyDisplay amount={-bal} size="sm" /></td>
                   <td style={td}>{a.lastPostingAt ? fmtDate(a.lastPostingAt) : '—'}</td>
                   <td style={td}>
                     {bal > 0.005 ? <Badge variant="red">Dluh</Badge> : bal < -0.005 ? <Badge variant="green">Přeplatek</Badge> : <Badge variant="muted">Vyrovnáno</Badge>}
@@ -131,8 +141,8 @@ function KontoDetailModal({ account, onClose }: { account: OwnerAccountSummary; 
       <div style={{ marginBottom: 16 }}>
         <h2 style={{ margin: 0, fontSize: '1.2rem' }}>{name}</h2>
         <div className="text-muted" style={{ fontSize: '0.85rem' }}>Jednotka: {account.unit.name}</div>
-        <div style={{ fontSize: '1.5rem', fontWeight: 700, color: balanceColor(bal), marginTop: 8 }}>
-          {fmtCzk(bal)}
+        <div style={{ marginTop: 8 }}>
+          <CurrencyDisplay amount={-bal} size="lg" />
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
           <Button size="sm" onClick={() => setShowAdjust(true)}>Ruční úprava</Button>

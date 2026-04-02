@@ -1,4 +1,5 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common'
+import { SanitizePipe } from '../common/pipes/sanitize.pipe'
 import { Test, TestingModule } from '@nestjs/testing'
 import {
   FastifyAdapter,
@@ -25,7 +26,7 @@ export async function createTestApp(): Promise<TestApp> {
   const app = moduleFixture.createNestApplication<NestFastifyApplication>(
     new FastifyAdapter(),
   )
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
+  app.useGlobalPipes(new SanitizePipe(), new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }))
   app.setGlobalPrefix('api/v1')
   await app.init()
   await app.getHttpAdapter().getInstance().ready()
