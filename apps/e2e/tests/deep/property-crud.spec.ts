@@ -24,7 +24,6 @@ test.describe('Property CRUD — E2E', () => {
   test('stránka /properties se načte', async ({ page }) => {
     await page.goto('/properties')
     await page.waitForLoadState('domcontentloaded')
-    // KPI karty nebo tabulka
     await expect(page.locator('table, [data-testid="properties-list"]').first()).toBeVisible({
       timeout: 10_000,
     })
@@ -39,30 +38,38 @@ test.describe('Property CRUD — E2E', () => {
     await addBtn.click()
     await page.waitForTimeout(500)
 
-    // Vyplnění formuláře
+    // Vyplnění formuláře — fill + blur pro inline validaci
     const nameInput = page.locator('[data-testid="property-form-name"], input[name="name"]').first()
     await nameInput.fill(`E2E Bytový dům ${Date.now()}`)
+    await nameInput.blur()
 
     const addressInput = page.locator('[data-testid="property-form-address"], input[name="address"]').first()
     if (await addressInput.isVisible()) {
       await addressInput.fill('Testovací 123')
+      await addressInput.blur()
     }
 
     const cityInput = page.locator('[data-testid="property-form-city"], input[name="city"]').first()
     if (await cityInput.isVisible()) {
       await cityInput.fill('Praha')
+      await cityInput.blur()
     }
 
     const postalInput = page.locator('[data-testid="property-form-postalCode"], input[name="postalCode"]').first()
     if (await postalInput.isVisible()) {
       await postalInput.fill('110 00')
+      await postalInput.blur()
     }
+
+    // Ověř že submit button je enabled
+    const submitBtn = page.locator('[data-testid="property-form-save"], button:has-text("Uložit"), button:has-text("Vytvořit")').first()
+    await page.waitForTimeout(300) // wait for validation to settle
+    await expect(submitBtn).toBeEnabled({ timeout: 3000 })
 
     // Submit
     const responsePromise = page.waitForResponse(
       (r: any) => r.url().includes('/api/v1/properties') && r.request().method() === 'POST',
     )
-    const submitBtn = page.locator('[data-testid="property-form-save"], button[type="submit"], button:has-text("Uložit"), button:has-text("Vytvořit")').first()
     await submitBtn.click()
 
     const response = await responsePromise
@@ -79,7 +86,6 @@ test.describe('Property CRUD — E2E', () => {
     await page.goto(`/properties/${createdPropertyId}`)
     await page.waitForLoadState('domcontentloaded')
     await page.waitForTimeout(1000)
-    // Verify page loaded (no error state)
     const errorState = page.locator('[data-testid="error-state"], .error-state')
     await expect(errorState).not.toBeVisible({ timeout: 5000 }).catch(() => {})
   })
