@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Users, Search } from 'lucide-react';
 import { integrationsApi } from '../../integrations/api/integrations.api';
-import { Modal, Button } from '../../../shared/components';
+import { Modal } from '../../../shared/components';
 import { FormSection, FormFooter } from '../../../shared/components/FormSection';
 import { FormField } from '../../../shared/components/FormField';
 import { CurrencyInput } from '../../../shared/components/CurrencyInput';

@@ -1,8 +1,7 @@
 import { useState, lazy, Suspense } from 'react';
-import { Modal, Button } from '../../shared/components';
-import { FormSection, FormHeader, FormFooter } from '../../shared/components/FormSection';
+import { Modal } from '../../shared/components';
+import { FormSection, FormFooter } from '../../shared/components/FormSection';
 import { FormField } from '../../shared/components/FormField';
-import { PiiBadge } from '../../shared/components/PiiField';
 import { useCreateProperty, useUpdateProperty } from './use-properties';
 import type { ApiProperty, PropertyLegalMode, AccountingSystemType } from './properties-api';
 import { Info, Search, Pencil, Upload } from 'lucide-react';

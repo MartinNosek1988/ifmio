@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import { useIsMobile } from '../hooks/useMediaQuery'
-import { MoreVertical } from 'lucide-react'
 
 interface RColumn<T> {
   key: string
