@@ -13,6 +13,7 @@ interface CurrencyInputProps {
   required?: boolean
   placeholder?: string
   name?: string
+  'data-testid'?: string
 }
 
 /**
@@ -36,6 +37,7 @@ export function CurrencyInput({
   required,
   placeholder = '0,00',
   name,
+  ...rest
 }: CurrencyInputProps) {
   const [displayValue, setDisplayValue] = useState(() =>
     value != null ? formatCurrencyValue(value) : '',
@@ -107,6 +109,7 @@ export function CurrencyInput({
           type="text"
           inputMode="decimal"
           name={name}
+          data-testid={rest['data-testid']}
           value={displayValue}
           onChange={handleChange}
           onBlur={handleBlur}

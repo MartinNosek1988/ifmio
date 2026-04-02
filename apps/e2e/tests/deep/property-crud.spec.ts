@@ -62,7 +62,7 @@ test.describe('Property CRUD — E2E', () => {
     const responsePromise = page.waitForResponse(
       (r: any) => r.url().includes('/api/v1/properties') && r.request().method() === 'POST',
     )
-    const submitBtn = page.locator('button[type="submit"], button:has-text("Uložit"), button:has-text("Vytvořit")').first()
+    const submitBtn = page.locator('[data-testid="property-form-save"], button[type="submit"], button:has-text("Uložit"), button:has-text("Vytvořit")').first()
     await submitBtn.click()
 
     const response = await responsePromise

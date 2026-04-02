@@ -242,6 +242,7 @@ export function InvoiceForm({ invoice, transactions, onClose }: {
               error={errors.amountBase}
               required
               name="amountBase"
+              data-testid="finance-doklad-form-amount"
             />
           </div>
           <FormField label="DPH sazba" name="vatRate">
