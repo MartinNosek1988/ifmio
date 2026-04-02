@@ -78,14 +78,14 @@ describe('Scope Gaps PR3 (e2e)', () => {
     // ─── Seed assets on each property ──────────────────────────
     const aA = await ownerApi
       .post('/api/v1/assets', {
-        name: 'Asset A', propertyId: propertyA,
+        name: 'Asset A', category: 'tzb', propertyId: propertyA,
       })
       .expect(201)
     assetA = aA.body.id
 
     const aB = await ownerApi
       .post('/api/v1/assets', {
-        name: 'Asset B', propertyId: propertyB,
+        name: 'Asset B', category: 'tzb', propertyId: propertyB,
       })
       .expect(201)
     assetB = aB.body.id
@@ -175,7 +175,7 @@ describe('Scope Gaps PR3 (e2e)', () => {
 
   it('assets: scoped user cannot create asset for foreign property', async () => {
     await managerApi
-      .post('/api/v1/assets', { name: 'Sneaky', propertyId: propertyB })
+      .post('/api/v1/assets', { name: 'Sneaky', category: 'tzb', propertyId: propertyB })
       .expect(403)
   })
 
