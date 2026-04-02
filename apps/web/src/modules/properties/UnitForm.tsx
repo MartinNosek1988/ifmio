@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Modal, Button } from '../../shared/components';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Modal } from '../../shared/components';
+import { FormSection, FormFooter } from '../../shared/components/FormSection';
+import { FormField } from '../../shared/components/FormField';
 import { propertiesApi } from './properties-api';
 import type { ApiUnit, SpaceTypeValue } from './properties-api';
 
@@ -49,8 +50,6 @@ export default function UnitForm({ propertyId, unit, onClose, onSuccess }: Props
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [showTech, setShowTech] = useState(false);
-  const [showValidity, setShowValidity] = useState(!!unit?.validFrom);
 
   const set = (key: string, value: string | boolean) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -66,7 +65,7 @@ export default function UnitForm({ propertyId, unit, onClose, onSuccess }: Props
         spaceType: form.spaceType,
         disposition: form.disposition || null,
         heatingArea: form.heatingArea ? parseFloat(form.heatingArea) : null,
-        commonAreaShare: share != null && !isNaN(share) ? share / 100 : null, // UI % → DB fraction
+        commonAreaShare: share != null && !isNaN(share) ? share / 100 : null,
         personCount: form.personCount ? parseInt(form.personCount) : null,
         hasElevator: form.hasElevator || null,
         heatingMethod: form.heatingMethod || null,
@@ -110,151 +109,109 @@ export default function UnitForm({ propertyId, unit, onClose, onSuccess }: Props
 
   const hintStyle: React.CSSProperties = { fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 };
 
+  // Show residential-specific fields
+  const isResidential = ['RESIDENTIAL', 'NON_RESIDENTIAL'].includes(form.spaceType);
+
   return (
     <Modal
       open onClose={onClose}
       title={isEdit ? `Upravit — ${unit!.name}` : 'Nová jednotka'}
-      footer={
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <Button onClick={onClose} data-testid="unit-form-cancel">Zrušit</Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={mutation.isPending} data-testid="unit-form-save">
-            {mutation.isPending ? 'Ukládám...' : isEdit ? 'Uložit' : 'Vytvořit'}
-          </Button>
-        </div>
-      }
+      footer={<FormFooter onCancel={onClose} onSubmit={handleSubmit} isSubmitting={mutation.isPending} submitLabel={isEdit ? 'Uložit' : 'Vytvořit'} />}
     >
-      {/* ── Identifikace ─────────────────────────────────────── */}
-      <div style={{ marginBottom: 16 }}>
-        <label className="form-label">Název jednotky *</label>
-        <input data-testid="unit-form-name" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Byt 1, Garáž G1..." style={inputStyle('name')} />
-        {errors.name && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.name}</div>}
-      </div>
+      {/* ── Sekce 1: Identifikace (vždy otevřená) ─────────────── */}
+      <FormSection title="Identifikace" collapsible={false}>
+        <FormField label="Název jednotky" name="name" error={errors.name}>
+          <input data-testid="unit-form-name" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Byt 1, Garáž G1..." style={inputStyle('name')} />
+        </FormField>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-        <div>
-          <label className="form-label">KN označení</label>
-          <input data-testid="unit-form-knDesignation" value={form.knDesignation} onChange={(e) => set('knDesignation', e.target.value)} placeholder="např. 123/45" maxLength={30} style={inputStyle()} />
-          <div style={hintStyle}>Z katastru nemovitostí</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <FormField label="KN označení" name="knDesignation" required={false} helpText="Z katastru nemovitostí">
+            <input data-testid="unit-form-knDesignation" value={form.knDesignation} onChange={(e) => set('knDesignation', e.target.value)} placeholder="např. 123/45" maxLength={30} style={inputStyle()} />
+          </FormField>
+          <FormField label="Vlastní označení" name="ownDesignation" required={false}>
+            <input value={form.ownDesignation} onChange={(e) => set('ownDesignation', e.target.value)} placeholder="např. B204" maxLength={100} style={inputStyle()} />
+          </FormField>
         </div>
-        <div>
-          <label className="form-label">Vlastní označení</label>
-          <input value={form.ownDesignation} onChange={(e) => set('ownDesignation', e.target.value)} placeholder="např. B204" maxLength={100} style={inputStyle()} />
-        </div>
-      </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
-        <div>
-          <label className="form-label">Typ prostoru</label>
-          <select data-testid="unit-form-spaceType" value={form.spaceType} onChange={(e) => set('spaceType', e.target.value)} style={inputStyle()}>
-            {SPACE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-          </select>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+          <FormField label="Typ prostoru" name="spaceType">
+            <select data-testid="unit-form-spaceType" value={form.spaceType} onChange={(e) => set('spaceType', e.target.value)} style={inputStyle()}>
+              {SPACE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+          </FormField>
+          {isResidential && (
+            <FormField label="Dispozice" name="disposition" required={false}>
+              <input value={form.disposition} onChange={(e) => set('disposition', e.target.value)} placeholder="2+kk" maxLength={20} style={inputStyle()} />
+            </FormField>
+          )}
+          <FormField label="Patro" name="floor" required={false}>
+            <input type="number" data-testid="unit-form-floor" value={form.floor} onChange={(e) => set('floor', e.target.value)} placeholder="1" style={inputStyle()} />
+          </FormField>
         </div>
-        <div>
-          <label className="form-label">Dispozice</label>
-          <input value={form.disposition} onChange={(e) => set('disposition', e.target.value)} placeholder="2+kk" maxLength={20} style={inputStyle()} />
-        </div>
-        <div>
-          <label className="form-label">Patro</label>
-          <input type="number" data-testid="unit-form-floor" value={form.floor} onChange={(e) => set('floor', e.target.value)} placeholder="1" style={inputStyle()} />
-        </div>
-      </div>
+      </FormSection>
 
-      {/* ── Plochy a rozúčtování ─────────────────────────────── */}
-      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, marginBottom: 16 }}>
-        <h4 style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 10 }}>Plochy a rozúčtování</h4>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 10 }}>
-          <div>
-            <label className="form-label">Podlahová plocha (m²)</label>
+      {/* ── Sekce 2: Plochy a rozúčtování ─────────────────────── */}
+      <FormSection title="Plochy a rozúčtování">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <FormField label="Podlahová plocha (m²)" name="area" required={false}>
             <input type="number" step="0.01" min="0" data-testid="unit-form-area" value={form.area} onChange={(e) => set('area', e.target.value)} placeholder="65" style={inputStyle()} />
-          </div>
-          <div>
-            <label className="form-label">Vytápěná plocha (m²)</label>
+          </FormField>
+          <FormField label="Vytápěná plocha (m²)" name="heatingArea" required={false} helpText="Pokud se liší od podlahové — pro rozúčtování tepla">
             <input type="number" step="0.01" min="0" value={form.heatingArea} onChange={(e) => set('heatingArea', e.target.value)} style={inputStyle()} />
-            <div style={hintStyle}>Pokud se liší od podlahové — pro rozúčtování tepla</div>
-          </div>
+          </FormField>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div>
-            <label className="form-label">Podíl na spol. částech (%)</label>
+          <FormField label="Podíl na spol. částech (%)" name="commonAreaShare" error={errors.commonAreaShare} required={false} helpText="Z prohlášení vlastníka nebo katastru">
             <input data-testid="unit-form-commonAreaShare" type="number" step="0.0001" min="0" max="100" value={form.commonAreaShare} onChange={(e) => set('commonAreaShare', e.target.value)} placeholder="3.4567" style={inputStyle('commonAreaShare')} />
-            {errors.commonAreaShare && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.commonAreaShare}</div>}
-            <div style={hintStyle}>Z prohlášení vlastníka nebo katastru</div>
-          </div>
-          <div>
-            <label className="form-label">Počet osob</label>
+          </FormField>
+          <FormField label="Počet osob" name="personCount" required={false} helpText="Výchozí počet — rozúčtovací klíč">
             <input type="number" min="0" step="1" value={form.personCount} onChange={(e) => set('personCount', e.target.value)} placeholder="0" style={inputStyle()} />
-            <div style={hintStyle}>Výchozí počet — rozúčtovací klíč</div>
-          </div>
+          </FormField>
         </div>
-      </div>
+      </FormSection>
 
-      {/* ── Technické údaje (collapsible) ────────────────────── */}
-      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
-        <button onClick={() => setShowTech(!showTech)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text)', fontSize: '0.85rem', fontWeight: 600, padding: 0, marginBottom: showTech ? 10 : 0 }}>
-          Technické údaje {showTech ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-        </button>
-        {showTech && (
-          <div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem', cursor: 'pointer', marginBottom: 10 }}>
-              <input type="checkbox" checked={form.hasElevator} onChange={(e) => set('hasElevator', e.target.checked)} /> Výtah
-            </label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 10 }}>
-              <div>
-                <label className="form-label">Způsob vytápění</label>
-                <input value={form.heatingMethod} onChange={(e) => set('heatingMethod', e.target.value)} placeholder="ústřední, etážové..." style={inputStyle()} />
-              </div>
-              <div>
-                <label className="form-label">Koeficient vytápění</label>
-                <input type="number" step="0.01" min="0" value={form.heatingCoefficient} onChange={(e) => set('heatingCoefficient', e.target.value)} style={inputStyle()} />
-                <div style={hintStyle}>Standardní = 1.0</div>
-              </div>
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <label className="form-label">Koeficient TUV</label>
-              <input type="number" step="0.01" min="0" value={form.hotWaterCoefficient} onChange={(e) => set('hotWaterCoefficient', e.target.value)} style={inputStyle()} />
-              <div style={hintStyle}>Standardní = 1.0</div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div>
-                <label className="form-label">Plocha TUV (m²)</label>
-                <input type="number" step="0.01" min="0" value={form.tuvArea} onChange={(e) => set('tuvArea', e.target.value)} style={inputStyle()} />
-                <div style={hintStyle}>Pro rozúčtování teplé vody</div>
-              </div>
-              <div>
-                <label className="form-label">Symbol pro rozúčtovatele</label>
-                <input value={form.extAllocatorRef} onChange={(e) => set('extAllocatorRef', e.target.value)} maxLength={50} style={inputStyle()} />
-                <div style={hintStyle}>Jen při externím rozúčtovateli</div>
-              </div>
-            </div>
+      {/* ── Sekce 3: Technické údaje (collapsed) ──────────────── */}
+      <FormSection title="Technické údaje" defaultExpanded={false}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem', cursor: 'pointer', marginBottom: 10 }}>
+          <input type="checkbox" checked={form.hasElevator} onChange={(e) => set('hasElevator', e.target.checked)} /> Výtah
+        </label>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <FormField label="Způsob vytápění" name="heatingMethod" required={false}>
+            <input value={form.heatingMethod} onChange={(e) => set('heatingMethod', e.target.value)} placeholder="ústřední, etážové..." style={inputStyle()} />
+          </FormField>
+          <FormField label="Koeficient vytápění" name="heatingCoefficient" required={false} helpText="Standardní = 1.0">
+            <input type="number" step="0.01" min="0" value={form.heatingCoefficient} onChange={(e) => set('heatingCoefficient', e.target.value)} style={inputStyle()} />
+          </FormField>
+        </div>
+        <FormField label="Koeficient TUV" name="hotWaterCoefficient" required={false} helpText="Standardní = 1.0">
+          <input type="number" step="0.01" min="0" value={form.hotWaterCoefficient} onChange={(e) => set('hotWaterCoefficient', e.target.value)} style={inputStyle()} />
+        </FormField>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <FormField label="Plocha TUV (m²)" name="tuvArea" required={false} helpText="Pro rozúčtování teplé vody">
+            <input type="number" step="0.01" min="0" value={form.tuvArea} onChange={(e) => set('tuvArea', e.target.value)} style={inputStyle()} />
+          </FormField>
+          <FormField label="Symbol pro rozúčtovatele" name="extAllocatorRef" required={false} helpText="Jen při externím rozúčtovateli">
+            <input value={form.extAllocatorRef} onChange={(e) => set('extAllocatorRef', e.target.value)} maxLength={50} style={inputStyle()} />
+          </FormField>
+        </div>
+      </FormSection>
+
+      {/* ── Sekce 4: Platnost (collapsed) ─────────────────────── */}
+      <FormSection title="Platnost" defaultExpanded={!!unit?.validFrom}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <FormField label="Platnost od" name="validFrom" required={false}>
+            <input type="date" value={form.validFrom} onChange={(e) => set('validFrom', e.target.value)} style={inputStyle()} />
+          </FormField>
+          <FormField label="Platnost do" name="validTo" required={false}>
+            <input type="date" value={form.validTo} onChange={(e) => set('validTo', e.target.value)} style={inputStyle()} />
+          </FormField>
+        </div>
+        {form.validTo && (
+          <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 6, padding: '6px 10px', fontSize: '0.8rem', color: '#b45309', marginTop: 8 }}>
+            Jednotka bude označena jako vyřazená.
           </div>
         )}
-      </div>
-
-      {/* ── Platnost (collapsible) ───────────────────────────── */}
-      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, marginTop: 12 }}>
-        <button onClick={() => setShowValidity(!showValidity)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text)', fontSize: '0.85rem', fontWeight: 600, padding: 0, marginBottom: showValidity ? 10 : 0 }}>
-          Platnost {showValidity ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-        </button>
-        {showValidity && (
-          <div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 6 }}>
-              <div>
-                <label className="form-label">Platnost od</label>
-                <input type="date" value={form.validFrom} onChange={(e) => set('validFrom', e.target.value)} style={inputStyle()} />
-              </div>
-              <div>
-                <label className="form-label">Platnost do</label>
-                <input type="date" value={form.validTo} onChange={(e) => set('validTo', e.target.value)} style={inputStyle()} />
-              </div>
-            </div>
-            {form.validTo && (
-              <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 6, padding: '6px 10px', fontSize: '0.8rem', color: '#b45309' }}>
-                Jednotka bude označena jako vyřazená.
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      </FormSection>
 
       {(errors.submit || mutation.isError) && (
         <div style={{ color: 'var(--danger)', fontSize: '0.85rem', marginTop: 12 }}>

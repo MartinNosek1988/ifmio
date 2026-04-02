@@ -1,8 +1,11 @@
 import { useState, lazy, Suspense } from 'react';
 import { Modal, Button } from '../../shared/components';
+import { FormSection, FormHeader, FormFooter } from '../../shared/components/FormSection';
+import { FormField } from '../../shared/components/FormField';
+import { PiiBadge } from '../../shared/components/PiiField';
 import { useCreateProperty, useUpdateProperty } from './use-properties';
 import type { ApiProperty, PropertyLegalMode, AccountingSystemType } from './properties-api';
-import { ChevronDown, ChevronUp, Info, Search, Upload, Pencil } from 'lucide-react';
+import { Info, Search, Pencil, Upload } from 'lucide-react';
 import { integrationsApi } from '../integrations/api/integrations.api';
 
 const CuzkImportTab = lazy(() => import('./CuzkImportTab'));
@@ -74,23 +77,45 @@ export default function PropertyForm({ property, onClose }: Props) {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [showSprava, setShowSprava] = useState(!!property?.managedFrom || !!property?.accountingSystem);
   const [aresLoading, setAresLoading] = useState(false);
   const [aresError, setAresError] = useState('');
   const [aresSuccess, setAresSuccess] = useState('');
+  const [aresDefunct, setAresDefunct] = useState('');
 
   const set = (key: string, value: string | boolean) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  const [aresDefunct, setAresDefunct] = useState('');
+  // ── Inline validation on blur ─────────────────────────────────
+  const validateField = (field: string, value: string) => {
+    const errs = { ...errors };
+    switch (field) {
+      case 'name': errs.name = value.trim() ? '' : 'Název je povinný'; break;
+      case 'address': errs.address = value.trim() ? '' : 'Adresa je povinná'; break;
+      case 'city': errs.city = value.trim() ? '' : 'Město je povinné'; break;
+      case 'postalCode':
+        errs.postalCode = !value.trim() ? 'PSČ je povinné' :
+          !/^\d{3}\s?\d{2}$/.test(value.trim()) ? 'PSČ musí mít 5 číslic' : '';
+        break;
+      case 'ico':
+        errs.ico = value && !/^\d{0,8}$/.test(value) ? 'IČ musí mít max 8 číslic' : '';
+        break;
+    }
+    // Remove empty error entries
+    Object.keys(errs).forEach(k => { if (!errs[k]) delete errs[k]; });
+    setErrors(errs);
+  };
 
+  const handleBlur = (field: string) => {
+    validateField(field, String((form as Record<string, unknown>)[field] ?? ''));
+  };
+
+  // ── ARES lookup (unchanged) ───────────────────────────────────
   const handleAres = async () => {
     if (!form.ico || form.ico.length < 8) { setAresError('Zadejte platné IČ (8 číslic)'); return; }
     setAresLoading(true); setAresError(''); setAresDefunct(''); setAresSuccess('');
     try {
       const data = await integrationsApi.ares.lookupByIco(form.ico);
       if (data) {
-        // Build address from ARES parts
         let addr = '';
         if (data.adresa.ulice) {
           addr = data.adresa.ulice;
@@ -107,9 +132,7 @@ export default function PropertyForm({ property, onClose }: Props) {
           city: data.adresa.obec || f.city,
           postalCode: data.adresa.psc || f.postalCode,
         }));
-        if (data.datumZaniku) {
-          setAresDefunct(data.datumZaniku);
-        }
+        if (data.datumZaniku) setAresDefunct(data.datumZaniku);
         const filled: string[] = [];
         if (data.nazev) filled.push('název');
         if (addr) filled.push('adresa');
@@ -123,13 +146,15 @@ export default function PropertyForm({ property, onClose }: Props) {
     } catch (err) {
       console.error('ARES lookup failed:', err);
       setAresError('Chyba při ověřování v ARES');
+    } finally {
+      setAresLoading(false);
     }
-    finally { setAresLoading(false); }
   };
 
   const showIcoFields = ['SVJ', 'BD', 'OTHER'].includes(form.legalMode);
   const showDicFields = showIcoFields && form.ico.length > 0;
 
+  // ── Submit validation (unchanged logic) ───────────────────────
   const validate = () => {
     const errs: Record<string, string> = {};
     if (!form.name.trim()) errs.name = 'Název je povinný';
@@ -186,12 +211,12 @@ export default function PropertyForm({ property, onClose }: Props) {
       onClose={onClose}
       title={isEdit ? 'Upravit nemovitost' : 'Nová nemovitost'}
       footer={activeTab === 'manual' ? (
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <Button onClick={onClose} data-testid="property-form-cancel">Zrušit</Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={isPending} data-testid="property-form-save">
-            {isPending ? 'Ukládám...' : isEdit ? 'Uložit' : 'Vytvořit'}
-          </Button>
-        </div>
+        <FormFooter
+          onCancel={onClose}
+          onSubmit={handleSubmit}
+          isSubmitting={isPending}
+          submitLabel={isEdit ? 'Uložit' : 'Vytvořit'}
+        />
       ) : undefined}
     >
       {/* Tab switcher (only for create mode) */}
@@ -201,8 +226,8 @@ export default function PropertyForm({ property, onClose }: Props) {
             onClick={() => setActiveTab('manual')}
             style={{
               flex: 1, padding: '8px 14px', borderRadius: 6, fontSize: '.85rem', fontWeight: 600, cursor: 'pointer',
-              border: activeTab === 'manual' ? '2px solid var(--primary, #6366f1)' : '1px solid var(--border)',
-              background: activeTab === 'manual' ? 'var(--primary, #6366f1)' : 'transparent',
+              border: activeTab === 'manual' ? '2px solid var(--primary)' : '1px solid var(--border)',
+              background: activeTab === 'manual' ? 'var(--primary)' : 'transparent',
               color: activeTab === 'manual' ? '#fff' : 'var(--text)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
             }}
@@ -213,8 +238,8 @@ export default function PropertyForm({ property, onClose }: Props) {
             onClick={() => setActiveTab('import')}
             style={{
               flex: 1, padding: '8px 14px', borderRadius: 6, fontSize: '.85rem', fontWeight: 600, cursor: 'pointer',
-              border: activeTab === 'import' ? '2px solid var(--primary, #6366f1)' : '1px solid var(--border)',
-              background: activeTab === 'import' ? 'var(--primary, #6366f1)' : 'transparent',
+              border: activeTab === 'import' ? '2px solid var(--primary)' : '1px solid var(--border)',
+              background: activeTab === 'import' ? 'var(--primary)' : 'transparent',
               color: activeTab === 'import' ? '#fff' : 'var(--text)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
             }}
@@ -231,178 +256,154 @@ export default function PropertyForm({ property, onClose }: Props) {
         </Suspense>
       )}
 
-      {/* Manual form (original content) */}
+      {/* Manual form — refactored with FormSection */}
       {activeTab === 'manual' && <>
-      {/* ── Základní údaje ──────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-        <div>
-          <label className="form-label">Typ nemovitosti</label>
-          <select data-testid="property-form-type" value={form.type} onChange={(e) => set('type', e.target.value)} style={inputStyle()}>
-            {PROPERTY_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="form-label">Typ vlastnictví</label>
-          <select data-testid="property-form-ownership" value={form.ownership} onChange={(e) => set('ownership', e.target.value)} style={inputStyle()}>
-            {OWNERSHIP_TYPES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-        </div>
-      </div>
 
-      <div style={{ marginBottom: 16 }}>
-        <label className="form-label">Název *</label>
-        <input data-testid="property-form-name" value={form.name} onChange={(e) => set('name', e.target.value)} style={inputStyle('name')} />
-        {errors.name && <div data-testid="property-form-error-name" style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.name}</div>}
-      </div>
-
-      <div style={{ marginBottom: 16 }}>
-        <label className="form-label">Adresa *</label>
-        <input data-testid="property-form-address" value={form.address} onChange={(e) => set('address', e.target.value)} style={inputStyle('address')} />
-        {errors.address && <div data-testid="property-form-error-address" style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.address}</div>}
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: 12, marginBottom: 16 }}>
-        <div>
-          <label className="form-label">Město *</label>
-          <input data-testid="property-form-city" value={form.city} onChange={(e) => set('city', e.target.value)} style={inputStyle('city')} />
-          {errors.city && <div data-testid="property-form-error-city" style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.city}</div>}
-        </div>
-        <div>
-          <label className="form-label">PSČ *</label>
-          <input data-testid="property-form-zip" value={form.postalCode} onChange={(e) => set('postalCode', e.target.value)} style={inputStyle('postalCode')} />
-          {errors.postalCode && <div data-testid="property-form-error-postalCode" style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.postalCode}</div>}
-        </div>
-      </div>
-
-      {/* ── Právní režim ────────────────────────────────────── */}
-      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginBottom: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-          <h4 style={{ fontSize: '0.9rem', fontWeight: 600, margin: 0 }}>Právní režim</h4>
-          <span title="Určuje chování systému — SVJ vyžaduje nepřetržité vlastnictví">
-            <Info size={14} style={{ color: 'var(--text-muted)' }} />
-          </span>
-        </div>
-
-        <div style={{ marginBottom: 12 }}>
-          <label className="form-label">Právní forma *</label>
-          <select
-            data-testid="property-form-legalMode"
-            value={form.legalMode}
-            onChange={(e) => set('legalMode', e.target.value)}
-            style={{ ...inputStyle(), fontWeight: 500 }}
-          >
-            {LEGAL_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-          </select>
-        </div>
-
-        {showIcoFields && (
+        {/* ── Sekce 1: Identifikace (vždy otevřená) ─────────── */}
+        <FormSection title="Identifikace" collapsible={false}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-            <div>
-              <label className="form-label">IČ</label>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <input
-                  data-testid="property-form-ico"
-                  value={form.ico}
-                  onChange={(e) => set('ico', e.target.value.replace(/\D/g, '').slice(0, 8))}
-                  placeholder="např. 01234567"
-                  maxLength={8}
-                  style={{ ...inputStyle('ico'), flex: 1 }}
-                />
-                <button type="button" onClick={handleAres} disabled={aresLoading || isPending}
-                  style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
-                  <Search size={13} /> {aresLoading ? '...' : 'ARES'}
-                </button>
-              </div>
-              {aresError && <div style={{ color: 'var(--danger)', fontSize: '0.78rem', marginTop: 2 }}>{aresError}</div>}
-              {aresSuccess && <div style={{ color: 'var(--success, #22c55e)', fontSize: '0.78rem', marginTop: 2 }}>{aresSuccess}</div>}
-              {aresDefunct && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid var(--danger)', borderRadius: 4, padding: '4px 8px', color: 'var(--danger)', fontSize: '0.78rem', marginTop: 4 }}>Subjekt je zaniklý dle ARES ({aresDefunct})</div>}
-              {errors.ico && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.ico}</div>}
-            </div>
-            {showDicFields && (
-              <div>
-                <label className="form-label">DIČ</label>
-                <input
-                  data-testid="property-form-dic"
-                  value={form.dic}
-                  onChange={(e) => set('dic', e.target.value.slice(0, 12))}
-                  placeholder="např. CZ01234567"
-                  maxLength={12}
-                  style={inputStyle()}
-                />
-              </div>
-            )}
-          </div>
-        )}
-
-        {showDicFields && (
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem', cursor: 'pointer', marginBottom: 4 }}>
-            <input
-              type="checkbox"
-              checked={form.isVatPayer}
-              onChange={(e) => set('isVatPayer', e.target.checked)}
-            />
-            Plátce DPH
-          </label>
-        )}
-      </div>
-
-      {/* ── Správa (collapsible) ────────────────────────────── */}
-      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-        <button
-          onClick={() => setShowSprava(!showSprava)}
-          style={{
-            background: 'none', border: 'none', cursor: 'pointer', display: 'flex',
-            alignItems: 'center', gap: 6, color: 'var(--text)', fontSize: '0.9rem', fontWeight: 600, padding: 0, marginBottom: showSprava ? 12 : 0,
-          }}
-        >
-          Správa a účetnictví
-          {showSprava ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        </button>
-
-        {showSprava && (
-          <div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-              <div>
-                <label className="form-label">Ve správě od</label>
-                <input type="date" value={form.managedFrom} onChange={(e) => set('managedFrom', e.target.value)} style={inputStyle()} />
-              </div>
-              <div>
-                <label className="form-label">Ve správě do</label>
-                <input type="date" value={form.managedTo} onChange={(e) => set('managedTo', e.target.value)} style={inputStyle()} />
-              </div>
-            </div>
-            {form.managedTo && (
-              <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 6, padding: '6px 10px', fontSize: '0.8rem', color: '#b45309', marginBottom: 12 }}>
-                Nemovitost bude označena jako vyřazená ze správy.
-              </div>
-            )}
-
-            <div style={{ marginBottom: 12 }}>
-              <label className="form-label">Účetní systém</label>
-              <select value={form.accountingSystem} onChange={(e) => set('accountingSystem', e.target.value)} style={inputStyle()}>
-                {ACCOUNTING_SYSTEMS.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
+            <FormField label="Typ nemovitosti" name="type">
+              <select data-testid="property-form-type" value={form.type} onChange={(e) => set('type', e.target.value)} style={inputStyle()}>
+                {PROPERTY_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
-            </div>
+            </FormField>
+            <FormField label="Typ vlastnictví" name="ownership">
+              <select data-testid="property-form-ownership" value={form.ownership} onChange={(e) => set('ownership', e.target.value)} style={inputStyle()}>
+                {OWNERSHIP_TYPES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </FormField>
+          </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <FormField label="Název" name="name" error={errors.name}>
+            <input data-testid="property-form-name" value={form.name} onChange={(e) => set('name', e.target.value)} onBlur={() => handleBlur('name')} style={inputStyle('name')} />
+          </FormField>
+
+          <FormField label="Adresa" name="address" error={errors.address}>
+            <input data-testid="property-form-address" value={form.address} onChange={(e) => set('address', e.target.value)} onBlur={() => handleBlur('address')} style={inputStyle('address')} />
+          </FormField>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: 12 }}>
+            <FormField label="Město" name="city" error={errors.city}>
+              <input data-testid="property-form-city" value={form.city} onChange={(e) => set('city', e.target.value)} onBlur={() => handleBlur('city')} style={inputStyle('city')} />
+            </FormField>
+            <FormField label="PSČ" name="postalCode" error={errors.postalCode}>
+              <input data-testid="property-form-zip" value={form.postalCode} onChange={(e) => set('postalCode', e.target.value)} onBlur={() => handleBlur('postalCode')} style={inputStyle('postalCode')} />
+            </FormField>
+          </div>
+        </FormSection>
+
+        {/* ── Sekce 2: Právní režim (collapsible) ────────────── */}
+        <FormSection
+          title="Právní a účetní údaje"
+          subtitle="Právní forma, IČ, DIČ, účetní systém"
+          defaultExpanded={isEdit || showIcoFields}
+          badge={
+            <span title="Určuje chování systému — SVJ vyžaduje nepřetržité vlastnictví">
+              <Info size={14} style={{ color: 'var(--text-muted)' }} />
+            </span>
+          }
+        >
+          <FormField label="Právní forma" name="legalMode">
+            <select
+              data-testid="property-form-legalMode"
+              value={form.legalMode}
+              onChange={(e) => set('legalMode', e.target.value)}
+              style={{ ...inputStyle(), fontWeight: 500 }}
+            >
+              {LEGAL_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+            </select>
+          </FormField>
+
+          {showIcoFields && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
-                <label className="form-label">Katastrální území</label>
-                <input value={form.cadastralArea} onChange={(e) => set('cadastralArea', e.target.value)} placeholder="např. Vysočany" style={inputStyle()} />
+                <FormField label="IČ" name="ico" error={errors.ico} required={false}>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <input
+                      data-testid="property-form-ico"
+                      value={form.ico}
+                      onChange={(e) => set('ico', e.target.value.replace(/\D/g, '').slice(0, 8))}
+                      onBlur={() => handleBlur('ico')}
+                      placeholder="např. 01234567"
+                      maxLength={8}
+                      style={{ ...inputStyle('ico'), flex: 1, fontFamily: 'var(--font-mono, monospace)' }}
+                    />
+                    <button type="button" onClick={handleAres} disabled={aresLoading || isPending}
+                      style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                      <Search size={13} /> {aresLoading ? '...' : 'ARES'}
+                    </button>
+                  </div>
+                </FormField>
+                {aresError && <div style={{ color: 'var(--danger)', fontSize: '0.78rem', marginTop: -8, marginBottom: 8 }}>{aresError}</div>}
+                {aresSuccess && <div style={{ color: 'var(--success, #22c55e)', fontSize: '0.78rem', marginTop: -8, marginBottom: 8 }}>{aresSuccess}</div>}
+                {aresDefunct && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid var(--danger)', borderRadius: 4, padding: '4px 8px', color: 'var(--danger)', fontSize: '0.78rem', marginTop: -8, marginBottom: 8 }}>Subjekt je zaniklý dle ARES ({aresDefunct})</div>}
               </div>
-              <div>
-                <label className="form-label">List vlastnictví (LV)</label>
-                <input value={form.landRegistrySheet} onChange={(e) => set('landRegistrySheet', e.target.value)} placeholder="např. 1234" style={inputStyle()} />
-              </div>
+              {showDicFields && (
+                <FormField label="DIČ" name="dic" required={false}>
+                  <input
+                    data-testid="property-form-dic"
+                    value={form.dic}
+                    onChange={(e) => set('dic', e.target.value.slice(0, 12))}
+                    placeholder="např. CZ01234567"
+                    maxLength={12}
+                    style={{ ...inputStyle(), fontFamily: 'var(--font-mono, monospace)' }}
+                  />
+                </FormField>
+              )}
             </div>
+          )}
+
+          {showDicFields && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem', cursor: 'pointer', marginTop: 4 }}>
+              <input type="checkbox" checked={form.isVatPayer} onChange={(e) => set('isVatPayer', e.target.checked)} />
+              Plátce DPH
+            </label>
+          )}
+
+          <FormField label="Účetní systém" name="accountingSystem" required={false}>
+            <select value={form.accountingSystem} onChange={(e) => set('accountingSystem', e.target.value)} style={inputStyle()}>
+              {ACCOUNTING_SYSTEMS.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
+            </select>
+          </FormField>
+        </FormSection>
+
+        {/* ── Sekce 3: Kontaktní údaje (collapsed) ───────────── */}
+        <FormSection title="Kontaktní údaje" subtitle="Kontaktní osoba pro nemovitost" defaultExpanded={false}>
+          <FormField label="Kontaktní osoba" name="contactName" required={false} pii>
+            <input value="" disabled placeholder="Bude doplněno v detailu nemovitosti" style={{ ...inputStyle(), opacity: 0.5 }} />
+          </FormField>
+        </FormSection>
+
+        {/* ── Sekce 4: Správa (collapsed) ────────────────────── */}
+        <FormSection title="Správa a katastr" defaultExpanded={false}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <FormField label="Ve správě od" name="managedFrom" required={false}>
+              <input type="date" value={form.managedFrom} onChange={(e) => set('managedFrom', e.target.value)} style={inputStyle()} />
+            </FormField>
+            <FormField label="Ve správě do" name="managedTo" required={false}>
+              <input type="date" value={form.managedTo} onChange={(e) => set('managedTo', e.target.value)} style={inputStyle()} />
+            </FormField>
+          </div>
+          {form.managedTo && (
+            <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 6, padding: '6px 10px', fontSize: '0.8rem', color: '#b45309', marginBottom: 12 }}>
+              Nemovitost bude označena jako vyřazená ze správy.
+            </div>
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <FormField label="Katastrální území" name="cadastralArea" required={false}>
+              <input value={form.cadastralArea} onChange={(e) => set('cadastralArea', e.target.value)} placeholder="např. Vysočany" style={inputStyle()} />
+            </FormField>
+            <FormField label="List vlastnictví (LV)" name="landRegistrySheet" required={false}>
+              <input value={form.landRegistrySheet} onChange={(e) => set('landRegistrySheet', e.target.value)} placeholder="např. 1234" style={inputStyle()} />
+            </FormField>
+          </div>
+        </FormSection>
+
+        {(createMutation.error || updateMutation.error) && (
+          <div style={{ color: 'var(--danger)', fontSize: '0.85rem', marginTop: 8 }}>
+            Nepodařilo se uložit nemovitost.
           </div>
         )}
-      </div>
-
-      {(createMutation.error || updateMutation.error) && (
-        <div style={{ color: 'var(--danger)', fontSize: '0.85rem', marginTop: 8 }}>
-          Nepodařilo se uložit nemovitost.
-        </div>
-      )}
       </>}
     </Modal>
   );

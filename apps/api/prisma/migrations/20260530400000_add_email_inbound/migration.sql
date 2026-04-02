@@ -38,3 +38,7 @@ CREATE TABLE IF NOT EXISTS public.email_inbound_logs (
 
 CREATE INDEX IF NOT EXISTS "email_inbound_logs_tenantId_createdAt_idx"
   ON public.email_inbound_logs ("tenantId", "createdAt");
+
+-- RLS for email inbound tables
+ALTER TABLE public.email_inbound_configs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.email_inbound_logs ENABLE ROW LEVEL SECURITY;

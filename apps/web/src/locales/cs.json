@@ -147,5 +147,194 @@
     "sk": "Slovenčina",
     "de": "Deutsch",
     "uk": "Українська"
+  },
+  "property": {
+    "title": "Nemovitosti",
+    "create": "Nová nemovitost",
+    "edit": "Upravit nemovitost",
+    "delete": "Smazat nemovitost",
+    "deleteConfirm": "Opravdu chcete smazat nemovitost {{name}}?",
+    "fields": {
+      "name": "Název",
+      "type": "Typ nemovitosti",
+      "ownership": "Typ vlastnictví",
+      "address": "Adresa",
+      "city": "Město",
+      "postalCode": "PSČ",
+      "ico": "IČ",
+      "dic": "DIČ",
+      "isVatPayer": "Plátce DPH",
+      "legalMode": "Právní forma",
+      "accountingSystem": "Účetní systém",
+      "contactName": "Kontaktní osoba",
+      "contactEmail": "Kontaktní email",
+      "contactPhone": "Kontaktní telefon",
+      "managedFrom": "Ve správě od",
+      "managedTo": "Ve správě do",
+      "cadastralArea": "Katastrální území",
+      "landRegistrySheet": "List vlastnictví (LV)",
+      "note": "Poznámka"
+    },
+    "sections": {
+      "identification": "Identifikace",
+      "legal": "Právní a účetní údaje",
+      "legalSubtitle": "Právní forma, IČ, DIČ, účetní systém",
+      "contacts": "Kontaktní údaje",
+      "contactsSubtitle": "Kontaktní osoba pro nemovitost",
+      "management": "Správa a katastr"
+    },
+    "empty": {
+      "title": "Zatím žádné nemovitosti",
+      "description": "Začněte přidáním první nemovitosti do systému.",
+      "cta": "Přidat nemovitost"
+    },
+    "toast": {
+      "created": "Nemovitost vytvořena",
+      "updated": "Nemovitost uložena",
+      "deleted": "Nemovitost smazána",
+      "error": "Nepodařilo se uložit nemovitost"
+    }
+  },
+  "helpdesk": {
+    "title": "HelpDesk",
+    "create": "Nový požadavek",
+    "edit": "Upravit požadavek",
+    "fields": {
+      "title": "Název",
+      "description": "Popis",
+      "priority": "Priorita",
+      "category": "Kategorie",
+      "status": "Stav",
+      "assignee": "Řešitel",
+      "property": "Nemovitost",
+      "unit": "Jednotka",
+      "reporter": "Zadavatel",
+      "createdAt": "Vytvořeno",
+      "resolvedAt": "Vyřešeno",
+      "slaResponse": "SLA odpověď",
+      "slaResolution": "SLA řešení"
+    },
+    "status": {
+      "open": "Otevřený",
+      "in_progress": "V řešení",
+      "resolved": "Vyřešený",
+      "closed": "Uzavřený"
+    },
+    "priority": {
+      "low": "Nízká",
+      "medium": "Střední",
+      "high": "Vysoká",
+      "urgent": "Urgentní"
+    },
+    "category": {
+      "general": "Obecné",
+      "plumbing": "Vodovod a kanalizace",
+      "electrical": "Elektroinstalace",
+      "hvac": "Vytápění / VZT",
+      "structural": "Stavební práce",
+      "cleaning": "Úklid",
+      "other": "Ostatní"
+    },
+    "sla": {
+      "met": "Splněno",
+      "breached": "Překročeno",
+      "remaining": "Zbývá {{time}}",
+      "breachedBy": "Překročeno o {{time}}"
+    },
+    "empty": {
+      "title": "Žádné požadavky",
+      "description": "Zatím nebyly vytvořeny žádné požadavky.",
+      "cta": "Vytvořit požadavek"
+    },
+    "toast": {
+      "created": "Požadavek vytvořen",
+      "updated": "Požadavek aktualizován",
+      "resolved": "Požadavek vyřešen",
+      "assigned": "Požadavek přiřazen",
+      "deleted": "Požadavek smazán"
+    }
+  },
+  "workOrder": {
+    "title": "Pracovní příkazy",
+    "create": "Nový pracovní příkaz",
+    "edit": "Upravit pracovní příkaz",
+    "fields": {
+      "title": "Název úkolu",
+      "description": "Popis",
+      "workType": "Typ práce",
+      "priority": "Priorita",
+      "status": "Stav",
+      "assignee": "Řešitel",
+      "deadline": "Termín realizace",
+      "completedAt": "Dokončeno",
+      "estimatedHours": "Odhad (hodiny)",
+      "actualHours": "Skutečné hodiny",
+      "laborCost": "Náklady práce (Kč)",
+      "materialCost": "Materiál (Kč)"
+    },
+    "status": {
+      "nova": "Nová",
+      "v_reseni": "V řešení",
+      "vyresena": "Vyřešená",
+      "uzavrena": "Uzavřená",
+      "zrusena": "Zrušená"
+    },
+    "workType": {
+      "corrective": "Oprava",
+      "preventive": "Údržba",
+      "inspection": "Kontrola",
+      "emergency": "Havárie"
+    },
+    "priority": {
+      "nizka": "Nízká",
+      "normalni": "Normální",
+      "vysoka": "Vysoká",
+      "kriticka": "Kritická"
+    },
+    "empty": {
+      "title": "Žádné pracovní příkazy",
+      "description": "Zatím nebyly vytvořeny žádné pracovní příkazy.",
+      "cta": "Vytvořit příkaz"
+    },
+    "toast": {
+      "created": "Pracovní příkaz vytvořen",
+      "updated": "Pracovní příkaz aktualizován",
+      "completed": "Pracovní příkaz dokončen",
+      "deleted": "Pracovní příkaz smazán"
+    }
+  },
+  "finance": {
+    "title": "Finance",
+    "invoice": {
+      "create": "Nový doklad",
+      "edit": "Upravit doklad",
+      "fields": {
+        "number": "Číslo dokladu",
+        "type": "Typ",
+        "supplier": "Dodavatel",
+        "buyer": "Odběratel",
+        "amountBase": "Základ (Kč)",
+        "vatRate": "DPH sazba",
+        "vatAmount": "DPH (Kč)",
+        "amountTotal": "Celkem s DPH",
+        "issueDate": "Datum vystavení",
+        "dueDate": "Splatnost",
+        "variableSymbol": "Variabilní symbol",
+        "description": "Popis",
+        "note": "Poznámka"
+      },
+      "empty": {
+        "title": "Žádné doklady",
+        "description": "Zatím nebyly vytvořeny žádné doklady.",
+        "cta": "Přidat doklad"
+      }
+    },
+    "konto": {
+      "title": "Konto vlastníka",
+      "balance": "Aktuální zůstatek",
+      "debt": "Celkem dluh",
+      "credit": "Celkem přeplatky",
+      "netBalance": "Čistý stav"
+    }
   }
 }

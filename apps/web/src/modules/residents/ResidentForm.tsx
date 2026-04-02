@@ -12,6 +12,7 @@ import { residentsApi, type ApiResident } from './api/residents.api';
 import { useProperties } from '../properties/use-properties';
 import { useToast } from '../../shared/components/toast/Toast';
 import { Modal, Button } from '../../shared/components';
+import { PiiBadge } from '../../shared/components/PiiField';
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
@@ -155,18 +156,18 @@ export default function ResidentForm({ resident, onClose }: Props) {
           <>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
               <div>
-                <label className="form-label">Jméno *</label>
+                <label className="form-label">Jméno * <PiiBadge /></label>
                 <input {...register('firstName')} data-testid="resident-form-firstName" style={inputStyle(!!errors.firstName)} placeholder="Jan" disabled={isLoading} />
                 <FieldError message={errors.firstName?.message} />
               </div>
               <div>
-                <label className="form-label">Příjmení *</label>
+                <label className="form-label">Příjmení * <PiiBadge /></label>
                 <input {...register('lastName')} data-testid="resident-form-lastName" style={inputStyle(!!errors.lastName)} placeholder="Novák" disabled={isLoading} />
                 <FieldError message={errors.lastName?.message} />
               </div>
             </div>
             <div style={{ marginBottom: 14 }}>
-              <label className="form-label">Datum narození</label>
+              <label className="form-label">Datum narození <PiiBadge /></label>
               <input type="date" {...register('birthDate')} data-testid="resident-form-birthDate" style={inputStyle(false)} disabled={isLoading} />
             </div>
           </>
@@ -200,12 +201,12 @@ export default function ResidentForm({ resident, onClose }: Props) {
             {/* Kontaktní osoba (firstName/lastName still needed for PO) */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
               <div>
-                <label className="form-label">Kontaktní osoba — jméno *</label>
+                <label className="form-label">Kontaktní osoba — jméno * <PiiBadge /></label>
                 <input {...register('firstName')} style={inputStyle(!!errors.firstName)} placeholder="Jan" disabled={isLoading} />
                 <FieldError message={errors.firstName?.message} />
               </div>
               <div>
-                <label className="form-label">Kontaktní osoba — příjmení *</label>
+                <label className="form-label">Kontaktní osoba — příjmení * <PiiBadge /></label>
                 <input {...register('lastName')} style={inputStyle(!!errors.lastName)} placeholder="Novák" disabled={isLoading} />
                 <FieldError message={errors.lastName?.message} />
               </div>
@@ -216,12 +217,12 @@ export default function ResidentForm({ resident, onClose }: Props) {
         {/* ── Kontakt (both modes) ───────────────────────────── */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
           <div>
-            <label className="form-label">Email</label>
+            <label className="form-label">Email <PiiBadge /></label>
             <input {...register('email')} data-testid="resident-form-email" type="email" style={inputStyle(!!errors.email)} placeholder="jan@email.cz" disabled={isLoading} />
             <FieldError message={errors.email?.message} />
           </div>
           <div>
-            <label className="form-label">Telefon</label>
+            <label className="form-label">Telefon <PiiBadge /></label>
             <input {...register('phone')} data-testid="resident-form-phone" type="tel" style={inputStyle(!!errors.phone)} placeholder="+420 777 123 456" disabled={isLoading} />
             <FieldError message={errors.phone?.message} />
           </div>
@@ -260,7 +261,7 @@ export default function ResidentForm({ resident, onClose }: Props) {
           {showAddress && (
             <div>
               <div style={{ marginBottom: 10 }}>
-                <label className="form-label">Ulice a č.p.</label>
+                <label className="form-label">Ulice a č.p. <PiiBadge /></label>
                 <input {...register('correspondenceAddress')} style={inputStyle(false)} placeholder="Ulice 123" disabled={isLoading} />
                 <div style={hintStyle}>Vyplňte pokud se liší od adresy jednotky</div>
               </div>
