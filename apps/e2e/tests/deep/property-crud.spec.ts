@@ -32,13 +32,9 @@ test.describe('Property CRUD — E2E', () => {
   test('vytvoření nové nemovitosti přes formulář', async ({ page }) => {
     test.setTimeout(60_000)
 
-    await page.goto('/properties')
+    // Navigate přímo na full-page formulář
+    await page.goto('/properties/new')
     await page.waitForLoadState('domcontentloaded')
-    await page.waitForTimeout(1000)
-
-    // Klik na "Nová nemovitost"
-    const addBtn = page.locator('button:has-text("Nová"), button:has-text("Přidat"), [data-testid="property-add-btn"]').first()
-    await addBtn.click()
     await page.waitForTimeout(1000)
 
     const propName = `E2E Bytový dům ${Date.now()}`

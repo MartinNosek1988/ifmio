@@ -28,6 +28,7 @@ import { ErrorBoundary } from '../shared/components';
 
 const DashboardPage = lazy(() => import('../modules/dashboard/DashboardPage'));
 const PropertiesPage = lazy(() => import('../modules/properties/PropertiesPage'));
+const PropertyFormPage = lazy(() => import('../modules/properties/PropertyFormPage'));
 const PropertyDetailPage = lazy(() => import('../modules/properties/PropertyDetailPage'));
 const UnitDetailPage = lazy(() => import('../modules/properties/UnitDetailPage'));
 const FinancePage = lazy(() => import('../modules/finance/FinancePage'));
@@ -171,6 +172,8 @@ export const router = createBrowserRouter([
       { path: 'portal/documents', element: withBoundary('Dokumenty', MyDocumentsPage) },
       { path: 'portal/konto', element: withBoundary('Konto', MyKontoPage) },
       { path: 'properties', element: withBoundary('Nemovitosti', PropertiesPage) },
+      { path: 'properties/new', element: withBoundary('Nová nemovitost', PropertyFormPage) },
+      { path: 'properties/:id/edit', element: withBoundary('Upravit nemovitost', PropertyFormPage) },
       { path: 'properties/:id', element: withBoundary('Detail nemovitosti', PropertyDetailPage) },
       { path: 'properties/:id/units/:unitId', element: withBoundary('Detail jednotky', UnitDetailPage) },
       { path: 'properties/:id/assemblies', element: withBoundary('Shromáždění', AssemblyListPage) },

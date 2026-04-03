@@ -133,8 +133,9 @@ test.describe('Properties — Deep CRUD', () => {
       await page.locator('[data-testid="property-form-save"]').click();
       await responsePromise;
 
-      await expect(page.locator('[data-testid="property-form-name"]')).not.toBeVisible({ timeout: 5000 });
-      await expect(page.getByText(TEST_PROPERTY_NAME).first()).toBeVisible({ timeout: 5000 });
+      // After submit, full-page form redirects — wait for navigation
+      await page.waitForTimeout(2000);
+      await expect(page.locator('td, [data-testid="property-detail-name"]').filter({ hasText: TEST_PROPERTY_NAME }).first()).toBeVisible({ timeout: 5000 });
     });
   });
 
