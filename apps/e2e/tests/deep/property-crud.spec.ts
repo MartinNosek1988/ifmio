@@ -69,7 +69,7 @@ test.describe('Property CRUD — E2E', () => {
       await page.waitForTimeout(200)
     }
 
-    const postalInput = page.locator('[data-testid="property-form-postalCode"], input[name="postalCode"]').first()
+    const postalInput = page.locator('[data-testid="property-form-zip"], input[name="postalCode"]').first()
     if (await postalInput.isVisible()) {
       await postalInput.click()
       await postalInput.clear()
