@@ -117,7 +117,7 @@ export class PropertyEnrichmentOrchestrator {
             result.freeData.statutoryBodies = best.zastupci.map(z => ({
               role: z.funkce || 'Člen',
               fullName: `${z.jmeno} ${z.prijmeni}`.trim(),
-              dateFrom: z.datumNarozeni,
+              dateFrom: undefined, // ARES zastupci nemají datum jmenování, jen datumNarozeni
             }))
             result.sources.push('ARES_OR')
             result.qualityScore += 10
@@ -188,8 +188,36 @@ export class PropertyEnrichmentOrchestrator {
       }
     }
 
+    // === Ulož Building do KB (before prediction so we have constructionYear) ===
+    try {
+      const building = await this.kb.findOrCreateBuilding({
+        street: input.street,
+        city: input.city,
+        district: input.district,
+        postalCode: input.postalCode,
+        lat: input.lat,
+        lng: input.lng,
+        ruianBuildingId: input.ruianCode,
+      })
+      result.buildingId = building.id
+
+      // Link org to building if found
+      if (result.freeData.organization) {
+        const org = await this.prisma.kbOrganization.findUnique({
+          where: { ico: result.freeData.organization.ico },
+        })
+        if (org) {
+          await this.prisma.building.update({
+            where: { id: building.id },
+            data: { managingOrgId: org.id },
+          }).catch(() => {})
+        }
+      }
+    } catch (err) {
+      this.logger.warn(`KB building creation failed: ${err}`)
+    }
+
     // === KROK 7: Predikce stavu + checklist ===
-    // Use KB building data if available
     const buildingData = result.buildingId
       ? await this.prisma.building.findUnique({ where: { id: result.buildingId } }).catch(() => null)
       : null
@@ -289,35 +317,6 @@ export class PropertyEnrichmentOrchestrator {
       } catch (err) {
         this.logger.debug(`Justice.cz enrichment failed: ${err}`)
       }
-    }
-
-    // === Ulož Building do KB ===
-    try {
-      const building = await this.kb.findOrCreateBuilding({
-        street: input.street,
-        city: input.city,
-        district: input.district,
-        postalCode: input.postalCode,
-        lat: input.lat,
-        lng: input.lng,
-        ruianBuildingId: input.ruianCode,
-      })
-      result.buildingId = building.id
-
-      // Link org to building if found
-      if (result.freeData.organization) {
-        const org = await this.prisma.kbOrganization.findUnique({
-          where: { ico: result.freeData.organization.ico },
-        })
-        if (org) {
-          await this.prisma.building.update({
-            where: { id: building.id },
-            data: { managingOrgId: org.id },
-          }).catch(() => {})
-        }
-      }
-    } catch (err) {
-      this.logger.warn(`KB building creation failed: ${err}`)
     }
 
     result.qualityScore = Math.min(result.qualityScore, 100)

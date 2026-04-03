@@ -33,6 +33,7 @@ const ROUTE_LABELS: Record<string, string> = {
   settings: 'Nastavení',
   profile: 'Profil',
   audit: 'Audit log',
+  'knowledge-base': 'Knowledge Base',
   notifications: 'Notifikace',
   reporting: 'Reporting',
   reports: 'Výkazy',
