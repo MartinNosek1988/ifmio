@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ifmio-v1';
+const CACHE_NAME = 'ifmio-v2';
 const PRECACHE_URLS = ['/', '/index.html'];
 
 self.addEventListener('install', (event) => {
@@ -23,6 +23,17 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET and API calls
   if (request.method !== 'GET' || request.url.includes('/api/')) return;
 
+  // Navigation requests (HTML pages) → always serve index.html for SPA routing
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      caches.match('/index.html').then((cached) =>
+        cached || fetch('/index.html')
+      )
+    );
+    return;
+  }
+
+  // Static assets — cache-first with network fallback
   event.respondWith(
     caches.match(request).then((cached) => {
       const fetched = fetch(request)
