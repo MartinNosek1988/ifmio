@@ -323,27 +323,121 @@ function PropertyFormInner({ property, isEdit, createMutation, updateMutation, n
             </div>
           )}
           {enrichmentResult && !enrichmentLoading && (
-            <div style={{ marginTop: 10, padding: 12, background: 'var(--gray-50)', borderRadius: 8, fontSize: '0.82rem' }}>
-              <div style={{ fontWeight: 600, color: 'var(--dark)', marginBottom: 6 }}>
+            <div style={{ marginTop: 10, padding: 14, background: 'var(--gray-50)', borderRadius: 10, fontSize: '0.82rem' }}>
+              {/* Header */}
+              <div style={{ fontWeight: 600, color: 'var(--dark)', marginBottom: 8 }}>
                 ✅ Nalezeno ({enrichmentResult.sources?.join(', ')}) — skóre {enrichmentResult.qualityScore}/100
               </div>
+
+              {/* Duplicate warning */}
+              {enrichmentResult.duplicate?.isDuplicate && (
+                <div style={{ padding: '8px 12px', background: 'var(--warning-light, #fef3c7)', borderRadius: 6, marginBottom: 8, color: '#92400e', fontSize: '0.78rem' }}>
+                  ⚠️ {enrichmentResult.duplicate.message}
+                </div>
+              )}
+
+              {/* Organization */}
               {enrichmentResult.freeData?.organization && (
-                <div style={{ marginBottom: 6 }}>
+                <div style={{ marginBottom: 8, padding: '8px 12px', background: 'var(--color-surface, #fff)', borderRadius: 6, border: '1px solid var(--border)' }}>
                   <span style={{ display: 'inline-block', padding: '1px 6px', borderRadius: 4, background: 'var(--primary-50)', color: 'var(--primary)', fontWeight: 600, fontSize: '0.72rem', marginRight: 6 }}>
                     {enrichmentResult.freeData.organization.type}
                   </span>
                   <strong>{enrichmentResult.freeData.organization.name}</strong>
                   <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>IČO: {enrichmentResult.freeData.organization.ico}</span>
+                  {enrichmentResult.freeData.statutoryBodies?.length > 0 && (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 4 }}>
+                      Statutární orgán: {enrichmentResult.freeData.statutoryBodies.map((sb: any) => `${sb.role}: ${sb.fullName}`).join(' · ')}
+                    </div>
+                  )}
                 </div>
               )}
-              {enrichmentResult.freeData?.statutoryBodies?.length > 0 && (
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                  Statutární orgán: {enrichmentResult.freeData.statutoryBodies.map((sb: any) => `${sb.role}: ${sb.fullName}`).join(', ')}
+
+              {/* Visual — ortofoto + links */}
+              {enrichmentResult.visual?.orthoUrl && (
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: 4 }}>📸 Pohled na budovu</div>
+                  <img src={enrichmentResult.visual.orthoUrl} alt="Letecký snímek" style={{ width: '100%', borderRadius: 6, maxHeight: 200, objectFit: 'cover' }} />
+                  <div style={{ display: 'flex', gap: 12, marginTop: 4, fontSize: '0.72rem' }}>
+                    {enrichmentResult.visual.streetViewUrl && <a href={enrichmentResult.visual.streetViewUrl} target="_blank" rel="noopener" style={{ color: 'var(--primary)' }}>Panorama →</a>}
+                    {enrichmentResult.visual.mapUrl && <a href={enrichmentResult.visual.mapUrl} target="_blank" rel="noopener" style={{ color: 'var(--primary)' }}>Mapa →</a>}
+                  </div>
                 </div>
               )}
+
+              {/* Price estimate */}
+              {enrichmentResult.priceEstimate?.landPricePerSqm && (
+                <div style={{ marginBottom: 8, fontSize: '0.78rem' }}>
+                  <span style={{ fontWeight: 600 }}>💰 Cenový odhad:</span>{' '}
+                  Pozemek {enrichmentResult.priceEstimate.landPricePerSqm.toLocaleString('cs-CZ')} Kč/m²
+                  {enrichmentResult.priceEstimate.estimatedPricePerSqm && (
+                    <span> · Byt ~{enrichmentResult.priceEstimate.estimatedPricePerSqm.toLocaleString('cs-CZ')} Kč/m² (±30%)</span>
+                  )}
+                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{enrichmentResult.priceEstimate.disclaimer}</div>
+                </div>
+              )}
+
+              {/* POI */}
+              {enrichmentResult.nearbyPOI && (enrichmentResult.nearbyPOI.schools > 0 || enrichmentResult.nearbyPOI.busStops > 0) && (
+                <div style={{ marginBottom: 8, fontSize: '0.78rem' }}>
+                  <span style={{ fontWeight: 600 }}>📍 V okolí 500m:</span>{' '}
+                  {[
+                    enrichmentResult.nearbyPOI.schools > 0 && `🏫 ${enrichmentResult.nearbyPOI.schools} škol`,
+                    (enrichmentResult.nearbyPOI.busStops + enrichmentResult.nearbyPOI.tramStops + enrichmentResult.nearbyPOI.metroStations) > 0 && `🚌 ${enrichmentResult.nearbyPOI.busStops + enrichmentResult.nearbyPOI.tramStops + enrichmentResult.nearbyPOI.metroStations} MHD`,
+                    enrichmentResult.nearbyPOI.doctors > 0 && `🏥 ${enrichmentResult.nearbyPOI.doctors} lékařů`,
+                    enrichmentResult.nearbyPOI.supermarkets > 0 && `🛒 ${enrichmentResult.nearbyPOI.supermarkets} marketů`,
+                    enrichmentResult.nearbyPOI.playgrounds > 0 && `🌳 ${enrichmentResult.nearbyPOI.playgrounds} hřišť`,
+                  ].filter(Boolean).join(' · ')}
+                </div>
+              )}
+
+              {/* Risk profile */}
+              {enrichmentResult.risks && (
+                <div style={{ marginBottom: 8, fontSize: '0.78rem' }}>
+                  <span style={{ fontWeight: 600 }}>⚡ Rizikový profil:</span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', marginTop: 2 }}>
+                    <span>🌊 Záplavy: {enrichmentResult.risks.flood?.inFloodZone ? '⚠️ V záplavovém území' : '✅ Mimo'}</span>
+                    <span>☢️ Radon: {enrichmentResult.risks.radon?.index === 'high' ? '⚠️ Vysoký' : enrichmentResult.risks.radon?.index === 'medium' ? '🟡 Střední' : enrichmentResult.risks.radon?.index === 'low' ? '✅ Nízký' : '❓'}</span>
+                    {enrichmentResult.risks.heritage && (
+                      <span>🏛️ Památky: {enrichmentResult.risks.heritage.isProtected ? `⚠️ ${enrichmentResult.risks.heritage.protectionType?.join(', ')}` : '✅ Bez ochrany'}</span>
+                    )}
+                    {enrichmentResult.risks.insolvency && (
+                      <span>{enrichmentResult.risks.insolvency.hasInsolvency ? '⚠️ INSOLVENCE' : '✅ Bez insolvence'}</span>
+                    )}
+                  </div>
+                  {enrichmentResult.risks.heritage?.isProtected && enrichmentResult.risks.heritage.impact && (
+                    <div style={{ fontSize: '0.68rem', color: '#92400e', marginTop: 2 }}>{enrichmentResult.risks.heritage.impact}</div>
+                  )}
+                </div>
+              )}
+
+              {/* Condition prediction */}
+              {enrichmentResult.conditionPrediction?.components?.length > 0 && (
+                <div style={{ marginBottom: 8, fontSize: '0.78rem' }}>
+                  <span style={{ fontWeight: 600 }}>🔧 Predikce stavu:</span>
+                  <span style={{ marginLeft: 6, color: enrichmentResult.conditionPrediction.overallRisk === 'high' ? 'var(--danger)' : enrichmentResult.conditionPrediction.overallRisk === 'medium' ? 'var(--warning)' : 'var(--success)' }}>
+                    {enrichmentResult.conditionPrediction.overallRisk === 'high' ? '⚠️ Vysoké riziko' : enrichmentResult.conditionPrediction.overallRisk === 'medium' ? '🟡 Střední' : '✅ Nízké'}
+                  </span>
+                  <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {enrichmentResult.conditionPrediction.components.filter((c: any) => c.risk !== 'ok').slice(0, 4).map((c: any, i: number) => (
+                      <span key={i} style={{ color: c.risk === 'critical' ? 'var(--danger)' : 'var(--warning)', fontSize: '0.72rem' }}>
+                        {c.risk === 'critical' ? '🔴' : '🟠'} {c.name}: {c.recommendation}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Checklist summary */}
+              {enrichmentResult.checklist?.length > 0 && (
+                <div style={{ marginBottom: 8, fontSize: '0.78rem' }}>
+                  📋 Checklist: {enrichmentResult.checklist.filter((c: any) => c.required).length} povinných revizí
+                </div>
+              )}
+
+              {/* Paid data */}
               {enrichmentResult.paidDataAvailable?.length > 0 && (
-                <div style={{ marginTop: 8, padding: '6px 10px', background: 'var(--warning-light, #fef3c7)', borderRadius: 6, fontSize: '0.75rem', color: '#92400e' }}>
-                  🔒 Dostupné placené zdroje: {enrichmentResult.paidDataAvailable.map((p: any) => p.name).join(', ')} — brzy dostupné
+                <div style={{ padding: '6px 10px', background: 'var(--warning-light, #fef3c7)', borderRadius: 6, fontSize: '0.72rem', color: '#92400e' }}>
+                  🔒 Placené zdroje: {enrichmentResult.paidDataAvailable.map((p: any) => p.name).join(', ')} — brzy dostupné
                 </div>
               )}
             </div>

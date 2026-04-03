@@ -38,11 +38,20 @@ export interface InsolvencyCheck {
   source: string
 }
 
+export interface HeritageProtection {
+  isProtected: boolean
+  protectionType: string[]
+  registryNumber?: string
+  catalogUrl?: string
+  impact?: string
+}
+
 export interface GeoRiskProfile {
   flood: FloodRisk
   noise: NoiseLevel
   radon: RadonRisk
   insolvency?: InsolvencyCheck
+  heritage?: HeritageProtection
 }
 
 const OVERPASS_URL = 'https://overpass-api.de/api/interpreter'
@@ -110,9 +119,10 @@ export class GeoRiskService {
   }
 
   async getRiskProfile(lat: number, lng: number, ico?: string): Promise<GeoRiskProfile> {
-    const [flood, radon] = await Promise.all([
+    const [flood, radon, heritage] = await Promise.all([
       this.checkFloodZone(lat, lng),
       this.checkRadon(lat, lng),
+      this.checkHeritageProtection(lat, lng),
     ])
 
     const insolvency = ico ? await this.checkInsolvency(ico) : undefined
@@ -122,6 +132,7 @@ export class GeoRiskService {
       noise: { level: 'unknown', source: 'N/A — hluková mapa nedostupná' },
       radon,
       insolvency,
+      heritage,
     }
   }
 
@@ -180,6 +191,38 @@ export class GeoRiskService {
       }
     } catch { /* timeout */ }
     return { hasInsolvency: false, source: 'N/A — ISIR nedostupný' }
+  }
+
+  async checkHeritageProtection(lat: number, lng: number): Promise<HeritageProtection> {
+    try {
+      const res = await fetch(
+        `https://geoportal.npu.cz/arcgis/rest/services/Tematicke/CP_UAP_PVO/MapServer/0/query?geometry=${lng},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=*&f=json&inSR=4326`,
+        { signal: AbortSignal.timeout(6000) },
+      )
+      if (res.ok) {
+        const data = await res.json()
+        const features = data.features ?? []
+        if (features.length > 0) {
+          const types: string[] = []
+          let regNumber: string | undefined
+          let catalogUrl: string | undefined
+          for (const f of features) {
+            const a = f.attributes ?? {}
+            if (a.typOchranyNazev) types.push(a.typOchranyNazev)
+            if (a.rejstrikoveCisloUSKP) regNumber = a.rejstrikoveCisloUSKP
+            if (a.urlExt) catalogUrl = a.urlExt
+          }
+          return {
+            isProtected: true,
+            protectionType: [...new Set(types)],
+            registryNumber: regNumber,
+            catalogUrl,
+            impact: 'Opravy vyžadují souhlas NPÚ. Očekávejte vyšší náklady a delší lhůty.',
+          }
+        }
+      }
+    } catch { /* timeout */ }
+    return { isProtected: false, protectionType: [] }
   }
 
   private haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
