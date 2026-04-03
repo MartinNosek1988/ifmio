@@ -4614,6 +4614,8 @@ model Building {
   managingOrg            KbOrganization? @relation(fields: [managingOrgId], references: [id])
   dataQualityScore       Float?          @default(0)
   lastEnrichedAt         DateTime?
+  enrichmentData         Json?
+  enrichedAt             DateTime?
   createdAt              DateTime        @default(now())
   updatedAt              DateTime        @updatedAt
   units                  BuildingUnit[]

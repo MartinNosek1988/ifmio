@@ -148,9 +148,15 @@ export class KnowledgeBaseController {
       where: { id },
       include: {
         units: true,
-        managingOrg: true,
+        managingOrg: {
+          include: {
+            statutoryBodies: { orderBy: { createdAt: 'desc' } },
+            registryChanges: { orderBy: { changeDate: 'desc' }, take: 30 },
+            sbirkaListiny: { orderBy: { filingDate: 'desc' }, take: 30 },
+          },
+        },
         sources: { orderBy: { fetchedAt: 'desc' }, take: 10 },
-        // Don't include properties — leaks tenantId across tenants
+        _count: { select: { properties: true } },
       },
     })
   }

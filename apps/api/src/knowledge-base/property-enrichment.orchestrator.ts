@@ -343,6 +343,27 @@ export class PropertyEnrichmentOrchestrator {
     }
 
     result.qualityScore = Math.min(result.qualityScore, 100)
+
+    // Cache enrichment data on Building
+    if (result.buildingId) {
+      await this.prisma.building.update({
+        where: { id: result.buildingId },
+        data: {
+          enrichmentData: JSON.parse(JSON.stringify({
+            poi: result.nearbyPOI ?? null,
+            risks: result.risks ?? null,
+            priceEstimate: result.priceEstimate ?? null,
+            visual: result.visual ?? null,
+            conditionPrediction: result.conditionPrediction ?? null,
+            checklist: result.checklist ?? null,
+            paidDataAvailable: result.paidDataAvailable ?? null,
+          })),
+          enrichedAt: new Date(),
+          dataQualityScore: result.qualityScore,
+        },
+      }).catch(err => this.logger.debug(`Failed to cache enrichment data: ${err}`))
+    }
+
     return result
   }
 
