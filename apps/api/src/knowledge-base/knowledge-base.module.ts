@@ -4,13 +4,14 @@ import { KnowledgeBaseService } from './knowledge-base.service'
 import { BuildingEnrichmentService } from './building-enrichment.service'
 import { PropertyEnrichmentOrchestrator } from './property-enrichment.orchestrator'
 import { IprPriceService } from './ipr-price.service'
+import { GeoRiskService } from './geo-risk.service'
 import { PrismaModule } from '../prisma/prisma.module'
 import { IntegrationsModule } from '../integrations/integrations.module'
 
 @Module({
   imports: [PrismaModule, IntegrationsModule],
   controllers: [KnowledgeBaseController],
-  providers: [KnowledgeBaseService, BuildingEnrichmentService, PropertyEnrichmentOrchestrator, IprPriceService],
+  providers: [KnowledgeBaseService, BuildingEnrichmentService, PropertyEnrichmentOrchestrator, IprPriceService, GeoRiskService],
   exports: [KnowledgeBaseService, BuildingEnrichmentService],
 })
 export class KnowledgeBaseModule {}

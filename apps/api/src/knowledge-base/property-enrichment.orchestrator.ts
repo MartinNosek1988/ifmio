@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service'
 import { KnowledgeBaseService } from './knowledge-base.service'
 import { AresService } from '../integrations/ares/ares.service'
 import { IprPriceService, type PriceEstimate } from './ipr-price.service'
+import { GeoRiskService, type NearbyPOI, type GeoRiskProfile } from './geo-risk.service'
 
 export interface EnrichmentResult {
   buildingId?: string
@@ -27,6 +28,8 @@ export interface EnrichmentResult {
     streetViewUrl?: string
     mapUrl?: string
   }
+  nearbyPOI?: NearbyPOI
+  risks?: GeoRiskProfile
 }
 
 @Injectable()
@@ -37,6 +40,7 @@ export class PropertyEnrichmentOrchestrator {
     private kb: KnowledgeBaseService,
     private ares: AresService,
     private iprPrice: IprPriceService,
+    private geoRisk: GeoRiskService,
     private prisma: PrismaService,
   ) {}
 
@@ -140,7 +144,33 @@ export class PropertyEnrichmentOrchestrator {
       }
     }
 
-    // === KROK 4: Nabídni placené zdroje ===
+    // === KROK 5: POI v okolí (Overpass/OSM) ===
+    if (input.lat && input.lng) {
+      try {
+        result.nearbyPOI = await this.geoRisk.getNearbyPOI(input.lat, input.lng, 500)
+        if (result.nearbyPOI.details.length > 0) {
+          result.sources.push('OSM')
+          result.qualityScore += 5
+        }
+      } catch (err) {
+        this.logger.debug(`POI query failed: ${err}`)
+      }
+    }
+
+    // === KROK 6: Rizikový profil ===
+    if (input.lat && input.lng) {
+      try {
+        result.risks = await this.geoRisk.getRiskProfile(
+          input.lat, input.lng,
+          result.freeData.organization?.ico,
+        )
+        result.qualityScore += 5
+      } catch (err) {
+        this.logger.debug(`Risk profile failed: ${err}`)
+      }
+    }
+
+    // === KROK 7: Nabídni placené zdroje ===
     result.paidDataAvailable = [
       {
         source: 'CUZK_DALKOV',
