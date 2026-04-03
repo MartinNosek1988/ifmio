@@ -351,7 +351,7 @@ export default function PropertyDetailPage() {
               </button>
             </div>
           )}
-          <Button icon={<Pencil size={15} />} onClick={() => setShowEditProp(true)} data-testid="property-detail-edit-btn">Upravit</Button>
+          <Button icon={<Pencil size={15} />} onClick={() => navigate(`/properties/${id}/edit`)} data-testid="property-detail-edit-btn">Upravit</Button>
           <Button icon={<Layers size={15} />} onClick={() => setShowBulk(true)}>Hromadné</Button>
           <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowAddUnit(true)} data-testid="unit-add-btn">
             Nová jednotka
