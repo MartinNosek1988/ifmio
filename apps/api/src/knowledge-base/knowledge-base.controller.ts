@@ -6,6 +6,8 @@ import { PropertyEnrichmentOrchestrator } from './property-enrichment.orchestrat
 import { BuildingIntelligenceService } from './building-intelligence.service'
 import { PrismaService } from '../prisma/prisma.service'
 import { ConfigService } from '@nestjs/config'
+import { CurrentUser } from '../common/decorators/current-user.decorator'
+import type { AuthUser } from '@ifmio/shared-types'
 
 class EnrichAddressDto {
   @IsString() @IsNotEmpty() city!: string
@@ -146,9 +148,9 @@ export class KnowledgeBaseController {
 
   @Get('properties/:id/welcome-pack')
   @ApiOperation({ summary: 'Welcome Pack HTML pro tisk' })
-  async getWelcomePack(@Param('id') id: string) {
-    const property = await this.prisma.property.findUniqueOrThrow({
-      where: { id },
+  async getWelcomePack(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    const property = await this.prisma.withTenant().property.findUniqueOrThrow({
+      where: { id, tenantId: user.tenantId },
       select: { name: true, address: true, city: true, postalCode: true, ico: true, contactName: true, contactEmail: true, contactPhone: true },
     })
     const baseUrl = this.config.get('FRONTEND_URL') || 'https://ifmio.com'

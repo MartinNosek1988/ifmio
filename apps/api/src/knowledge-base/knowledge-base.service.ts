@@ -66,7 +66,7 @@ export class KnowledgeBaseService {
         return this.prisma.kbOrganization.update({
           where: { ico },
           data: {
-            name: String(aresData.obchodniJmeno || existing.name),
+            name: String(aresData.obchodniJmeno || aresData.nazev || existing.name),
             dic: aresData.dic ? String(aresData.dic) : existing.dic,
             isVatPayer: !!aresData.dic,
             lastAresSync: new Date(),
@@ -79,7 +79,7 @@ export class KnowledgeBaseService {
     return this.prisma.kbOrganization.create({
       data: {
         ico,
-        name: aresData?.obchodniJmeno ? String(aresData.obchodniJmeno) : `IČO ${ico}`,
+        name: String(aresData?.obchodniJmeno || aresData?.nazev || `IČO ${ico}`),
         dic: aresData?.dic ? String(aresData.dic) : null,
         isVatPayer: !!aresData?.dic,
         orgType: this.detectOrgType(aresData?.pravniForma as string | undefined),

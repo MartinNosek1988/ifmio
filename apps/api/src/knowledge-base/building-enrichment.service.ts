@@ -80,8 +80,8 @@ export class BuildingEnrichmentService {
       await this.prisma.organizationSource.create({
         data: {
           organizationId: org.id,
-          source: 'ARES',
-          fieldsUpdated: ['name', 'orgType', 'dic'],
+          source: 'MANUAL',
+          fieldsUpdated: ['ico'],
         },
       })
     } catch (error) {

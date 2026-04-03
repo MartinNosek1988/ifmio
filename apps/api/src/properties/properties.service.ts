@@ -54,7 +54,10 @@ export class PropertiesService {
       city: property.city,
       postalCode: property.postalCode,
       ico: property.ico,
-    }).catch(err => this.logger.warn(`KB enrichment failed: ${err}`));
+    }).catch((err) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.warn('KB enrichment failed', { error: msg });
+    });
 
     return property;
   }

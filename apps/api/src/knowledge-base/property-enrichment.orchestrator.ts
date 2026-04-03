@@ -82,7 +82,7 @@ export class PropertyEnrichmentOrchestrator {
     // === KROK 1: ARES — hledej SVJ/BD na adrese ===
     try {
       // Extract street name for search (remove house number)
-      const streetName = input.street?.replace(/\s*\d+.*$/, '').trim()
+      const streetName = input.street?.replace(/\s+\d+[\w/\s-]*$/, '').trim()
       if (streetName && input.city) {
         const searchTerm = `${streetName} ${input.houseNumber || ''}`.trim()
         const aresResults = await this.ares.searchByName(searchTerm, 5)
@@ -109,7 +109,8 @@ export class PropertyEnrichmentOrchestrator {
           result.qualityScore += 20
 
           // KB enrichment
-          await this.kb.findOrCreateOrganization(best.ico, best as any).catch(() => {})
+          const kbOrgData = { obchodniJmeno: best.nazev, nazev: best.nazev, dic: best.dic, pravniForma: best.pravniForma, datumVzniku: best.datumVzniku }
+          await this.kb.findOrCreateOrganization(best.ico, kbOrgData).catch(() => {})
 
           // Statutární orgány z ARES detail
           if (best.zastupci?.length) {
@@ -254,26 +255,24 @@ export class PropertyEnrichmentOrchestrator {
           result.sources.push('JUSTICE_OR')
           result.qualityScore += 10
 
-          // Persist to KB
+          // Persist to KB — deduplicate via deleteMany + createMany in transaction
           const org = await this.prisma.kbOrganization.findUnique({
             where: { ico: result.freeData.organization.ico },
           })
           if (org) {
-            // Save registry changes
-            for (const change of registryChanges.slice(0, 20)) {
-              await this.prisma.kbRegistryChange.create({
-                data: {
+            await this.prisma.$transaction([
+              this.prisma.kbRegistryChange.deleteMany({ where: { organizationId: org.id } }),
+              this.prisma.kbRegistryChange.createMany({
+                data: registryChanges.slice(0, 20).map(change => ({
                   organizationId: org.id,
                   changeDate: change.changeDate ? new Date(change.changeDate) : null,
                   changeType: change.changeType,
                   description: change.description,
-                },
-              }).catch(() => {})
-            }
-            // Save Sbírka listin
-            for (const doc of sbirkaListin.slice(0, 30)) {
-              await this.prisma.kbSbirkaListina.create({
-                data: {
+                })),
+              }),
+              this.prisma.kbSbirkaListina.deleteMany({ where: { organizationId: org.id } }),
+              this.prisma.kbSbirkaListina.createMany({
+                data: sbirkaListin.slice(0, 30).map(doc => ({
                   organizationId: org.id,
                   documentType: doc.documentType,
                   documentName: doc.documentName,
@@ -282,9 +281,9 @@ export class PropertyEnrichmentOrchestrator {
                   periodTo: doc.periodTo ? new Date(doc.periodTo) : null,
                   justiceDocId: doc.documentId,
                   downloadUrl: doc.downloadUrl,
-                },
-              }).catch(() => {})
-            }
+                })),
+              }),
+            ]).catch(() => {})
           }
         }
       } catch (err) {

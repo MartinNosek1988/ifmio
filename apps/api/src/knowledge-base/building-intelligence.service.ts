@@ -64,7 +64,6 @@ export class BuildingIntelligenceService {
         street: { contains: street.split(' ')[0], mode: 'insensitive' },
         city: { contains: city, mode: 'insensitive' },
       },
-      include: { properties: { select: { id: true, name: true } } },
     })
 
     if (!existing) return null
@@ -72,9 +71,7 @@ export class BuildingIntelligenceService {
     return {
       isDuplicate: true,
       existingBuildingId: existing.id,
-      message: existing.properties.length > 0
-        ? `Budova je již v systému (${existing.properties.length} správce/ů)`
-        : 'Budova je v databázi ifmio, zatím bez správce',
+      message: 'Budova je již v databázi ifmio',
     }
   }
 
