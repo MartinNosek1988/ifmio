@@ -32,6 +32,7 @@ export interface ApiProperty {
   websiteNote?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  buildingId?: string | null;
   createdAt: string;
   updatedAt: string;
   units?: ApiUnit[];
