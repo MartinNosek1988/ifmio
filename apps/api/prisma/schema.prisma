@@ -4571,6 +4571,7 @@ enum KbDataSource {
   CUZK_KATASTER
   CUZK_NAHLIDNI
   JUSTICE_OR
+  JUSTICE_SBIRKA
   ISIR
   PENB
   IPR_PRAHA
@@ -4678,6 +4679,8 @@ model KbOrganization {
   sources           OrganizationSource[]
   statutoryBodies   StatutoryBodyKb[]
   ownerships        UnitOwnershipKb[]
+  registryChanges   KbRegistryChange[]
+  sbirkaListiny     KbSbirkaListina[]
 
   @@index([orgType])
   @@index([city])
@@ -4776,4 +4779,42 @@ model OrganizationSource {
 
   @@index([organizationId, source])
   @@map("kb_organization_sources")
+}
+
+// ─── JUSTICE.CZ — OR history + Sbírka listin ───────────────────
+
+model KbRegistryChange {
+  id                String          @id @default(uuid())
+  organizationId    String
+  organization      KbOrganization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  changeDate        DateTime?
+  changeType        String          // "zápis", "změna", "výmaz"
+  section           String?         // "C", "S", "P" — oddíl rejstříku
+  fileNumber        String?         // spisová značka (e.g. "S 12345/MSPH")
+  description       String?         @db.Text
+  rawData           Json?
+  fetchedAt         DateTime        @default(now())
+
+  @@index([organizationId])
+  @@index([changeDate])
+  @@map("kb_registry_changes")
+}
+
+model KbSbirkaListina {
+  id                String          @id @default(uuid())
+  organizationId    String
+  organization      KbOrganization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  documentType      String          // "ucetni_zaverka", "stanovy", "zakladatelska_listina", "notarsky_zapis", "other"
+  documentName      String
+  filingDate        DateTime?
+  periodFrom        DateTime?       // účetní období od
+  periodTo          DateTime?       // účetní období do
+  justiceDocId      String?         // ID dokumentu v Justice.cz
+  downloadUrl       String?
+  extractedData     Json?           // AI-extracted structured data
+  fetchedAt         DateTime        @default(now())
+
+  @@index([organizationId])
+  @@index([documentType])
+  @@map("kb_sbirka_listin")
 }

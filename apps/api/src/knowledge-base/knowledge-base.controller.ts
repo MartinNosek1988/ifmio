@@ -1,7 +1,24 @@
-import { Controller, Get, Param, Query } from '@nestjs/common'
+import { Controller, Get, Post, Param, Query, Body } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
+import { IsString, IsNotEmpty, IsOptional, IsNumber } from 'class-validator'
 import { KnowledgeBaseService } from './knowledge-base.service'
+import { PropertyEnrichmentOrchestrator } from './property-enrichment.orchestrator'
+import { BuildingIntelligenceService } from './building-intelligence.service'
 import { PrismaService } from '../prisma/prisma.service'
+import { ConfigService } from '@nestjs/config'
+import { CurrentUser } from '../common/decorators/current-user.decorator'
+import type { AuthUser } from '@ifmio/shared-types'
+
+class EnrichAddressDto {
+  @IsString() @IsNotEmpty() city!: string
+  @IsString() @IsOptional() street?: string
+  @IsString() @IsOptional() district?: string
+  @IsString() @IsOptional() postalCode?: string
+  @IsString() @IsOptional() houseNumber?: string
+  @IsNumber() @IsOptional() lat?: number
+  @IsNumber() @IsOptional() lng?: number
+  @IsString() @IsOptional() ruianCode?: string
+}
 
 const VALID_ORG_TYPES = ['SVJ', 'BD', 'SRO', 'AS', 'MUNICIPALITY', 'STATE_ORG', 'OTHER_ORG']
 
@@ -11,8 +28,17 @@ const VALID_ORG_TYPES = ['SVJ', 'BD', 'SRO', 'AS', 'MUNICIPALITY', 'STATE_ORG', 
 export class KnowledgeBaseController {
   constructor(
     private kb: KnowledgeBaseService,
+    private orchestrator: PropertyEnrichmentOrchestrator,
+    private intelligence: BuildingIntelligenceService,
     private prisma: PrismaService,
+    private config: ConfigService,
   ) {}
+
+  @Post('enrich')
+  @ApiOperation({ summary: 'Enrichment z adresy — RÚIAN→ARES→ČÚZK chain' })
+  async enrichFromAddress(@Body() body: EnrichAddressDto) {
+    return this.orchestrator.enrichFromAddress(body)
+  }
 
   @Get('stats')
   @ApiOperation({ summary: 'KB statistiky' })
@@ -106,7 +132,31 @@ export class KnowledgeBaseController {
         managedBuildings: { select: { id: true, street: true, city: true } },
         statutoryBodies: true,
         sources: { orderBy: { fetchedAt: 'desc' }, take: 10 },
+        registryChanges: { orderBy: { changeDate: 'desc' }, take: 20 },
+        sbirkaListiny: { orderBy: { filingDate: 'desc' }, take: 30 },
       },
     })
+  }
+
+  @Get('properties/:id/qr')
+  @ApiOperation({ summary: 'QR kód pro portál nemovitosti' })
+  async getPropertyQR(@Param('id') id: string) {
+    const baseUrl = this.config.get('FRONTEND_URL') || this.config.get('CORS_ORIGIN') || 'https://ifmio.com'
+    const qrDataUrl = await this.intelligence.generateQR(id, baseUrl)
+    return { qrDataUrl, portalUrl: `${baseUrl}/portal/${id}` }
+  }
+
+  @Get('properties/:id/welcome-pack')
+  @ApiOperation({ summary: 'Welcome Pack HTML pro tisk' })
+  async getWelcomePack(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    const property = await this.prisma.withTenant().property.findUniqueOrThrow({
+      where: { id, tenantId: user.tenantId },
+      select: { name: true, address: true, city: true, postalCode: true, ico: true, contactName: true, contactEmail: true, contactPhone: true },
+    })
+    const baseUrl = this.config.get('FRONTEND_URL') || 'https://ifmio.com'
+    const qrDataUrl = await this.intelligence.generateQR(id, baseUrl)
+    const mapped = { ...property, ico: property.ico ?? undefined, contactName: property.contactName ?? undefined, contactEmail: property.contactEmail ?? undefined, contactPhone: property.contactPhone ?? undefined, postalCode: property.postalCode ?? undefined }
+    const html = this.intelligence.generateWelcomePackHtml(mapped, qrDataUrl)
+    return { html }
   }
 }
