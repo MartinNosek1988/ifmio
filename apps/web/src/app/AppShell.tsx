@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Building2, Users, FolderOpen, Calendar,
   Wrench, Headphones, Box, Gauge, FileText, UserCheck,
   Wallet, AlertTriangle, TrendingUp,
-  MessageSquare, Mail, Settings, BarChart3, Database,
+  MessageSquare, Mail, Settings, BarChart3, Database, Download, Landmark,
   ClipboardList, ClipboardCheck, ScrollText, UsersRound, FileCheck2, Columns3,
   User as UserIcon, LogOut, Shield, Menu, X, ChevronDown, Sparkles,
 } from 'lucide-react';
@@ -103,6 +103,16 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/knowledge-base', label: 'Knowledge Base', icon: <Database size={17} />, roles: ['fm', 'owner'] },
       { to: '/audit', label: 'Audit log', icon: <ScrollText size={17} /> },
       { to: '/settings', label: 'Nastavení', icon: <Settings size={17} /> },
+    ],
+  },
+  {
+    title: 'CRM',
+    roles: ['fm', 'owner'],
+    items: [
+      { to: '/crm', label: 'Přehled', icon: <LayoutDashboard size={17} /> },
+      { to: '/crm/buildings', label: 'Budovy', icon: <Building2 size={17} /> },
+      { to: '/crm/organizations', label: 'Organizace', icon: <Landmark size={17} /> },
+      { to: '/crm/import', label: 'Import dat', icon: <Download size={17} /> },
     ],
   },
   {

@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '../../core/api/client';
 import { ArrowLeft, Plus, Pencil, Layers, Trash2, UserPlus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { usePropertyPickerStore } from '../../core/stores/property-picker.store';
 import { KpiCard, Table, Badge, Button, Modal, EmptyState, LoadingState, ErrorState } from '../../shared/components';
@@ -44,6 +45,11 @@ export default function PropertyDetailPage() {
   const { data: contracts = [] } = usePropertyContracts(id!);
   const { data: financialContexts = [] } = usePropertyFinancialContexts(id!);
   usePropertyOwnerships(id!);
+  const { data: buildingData, isLoading: buildingLoading, isError: buildingError } = useQuery({
+    queryKey: ['property-building', property?.buildingId],
+    queryFn: () => apiClient.get(`/knowledge-base/buildings/${property!.buildingId}`).then(r => r.data),
+    enabled: !!property?.buildingId,
+  });
   const { selectedFinancialContextId, setFinancialContext } = usePropertyPickerStore();
 
   // Active financial context: use store selection, or default to first active
@@ -75,7 +81,7 @@ export default function PropertyDetailPage() {
     enabled: !!id,
   });
 
-  type DetailTab = 'overview' | 'units' | 'owners' | 'groups' | 'meters' | 'components' | 'representatives' | 'assemblies' | 'per-rollam' | 'floor-plans' | 'map' | 'profile'
+  type DetailTab = 'overview' | 'units' | 'owners' | 'groups' | 'meters' | 'components' | 'representatives' | 'assemblies' | 'per-rollam' | 'floor-plans' | 'map' | 'profile' | 'building'
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
 
   const refetchOwnerships = () => queryClient.invalidateQueries({ queryKey: ['ownerships'] });
@@ -384,6 +390,7 @@ export default function PropertyDetailPage() {
           { key: 'per-rollam' as DetailTab, label: 'Per rollam' },
           { key: 'floor-plans' as DetailTab, label: 'Půdorysy' },
           { key: 'map' as DetailTab, label: 'Mapa' },
+          { key: 'building' as DetailTab, label: 'O budově' },
           { key: 'profile' as DetailTab, label: 'Profil' },
         ]).map(t => (
           <button key={t.key} className={`tab-btn${detailTab === t.key ? ' active' : ''}`} data-testid={`property-tab-${t.key}`} onClick={() => setDetailTab(t.key)}>
@@ -665,6 +672,127 @@ export default function PropertyDetailPage() {
               <div style={{ fontStyle: 'italic' }}>Souřadnice nejsou k dispozici</div>
               <div style={{ fontSize: '.78rem', marginTop: 4 }}>Zadejte GPS souřadnice v nastavení nemovitosti.</div>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* ── O BUDOVĚ TAB ────────────────────────────────────────── */}
+      {detailTab === 'building' && (
+        <div data-testid="property-building-tab">
+          {!property.buildingId ? (
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 24, textAlign: 'center' }}>
+              <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 8 }}>Budova zatím nebyla enrichnuta</div>
+              <div style={{ fontSize: '.85rem', color: 'var(--text-muted)', marginBottom: 16 }}>Knowledge Base nemá data o této budově. Spusťte enrichment pro doplnění informací.</div>
+              <button
+                style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'var(--primary, #0d9488)', color: '#fff', fontSize: '.85rem', fontWeight: 600, cursor: 'pointer' }}
+                onClick={() => {
+                  apiClient.post('/knowledge-base/enrich', { city: property.city, street: property.address, postalCode: property.postalCode }).then(() => {
+                    refetch()
+                    toast.success('Enrichment spuštěn')
+                  }).catch(() => toast.error('Enrichment selhal'))
+                }}
+              >
+                Enrichnout budovu
+              </button>
+            </div>
+          ) : buildingError ? (
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 24, textAlign: 'center', color: 'var(--danger)' }}>
+              Nepodařilo se načíst data budovy
+            </div>
+          ) : buildingData ? (() => {
+            const bd = buildingData
+            const enrichment = bd.enrichmentData as Record<string, any> | null
+            const org = bd.managingOrg
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                {/* Ortofoto + lokalita */}
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 }}>
+                  <div style={{ fontWeight: 600, fontSize: '.85rem', marginBottom: 8 }}>Lokalita</div>
+                  {bd.lat && bd.lng && (
+                    <img
+                      src={`https://ags.cuzk.gov.cz/arcgis1/rest/services/ORTOFOTO_WM/MapServer/export?bbox=${bd.lng - 0.001},${bd.lat - 0.0007},${bd.lng + 0.001},${bd.lat + 0.0007}&size=600,400&format=png&f=image&bboxSR=4326&imageSR=4326`}
+                      alt="Ortofoto" style={{ width: '100%', borderRadius: 8, maxHeight: 180, objectFit: 'cover', marginBottom: 8 }}
+                    />
+                  )}
+                  <div style={{ fontSize: '.82rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
+                    {bd.district && <div><span style={{ color: 'var(--text-muted)' }}>MČ:</span> {bd.district}</div>}
+                    {bd.cadastralTerritoryName && <div><span style={{ color: 'var(--text-muted)' }}>KÚ:</span> {bd.cadastralTerritoryName}</div>}
+                    {bd.postalCode && <div><span style={{ color: 'var(--text-muted)' }}>PSČ:</span> {bd.postalCode}</div>}
+                  </div>
+                </div>
+
+                {/* Organizace */}
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 }}>
+                  <div style={{ fontWeight: 600, fontSize: '.85rem', marginBottom: 8 }}>Organizace {org?.orgType ? `(${org.orgType})` : ''}</div>
+                  {org ? (
+                    <div style={{ fontSize: '.82rem' }}>
+                      <div><span style={{ color: 'var(--text-muted)' }}>Název:</span> {org.name}</div>
+                      <div><span style={{ color: 'var(--text-muted)' }}>IČO:</span> {org.ico}</div>
+                      {org.statutoryBodies?.length > 0 && (
+                        <div style={{ marginTop: 8 }}>
+                          <div style={{ fontWeight: 500 }}>Statutární orgán:</div>
+                          {org.statutoryBodies.slice(0, 5).map((s: any, i: number) => (
+                            <div key={i} style={{ color: 'var(--text-secondary)' }}>{s.role}: {s.firstName} {s.lastName}</div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : <div style={{ color: 'var(--text-muted)', fontSize: '.82rem' }}>Bez organizace</div>}
+                </div>
+
+                {/* POI */}
+                {enrichment?.poi && (
+                  <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 }}>
+                    <div style={{ fontWeight: 600, fontSize: '.85rem', marginBottom: 8 }}>Okolí (500m)</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, fontSize: '.82rem' }}>
+                      {enrichment.poi.schools > 0 && <span>🏫 {enrichment.poi.schools} škol</span>}
+                      {(enrichment.poi.busStops + enrichment.poi.tramStops + enrichment.poi.metroStations) > 0 && <span>🚌 {enrichment.poi.busStops + enrichment.poi.tramStops + enrichment.poi.metroStations} MHD</span>}
+                      {enrichment.poi.doctors > 0 && <span>🏥 {enrichment.poi.doctors} lékařů</span>}
+                      {enrichment.poi.supermarkets > 0 && <span>🛒 {enrichment.poi.supermarkets} marketů</span>}
+                    </div>
+                  </div>
+                )}
+
+                {/* Rizika */}
+                {enrichment?.risks && (
+                  <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 }}>
+                    <div style={{ fontWeight: 600, fontSize: '.85rem', marginBottom: 8 }}>Rizikový profil</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '.82rem' }}>
+                      <span>🌊 Záplavy: {enrichment.risks.flood?.inFloodZone ? '⚠️ V zóně' : '✅ Mimo'}</span>
+                      <span>☢️ Radon: {enrichment.risks.radon?.index === 'high' ? '⚠️ Vysoký' : enrichment.risks.radon?.index === 'medium' ? '🟡 Střední' : '✅ Nízký'}</span>
+                      {enrichment.risks.heritage && <span>🏛️ Památky: {enrichment.risks.heritage.isProtected ? '⚠️ Chráněno' : '✅ Bez ochrany'}</span>}
+                    </div>
+                  </div>
+                )}
+
+                {/* Cenový odhad */}
+                {enrichment?.priceEstimate?.landPricePerSqm && (
+                  <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 }}>
+                    <div style={{ fontWeight: 600, fontSize: '.85rem', marginBottom: 8 }}>Cenový odhad</div>
+                    <div style={{ fontSize: '.82rem' }}>
+                      Pozemek: {enrichment.priceEstimate.landPricePerSqm.toLocaleString('cs-CZ')} Kč/m²
+                      {enrichment.priceEstimate.estimatedPricePerSqm && <div>Byt: ~{enrichment.priceEstimate.estimatedPricePerSqm.toLocaleString('cs-CZ')} Kč/m²</div>}
+                    </div>
+                  </div>
+                )}
+
+                {/* Stav budovy */}
+                {enrichment?.conditionPrediction?.components?.length > 0 && (
+                  <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 }}>
+                    <div style={{ fontWeight: 600, fontSize: '.85rem', marginBottom: 8 }}>Stav budovy</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '.82rem' }}>
+                      {enrichment!.conditionPrediction.components.filter((c: any) => c.risk !== 'ok').slice(0, 5).map((c: any, i: number) => (
+                        <div key={i}>
+                          <span style={{ color: c.risk === 'critical' ? 'var(--danger)' : 'var(--warning)' }}>{c.risk === 'critical' ? '🔴' : '🟡'}</span> {c.name}: {c.recommendation}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })() : (
+            <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>{buildingLoading ? 'Načítám data budovy...' : 'Data budovy nejsou dostupná'}</div>
           )}
         </div>
       )}

@@ -605,8 +605,18 @@ export class BulkImportService {
           }
         }
 
+        // Filter by district if specified (post-fetch — RÚIAN query doesn't support WHERE)
+        const filteredBuildings = job.district
+          ? [...buildingMap.values()].filter(b => {
+              const parsed = this.parseRuianAddress(b.address)
+              return parsed.city?.toLowerCase().includes(job.district!.toLowerCase()) ||
+                     parsed.district?.toLowerCase().includes(job.district!.toLowerCase()) ||
+                     b.address.toLowerCase().includes(job.district!.toLowerCase())
+            })
+          : [...buildingMap.values()]
+
         // 2. Process each building sequentially: upsert → ARES → enrich
-        for (const [, b] of buildingMap) {
+        for (const b of filteredBuildings) {
           if (job.status !== 'RUNNING') break
 
           job.currentBuilding = b.address.slice(0, 60)
@@ -710,7 +720,7 @@ export class BulkImportService {
           }
 
           job.processed++
-          job.lastProcessedId = String(offset + job.processed)
+          job.lastProcessedId = String(offset)
         }
 
         offset += batchSize

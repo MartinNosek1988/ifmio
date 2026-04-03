@@ -1,7 +1,6 @@
 import { Controller, Get, Post, Patch, Delete, Param, Query, Body } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { IsString, IsNotEmpty, IsOptional, IsNumber, IsIn } from 'class-validator'
-import { Prisma } from '@prisma/client'
 import { KnowledgeBaseService } from './knowledge-base.service'
 import { PropertyEnrichmentOrchestrator } from './property-enrichment.orchestrator'
 import { BuildingIntelligenceService } from './building-intelligence.service'
@@ -90,6 +89,12 @@ export class KnowledgeBaseController {
     @Query('q') q?: string,
     @Query('city') city?: string,
     @Query('district') district?: string,
+    @Query('buildingType') buildingType?: string,
+    @Query('minQuality') minQuality?: string,
+    @Query('maxQuality') maxQuality?: string,
+    @Query('hasOrganization') hasOrganization?: string,
+    @Query('sort') sort?: string,
+    @Query('order') order?: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
@@ -102,18 +107,32 @@ export class KnowledgeBaseController {
         { street: { contains: q, mode: 'insensitive' } },
         { fullAddress: { contains: q, mode: 'insensitive' } },
         { city: { contains: q, mode: 'insensitive' } },
+        { managingOrg: { name: { contains: q, mode: 'insensitive' } } },
+        { managingOrg: { ico: { startsWith: q } } },
       ]
     }
     if (city) where.city = { contains: city, mode: 'insensitive' }
     if (district) where.district = { contains: district, mode: 'insensitive' }
+    if (buildingType) where.buildingType = buildingType
+    if (minQuality) { const n = Number(minQuality); if (!Number.isNaN(n)) where.dataQualityScore = { ...((where.dataQualityScore as any) || {}), gte: n } }
+    if (maxQuality) { const n = Number(maxQuality); if (!Number.isNaN(n)) where.dataQualityScore = { ...((where.dataQualityScore as any) || {}), lte: n } }
+    if (hasOrganization === 'true') where.managingOrgId = { not: null }
+    if (hasOrganization === 'false') where.managingOrgId = null
+
+    const validSortFields = ['dataQualityScore', 'city', 'district', 'street', 'lastEnrichedAt', 'createdAt']
+    const sortField = validSortFields.includes(sort || '') ? sort! : 'dataQualityScore'
+    const sortOrder = order === 'asc' ? 'asc' as const : 'desc' as const
 
     const [data, total] = await Promise.all([
       this.prisma.building.findMany({
         where: where as any,
         take,
         skip,
-        orderBy: { dataQualityScore: 'desc' },
-        include: { managingOrg: { select: { ico: true, name: true, orgType: true } } },
+        orderBy: { [sortField]: sortOrder },
+        include: {
+          managingOrg: { select: { ico: true, name: true, orgType: true } },
+          _count: { select: { units: true } },
+        },
       }),
       this.prisma.building.count({ where: where as any }),
     ])
@@ -128,9 +147,14 @@ export class KnowledgeBaseController {
       where: { id },
       include: {
         units: true,
-        managingOrg: true,
+        managingOrg: {
+          include: {
+            statutoryBodies: { orderBy: { createdAt: 'desc' } },
+            registryChanges: { orderBy: { changeDate: 'desc' }, take: 30 },
+            sbirkaListiny: { orderBy: { filingDate: 'desc' }, take: 30 },
+          },
+        },
         sources: { orderBy: { fetchedAt: 'desc' }, take: 10 },
-        // Don't include properties — leaks tenantId across tenants
       },
     })
   }
