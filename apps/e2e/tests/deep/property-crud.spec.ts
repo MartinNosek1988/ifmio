@@ -41,41 +41,56 @@ test.describe('Property CRUD — E2E', () => {
     await addBtn.click()
     await page.waitForTimeout(1000)
 
-    // Vyplnění formuláře — fill + blur + wait pro React state propagaci
+    const propName = `E2E Bytový dům ${Date.now()}`
+
+    // Vyplnění — type() místo fill() pro spolehlivý React onChange na CI
     const nameInput = page.locator('[data-testid="property-form-name"], input[name="name"]').first()
-    await nameInput.fill(`E2E Bytový dům ${Date.now()}`)
+    await nameInput.click()
+    await nameInput.clear()
+    await nameInput.type(propName, { delay: 50 })
     await nameInput.blur()
-    await page.waitForTimeout(100)
+    await page.waitForTimeout(200)
 
     const addressInput = page.locator('[data-testid="property-form-address"], input[name="address"]').first()
     if (await addressInput.isVisible()) {
-      await addressInput.fill('Testovací 123')
+      await addressInput.click()
+      await addressInput.clear()
+      await addressInput.type('Testovací 123', { delay: 50 })
       await addressInput.blur()
-      await page.waitForTimeout(100)
+      await page.waitForTimeout(200)
     }
 
     const cityInput = page.locator('[data-testid="property-form-city"], input[name="city"]').first()
     if (await cityInput.isVisible()) {
-      await cityInput.fill('Praha')
+      await cityInput.click()
+      await cityInput.clear()
+      await cityInput.type('Praha', { delay: 50 })
       await cityInput.blur()
-      await page.waitForTimeout(100)
+      await page.waitForTimeout(200)
     }
 
     const postalInput = page.locator('[data-testid="property-form-postalCode"], input[name="postalCode"]').first()
     if (await postalInput.isVisible()) {
-      await postalInput.fill('110 00')
+      await postalInput.click()
+      await postalInput.clear()
+      await postalInput.type('110 00', { delay: 50 })
       await postalInput.blur()
-      await page.waitForTimeout(100)
+      await page.waitForTimeout(200)
     }
 
-    // Wait for React state propagation before submit
+    // Debug: ověř že inputy mají hodnoty před submit
+    await expect(nameInput).toHaveValue(new RegExp('E2E'))
+    await expect(addressInput).toHaveValue('Testovací 123')
+    await expect(cityInput).toHaveValue('Praha')
+    await expect(postalInput).toHaveValue('110 00')
+
+    // Wait for React state propagation
     await page.waitForTimeout(500)
 
-    // Ověř že submit button je enabled
+    // Submit
     const submitBtn = page.locator('[data-testid="property-form-save"], button:has-text("Vytvořit")').first()
     await expect(submitBtn).toBeEnabled({ timeout: 5000 })
 
-    // Submit
     const responsePromise = page.waitForResponse(
       (r: any) => r.url().includes('/api/v1/properties') && r.request().method() === 'POST',
     )
