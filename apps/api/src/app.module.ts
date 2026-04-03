@@ -66,6 +66,7 @@ import { ChatterModule } from './chatter/chatter.module';
 import { FundOpravModule } from './fund-oprav/fund-oprav.module';
 import { EmailInboundModule } from './email-inbound/email-inbound.module';
 import { PvkModule } from './pvk/pvk.module';
+import { KnowledgeBaseModule } from './knowledge-base/knowledge-base.module';
 import { E2eSeedModule } from './e2e-seed/e2e-seed.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -164,6 +165,7 @@ import { FieldEncryptionService } from './common/crypto/field-encryption.service
     FundOpravModule,
     EmailInboundModule,
     PvkModule,
+    KnowledgeBaseModule,
     ...(process.env.NODE_ENV === 'test' || process.env.E2E_SEED_ENABLED === 'true' ? [E2eSeedModule] : []),
   ],
   providers: [
