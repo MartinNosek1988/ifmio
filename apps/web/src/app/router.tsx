@@ -67,6 +67,7 @@ const AssetTypesPage = lazy(() => import('../modules/asset-types/AssetTypesPage'
 const AssetPassportPage = lazy(() => import('../modules/assets/AssetPassportPage'));
 const SuperAdminPage = lazy(() => import('../modules/super-admin/SuperAdminPage'));
 const KnowledgeBaseDashboard = lazy(() => import('../modules/admin/KnowledgeBaseDashboard'));
+const CrmBuildingsPage = lazy(() => import('../modules/crm/CrmBuildingsPage'));
 const QrResolvePage = lazy(() => import('../modules/asset-qr/QrResolvePage'));
 const PrincipalsPage = lazy(() => import('../modules/principals/PrincipalsPage'));
 const PrincipalDetailPage = lazy(() => import('../modules/principals/PrincipalDetailPage'));
@@ -225,6 +226,8 @@ export const router = createBrowserRouter([
       { path: 'profile', element: withBoundary('Profil', ProfilePage) },
       { path: 'super-admin', element: withBoundary('Super Admin', SuperAdminPage) },
       { path: 'knowledge-base', element: withBoundary('Knowledge Base', KnowledgeBaseDashboard) },
+      { path: 'crm', element: withBoundary('CRM Přehled', KnowledgeBaseDashboard) },
+      { path: 'crm/buildings', element: withBoundary('CRM Budovy', CrmBuildingsPage) },
     ],
   },
 ]);

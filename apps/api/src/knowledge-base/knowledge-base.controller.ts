@@ -90,6 +90,12 @@ export class KnowledgeBaseController {
     @Query('q') q?: string,
     @Query('city') city?: string,
     @Query('district') district?: string,
+    @Query('buildingType') buildingType?: string,
+    @Query('minQuality') minQuality?: string,
+    @Query('maxQuality') maxQuality?: string,
+    @Query('hasOrganization') hasOrganization?: string,
+    @Query('sort') sort?: string,
+    @Query('order') order?: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
@@ -102,18 +108,32 @@ export class KnowledgeBaseController {
         { street: { contains: q, mode: 'insensitive' } },
         { fullAddress: { contains: q, mode: 'insensitive' } },
         { city: { contains: q, mode: 'insensitive' } },
+        { managingOrg: { name: { contains: q, mode: 'insensitive' } } },
+        { managingOrg: { ico: { startsWith: q } } },
       ]
     }
     if (city) where.city = { contains: city, mode: 'insensitive' }
     if (district) where.district = { contains: district, mode: 'insensitive' }
+    if (buildingType) where.buildingType = buildingType
+    if (minQuality) where.dataQualityScore = { ...((where.dataQualityScore as any) || {}), gte: Number(minQuality) }
+    if (maxQuality) where.dataQualityScore = { ...((where.dataQualityScore as any) || {}), lte: Number(maxQuality) }
+    if (hasOrganization === 'true') where.managingOrgId = { not: null }
+    if (hasOrganization === 'false') where.managingOrgId = null
+
+    const validSortFields = ['dataQualityScore', 'city', 'district', 'street', 'lastEnrichedAt', 'createdAt']
+    const sortField = validSortFields.includes(sort || '') ? sort! : 'dataQualityScore'
+    const sortOrder = order === 'asc' ? 'asc' as const : 'desc' as const
 
     const [data, total] = await Promise.all([
       this.prisma.building.findMany({
         where: where as any,
         take,
         skip,
-        orderBy: { dataQualityScore: 'desc' },
-        include: { managingOrg: { select: { ico: true, name: true, orgType: true } } },
+        orderBy: { [sortField]: sortOrder },
+        include: {
+          managingOrg: { select: { ico: true, name: true, orgType: true } },
+          _count: { select: { units: true, properties: true } },
+        },
       }),
       this.prisma.building.count({ where: where as any }),
     ])
