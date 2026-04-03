@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { KnowledgeBaseService } from './knowledge-base.service'
 import { AresService } from '../integrations/ares/ares.service'
+import { IprPriceService, type PriceEstimate } from './ipr-price.service'
 
 export interface EnrichmentResult {
   buildingId?: string
@@ -20,10 +21,11 @@ export interface EnrichmentResult {
     source: string; name: string; description: string
     estimatedCost: number; currency: string; qualityBonus: number
   }>
-  priceEstimate?: {
-    landPricePerSqm?: number
-    source?: string
-    disclaimer: string
+  priceEstimate?: PriceEstimate
+  visual?: {
+    orthoUrl?: string
+    streetViewUrl?: string
+    mapUrl?: string
   }
 }
 
@@ -34,6 +36,7 @@ export class PropertyEnrichmentOrchestrator {
   constructor(
     private kb: KnowledgeBaseService,
     private ares: AresService,
+    private iprPrice: IprPriceService,
     private prisma: PrismaService,
   ) {}
 
@@ -103,16 +106,38 @@ export class PropertyEnrichmentOrchestrator {
       this.logger.debug(`ARES search failed: ${err}`)
     }
 
-    // === KROK 2: ČÚZK Nahlížení — STUB (plné napojení v další iteraci) ===
-    // ČÚZK Nahlížení nemá stabilní REST API — HTML scraping s CAPTCHA
+    // === KROK 2: ČÚZK Nahlížení — STUB ===
     // TODO: Napojit ČÚZK Dálkový přístup (placený) nebo VDP službu
-    result.qualityScore += 0 // no data from ČÚZK yet
+    // ČÚZK Nahlížení nemá stabilní REST API (HTML + CAPTCHA)
 
-    // === KROK 3: Cenový odhad — STUB ===
-    // IPR Praha cenová mapa endpoint není stabilně dostupný
-    // TODO: Napojit po ověření funkčního ArcGIS endpointu
-    result.priceEstimate = {
-      disclaimer: 'Cenový odhad bude dostupný po napojení na cenovou mapu IPR Praha.',
+    // === KROK 3: IPR Praha cenová mapa ===
+    if (input.lat && input.lng) {
+      try {
+        const landPrice = await this.iprPrice.getLandPrice(input.lat, input.lng)
+        if (landPrice) {
+          result.priceEstimate = this.iprPrice.estimatePrice(landPrice)
+          result.sources.push('IPR_PRAHA')
+          result.qualityScore += 10
+        }
+      } catch (err) {
+        this.logger.debug(`IPR Praha query failed: ${err}`)
+      }
+    }
+    if (!result.priceEstimate) {
+      result.priceEstimate = {
+        confidence: 'low',
+        disclaimer: 'Cenový odhad nedostupný — chybí GPS souřadnice nebo IPR Praha neodpověděl.',
+      }
+    }
+
+    // === KROK 4: Vizuální data ===
+    if (input.lat && input.lng) {
+      const bbox = this.getOrthoBbox(input.lat, input.lng)
+      result.visual = {
+        orthoUrl: `https://ags.cuzk.gov.cz/arcgis1/rest/services/ORTOFOTO_WM/MapServer/export?bbox=${bbox.lngMin},${bbox.latMin},${bbox.lngMax},${bbox.latMax}&size=600,400&format=png&f=image&bboxSR=4326&imageSR=4326`,
+        streetViewUrl: `https://mapy.cz/panorama?x=${input.lng}&y=${input.lat}&z=18`,
+        mapUrl: `https://mapy.cz/zakladni?x=${input.lng}&y=${input.lat}&z=18`,
+      }
     }
 
     // === KROK 4: Nabídni placené zdroje ===
@@ -174,5 +199,11 @@ export class PropertyEnrichmentOrchestrator {
 
     result.qualityScore = Math.min(result.qualityScore, 100)
     return result
+  }
+
+  private getOrthoBbox(lat: number, lng: number, radiusMeters = 80) {
+    const dLat = radiusMeters / 111320
+    const dLng = radiusMeters / (111320 * Math.cos(lat * Math.PI / 180))
+    return { latMin: lat - dLat, latMax: lat + dLat, lngMin: lng - dLng, lngMax: lng + dLng }
   }
 }
