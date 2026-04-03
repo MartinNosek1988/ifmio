@@ -136,6 +136,13 @@ function PropertyFormInner({ property, isEdit, createMutation, updateMutation, n
     validateField(field, String((form as Record<string, unknown>)[field] ?? ''))
   }
 
+  const detectLegalMode = (pravniForma: string): PropertyLegalMode => {
+    const lower = (pravniForma || '').toLowerCase()
+    if (lower.includes('společenství vlastníků') || lower.includes('svj')) return 'SVJ'
+    if (lower.includes('družstvo')) return 'BD'
+    return 'OWNERSHIP'
+  }
+
   const handleAres = async () => {
     if (!form.ico || form.ico.length < 8) { setAresError('Zadejte platné IČ (8 číslic)'); return }
     setAresLoading(true); setAresError(''); setAresDefunct(''); setAresSuccess('')
@@ -150,22 +157,31 @@ function PropertyFormInner({ property, isEdit, createMutation, updateMutation, n
         } else if (data.textovaAdresa) {
           addr = data.textovaAdresa
         }
+
+        // Auto-detect SVJ/BD from legal form
+        const detectedMode = detectLegalMode(data.pravniForma)
+
         setForm((f) => ({
           ...f,
           dic: data.dic ?? f.dic,
-          name: data.nazev || f.name,
-          address: addr || f.address,
-          city: data.adresa.obec || f.city,
-          postalCode: data.adresa.psc || f.postalCode,
+          name: f.name || data.nazev, // don't overwrite if already filled
+          address: f.address || addr,
+          city: f.city || data.adresa.obec,
+          postalCode: f.postalCode || data.adresa.psc,
+          legalMode: detectedMode,
+          isVatPayer: !!(data.dic ?? f.dic),
         }))
+
         if (data.datumZaniku) setAresDefunct(data.datumZaniku)
+
         const filled: string[] = []
         if (data.nazev) filled.push('název')
         if (addr) filled.push('adresa')
         if (data.adresa.obec) filled.push('město')
         if (data.adresa.psc) filled.push('PSČ')
         if (data.dic) filled.push('DIČ')
-        setAresSuccess(filled.length ? `ARES: načteno (${filled.join(', ')})` : 'ARES: subjekt nalezen')
+        const typeLabel = detectedMode === 'SVJ' ? ' (SVJ)' : detectedMode === 'BD' ? ' (Bytové družstvo)' : ''
+        setAresSuccess(`ARES: ${data.nazev}${typeLabel} — načteno (${filled.join(', ')})`)
       } else {
         setAresError('IČ nenalezeno v ARES')
       }

@@ -5,6 +5,9 @@ export interface RuianAddress {
   street: string
   city: string
   postalCode: string
+  district?: string
+  addressType?: string
+  score?: number
   lat?: number
   lng?: number
   ruianCode?: string
@@ -59,6 +62,7 @@ export class RuianService {
         const street = parts[0] ?? ''
         let city = ''
         let psc = ''
+        let district = ''
 
         // Last part often has "12000 Praha 2" — extract PSČ + city
         const lastPart = parts[parts.length - 1] ?? ''
@@ -70,11 +74,18 @@ export class RuianService {
           city = lastPart
         }
 
+        // Middle parts = district (Nové Město, Vinohrady, etc.)
+        if (parts.length >= 3) {
+          district = parts.slice(1, -1).join(', ')
+        }
+
         const lat = c.location?.y ?? undefined
         const lng = c.location?.x ?? undefined
         const ruianCode = addr.Loc_name || undefined
+        const addressType = addr.Type || undefined
+        const score = addr.Score ?? c.score ?? undefined
 
-        return { label: fullAddr, street, city, postalCode: psc, lat, lng, ruianCode }
+        return { label: fullAddr, street, city, postalCode: psc, district: district || undefined, addressType, score, lat, lng, ruianCode }
       }).filter((a: RuianAddress) => a.label)
 
       if (this.cache.size > 500) this.cache.delete(this.cache.keys().next().value!)

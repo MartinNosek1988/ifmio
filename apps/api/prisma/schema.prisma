@@ -482,7 +482,12 @@ model Property {
   floorPlans                 FloorPlan[]
   evidenceFolders            EvidenceFolder[]
 
+  // Knowledge Base link
+  buildingId             String?
+  building               Building? @relation(fields: [buildingId], references: [id])
+
   @@index([tenantId])
+  @@index([buildingId])
   @@map("properties")
 }
 
@@ -603,7 +608,12 @@ model Unit {
   managementFees UnitManagementFee[]
   floorPlanZones FloorPlanZone[]
 
+  // Knowledge Base link
+  buildingUnitId         String?
+  buildingUnit           BuildingUnit? @relation(fields: [buildingUnitId], references: [id])
+
   @@index([propertyId])
+  @@index([buildingUnitId])
   @@map("units")
 }
 
@@ -4514,4 +4524,256 @@ model PvkWaterDeduction {
   @@unique([tenantId, pvkPlaceId, dateFrom, meterNumber])
   @@index([tenantId])
   @@map("pvk_water_deductions")
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// KNOWLEDGE BASE — tenant-agnostic canonical data
+// ═══════════════════════════════════════════════════════════════════
+
+enum KbBuildingType {
+  RESIDENTIAL_MULTI
+  RESIDENTIAL_SINGLE
+  COMMERCIAL
+  MIXED
+  INDUSTRIAL
+  OTHER_BUILDING
+}
+
+enum KbUnitType {
+  APARTMENT
+  NON_RESIDENTIAL
+  GARAGE
+  CELLAR
+  PARKING_SPACE
+  OTHER_UNIT
+}
+
+enum KbOrgType {
+  SVJ
+  BD
+  SRO
+  AS
+  MUNICIPALITY
+  STATE_ORG
+  OTHER_ORG
+}
+
+enum KbOwnershipType {
+  SOLE
+  JOINT_SJM
+  CO_OWNERSHIP
+  OTHER_OWNERSHIP
+}
+
+enum KbDataSource {
+  RUIAN
+  ARES
+  CUZK_KATASTER
+  CUZK_NAHLIDNI
+  JUSTICE_OR
+  ISIR
+  PENB
+  IPR_PRAHA
+  CENOVA_MAPA
+  MANUAL
+  IMPORT
+}
+
+model Building {
+  id                     String          @id @default(uuid())
+  ruianBuildingId        String?         @unique
+  ruianAddressId         String?
+  street                 String?
+  houseNumber            String?
+  orientationNumber      String?
+  city                   String
+  district               String?
+  quarter                String?
+  postalCode             String?
+  fullAddress            String?
+  lat                    Float?
+  lng                    Float?
+  sjtskX                 Float?
+  sjtskY                 Float?
+  cadastralTerritoryCode String?
+  cadastralTerritoryName String?
+  parcelNumbers          String[]
+  landRegistrySheet      String?
+  buildingType           KbBuildingType?
+  constructionYear       Int?
+  numberOfFloors         Int?
+  numberOfUnits          Int?
+  totalArea              Float?
+  builtUpArea            Float?
+  materialType           String?
+  heatingType            String?
+  penbClass              String?
+  penbValidUntil         DateTime?
+  managingOrgId          String?
+  managingOrg            KbOrganization? @relation(fields: [managingOrgId], references: [id])
+  dataQualityScore       Float?          @default(0)
+  lastEnrichedAt         DateTime?
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+  units                  BuildingUnit[]
+  sources                BuildingSource[]
+  properties             Property[]
+
+  @@index([city, district])
+  @@index([postalCode])
+  @@index([cadastralTerritoryCode])
+  @@index([managingOrgId])
+  @@map("kb_buildings")
+}
+
+model BuildingUnit {
+  id                String       @id @default(uuid())
+  buildingId        String
+  building          Building     @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  ruianUnitId       String?      @unique
+  katasterUnitId    String?
+  unitNumber        String?
+  unitType          KbUnitType?
+  floor             Int?
+  area              Float?
+  roomCount         Int?
+  roomLayout        String?
+  shareNumerator    Int?
+  shareDenominator  Int?
+  lastEnrichedAt    DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  ownerships        UnitOwnershipKb[]
+  sources           BuildingUnitSource[]
+  units             Unit[]
+
+  @@index([buildingId])
+  @@map("kb_building_units")
+}
+
+model KbOrganization {
+  id                String       @id @default(uuid())
+  ico               String       @unique
+  dic               String?
+  name              String
+  nameShort         String?
+  legalFormCode     String?
+  legalFormName     String?
+  orgType           KbOrgType?
+  street            String?
+  city              String?
+  district          String?
+  postalCode        String?
+  dateEstablished   DateTime?
+  dateCancelled     DateTime?
+  isActive          Boolean      @default(true)
+  isVatPayer        Boolean      @default(false)
+  czNace            String[]
+  dataBoxId         String?
+  lastAresSync      DateTime?
+  dataQualityScore  Float?       @default(0)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  managedBuildings  Building[]
+  sources           OrganizationSource[]
+  statutoryBodies   StatutoryBodyKb[]
+  ownerships        UnitOwnershipKb[]
+
+  @@index([orgType])
+  @@index([city])
+  @@map("kb_organizations")
+}
+
+model KbPerson {
+  id                String       @id @default(uuid())
+  firstName         String?
+  lastName          String?
+  city              String?
+  nameNormalized    String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  ownerships        UnitOwnershipKb[]
+
+  @@index([lastName, firstName])
+  @@index([nameNormalized])
+  @@map("kb_persons")
+}
+
+model UnitOwnershipKb {
+  id                String            @id @default(uuid())
+  unitId            String
+  unit              BuildingUnit      @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  personId          String?
+  person            KbPerson?         @relation(fields: [personId], references: [id])
+  organizationId    String?
+  organization      KbOrganization?   @relation(fields: [organizationId], references: [id])
+  ownershipType     KbOwnershipType?
+  shareNumerator    Int?
+  shareDenominator  Int?
+  lvNumber          String?
+  registeredAt      DateTime?
+  sourceDate        DateTime?
+  createdAt         DateTime          @default(now())
+
+  @@index([unitId])
+  @@index([personId])
+  @@index([organizationId])
+  @@map("kb_unit_ownerships")
+}
+
+model StatutoryBodyKb {
+  id                String          @id @default(uuid())
+  organizationId    String
+  organization      KbOrganization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role              String
+  firstName         String?
+  lastName          String?
+  dateFrom          DateTime?
+  dateTo            DateTime?
+  createdAt         DateTime        @default(now())
+
+  @@index([organizationId])
+  @@map("kb_statutory_bodies")
+}
+
+model BuildingSource {
+  id                String       @id @default(uuid())
+  buildingId        String
+  building          Building     @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  source            KbDataSource
+  sourceId          String?
+  fetchedAt         DateTime     @default(now())
+  rawData           Json?
+  fieldsUpdated     String[]
+
+  @@index([buildingId, source])
+  @@map("kb_building_sources")
+}
+
+model BuildingUnitSource {
+  id                String       @id @default(uuid())
+  unitId            String
+  unit              BuildingUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  source            KbDataSource
+  sourceId          String?
+  fetchedAt         DateTime     @default(now())
+  rawData           Json?
+  fieldsUpdated     String[]
+
+  @@index([unitId, source])
+  @@map("kb_building_unit_sources")
+}
+
+model OrganizationSource {
+  id                String          @id @default(uuid())
+  organizationId    String
+  organization      KbOrganization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  source            KbDataSource
+  sourceId          String?
+  fetchedAt         DateTime        @default(now())
+  rawData           Json?
+  fieldsUpdated     String[]
+
+  @@index([organizationId, source])
+  @@map("kb_organization_sources")
 }
