@@ -10,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service'
 import { ConfigService } from '@nestjs/config'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
 import { Roles } from '../common/decorators/roles.decorator'
+import { Public } from '../common/decorators/public.decorator'
 import { ROLES_MANAGE } from '../common/constants/roles.constants'
 import type { AuthUser } from '@ifmio/shared-types'
 
@@ -94,15 +95,15 @@ export class KnowledgeBaseController {
     @Query('houseNumber') houseNumber?: string,
   ) {
     const base: Record<string, unknown> = {}
-    if (city) base.city = { contains: city, mode: 'insensitive' }
-    if (district) base.district = { contains: district, mode: 'insensitive' }
-    if (quarter) base.quarter = { contains: quarter, mode: 'insensitive' }
-    if (street) base.street = { contains: street, mode: 'insensitive' }
+    if (city) base.city = { equals: city, mode: 'insensitive' }
+    if (district) base.district = { equals: district, mode: 'insensitive' }
+    if (quarter) base.quarter = { equals: quarter, mode: 'insensitive' }
+    if (street) base.street = { equals: street, mode: 'insensitive' }
     if (houseNumber) base.houseNumber = houseNumber
 
     const [cities, districts, quarters, streets, houseNumbers, orientationNumbers] = await Promise.all([
       this.prisma.building.findMany({ where: {} as any, select: { city: true }, distinct: ['city'], orderBy: { city: 'asc' } }),
-      city ? this.prisma.building.findMany({ where: { city: { contains: city, mode: 'insensitive' } } as any, select: { district: true }, distinct: ['district'], orderBy: { district: 'asc' } }) : Promise.resolve([]),
+      city ? this.prisma.building.findMany({ where: { city: { equals: city, mode: 'insensitive' } } as any, select: { district: true }, distinct: ['district'], orderBy: { district: 'asc' } }) : Promise.resolve([]),
       district ? this.prisma.building.findMany({ where: { ...base, quarter: { not: null } } as any, select: { quarter: true }, distinct: ['quarter'], orderBy: { quarter: 'asc' } }) : Promise.resolve([]),
       (district || quarter) ? this.prisma.building.findMany({ where: { ...base, street: { not: null } } as any, select: { street: true }, distinct: ['street'], orderBy: { street: 'asc' }, take: 500 }) : Promise.resolve([]),
       street ? this.prisma.building.findMany({ where: { ...base, houseNumber: { not: null } } as any, select: { houseNumber: true }, distinct: ['houseNumber'], orderBy: { houseNumber: 'asc' }, take: 200 }) : Promise.resolve([]),
@@ -151,10 +152,10 @@ export class KnowledgeBaseController {
         { managingOrg: { ico: { startsWith: q } } },
       ]
     }
-    if (city) where.city = { contains: city, mode: 'insensitive' }
-    if (district) where.district = { contains: district, mode: 'insensitive' }
-    if (quarter) where.quarter = { contains: quarter, mode: 'insensitive' }
-    if (streetFilter) where.street = { contains: streetFilter, mode: 'insensitive' }
+    if (city) where.city = { equals: city, mode: 'insensitive' }
+    if (district) where.district = { equals: district, mode: 'insensitive' }
+    if (quarter) where.quarter = { equals: quarter, mode: 'insensitive' }
+    if (streetFilter) where.street = { equals: streetFilter, mode: 'insensitive' }
     if (houseNumber) where.houseNumber = houseNumber
     if (orientationNumber) where.orientationNumber = orientationNumber
     if (buildingType) where.buildingType = buildingType
@@ -212,6 +213,7 @@ export class KnowledgeBaseController {
   }
 
   @Get('ortofoto')
+  @Public()
   @ApiOperation({ summary: 'Proxy ČÚZK ortofoto (bypasses CORS)' })
   async getOrtofoto(@Query('lat') lat: string, @Query('lng') lng: string, @Res() res: FastifyReply) {
     const latN = Number(lat)
