@@ -10,7 +10,7 @@ export interface RuianAddress {
   ruianCode?: string
 }
 
-const RUIAN_BASE = 'https://ags.cuzk.gov.cz/arcgis/rest/services/RUIAN/Vyhledavaci_sluzba_nad_RUIAN_v2/MapServer/exts/GeocodeSOE/findAddressCandidates'
+const RUIAN_BASE = 'https://ags.cuzk.cz/arcgis/rest/services/RUIAN/Vyhledavaci_sluzba_nad_daty_RUIAN/MapServer/exts/GeocodeSOE/findAddressCandidates'
 
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
@@ -51,16 +51,30 @@ export class RuianService {
       const candidates = data.candidates ?? []
 
       const results = candidates.map((c: any): RuianAddress => {
-        const addr = c.attributes ?? c.address ?? {}
-        const label = c.address ?? addr.Match_addr ?? ''
-        const psc = String(addr.Postal ?? addr.ZIP ?? '').replace(/\s/g, '')
-        const city = addr.City ?? addr.Subregion ?? ''
-        const street = addr.StAddr ?? addr.Match_addr?.split(',')[0] ?? label.split(',')[0] ?? ''
+        const addr = c.attributes ?? {}
+        const fullAddr = c.address ?? addr.Match_addr ?? ''
+
+        // Parse Match_addr: "Sokolská 455/3, Nové Město, 12000 Praha 2"
+        const parts = fullAddr.split(',').map((p: string) => p.trim())
+        const street = parts[0] ?? ''
+        let city = ''
+        let psc = ''
+
+        // Last part often has "12000 Praha 2" — extract PSČ + city
+        const lastPart = parts[parts.length - 1] ?? ''
+        const pscMatch = lastPart.match(/(\d{5})\s+(.+)/)
+        if (pscMatch) {
+          psc = pscMatch[1]
+          city = pscMatch[2]
+        } else {
+          city = lastPart
+        }
+
         const lat = c.location?.y ?? undefined
         const lng = c.location?.x ?? undefined
-        const ruianCode = addr.Loc_name ?? addr.User_fld ?? undefined
+        const ruianCode = addr.Loc_name || undefined
 
-        return { label, street: street.trim(), city: city.trim(), postalCode: psc, lat, lng, ruianCode }
+        return { label: fullAddr, street, city, postalCode: psc, lat, lng, ruianCode }
       }).filter((a: RuianAddress) => a.label)
 
       if (this.cache.size > 500) this.cache.delete(this.cache.keys().next().value!)
