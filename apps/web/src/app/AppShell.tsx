@@ -100,7 +100,7 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/asset-types', label: 'Typy zařízení', icon: <ClipboardList size={17} /> },
       { to: '/mio', label: 'Mio AI', icon: <Sparkles size={17} /> },
       { to: '/mio/insights', label: 'Mio Insights', icon: <AlertTriangle size={17} />, roles: ['fm', 'owner'] },
-      { to: '/knowledge-base', label: 'Knowledge Base', icon: <Database size={17} /> },
+      { to: '/knowledge-base', label: 'Knowledge Base', icon: <Database size={17} />, roles: ['fm', 'owner'] },
       { to: '/audit', label: 'Audit log', icon: <ScrollText size={17} /> },
       { to: '/settings', label: 'Nastavení', icon: <Settings size={17} /> },
     ],

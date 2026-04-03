@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Delete, Param, Query, Body } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { IsString, IsNotEmpty, IsOptional, IsNumber, IsIn } from 'class-validator'
+import { Prisma } from '@prisma/client'
 import { KnowledgeBaseService } from './knowledge-base.service'
 import { PropertyEnrichmentOrchestrator } from './property-enrichment.orchestrator'
 import { BuildingIntelligenceService } from './building-intelligence.service'
@@ -27,7 +28,12 @@ class BulkImportDto {
   @IsString() @IsNotEmpty() region!: string
   @IsString() @IsOptional() district?: string
   @IsString() @IsOptional() cadastralCode?: string
-  @IsIn(['RUIAN', 'ARES', 'ENRICHMENT', 'JUSTICE']) step!: BulkImportStep
+  @IsIn(['RUIAN', 'ARES', 'ENRICHMENT', 'JUSTICE', 'FULL']) step!: BulkImportStep
+}
+
+class FullImportDto {
+  @IsString() @IsNotEmpty() region!: string
+  @IsString() @IsOptional() district?: string
 }
 
 class CreateEvidenceTaskDto {
@@ -211,22 +217,32 @@ export class KnowledgeBaseController {
         where: cityFilter as any,
         _count: true,
         _avg: { dataQualityScore: true },
-        orderBy: { _count: { district: 'desc' } },
+        orderBy: { _count: { id: 'desc' } },
       }),
-      this.prisma.$queryRawUnsafe<Array<{ quality_level: string; count: bigint }>>(
-        `SELECT
-          CASE
-            WHEN "dataQualityScore" >= 80 THEN 'excellent'
-            WHEN "dataQualityScore" >= 50 THEN 'good'
-            WHEN "dataQualityScore" >= 20 THEN 'basic'
-            ELSE 'empty'
-          END as quality_level,
-          COUNT(*) as count
-        FROM kb_buildings
-        ${city ? `WHERE city ILIKE '%' || $1 || '%'` : 'WHERE 1=1'}
-        GROUP BY quality_level`,
-        ...(city ? [city] : []),
-      ),
+      city
+        ? this.prisma.$queryRaw<Array<{ quality_level: string; count: bigint }>>`
+            SELECT
+              CASE
+                WHEN "dataQualityScore" >= 80 THEN 'excellent'
+                WHEN "dataQualityScore" >= 50 THEN 'good'
+                WHEN "dataQualityScore" >= 20 THEN 'basic'
+                ELSE 'empty'
+              END as quality_level,
+              COUNT(*) as count
+            FROM kb_buildings
+            WHERE city ILIKE ${'%' + city + '%'}
+            GROUP BY quality_level`
+        : this.prisma.$queryRaw<Array<{ quality_level: string; count: bigint }>>`
+            SELECT
+              CASE
+                WHEN "dataQualityScore" >= 80 THEN 'excellent'
+                WHEN "dataQualityScore" >= 50 THEN 'good'
+                WHEN "dataQualityScore" >= 20 THEN 'basic'
+                ELSE 'empty'
+              END as quality_level,
+              COUNT(*) as count
+            FROM kb_buildings
+            GROUP BY quality_level`,
       this.prisma.building.count({ where: cityFilter as any }),
       this.prisma.building.count({
         where: { ...cityFilter, managingOrgId: { not: null } } as any,
@@ -280,6 +296,13 @@ export class KnowledgeBaseController {
   async resumeImport(@Param('jobId') jobId: string) {
     const ok = this.bulkImport.resumeJob(jobId)
     return { status: ok ? 'resumed' : 'not_found' }
+  }
+
+  @Post('bulk-import/full')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Spustit kompletní sekvenční import (RÚIAN→ARES→Enrich→Justice per budova)' })
+  async startFullImport(@Body() body: FullImportDto) {
+    return this.bulkImport.startImport({ region: body.region, district: body.district, step: 'FULL' })
   }
 
   // ── Admin: Evidence Tasks ─────────────────────────────

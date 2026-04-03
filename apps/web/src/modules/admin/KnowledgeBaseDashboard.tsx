@@ -8,7 +8,7 @@ import { Database, Play, Pause, Plus, Trash2, RotateCcw, CheckCircle2 } from 'lu
 interface CoverageData {
   total: number
   withOrganization: number
-  districts: Array<{ district: string | null; _count: number; _avg: { dataQualityScore: number | null } }>
+  districts: Array<{ district: string | null; _count: { _all: number }; _avg: { dataQualityScore: number | null } }>
   qualityBreakdown: Array<{ level: string; count: number }>
 }
 
@@ -26,6 +26,9 @@ interface BulkImportJob {
   startedAt: string
   completedAt?: string
   error?: string
+  currentBuilding?: string
+  currentStep?: string
+  avgQuality?: number
 }
 
 interface EvidenceTask {
@@ -187,11 +190,11 @@ function CoverageTable({ districts, total }: {
           <tbody>
             {districts.map((d, i) => {
               const q = d._avg.dataQualityScore || 0
-              const pct = total > 0 ? Math.round((d._count / total) * 100) : 0
+              const pct = total > 0 ? Math.round((d._count._all / total) * 100) : 0
               return (
                 <tr key={i} style={{ borderBottom: '1px solid var(--border-light, #f3f4f6)' }}>
                   <td style={{ padding: '6px 8px', fontWeight: 500 }}>{d.district || '(nezadáno)'}</td>
-                  <td style={{ padding: '6px 8px', textAlign: 'right' }}>{d._count}</td>
+                  <td style={{ padding: '6px 8px', textAlign: 'right' }}>{d._count._all}</td>
                   <td style={{ padding: '6px 8px', textAlign: 'right', color: q >= 70 ? 'var(--success, #16a34a)' : q >= 40 ? 'var(--warning, #d97706)' : 'var(--danger, #dc2626)' }}>
                     {Math.round(q)}
                   </td>
@@ -265,19 +268,28 @@ function QualityBreakdown({ breakdown, total }: { breakdown: CoverageData['quali
 
 // ── Bulk Import Panel ───────────────────────────────
 
-const IMPORT_STEPS = [
-  { key: 'RUIAN', label: 'RUIAN import' },
-  { key: 'ARES', label: 'ARES párování' },
-  { key: 'ENRICHMENT', label: 'Auto-enrichment' },
-  { key: 'JUSTICE', label: 'Justice.cz' },
-] as const
+const PRAHA_DISTRICTS = [
+  '', 'Praha 1', 'Praha 2', 'Praha 3', 'Praha 4', 'Praha 5', 'Praha 6', 'Praha 7',
+  'Praha 8', 'Praha 9', 'Praha 10', 'Praha 11', 'Praha 12', 'Praha 13', 'Praha 14',
+  'Praha 15', 'Praha 16', 'Praha 17', 'Praha 18', 'Praha 19', 'Praha 20', 'Praha 21', 'Praha 22',
+]
 
 function BulkImportPanel({ jobs, city }: { jobs: BulkImportJob[]; city: string }) {
   const qc = useQueryClient()
+  const [district, setDistrict] = useState('')
+
+  const fullJob = jobs.find(j => j.step === 'FULL' && j.region === city)
+  const isRunning = fullJob?.status === 'RUNNING'
+  const isPaused = fullJob?.status === 'PAUSED'
+  const isCompleted = fullJob?.status === 'COMPLETED'
+  const isFailed = fullJob?.status === 'FAILED'
+  const pct = fullJob && fullJob.totalEstimated > 0
+    ? Math.round((fullJob.processed / fullJob.totalEstimated) * 100)
+    : 0
 
   const startMutation = useMutation({
-    mutationFn: (step: string) =>
-      apiClient.post('/knowledge-base/bulk-import', { region: city, step }).then(r => r.data),
+    mutationFn: () =>
+      apiClient.post('/knowledge-base/bulk-import/full', { region: city, district: district || undefined }).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['kb-import-jobs'] }),
   })
 
@@ -295,63 +307,78 @@ function BulkImportPanel({ jobs, city }: { jobs: BulkImportJob[]; city: string }
 
   return (
     <div style={card}>
-      <div style={headerStyle}>Bulk Import</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {IMPORT_STEPS.map(step => {
-          const job = jobs.find(j => j.step === step.key && j.region === city)
-          const isRunning = job?.status === 'RUNNING'
-          const isPaused = job?.status === 'PAUSED'
-          const isCompleted = job?.status === 'COMPLETED'
-          const pct = job && job.totalEstimated > 0
-            ? Math.round((job.processed / job.totalEstimated) * 100)
-            : 0
+      <div style={headerStyle}>Kompletní import</div>
 
-          return (
-            <div key={step.key} style={{ padding: '8px 10px', background: 'var(--border-light, #f9fafb)', borderRadius: 8 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>
-                  {isCompleted && <CheckCircle2 size={14} style={{ color: 'var(--success)', marginRight: 4, verticalAlign: -2 }} />}
-                  {step.label}
-                </span>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  {!isRunning && !isPaused && (
-                    <button style={btnSmall} onClick={() => startMutation.mutate(step.key)} disabled={startMutation.isPending}>
-                      <Play size={12} /> Spustit
-                    </button>
-                  )}
-                  {isRunning && (
-                    <button style={btnSmall} onClick={() => pauseMutation.mutate(job!.id)}>
-                      <Pause size={12} /> Pozastavit
-                    </button>
-                  )}
-                  {isPaused && (
-                    <button style={btnSmall} onClick={() => resumeMutation.mutate(job!.id)}>
-                      <Play size={12} /> Pokračovat
-                    </button>
-                  )}
-                </div>
-              </div>
-              {job && (
-                <>
-                  <div style={{ height: 6, background: '#e5e7eb', borderRadius: 3, overflow: 'hidden', marginBottom: 3 }}>
-                    <div style={{
-                      height: '100%',
-                      width: `${pct}%`,
-                      background: isRunning ? 'var(--primary, #0d9488)' : isPaused ? 'var(--warning, #d97706)' : 'var(--success, #16a34a)',
-                      borderRadius: 3,
-                      transition: 'width 0.3s',
-                    }} />
-                  </div>
-                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                    {job.processed.toLocaleString('cs-CZ')}/{job.totalEstimated.toLocaleString('cs-CZ')} &middot; {job.created} vytvořeno &middot; {job.errors} chyb
-                    {job.status === 'FAILED' && <span style={{ color: 'var(--danger)' }}> &middot; {job.error}</span>}
-                  </div>
-                </>
-              )}
-            </div>
-          )
-        })}
+      {/* Controls */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
+        <select value={district} onChange={e => setDistrict(e.target.value)} style={inputStyle} disabled={isRunning}>
+          <option value="">Všechny městské části</option>
+          {PRAHA_DISTRICTS.filter(Boolean).map(d => <option key={d} value={d}>{d}</option>)}
+        </select>
+        {!isRunning && !isPaused && (
+          <button style={btnPrimary} onClick={() => startMutation.mutate()} disabled={startMutation.isPending}>
+            <Play size={14} /> Spustit kompletní import
+          </button>
+        )}
+        {isRunning && (
+          <button style={btnSmall} onClick={() => pauseMutation.mutate(fullJob!.id)}>
+            <Pause size={12} /> Pozastavit
+          </button>
+        )}
+        {isPaused && (
+          <button style={btnSmall} onClick={() => resumeMutation.mutate(fullJob!.id)}>
+            <Play size={12} /> Pokračovat
+          </button>
+        )}
       </div>
+
+      {/* Progress */}
+      {fullJob && (
+        <div style={{ padding: '10px 12px', background: 'var(--border-light, #f9fafb)', borderRadius: 8 }}>
+          {/* Current building */}
+          {isRunning && fullJob.currentBuilding && (
+            <div style={{ fontSize: '0.78rem', marginBottom: 6, fontWeight: 500 }}>
+              Zpracovávám: {fullJob.currentBuilding}
+              {fullJob.currentStep && <span style={{ color: 'var(--primary)', marginLeft: 6 }}>[{fullJob.currentStep}]</span>}
+            </div>
+          )}
+
+          {/* Progress bar */}
+          <div style={{ height: 8, background: '#e5e7eb', borderRadius: 4, overflow: 'hidden', marginBottom: 6 }}>
+            <div style={{
+              height: '100%',
+              width: `${pct}%`,
+              background: isRunning ? 'var(--primary, #0d9488)' : isPaused ? 'var(--warning, #d97706)' : isFailed ? 'var(--danger, #dc2626)' : 'var(--success, #16a34a)',
+              borderRadius: 4,
+              transition: 'width 0.5s',
+            }} />
+          </div>
+
+          {/* Stats */}
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', gap: 12 }}>
+            <span>{fullJob.processed.toLocaleString('cs-CZ')}/{fullJob.totalEstimated.toLocaleString('cs-CZ')} ({pct}%)</span>
+            <span>{fullJob.created} vytvořeno</span>
+            {fullJob.avgQuality !== undefined && <span>Avg Q: {fullJob.avgQuality}</span>}
+            {fullJob.errors > 0 && <span style={{ color: 'var(--danger)' }}>{fullJob.errors} chyb</span>}
+          </div>
+
+          {isFailed && fullJob.error && (
+            <div style={{ fontSize: '0.72rem', color: 'var(--danger)', marginTop: 4 }}>{fullJob.error}</div>
+          )}
+          {isCompleted && (
+            <div style={{ fontSize: '0.72rem', color: 'var(--success)', marginTop: 4, fontWeight: 600 }}>
+              <CheckCircle2 size={14} style={{ verticalAlign: -2, marginRight: 4 }} />
+              Import dokončen
+            </div>
+          )}
+        </div>
+      )}
+
+      {!fullJob && (
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', padding: '8px 0' }}>
+          Sekvenční import: RÚIAN → ARES → Enrichment → Justice.cz per budova
+        </div>
+      )}
     </div>
   )
 }

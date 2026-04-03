@@ -59,10 +59,13 @@ export class BuildingIntelligenceService {
   async checkDuplicate(street: string, city: string): Promise<DuplicateResult | null> {
     if (!street || !city) return null
 
+    const streetName = street.replace(/\s+\d+[\w/\s-]*$/, '').trim()
+    if (streetName.length < 3) return null
+
     const existing = await this.prisma.building.findFirst({
       where: {
-        street: { contains: street.split(' ')[0], mode: 'insensitive' },
-        city: { contains: city, mode: 'insensitive' },
+        street: { contains: streetName, mode: 'insensitive' },
+        city: { equals: city, mode: 'insensitive' },
       },
     })
 

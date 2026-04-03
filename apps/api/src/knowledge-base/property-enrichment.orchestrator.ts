@@ -283,24 +283,43 @@ export class PropertyEnrichmentOrchestrator {
           result.sources.push('JUSTICE_OR')
           result.qualityScore += 10
 
-          // Persist to KB — deduplicate via deleteMany + createMany in transaction
+          // Persist to KB — upsert to preserve history
           const org = await this.prisma.kbOrganization.findUnique({
             where: { ico: result.freeData.organization.ico },
           })
           if (org) {
-            await this.prisma.$transaction([
-              this.prisma.kbRegistryChange.deleteMany({ where: { organizationId: org.id } }),
-              this.prisma.kbRegistryChange.createMany({
-                data: registryChanges.slice(0, 20).map(change => ({
+            for (const change of registryChanges.slice(0, 20)) {
+              const changeDate = change.changeDate ? new Date(change.changeDate) : null
+              if (!changeDate) continue // null changeDate breaks unique constraint
+              await this.prisma.kbRegistryChange.upsert({
+                where: {
+                  organizationId_changeDate_changeType: {
+                    organizationId: org.id,
+                    changeDate: changeDate!,
+                    changeType: change.changeType,
+                  },
+                },
+                create: {
                   organizationId: org.id,
-                  changeDate: change.changeDate ? new Date(change.changeDate) : null,
+                  changeDate,
                   changeType: change.changeType,
                   description: change.description,
-                })),
-              }),
-              this.prisma.kbSbirkaListina.deleteMany({ where: { organizationId: org.id } }),
-              this.prisma.kbSbirkaListina.createMany({
-                data: sbirkaListin.slice(0, 30).map(doc => ({
+                },
+                update: {
+                  description: change.description,
+                },
+              }).catch(() => {})
+            }
+            for (const doc of sbirkaListin.slice(0, 30)) {
+              if (!doc.documentId) continue // skip docs without justiceDocId
+              await this.prisma.kbSbirkaListina.upsert({
+                where: {
+                  organizationId_justiceDocId: {
+                    organizationId: org.id,
+                    justiceDocId: doc.documentId,
+                  },
+                },
+                create: {
                   organizationId: org.id,
                   documentType: doc.documentType,
                   documentName: doc.documentName,
@@ -309,9 +328,13 @@ export class PropertyEnrichmentOrchestrator {
                   periodTo: doc.periodTo ? new Date(doc.periodTo) : null,
                   justiceDocId: doc.documentId,
                   downloadUrl: doc.downloadUrl,
-                })),
-              }),
-            ]).catch(() => {})
+                },
+                update: {
+                  documentName: doc.documentName,
+                  downloadUrl: doc.downloadUrl,
+                },
+              }).catch(() => {})
+            }
           }
         }
       } catch (err) {

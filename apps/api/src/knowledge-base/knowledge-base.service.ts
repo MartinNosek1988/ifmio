@@ -26,15 +26,18 @@ export class KnowledgeBaseService {
       if (existing) return existing
     }
 
-    // 2. Match by address (fuzzy)
+    // 2. Match by full street name (without house number) + exact city
     if (data.street && data.city) {
-      const existing = await this.prisma.building.findFirst({
-        where: {
-          street: { contains: data.street.split(' ')[0], mode: 'insensitive' },
-          city: { contains: data.city, mode: 'insensitive' },
-        },
-      })
-      if (existing) return existing
+      const streetName = data.street.replace(/\s+\d+[\w/\s-]*$/, '').trim()
+      if (streetName.length >= 3) {
+        const existing = await this.prisma.building.findFirst({
+          where: {
+            street: { contains: streetName, mode: 'insensitive' },
+            city: { equals: data.city, mode: 'insensitive' },
+          },
+        })
+        if (existing) return existing
+      }
     }
 
     // 3. Create new
@@ -69,6 +72,8 @@ export class KnowledgeBaseService {
             name: String(aresData.obchodniJmeno || aresData.nazev || existing.name),
             dic: aresData.dic ? String(aresData.dic) : existing.dic,
             isVatPayer: !!aresData.dic,
+            isActive: !aresData.datumZaniku,
+            dateCancelled: aresData.datumZaniku ? new Date(String(aresData.datumZaniku)) : null,
             lastAresSync: new Date(),
           },
         })
@@ -82,6 +87,8 @@ export class KnowledgeBaseService {
         name: String(aresData?.obchodniJmeno || aresData?.nazev || `IČO ${ico}`),
         dic: aresData?.dic ? String(aresData.dic) : null,
         isVatPayer: !!aresData?.dic,
+        isActive: !aresData?.datumZaniku,
+        dateCancelled: aresData?.datumZaniku ? new Date(String(aresData.datumZaniku)) : null,
         orgType: this.detectOrgType(aresData?.pravniForma as string | undefined),
         lastAresSync: aresData ? new Date() : null,
         czNace: [],
