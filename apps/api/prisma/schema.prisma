@@ -613,6 +613,7 @@ model Unit {
   buildingUnit           BuildingUnit? @relation(fields: [buildingUnitId], references: [id])
 
   @@index([propertyId])
+  @@index([buildingUnitId])
   @@map("units")
 }
 

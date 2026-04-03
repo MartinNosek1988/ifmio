@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PropertyScopeService } from '../common/services/property-scope.service';
+import { BuildingEnrichmentService } from '../knowledge-base/building-enrichment.service';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
 import type { PropertyType, OwnershipType, PropertyLegalMode, AccountingSystem } from '@prisma/client';
@@ -8,13 +9,16 @@ import type { AuthUser } from '@ifmio/shared-types';
 
 @Injectable()
 export class PropertiesService {
+  private readonly logger = new Logger(PropertiesService.name);
+
   constructor(
     private prisma: PrismaService,
     private scope: PropertyScopeService,
+    private enrichment: BuildingEnrichmentService,
   ) {}
 
-  create(tenantId: string, dto: CreatePropertyDto) {
-    return this.prisma.property.create({
+  async create(tenantId: string, dto: CreatePropertyDto) {
+    const property = await this.prisma.property.create({
       data: {
         tenantId,
         name: dto.name,
@@ -42,6 +46,17 @@ export class PropertiesService {
       },
       include: { units: true },
     });
+
+    // Knowledge Base enrichment (async, non-blocking)
+    this.enrichment.enrichFromProperty({
+      id: property.id,
+      address: property.address,
+      city: property.city,
+      postalCode: property.postalCode,
+      ico: property.ico,
+    }).catch(err => this.logger.warn(`KB enrichment failed: ${err}`));
+
+    return property;
   }
 
   async findAll(user: AuthUser) {

@@ -85,7 +85,7 @@ export class RuianService {
         const addressType = addr.Type || undefined
         const score = addr.Score ?? c.score ?? undefined
 
-        return { label: fullAddr, street, city, postalCode: psc, district, addressType, score, lat, lng, ruianCode }
+        return { label: fullAddr, street, city, postalCode: psc, district: district || undefined, addressType, score, lat, lng, ruianCode }
       }).filter((a: RuianAddress) => a.label)
 
       if (this.cache.size > 500) this.cache.delete(this.cache.keys().next().value!)

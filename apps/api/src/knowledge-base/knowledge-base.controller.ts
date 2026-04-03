@@ -3,6 +3,8 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { KnowledgeBaseService } from './knowledge-base.service'
 import { PrismaService } from '../prisma/prisma.service'
 
+const VALID_ORG_TYPES = ['SVJ', 'BD', 'SRO', 'AS', 'MUNICIPALITY', 'STATE_ORG', 'OTHER_ORG']
+
 @ApiTags('KnowledgeBase')
 @ApiBearerAuth()
 @Controller('knowledge-base')
@@ -27,8 +29,8 @@ export class KnowledgeBaseController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
-    const take = Math.min(parseInt(limit || '20'), 100)
-    const skip = parseInt(offset || '0')
+    const take = Math.min(Number(limit) || 20, 100)
+    const skip = Math.max(Number(offset) || 0, 0)
 
     const where: Record<string, unknown> = {}
     if (q) {
@@ -64,7 +66,7 @@ export class KnowledgeBaseController {
         units: true,
         managingOrg: true,
         sources: { orderBy: { fetchedAt: 'desc' }, take: 10 },
-        properties: { select: { id: true, name: true, tenantId: true } },
+        // Don't include properties — leaks tenantId across tenants
       },
     })
   }
@@ -76,7 +78,7 @@ export class KnowledgeBaseController {
     @Query('type') type?: string,
     @Query('limit') limit?: string,
   ) {
-    const take = Math.min(parseInt(limit || '20'), 100)
+    const take = Math.min(Number(limit) || 20, 100)
 
     const where: Record<string, unknown> = {}
     if (q) {
@@ -85,7 +87,8 @@ export class KnowledgeBaseController {
         { ico: { startsWith: q } },
       ]
     }
-    if (type) where.orgType = type
+    // Validate type against enum
+    if (type && VALID_ORG_TYPES.includes(type)) where.orgType = type
 
     return this.prisma.kbOrganization.findMany({
       where: where as any,

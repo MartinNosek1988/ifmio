@@ -203,3 +203,5 @@ ALTER TABLE "properties" ADD CONSTRAINT "properties_buildingId_fkey" FOREIGN KEY
 
 ALTER TABLE "units" ADD COLUMN "buildingUnitId" TEXT;
 ALTER TABLE "units" ADD CONSTRAINT "units_buildingUnitId_fkey" FOREIGN KEY ("buildingUnitId") REFERENCES "kb_building_units"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+CREATE INDEX "units_buildingUnitId_idx" ON "units"("buildingUnitId");

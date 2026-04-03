@@ -26,6 +26,11 @@ export class BuildingEnrichmentService {
     lng?: number
     ruianCode?: string
   }): Promise<void> {
+    if (!property.city) {
+      this.logger.debug(`Skipping KB enrichment for property ${property.id} — no city`)
+      return
+    }
+
     try {
       // 1. Find or create Building
       const building = await this.kb.findOrCreateBuilding({

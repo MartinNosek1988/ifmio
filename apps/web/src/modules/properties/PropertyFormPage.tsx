@@ -169,7 +169,7 @@ function PropertyFormInner({ property, isEdit, createMutation, updateMutation, n
           city: f.city || data.adresa.obec,
           postalCode: f.postalCode || data.adresa.psc,
           legalMode: detectedMode,
-          isVatPayer: !!data.dic,
+          isVatPayer: !!(data.dic ?? f.dic),
         }))
 
         if (data.datumZaniku) setAresDefunct(data.datumZaniku)
