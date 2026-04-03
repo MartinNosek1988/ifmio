@@ -250,10 +250,12 @@ export class BulkImportService {
           }
         }
 
-        // Upsert buildings
+        // Upsert buildings (Praha only)
         for (const [, b] of buildingMap) {
           try {
             const parsed = this.parseRuianAddress(b.addresses[0] || '')
+            // Skip non-Praha (bbox includes suburbs like Vestec, Chýnice)
+            if (parsed.city && parsed.city.toLowerCase() !== 'praha') continue
             await this.prisma.building.upsert({
               where: { ruianBuildingId: b.ruianId },
               create: {
@@ -263,6 +265,7 @@ export class BulkImportService {
                 orientationNumber: b.orientationNumber,
                 city: parsed.city || job.region,
                 district: parsed.district,
+                quarter: parsed.quarter,
                 postalCode: b.postalCode || parsed.postalCode,
                 fullAddress: b.addresses[0],
                 lat: b.lat,
@@ -331,36 +334,53 @@ export class BulkImportService {
     street?: string
     city?: string
     district?: string
+    quarter?: string
     postalCode?: string
   } {
     if (!addr) return {}
 
-    // Pattern: "Ulice 123/45, 11000 Praha 1 - Nové Město"
-    // or "č.p. 654, 76311 Želechovice"
+    // Patterns:
+    // "Neklanova 152/44, Vyšehrad, 12800 Praha 2"  → street, quarter, PSČ district
+    // "č.p. 654, 76311 Želechovice"                 → street, PSČ city
+    // "K Remízku 419, 25250 Vestec"                 → street, PSČ city
     const parts = addr.split(',').map(s => s.trim())
     const street = parts[0] || undefined
 
     let city: string | undefined
     let postalCode: string | undefined
     let district: string | undefined
+    let quarter: string | undefined
 
+    // Last part: "12800 Praha 2" or "76311 Želechovice"
     if (parts.length >= 2) {
       const lastPart = parts[parts.length - 1]
       const pscMatch = lastPart.match(/(\d{5})\s+(.+)/)
       if (pscMatch) {
         postalCode = pscMatch[1]
         const cityDistrict = pscMatch[2]
-        const dashIdx = cityDistrict.indexOf(' - ')
-        if (dashIdx >= 0) {
-          city = cityDistrict.substring(0, dashIdx).trim()
-          district = cityDistrict.substring(dashIdx + 3).trim()
+        // Check for "Praha X" pattern → city=Praha, district=Praha X
+        const prahaMatch = cityDistrict.match(/^(Praha)\s+(\d+)$/)
+        if (prahaMatch) {
+          city = 'Praha'
+          district = cityDistrict // "Praha 2"
         } else {
-          city = cityDistrict.trim()
+          const dashIdx = cityDistrict.indexOf(' - ')
+          if (dashIdx >= 0) {
+            city = cityDistrict.substring(0, dashIdx).trim()
+            district = cityDistrict.substring(dashIdx + 3).trim()
+          } else {
+            city = cityDistrict.trim()
+          }
         }
       }
     }
 
-    return { street, city, district, postalCode }
+    // Middle parts = quarter (Vyšehrad, Letná, etc.)
+    if (parts.length >= 3) {
+      quarter = parts.slice(1, -1).join(', ').trim() || undefined
+    }
+
+    return { street, city, district, quarter, postalCode }
   }
 
   // ── KROK 2: ARES Bulk Matching ──────────────────────
@@ -623,15 +643,18 @@ export class BulkImportService {
           }
         }
 
-        // Filter by district if specified (post-fetch — RÚIAN query doesn't support WHERE)
-        const filteredBuildings = job.district
-          ? [...buildingMap.values()].filter(b => {
-              const parsed = this.parseRuianAddress(b.address)
-              return parsed.city?.toLowerCase().includes(job.district!.toLowerCase()) ||
-                     parsed.district?.toLowerCase().includes(job.district!.toLowerCase()) ||
-                     b.address.toLowerCase().includes(job.district!.toLowerCase())
-            })
-          : [...buildingMap.values()]
+        // Filter: Praha-only + optional district
+        const filteredBuildings = [...buildingMap.values()].filter(b => {
+          const parsed = this.parseRuianAddress(b.address)
+          // Skip non-Praha addresses (bbox includes suburbs)
+          if (parsed.city && parsed.city.toLowerCase() !== 'praha') return false
+          // District filter if specified
+          if (job.district) {
+            return parsed.district?.toLowerCase() === job.district.toLowerCase() ||
+                   b.address.toLowerCase().includes(job.district.toLowerCase())
+          }
+          return true
+        })
 
         // 2. Process each building sequentially: upsert → ARES → enrich
         for (const b of filteredBuildings) {
@@ -652,6 +675,7 @@ export class BulkImportService {
                 orientationNumber: b.orientationNumber,
                 city: parsed.city || job.region,
                 district: parsed.district,
+                quarter: parsed.quarter,
                 postalCode: b.postalCode || parsed.postalCode,
                 fullAddress: b.address,
                 lat: b.lat, lng: b.lng,
@@ -659,7 +683,13 @@ export class BulkImportService {
                 dataQualityScore: 30,
                 lastEnrichedAt: new Date(),
               },
-              update: { lastEnrichedAt: new Date(), ...(b.lat && { lat: b.lat }), ...(b.lng && { lng: b.lng }) },
+              update: {
+                lastEnrichedAt: new Date(),
+                ...(b.lat && { lat: b.lat }),
+                ...(b.lng && { lng: b.lng }),
+                ...(parsed.district && { district: parsed.district }),
+                ...(parsed.quarter && { quarter: parsed.quarter }),
+              },
             })
 
             // Step B: ARES search for SVJ/BD
