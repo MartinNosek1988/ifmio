@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Patch, Delete, Param, Query, Body } from '@nestjs/common'
+import { Controller, Get, Post, Patch, Delete, Param, Query, Body, Res } from '@nestjs/common'
+import type { FastifyReply } from 'fastify'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { IsString, IsNotEmpty, IsOptional, IsNumber, IsIn } from 'class-validator'
 import { KnowledgeBaseService } from './knowledge-base.service'
@@ -9,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service'
 import { ConfigService } from '@nestjs/config'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
 import { Roles } from '../common/decorators/roles.decorator'
+import { Public } from '../common/decorators/public.decorator'
 import { ROLES_MANAGE } from '../common/constants/roles.constants'
 import type { AuthUser } from '@ifmio/shared-types'
 
@@ -83,12 +85,51 @@ export class KnowledgeBaseController {
     return this.kb.getStats()
   }
 
+  @Get('buildings/filter-options')
+  @ApiOperation({ summary: 'Kaskádové filtrační hodnoty pro budovy' })
+  async getBuildingFilterOptions(
+    @Query('city') city?: string,
+    @Query('district') district?: string,
+    @Query('quarter') quarter?: string,
+    @Query('street') street?: string,
+    @Query('houseNumber') houseNumber?: string,
+  ) {
+    const base: Record<string, unknown> = {}
+    if (city) base.city = { equals: city, mode: 'insensitive' }
+    if (district) base.district = { equals: district, mode: 'insensitive' }
+    if (quarter) base.quarter = { equals: quarter, mode: 'insensitive' }
+    if (street) base.street = { equals: street, mode: 'insensitive' }
+    if (houseNumber) base.houseNumber = houseNumber
+
+    const [cities, districts, quarters, streets, houseNumbers, orientationNumbers] = await Promise.all([
+      this.prisma.building.findMany({ where: {} as any, select: { city: true }, distinct: ['city'], orderBy: { city: 'asc' } }),
+      city ? this.prisma.building.findMany({ where: { city: { equals: city, mode: 'insensitive' } } as any, select: { district: true }, distinct: ['district'], orderBy: { district: 'asc' } }) : Promise.resolve([]),
+      district ? this.prisma.building.findMany({ where: { ...base, quarter: { not: null } } as any, select: { quarter: true }, distinct: ['quarter'], orderBy: { quarter: 'asc' } }) : Promise.resolve([]),
+      (district || quarter) ? this.prisma.building.findMany({ where: { ...base, street: { not: null } } as any, select: { street: true }, distinct: ['street'], orderBy: { street: 'asc' }, take: 500 }) : Promise.resolve([]),
+      street ? this.prisma.building.findMany({ where: { ...base, houseNumber: { not: null } } as any, select: { houseNumber: true }, distinct: ['houseNumber'], orderBy: { houseNumber: 'asc' }, take: 200 }) : Promise.resolve([]),
+      (street && houseNumber) ? this.prisma.building.findMany({ where: { ...base, orientationNumber: { not: null } } as any, select: { orientationNumber: true }, distinct: ['orientationNumber'], orderBy: { orientationNumber: 'asc' }, take: 100 }) : Promise.resolve([]),
+    ])
+
+    return {
+      cities: cities.map(c => c.city).filter(Boolean),
+      districts: districts.map(d => d.district).filter(Boolean),
+      quarters: quarters.map(q => q.quarter).filter(Boolean),
+      streets: streets.map(s => s.street).filter(Boolean),
+      houseNumbers: houseNumbers.map(h => h.houseNumber).filter(Boolean),
+      orientationNumbers: orientationNumbers.map(o => o.orientationNumber).filter(Boolean),
+    }
+  }
+
   @Get('buildings')
   @ApiOperation({ summary: 'Hledat budovy v KB' })
   async searchBuildings(
     @Query('q') q?: string,
     @Query('city') city?: string,
     @Query('district') district?: string,
+    @Query('quarter') quarter?: string,
+    @Query('street') streetFilter?: string,
+    @Query('houseNumber') houseNumber?: string,
+    @Query('orientationNumber') orientationNumber?: string,
     @Query('buildingType') buildingType?: string,
     @Query('minQuality') minQuality?: string,
     @Query('maxQuality') maxQuality?: string,
@@ -111,15 +152,19 @@ export class KnowledgeBaseController {
         { managingOrg: { ico: { startsWith: q } } },
       ]
     }
-    if (city) where.city = { contains: city, mode: 'insensitive' }
-    if (district) where.district = { contains: district, mode: 'insensitive' }
+    if (city) where.city = { equals: city, mode: 'insensitive' }
+    if (district) where.district = { equals: district, mode: 'insensitive' }
+    if (quarter) where.quarter = { equals: quarter, mode: 'insensitive' }
+    if (streetFilter) where.street = { equals: streetFilter, mode: 'insensitive' }
+    if (houseNumber) where.houseNumber = houseNumber
+    if (orientationNumber) where.orientationNumber = orientationNumber
     if (buildingType) where.buildingType = buildingType
     if (minQuality) { const n = Number(minQuality); if (!Number.isNaN(n)) where.dataQualityScore = { ...((where.dataQualityScore as any) || {}), gte: n } }
     if (maxQuality) { const n = Number(maxQuality); if (!Number.isNaN(n)) where.dataQualityScore = { ...((where.dataQualityScore as any) || {}), lte: n } }
     if (hasOrganization === 'true') where.managingOrgId = { not: null }
     if (hasOrganization === 'false') where.managingOrgId = null
 
-    const validSortFields = ['dataQualityScore', 'city', 'district', 'street', 'lastEnrichedAt', 'createdAt']
+    const validSortFields = ['dataQualityScore', 'city', 'district', 'street', 'houseNumber', 'orientationNumber', 'lastEnrichedAt', 'createdAt']
     const sortField = validSortFields.includes(sort || '') ? sort! : 'dataQualityScore'
     const sortOrder = order === 'asc' ? 'asc' as const : 'desc' as const
 
@@ -157,6 +202,35 @@ export class KnowledgeBaseController {
         sources: { orderBy: { fetchedAt: 'desc' }, take: 10 },
       },
     })
+  }
+
+  @Delete('buildings/:id')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Smazat budovu z KB (cascade: units, sources, ownerships)' })
+  async deleteBuilding(@Param('id') id: string) {
+    await this.prisma.building.delete({ where: { id } })
+    return { deleted: true }
+  }
+
+  @Get('ortofoto')
+  @Public()
+  @ApiOperation({ summary: 'Proxy ČÚZK ortofoto (bypasses CORS)' })
+  async getOrtofoto(@Query('lat') lat: string, @Query('lng') lng: string, @Res() res: FastifyReply) {
+    const latN = Number(lat)
+    const lngN = Number(lng)
+    if (Number.isNaN(latN) || Number.isNaN(lngN)) return res.status(400).send('Invalid coordinates')
+    const r = 80
+    const dLat = r / 111320
+    const dLng = r / (111320 * Math.cos(latN * Math.PI / 180))
+    const url = `https://ags.cuzk.gov.cz/arcgis1/rest/services/ORTOFOTO_WM/MapServer/export?bbox=${lngN - dLng},${latN - dLat},${lngN + dLng},${latN + dLat}&size=600,400&format=png&f=image&bboxSR=4326&imageSR=4326`
+    try {
+      const imgRes = await fetch(url, { signal: AbortSignal.timeout(10000) })
+      if (!imgRes.ok) return res.status(502).send('ČÚZK unavailable')
+      const buffer = Buffer.from(await imgRes.arrayBuffer())
+      return res.header('Content-Type', 'image/png').header('Cache-Control', 'public, max-age=86400').send(buffer)
+    } catch {
+      return res.status(502).send('ČÚZK timeout')
+    }
   }
 
   @Get('organizations')

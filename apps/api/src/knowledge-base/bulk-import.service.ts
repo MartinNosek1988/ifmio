@@ -57,6 +57,13 @@ const PRAHA_BBOX_SJTSK = {
 // ARES v2 REST API
 const ARES_BASE = 'https://ares.gov.cz/ekonomicke-subjekty-v-be/rest'
 
+// Valid Praha districts (whitelist for SQL injection prevention)
+const VALID_DISTRICTS = [
+  'Praha 1', 'Praha 2', 'Praha 3', 'Praha 4', 'Praha 5', 'Praha 6', 'Praha 7',
+  'Praha 8', 'Praha 9', 'Praha 10', 'Praha 11', 'Praha 12', 'Praha 13', 'Praha 14',
+  'Praha 15', 'Praha 16', 'Praha 17', 'Praha 18', 'Praha 19', 'Praha 20', 'Praha 21', 'Praha 22',
+]
+
 // ── Service ─────────────────────────────────────────────
 
 @Injectable()
@@ -77,8 +84,11 @@ export class BulkImportService {
   // ── Job Management ──────────────────────────────────
 
   async startImport(params: StartImportParams): Promise<BulkImportJob> {
-    if (params.step === 'RUIAN' && !params.region.toLowerCase().includes('praha')) {
+    if ((params.step === 'RUIAN' || params.step === 'FULL') && !params.region.toLowerCase().includes('praha')) {
       throw new Error('Bulk RÚIAN import je zatím dostupný pouze pro Prahu')
+    }
+    if (params.district && !VALID_DISTRICTS.includes(params.district)) {
+      throw new Error(`Neplatná městská část: ${params.district}`)
     }
 
     const job: BulkImportJob = {
@@ -176,7 +186,7 @@ export class BulkImportService {
 
     // Get total count first
     try {
-      const countUrl = this.buildRuianQueryUrl({ returnCountOnly: true })
+      const countUrl = this.buildRuianQueryUrl({ returnCountOnly: true }, job.district)
       const countRes = await fetch(countUrl, { signal: AbortSignal.timeout(15000) })
       if (countRes.ok) {
         const countData = await countRes.json()
@@ -194,7 +204,7 @@ export class BulkImportService {
           outFields: 'kod,cislodomovni,cisloorientacni,cisloorientacnipismeno,psc,stavebniobjekt,ulice,adresa',
           returnGeometry: true,
           outSR: 4326,
-        })
+        }, job.district)
 
         const res = await fetch(url, { signal: AbortSignal.timeout(30000) })
         if (!res.ok) {
@@ -293,11 +303,19 @@ export class BulkImportService {
     }
   }
 
-  private buildRuianQueryUrl(params: Record<string, unknown>): string {
+  private buildRuianQueryUrl(params: Record<string, unknown>, district?: string): string {
     const bbox = PRAHA_BBOX_SJTSK
     const base = `${RUIAN_ARCGIS_BASE}/1/query`
+
+    // Build WHERE clause with optional district filter
+    // "Praha 1" must not match "Praha 10" — use boundary patterns: "Praha 1 " or "Praha 1,"
+    let where = '1=1'
+    if (district && VALID_DISTRICTS.includes(district)) {
+      where = `(adresa LIKE '%${district} %' OR adresa LIKE '%${district},%')`
+    }
+
     const qs = new URLSearchParams({
-      where: '1=1',
+      where,
       geometry: `${bbox.xmin},${bbox.ymin},${bbox.xmax},${bbox.ymax}`,
       geometryType: 'esriGeometryEnvelope',
       inSR: '5514',
@@ -556,7 +574,7 @@ export class BulkImportService {
 
     // Get total count
     try {
-      const countUrl = this.buildRuianQueryUrl({ returnCountOnly: true })
+      const countUrl = this.buildRuianQueryUrl({ returnCountOnly: true }, job.district)
       const countRes = await fetch(countUrl, { signal: AbortSignal.timeout(15000) })
       if (countRes.ok) {
         const countData = await countRes.json()
@@ -574,7 +592,7 @@ export class BulkImportService {
           outFields: 'kod,cislodomovni,cisloorientacni,cisloorientacnipismeno,psc,stavebniobjekt,ulice,adresa',
           returnGeometry: true,
           outSR: 4326,
-        })
+        }, job.district)
 
         const res = await fetch(url, { signal: AbortSignal.timeout(30000) })
         if (!res.ok) { job.errors++; await this.delay(5000); continue }
@@ -672,15 +690,20 @@ export class BulkImportService {
             // Step C: Geo enrichment (risks + POI)
             job.currentStep = 'Enrichment'
             let qualityBonus = 0
+            const enrichCache: Record<string, unknown> = {}
             if (b.lat && b.lng) {
-              try { await this.geoRisk.getRiskProfile(b.lat, b.lng); qualityBonus += 5 } catch { /* ok */ }
+              try {
+                const risks = await this.geoRisk.getRiskProfile(b.lat, b.lng)
+                enrichCache.risks = risks
+                qualityBonus += 5
+              } catch { /* ok */ }
               try {
                 const price = await this.iprPrice.getLandPrice(b.lat, b.lng)
-                if (price) qualityBonus += 10
+                if (price) { enrichCache.priceEstimate = price; qualityBonus += 10 }
               } catch { /* ok */ }
               try {
                 const poi = await this.geoRisk.getNearbyPOI(b.lat, b.lng, 500)
-                if (poi.details.length > 0) qualityBonus += 5
+                if (poi.details.length > 0) { enrichCache.poi = poi; qualityBonus += 5 }
               } catch { /* ok */ }
             }
 
@@ -704,11 +727,16 @@ export class BulkImportService {
               await this.delay(1000) // Justice rate limit
             }
 
-            // Update quality score
+            // Update quality score + cache enrichment data
             const finalScore = Math.min((updatedBuilding?.dataQualityScore || 30) + qualityBonus, 100)
             await this.prisma.building.update({
               where: { id: building.id },
-              data: { dataQualityScore: finalScore, lastEnrichedAt: new Date() },
+              data: {
+                dataQualityScore: finalScore,
+                lastEnrichedAt: new Date(),
+                enrichmentData: Object.keys(enrichCache).length > 0 ? JSON.parse(JSON.stringify(enrichCache)) : undefined,
+                enrichedAt: Object.keys(enrichCache).length > 0 ? new Date() : undefined,
+              },
             })
 
             qualitySum += finalScore

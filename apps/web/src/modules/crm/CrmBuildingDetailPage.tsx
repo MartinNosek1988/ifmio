@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '../../core/api/client'
-import { ArrowLeft, MapPin, Building2, FileText, Clock, Wrench } from 'lucide-react'
+import { ArrowLeft, MapPin, Building2, FileText, Clock, Wrench, RefreshCw } from 'lucide-react'
 
 // ── Types ───────────────────────────────────────────
 
@@ -26,6 +26,15 @@ export default function CrmBuildingDetailPage() {
     queryKey: ['crm-building', id],
     queryFn: () => apiClient.get(`/knowledge-base/buildings/${id}`).then(r => r.data),
     enabled: !!id,
+  })
+
+  const qc = useQueryClient()
+  const reEnrichMut = useMutation({
+    mutationFn: () => apiClient.post('/knowledge-base/enrich', {
+      city: building?.city, street: building?.street, postalCode: building?.postalCode,
+      lat: building?.lat, lng: building?.lng, ruianCode: building?.ruianBuildingId,
+    }).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['crm-building', id] }),
   })
 
   if (isLoading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Načítám...</div>
@@ -56,6 +65,10 @@ export default function CrmBuildingDetailPage() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <QualityBadge score={quality} />
+            <button onClick={() => reEnrichMut.mutate()} disabled={reEnrichMut.isPending}
+              style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <RefreshCw size={13} className={reEnrichMut.isPending ? 'animate-spin' : ''} /> Re-enrichovat
+            </button>
           </div>
         </div>
       </div>
@@ -364,10 +377,8 @@ function DocTypeBadge({ type }: { type: string }) {
 }
 
 function buildOrthoUrl(lat: number, lng: number): string {
-  const r = 80
-  const dLat = r / 111320
-  const dLng = r / (111320 * Math.cos(lat * Math.PI / 180))
-  return `https://ags.cuzk.gov.cz/arcgis1/rest/services/ORTOFOTO_WM/MapServer/export?bbox=${lng - dLng},${lat - dLat},${lng + dLng},${lat + dLat}&size=600,400&format=png&f=image&bboxSR=4326&imageSR=4326`
+  const base = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1'
+  return `${base}/knowledge-base/ortofoto?lat=${lat}&lng=${lng}`
 }
 
 const linkBtn: React.CSSProperties = {
