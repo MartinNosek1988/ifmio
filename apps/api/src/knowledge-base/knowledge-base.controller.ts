@@ -84,12 +84,51 @@ export class KnowledgeBaseController {
     return this.kb.getStats()
   }
 
+  @Get('buildings/filter-options')
+  @ApiOperation({ summary: 'Kaskádové filtrační hodnoty pro budovy' })
+  async getBuildingFilterOptions(
+    @Query('city') city?: string,
+    @Query('district') district?: string,
+    @Query('quarter') quarter?: string,
+    @Query('street') street?: string,
+    @Query('houseNumber') houseNumber?: string,
+  ) {
+    const base: Record<string, unknown> = {}
+    if (city) base.city = { contains: city, mode: 'insensitive' }
+    if (district) base.district = { contains: district, mode: 'insensitive' }
+    if (quarter) base.quarter = { contains: quarter, mode: 'insensitive' }
+    if (street) base.street = { contains: street, mode: 'insensitive' }
+    if (houseNumber) base.houseNumber = houseNumber
+
+    const [cities, districts, quarters, streets, houseNumbers, orientationNumbers] = await Promise.all([
+      this.prisma.building.findMany({ where: {} as any, select: { city: true }, distinct: ['city'], orderBy: { city: 'asc' } }),
+      city ? this.prisma.building.findMany({ where: { city: { contains: city, mode: 'insensitive' } } as any, select: { district: true }, distinct: ['district'], orderBy: { district: 'asc' } }) : Promise.resolve([]),
+      district ? this.prisma.building.findMany({ where: { ...base, quarter: { not: null } } as any, select: { quarter: true }, distinct: ['quarter'], orderBy: { quarter: 'asc' } }) : Promise.resolve([]),
+      (district || quarter) ? this.prisma.building.findMany({ where: { ...base, street: { not: null } } as any, select: { street: true }, distinct: ['street'], orderBy: { street: 'asc' }, take: 500 }) : Promise.resolve([]),
+      street ? this.prisma.building.findMany({ where: { ...base, houseNumber: { not: null } } as any, select: { houseNumber: true }, distinct: ['houseNumber'], orderBy: { houseNumber: 'asc' }, take: 200 }) : Promise.resolve([]),
+      (street && houseNumber) ? this.prisma.building.findMany({ where: { ...base, orientationNumber: { not: null } } as any, select: { orientationNumber: true }, distinct: ['orientationNumber'], orderBy: { orientationNumber: 'asc' }, take: 100 }) : Promise.resolve([]),
+    ])
+
+    return {
+      cities: cities.map(c => c.city).filter(Boolean),
+      districts: districts.map(d => d.district).filter(Boolean),
+      quarters: quarters.map(q => q.quarter).filter(Boolean),
+      streets: streets.map(s => s.street).filter(Boolean),
+      houseNumbers: houseNumbers.map(h => h.houseNumber).filter(Boolean),
+      orientationNumbers: orientationNumbers.map(o => o.orientationNumber).filter(Boolean),
+    }
+  }
+
   @Get('buildings')
   @ApiOperation({ summary: 'Hledat budovy v KB' })
   async searchBuildings(
     @Query('q') q?: string,
     @Query('city') city?: string,
     @Query('district') district?: string,
+    @Query('quarter') quarter?: string,
+    @Query('street') streetFilter?: string,
+    @Query('houseNumber') houseNumber?: string,
+    @Query('orientationNumber') orientationNumber?: string,
     @Query('buildingType') buildingType?: string,
     @Query('minQuality') minQuality?: string,
     @Query('maxQuality') maxQuality?: string,
@@ -114,13 +153,17 @@ export class KnowledgeBaseController {
     }
     if (city) where.city = { contains: city, mode: 'insensitive' }
     if (district) where.district = { contains: district, mode: 'insensitive' }
+    if (quarter) where.quarter = { contains: quarter, mode: 'insensitive' }
+    if (streetFilter) where.street = { contains: streetFilter, mode: 'insensitive' }
+    if (houseNumber) where.houseNumber = houseNumber
+    if (orientationNumber) where.orientationNumber = orientationNumber
     if (buildingType) where.buildingType = buildingType
     if (minQuality) { const n = Number(minQuality); if (!Number.isNaN(n)) where.dataQualityScore = { ...((where.dataQualityScore as any) || {}), gte: n } }
     if (maxQuality) { const n = Number(maxQuality); if (!Number.isNaN(n)) where.dataQualityScore = { ...((where.dataQualityScore as any) || {}), lte: n } }
     if (hasOrganization === 'true') where.managingOrgId = { not: null }
     if (hasOrganization === 'false') where.managingOrgId = null
 
-    const validSortFields = ['dataQualityScore', 'city', 'district', 'street', 'lastEnrichedAt', 'createdAt']
+    const validSortFields = ['dataQualityScore', 'city', 'district', 'street', 'houseNumber', 'orientationNumber', 'lastEnrichedAt', 'createdAt']
     const sortField = validSortFields.includes(sort || '') ? sort! : 'dataQualityScore'
     const sortOrder = order === 'asc' ? 'asc' as const : 'desc' as const
 

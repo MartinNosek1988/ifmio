@@ -10,16 +10,18 @@ interface BuildingRow {
   id: string
   street?: string
   houseNumber?: string
+  orientationNumber?: string
   fullAddress?: string
   city: string
   district?: string
+  quarter?: string
   postalCode?: string
   buildingType?: string
   numberOfUnits?: number
   dataQualityScore?: number
   lastEnrichedAt?: string
   managingOrg?: { ico: string; name: string; orgType?: string } | null
-  _count?: { units: number; properties: number }
+  _count?: { units: number }
 }
 
 interface BuildingsResponse {
@@ -30,12 +32,6 @@ interface BuildingsResponse {
 }
 
 // ── Constants ───────────────────────────────────────
-
-const PRAHA_DISTRICTS = [
-  '', 'Praha 1', 'Praha 2', 'Praha 3', 'Praha 4', 'Praha 5', 'Praha 6', 'Praha 7',
-  'Praha 8', 'Praha 9', 'Praha 10', 'Praha 11', 'Praha 12', 'Praha 13', 'Praha 14',
-  'Praha 15', 'Praha 16', 'Praha 17', 'Praha 18', 'Praha 19', 'Praha 20', 'Praha 21', 'Praha 22',
-]
 
 const QUALITY_PRESETS = [
   { label: 'Vše', min: '', max: '' },
@@ -72,6 +68,10 @@ export default function CrmBuildingsPage() {
 
   const city = searchParams.get('city') || 'Praha'
   const district = searchParams.get('district') || ''
+  const quarter = searchParams.get('quarter') || ''
+  const street = searchParams.get('street') || ''
+  const houseNumber = searchParams.get('houseNumber') || ''
+  const orientationNumber = searchParams.get('orientationNumber') || ''
   const q = searchParams.get('q') || ''
   const minQuality = searchParams.get('minQuality') || ''
   const maxQuality = searchParams.get('maxQuality') || ''
@@ -87,12 +87,33 @@ export default function CrmBuildingsPage() {
 
   const offset = (page - 1) * PAGE_SIZE
 
+  // Cascade filter options
+  const { data: filterOpts } = useQuery<{
+    cities: string[]; districts: string[]; quarters: string[]; streets: string[]
+    houseNumbers: string[]; orientationNumbers: string[]
+  }>({
+    queryKey: ['crm-filter-options', city, district, quarter, street, houseNumber],
+    queryFn: () => {
+      const p: Record<string, string> = {}
+      if (city) p.city = city
+      if (district) p.district = district
+      if (quarter) p.quarter = quarter
+      if (street) p.street = street
+      if (houseNumber) p.houseNumber = houseNumber
+      return apiClient.get('/knowledge-base/buildings/filter-options', { params: p }).then(r => r.data)
+    },
+  })
+
   const { data: result, isLoading } = useQuery<BuildingsResponse>({
-    queryKey: ['crm-buildings', city, district, q, minQuality, maxQuality, hasOrganization, sort, order, page],
+    queryKey: ['crm-buildings', city, district, quarter, street, houseNumber, orientationNumber, q, minQuality, maxQuality, hasOrganization, sort, order, page],
     queryFn: () => {
       const params: Record<string, string> = { limit: String(PAGE_SIZE), offset: String(offset) }
       if (city) params.city = city
       if (district) params.district = district
+      if (quarter) params.quarter = quarter
+      if (street) params.street = street
+      if (houseNumber) params.houseNumber = houseNumber
+      if (orientationNumber) params.orientationNumber = orientationNumber
       if (q) params.q = q
       if (minQuality) params.minQuality = minQuality
       if (maxQuality) params.maxQuality = maxQuality
@@ -115,10 +136,17 @@ export default function CrmBuildingsPage() {
 
   const totalPages = Math.ceil((result?.total || 0) / PAGE_SIZE)
 
+  const CASCADE = ['city', 'district', 'quarter', 'street', 'houseNumber', 'orientationNumber']
+
   const setFilter = (key: string, value: string) => {
     const next = new URLSearchParams(searchParams)
     if (value) next.set(key, value)
     else next.delete(key)
+    // Reset all levels below the changed one
+    const idx = CASCADE.indexOf(key)
+    if (idx >= 0) {
+      for (let i = idx + 1; i < CASCADE.length; i++) next.delete(CASCADE[i])
+    }
     next.set('page', '1')
     setSearchParams(next)
   }
@@ -166,20 +194,18 @@ export default function CrmBuildingsPage() {
         )}
       </div>
 
-      {/* Filters */}
-      <div style={{ ...card, marginBottom: 16, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', padding: '12px 16px' }}>
-        <select value={city} onChange={e => setFilter('city', e.target.value)} style={inputStyle}>
-          <option value="Praha">Praha</option>
-          <option value="Brno">Brno</option>
-          <option value="Ostrava">Ostrava</option>
-          <option value="Plzeň">Plzeň</option>
-        </select>
+      {/* Cascade Filters — 6 levels */}
+      <div style={{ ...card, marginBottom: 8, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', padding: '10px 16px' }}>
+        <CascadeSelect label="Město" value={city} options={filterOpts?.cities || ['Praha']} onChange={v => setFilter('city', v)} />
+        <CascadeSelect label="MČ" value={district} options={filterOpts?.districts || []} onChange={v => setFilter('district', v)} disabled={!city} />
+        <CascadeSelect label="KÚ/Čtvrť" value={quarter} options={filterOpts?.quarters || []} onChange={v => setFilter('quarter', v)} disabled={!district} />
+        <CascadeSelect label="Ulice" value={street} options={filterOpts?.streets || []} onChange={v => setFilter('street', v)} disabled={!district && !quarter} />
+        <CascadeSelect label="ČP" value={houseNumber} options={filterOpts?.houseNumbers || []} onChange={v => setFilter('houseNumber', v)} disabled={!street} />
+        <CascadeSelect label="ČO" value={orientationNumber} options={filterOpts?.orientationNumbers || []} onChange={v => setFilter('orientationNumber', v)} disabled={!houseNumber} />
+      </div>
 
-        <select value={district} onChange={e => setFilter('district', e.target.value)} style={inputStyle}>
-          <option value="">Všechny MČ</option>
-          {PRAHA_DISTRICTS.filter(Boolean).map(d => <option key={d} value={d}>{d}</option>)}
-        </select>
-
+      {/* Secondary filters */}
+      <div style={{ ...card, marginBottom: 16, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', padding: '10px 16px' }}>
         <select value={`${minQuality}-${maxQuality}`} onChange={e => {
           const [min, max] = e.target.value.split('-')
           const next = new URLSearchParams(searchParams)
@@ -200,13 +226,8 @@ export default function CrmBuildingsPage() {
         </select>
 
         <div style={{ display: 'flex', gap: 4, flex: 1, minWidth: 200 }}>
-          <input
-            style={{ ...inputStyle, flex: 1 }}
-            placeholder="Hledat adresu, IČO, organizaci..."
-            value={searchInput}
-            onChange={e => setSearchInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSearch()}
-          />
+          <input style={{ ...inputStyle, flex: 1 }} placeholder="Hledat adresu, IČO, organizaci..." value={searchInput}
+            onChange={e => setSearchInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSearch()} />
           <button onClick={handleSearch} style={{ ...inputStyle, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
             <Search size={16} />
           </button>
@@ -258,11 +279,12 @@ export default function CrmBuildingsPage() {
                       <input type="checkbox" checked={result?.data?.length > 0 && selected.size === result.data.length}
                         onChange={e => setSelected(e.target.checked ? new Set(result!.data.map(b => b.id)) : new Set())} />
                     </th>
-                    <th style={thStyle} onClick={() => setSort('street')}>Adresa{sortIcon('street')}</th>
+                    <th style={thStyle} onClick={() => setSort('street')}>Ulice{sortIcon('street')}</th>
+                    <th style={thStyle} onClick={() => setSort('houseNumber')}>ČP{sortIcon('houseNumber')}</th>
+                    <th style={thStyle} onClick={() => setSort('orientationNumber')}>ČO{sortIcon('orientationNumber')}</th>
+                    <th style={thStyle} onClick={() => setSort('district')}>MČ{sortIcon('district')}</th>
                     <th style={thStyle}>Typ</th>
                     <th style={thStyle}>Organizace</th>
-                    <th style={{ ...thStyle, textAlign: 'right' }}>IČO</th>
-                    <th style={{ ...thStyle, textAlign: 'right' }}>Jedn.</th>
                     <th style={{ ...thStyle, textAlign: 'center', cursor: 'pointer' }} onClick={() => setSort('dataQualityScore')}>
                       Quality{sortIcon('dataQualityScore')}
                     </th>
@@ -274,7 +296,7 @@ export default function CrmBuildingsPage() {
                 </thead>
                 <tbody>
                   {result?.data.map(b => {
-                    const fullAddr = b.fullAddress || [b.street && `${b.street} ${b.houseNumber || ''}`.trim(), b.district, b.postalCode].filter(Boolean).join(', ')
+                    const fullAddr = b.fullAddress || [b.street, b.district, b.postalCode].filter(Boolean).join(', ')
                     return (
                     <tr
                       key={b.id}
@@ -290,9 +312,10 @@ export default function CrmBuildingsPage() {
                           setSelected(next)
                         }} />
                       </td>
-                      <td style={{ ...tdStyle, maxWidth: 300 }}>
-                        <span style={{ fontWeight: 500 }}>{fullAddr || '—'}</span>
-                      </td>
+                      <td style={{ ...tdStyle, fontWeight: 500 }}>{b.street || '—'}</td>
+                      <td style={tdStyle}>{b.houseNumber || '—'}</td>
+                      <td style={tdStyle}>{b.orientationNumber || '—'}</td>
+                      <td style={tdStyle}>{b.district || '—'}</td>
                       <td style={tdStyle}>
                         {b.managingOrg?.orgType ? (
                           <span style={{ padding: '2px 6px', borderRadius: 4, fontSize: '0.72rem', fontWeight: 600, background: b.managingOrg.orgType === 'SVJ' ? '#dbeafe' : '#fce7f3', color: b.managingOrg.orgType === 'SVJ' ? '#1d4ed8' : '#be185d' }}>
@@ -303,10 +326,6 @@ export default function CrmBuildingsPage() {
                       <td style={{ ...tdStyle, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {b.managingOrg?.name || '—'}
                       </td>
-                      <td style={{ ...tdStyle, textAlign: 'right', fontFamily: 'var(--font-mono, monospace)', fontSize: '0.75rem' }}>
-                        {b.managingOrg?.ico || '—'}
-                      </td>
-                      <td style={{ ...tdStyle, textAlign: 'right' }}>{b._count?.units || b.numberOfUnits || '—'}</td>
                       <td style={{ ...tdStyle, textAlign: 'center' }}>
                         <QualityBadge score={b.dataQualityScore || 0} />
                       </td>
@@ -324,7 +343,7 @@ export default function CrmBuildingsPage() {
                     )
                   })}
                   {(!result?.data || result.data.length === 0) && (
-                    <tr><td colSpan={9} style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>Žádné budovy</td></tr>
+                    <tr><td colSpan={10} style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>Žádné budovy</td></tr>
                   )}
                 </tbody>
               </table>
@@ -423,4 +442,23 @@ function paginationRange(current: number, total: number): (string | number)[] {
     pages.push(1, '...', current - 1, current, current + 1, '...', total)
   }
   return pages
+}
+
+function CascadeSelect({ label, value, options, onChange, disabled }: {
+  label: string; value: string; options: string[]; onChange: (v: string) => void; disabled?: boolean
+}) {
+  const inputStyle: React.CSSProperties = {
+    padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border, #d1d5db)',
+    fontSize: '0.78rem', background: disabled ? 'var(--border-light, #f3f4f6)' : 'var(--input-bg, #fff)',
+    minWidth: 90, maxWidth: 160,
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 500 }}>{label}</label>
+      <select value={value} onChange={e => onChange(e.target.value)} style={inputStyle} disabled={disabled}>
+        <option value="">Vše</option>
+        {options.map(o => <option key={o} value={o}>{o}</option>)}
+      </select>
+    </div>
+  )
 }
