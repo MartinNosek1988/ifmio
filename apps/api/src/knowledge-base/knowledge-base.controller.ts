@@ -1,12 +1,15 @@
 import { Controller, Get, Post, Param, Query, Body } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
-import { IsString, IsNotEmpty, IsOptional, IsNumber } from 'class-validator'
+import { IsString, IsNotEmpty, IsOptional, IsNumber, IsIn } from 'class-validator'
 import { KnowledgeBaseService } from './knowledge-base.service'
 import { PropertyEnrichmentOrchestrator } from './property-enrichment.orchestrator'
 import { BuildingIntelligenceService } from './building-intelligence.service'
+import { BulkImportService, type BulkImportStep } from './bulk-import.service'
 import { PrismaService } from '../prisma/prisma.service'
 import { ConfigService } from '@nestjs/config'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
+import { Roles } from '../common/decorators/roles.decorator'
+import { ROLES_MANAGE } from '../common/constants/roles.constants'
 import type { AuthUser } from '@ifmio/shared-types'
 
 class EnrichAddressDto {
@@ -20,6 +23,13 @@ class EnrichAddressDto {
   @IsString() @IsOptional() ruianCode?: string
 }
 
+class BulkImportDto {
+  @IsString() @IsNotEmpty() region!: string
+  @IsString() @IsOptional() district?: string
+  @IsString() @IsOptional() cadastralCode?: string
+  @IsIn(['RUIAN', 'ARES', 'ENRICHMENT', 'JUSTICE']) step!: BulkImportStep
+}
+
 const VALID_ORG_TYPES = ['SVJ', 'BD', 'SRO', 'AS', 'MUNICIPALITY', 'STATE_ORG', 'OTHER_ORG']
 
 @ApiTags('KnowledgeBase')
@@ -30,6 +40,7 @@ export class KnowledgeBaseController {
     private kb: KnowledgeBaseService,
     private orchestrator: PropertyEnrichmentOrchestrator,
     private intelligence: BuildingIntelligenceService,
+    private bulkImport: BulkImportService,
     private prisma: PrismaService,
     private config: ConfigService,
   ) {}
@@ -158,5 +169,90 @@ export class KnowledgeBaseController {
     const mapped = { ...property, ico: property.ico ?? undefined, contactName: property.contactName ?? undefined, contactEmail: property.contactEmail ?? undefined, contactPhone: property.contactPhone ?? undefined, postalCode: property.postalCode ?? undefined }
     const html = this.intelligence.generateWelcomePackHtml(mapped, qrDataUrl)
     return { html }
+  }
+
+  // ── Admin: Coverage Stats ─────────────────────────────
+
+  @Get('stats/coverage')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Pokrytí KB — per district, quality breakdown' })
+  async getCoverage(@Query('city') city?: string) {
+    const cityFilter = city ? { city: { contains: city, mode: 'insensitive' as const } } : {}
+
+    const [districts, qualityRaw, total, withOrg] = await Promise.all([
+      this.prisma.building.groupBy({
+        by: ['district'],
+        where: cityFilter as any,
+        _count: true,
+        _avg: { dataQualityScore: true },
+        orderBy: { _count: { district: 'desc' } },
+      }),
+      this.prisma.$queryRawUnsafe<Array<{ quality_level: string; count: bigint }>>(
+        `SELECT
+          CASE
+            WHEN "dataQualityScore" >= 80 THEN 'excellent'
+            WHEN "dataQualityScore" >= 50 THEN 'good'
+            WHEN "dataQualityScore" >= 20 THEN 'basic'
+            ELSE 'empty'
+          END as quality_level,
+          COUNT(*) as count
+        FROM kb_buildings
+        ${city ? `WHERE city ILIKE '%' || $1 || '%'` : 'WHERE 1=1'}
+        GROUP BY quality_level`,
+        ...(city ? [city] : []),
+      ),
+      this.prisma.building.count({ where: cityFilter as any }),
+      this.prisma.building.count({
+        where: { ...cityFilter, managingOrgId: { not: null } } as any,
+      }),
+    ])
+
+    const qualityBreakdown = qualityRaw.map(q => ({
+      level: q.quality_level,
+      count: Number(q.count),
+    }))
+
+    return { total, withOrganization: withOrg, districts, qualityBreakdown }
+  }
+
+  // ── Admin: Bulk Import ────────────────────────────────
+
+  @Post('bulk-import')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Spustit bulk import' })
+  async startBulkImport(@Body() body: BulkImportDto) {
+    return this.bulkImport.startImport(body)
+  }
+
+  @Get('bulk-import/jobs')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Seznam všech import jobů' })
+  async listImportJobs() {
+    return this.bulkImport.listJobs()
+  }
+
+  @Get('bulk-import/:jobId')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Stav import jobu' })
+  async getImportStatus(@Param('jobId') jobId: string) {
+    const job = this.bulkImport.getJobStatus(jobId)
+    if (!job) return { error: 'Job not found' }
+    return job
+  }
+
+  @Post('bulk-import/:jobId/pause')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Pozastavit import job' })
+  async pauseImport(@Param('jobId') jobId: string) {
+    const ok = this.bulkImport.pauseJob(jobId)
+    return { status: ok ? 'paused' : 'not_found' }
+  }
+
+  @Post('bulk-import/:jobId/resume')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Pokračovat v import jobu' })
+  async resumeImport(@Param('jobId') jobId: string) {
+    const ok = this.bulkImport.resumeJob(jobId)
+    return { status: ok ? 'resumed' : 'not_found' }
   }
 }
