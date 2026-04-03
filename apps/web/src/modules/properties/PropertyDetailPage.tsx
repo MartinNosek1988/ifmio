@@ -710,7 +710,7 @@ export default function PropertyDetailPage() {
                   <div style={{ fontWeight: 600, fontSize: '.85rem', marginBottom: 8 }}>Lokalita</div>
                   {bd.lat && bd.lng && (
                     <img
-                      src={`https://ags.cuzk.gov.cz/arcgis1/rest/services/ORTOFOTO_WM/MapServer/export?bbox=${bd.lng - 0.001},${bd.lat - 0.0007},${bd.lng + 0.001},${bd.lat + 0.0007}&size=600,400&format=png&f=image&bboxSR=4326&imageSR=4326`}
+                      src={`${import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1'}/knowledge-base/ortofoto?lat=${bd.lat}&lng=${bd.lng}`}
                       alt="Ortofoto" style={{ width: '100%', borderRadius: 8, maxHeight: 180, objectFit: 'cover', marginBottom: 8 }}
                     />
                   )}

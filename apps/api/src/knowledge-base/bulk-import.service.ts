@@ -690,15 +690,20 @@ export class BulkImportService {
             // Step C: Geo enrichment (risks + POI)
             job.currentStep = 'Enrichment'
             let qualityBonus = 0
+            const enrichCache: Record<string, unknown> = {}
             if (b.lat && b.lng) {
-              try { await this.geoRisk.getRiskProfile(b.lat, b.lng); qualityBonus += 5 } catch { /* ok */ }
+              try {
+                const risks = await this.geoRisk.getRiskProfile(b.lat, b.lng)
+                enrichCache.risks = risks
+                qualityBonus += 5
+              } catch { /* ok */ }
               try {
                 const price = await this.iprPrice.getLandPrice(b.lat, b.lng)
-                if (price) qualityBonus += 10
+                if (price) { enrichCache.priceEstimate = price; qualityBonus += 10 }
               } catch { /* ok */ }
               try {
                 const poi = await this.geoRisk.getNearbyPOI(b.lat, b.lng, 500)
-                if (poi.details.length > 0) qualityBonus += 5
+                if (poi.details.length > 0) { enrichCache.poi = poi; qualityBonus += 5 }
               } catch { /* ok */ }
             }
 
@@ -722,11 +727,16 @@ export class BulkImportService {
               await this.delay(1000) // Justice rate limit
             }
 
-            // Update quality score
+            // Update quality score + cache enrichment data
             const finalScore = Math.min((updatedBuilding?.dataQualityScore || 30) + qualityBonus, 100)
             await this.prisma.building.update({
               where: { id: building.id },
-              data: { dataQualityScore: finalScore, lastEnrichedAt: new Date() },
+              data: {
+                dataQualityScore: finalScore,
+                lastEnrichedAt: new Date(),
+                enrichmentData: Object.keys(enrichCache).length > 0 ? JSON.parse(JSON.stringify(enrichCache)) : undefined,
+                enrichedAt: Object.keys(enrichCache).length > 0 ? new Date() : undefined,
+              },
             })
 
             qualitySum += finalScore

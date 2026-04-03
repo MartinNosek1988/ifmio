@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Patch, Delete, Param, Query, Body } from '@nestjs/common'
+import { Controller, Get, Post, Patch, Delete, Param, Query, Body, Res } from '@nestjs/common'
+import type { FastifyReply } from 'fastify'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { IsString, IsNotEmpty, IsOptional, IsNumber, IsIn } from 'class-validator'
 import { KnowledgeBaseService } from './knowledge-base.service'
@@ -165,6 +166,26 @@ export class KnowledgeBaseController {
   async deleteBuilding(@Param('id') id: string) {
     await this.prisma.building.delete({ where: { id } })
     return { deleted: true }
+  }
+
+  @Get('ortofoto')
+  @ApiOperation({ summary: 'Proxy ČÚZK ortofoto (bypasses CORS)' })
+  async getOrtofoto(@Query('lat') lat: string, @Query('lng') lng: string, @Res() res: FastifyReply) {
+    const latN = Number(lat)
+    const lngN = Number(lng)
+    if (Number.isNaN(latN) || Number.isNaN(lngN)) return res.status(400).send('Invalid coordinates')
+    const r = 80
+    const dLat = r / 111320
+    const dLng = r / (111320 * Math.cos(latN * Math.PI / 180))
+    const url = `https://ags.cuzk.gov.cz/arcgis1/rest/services/ORTOFOTO_WM/MapServer/export?bbox=${lngN - dLng},${latN - dLat},${lngN + dLng},${latN + dLat}&size=600,400&format=png&f=image&bboxSR=4326&imageSR=4326`
+    try {
+      const imgRes = await fetch(url, { signal: AbortSignal.timeout(10000) })
+      if (!imgRes.ok) return res.status(502).send('ČÚZK unavailable')
+      const buffer = Buffer.from(await imgRes.arrayBuffer())
+      return res.header('Content-Type', 'image/png').header('Cache-Control', 'public, max-age=86400').send(buffer)
+    } catch {
+      return res.status(502).send('ČÚZK timeout')
+    }
   }
 
   @Get('organizations')
