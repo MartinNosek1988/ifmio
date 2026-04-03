@@ -18,7 +18,7 @@ export default function PropertiesPage() {
   const navigate = useNavigate();
   const { data: properties = [], isLoading, error } = useProperties();
   const [search, setSearch] = useState('');
-  // showForm kept for backward compat but now navigates to /properties/new
+  // Property creation now uses route navigation (/properties/new)
 
   const filtered = useMemo(() => {
     if (!search) return properties;

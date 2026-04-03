@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useId } from 'react'
 import { Search, MapPin, X, Loader2 } from 'lucide-react'
 import { apiClient } from '../../core/api/client'
 
@@ -34,22 +34,27 @@ export function AddressAutocomplete({
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const requestIdRef = useRef(0)
+  const listboxId = useId()
 
   const search = useCallback(async (q: string) => {
     if (q.length < 3) { setResults([]); setIsOpen(false); return }
+    const currentRequestId = ++requestIdRef.current
     setIsLoading(true)
     try {
       const res = await apiClient.get('/ruian/search', { params: { q } })
+      // Ignore stale responses (race condition fix)
+      if (currentRequestId !== requestIdRef.current) return
       const data = Array.isArray(res.data) ? res.data : []
       setResults(data.slice(0, 10))
       setIsOpen(data.length > 0)
       setActiveIndex(-1)
     } catch {
-      // RÚIAN endpoint may not exist yet — fallback to empty
+      if (currentRequestId !== requestIdRef.current) return
       setResults([])
       setIsOpen(false)
     } finally {
-      setIsLoading(false)
+      if (currentRequestId === requestIdRef.current) setIsLoading(false)
     }
   }, [])
 
@@ -58,6 +63,13 @@ export function AddressAutocomplete({
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => search(value), 300)
   }
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [])
 
   const handleSelect = (result: AddressResult) => {
     setQuery(result.fullAddress)
@@ -75,7 +87,6 @@ export function AddressAutocomplete({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!isOpen || results.length === 0) return
-
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault()
@@ -107,6 +118,8 @@ export function AddressAutocomplete({
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  const activeOptionId = activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined
+
   return (
     <div ref={dropdownRef} className={className} style={{ position: 'relative' }}>
       <div style={{ position: 'relative' }}>
@@ -128,19 +141,21 @@ export function AddressAutocomplete({
           aria-expanded={isOpen}
           aria-haspopup="listbox"
           aria-autocomplete="list"
+          aria-controls={isOpen ? listboxId : undefined}
+          aria-activedescendant={activeOptionId}
         />
         {isLoading && (
           <Loader2 size={16} style={{ position: 'absolute', right: query ? 36 : 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', animation: 'spin 1s linear infinite' }} />
         )}
         {query && !isLoading && (
-          <button type="button" onClick={handleClear} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, display: 'flex' }}>
+          <button type="button" onClick={handleClear} aria-label="Vymazat adresu" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, display: 'flex' }}>
             <X size={16} />
           </button>
         )}
       </div>
 
       {isOpen && (
-        <div role="listbox" style={{
+        <div id={listboxId} role="listbox" style={{
           position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 50,
           background: 'var(--color-surface, #fff)', border: '1px solid var(--border)',
           borderRadius: 8, boxShadow: 'var(--shadow-lg)', maxHeight: 300, overflowY: 'auto',
@@ -153,6 +168,7 @@ export function AddressAutocomplete({
           {results.map((r, i) => (
             <button
               key={r.id}
+              id={`${listboxId}-option-${i}`}
               type="button"
               role="option"
               aria-selected={i === activeIndex}

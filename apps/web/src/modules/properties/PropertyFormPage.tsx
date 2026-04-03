@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
-import { FormSection, FormFooter } from '../../shared/components/FormSection'
+import { useState, useEffect } from 'react'
+import { FormSection } from '../../shared/components/FormSection'
 import { FormField } from '../../shared/components/FormField'
 import { useCreateProperty, useUpdateProperty, useProperty } from './use-properties'
 import { AddressAutocomplete } from '../../shared/components/AddressAutocomplete'
@@ -85,6 +85,24 @@ function PropertyFormInner({ property, isEdit, createMutation, updateMutation, n
     cadastralArea: property?.cadastralArea || '',
     landRegistrySheet: property?.landRegistrySheet || '',
   })
+
+  // Sync form state when property data arrives after initial render (edit mode)
+  useEffect(() => {
+    if (!property) return
+    setForm({
+      name: property.name || '', address: property.address || '',
+      city: property.city || '', postalCode: property.postalCode || '',
+      type: property.type || 'bytdum', ownership: property.ownership || 'vlastnictvi',
+      legalMode: (property.legalMode || 'OWNERSHIP') as PropertyLegalMode,
+      ico: property.ico || '', dic: property.dic || '',
+      isVatPayer: property.isVatPayer || false,
+      managedFrom: property.managedFrom ? property.managedFrom.slice(0, 10) : '',
+      managedTo: property.managedTo ? property.managedTo.slice(0, 10) : '',
+      accountingSystem: (property.accountingSystem || 'NONE') as AccountingSystemType,
+      cadastralArea: property.cadastralArea || '',
+      landRegistrySheet: property.landRegistrySheet || '',
+    })
+  }, [property])
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [aresLoading, setAresLoading] = useState(false)
@@ -186,9 +204,10 @@ function PropertyFormInner({ property, isEdit, createMutation, updateMutation, n
     }
     try {
       if (isEdit) {
-        await updateMutation.mutateAsync({ id: property!.id, data: payload })
+        if (!property?.id) { toast.error('Nemovitost nenalezena'); navigate('/properties'); return }
+        await updateMutation.mutateAsync({ id: property.id, data: payload })
         toast.success('Nemovitost uložena')
-        navigate(`/properties/${property!.id}`)
+        navigate(`/properties/${property.id}`)
       } else {
         const res = await createMutation.mutateAsync(payload)
         toast.success('Nemovitost vytvořena')
