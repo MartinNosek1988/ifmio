@@ -38,7 +38,7 @@ export function AddressAutocomplete({
   const listboxId = useId()
 
   const search = useCallback(async (q: string) => {
-    if (q.length < 3) { setResults([]); setIsOpen(false); return }
+    if (q.length < 3) { requestIdRef.current++; setIsLoading(false); setResults([]); setIsOpen(false); return }
     const currentRequestId = ++requestIdRef.current
     setIsLoading(true)
     try {

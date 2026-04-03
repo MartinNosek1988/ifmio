@@ -63,6 +63,7 @@ export class RuianService {
         return { label, street: street.trim(), city: city.trim(), postalCode: psc, lat, lng, ruianCode }
       }).filter((a: RuianAddress) => a.label)
 
+      if (this.cache.size > 500) this.cache.delete(this.cache.keys().next().value!)
       this.cache.set(key, { data: results, ts: Date.now() })
       return results
     } catch (err) {
