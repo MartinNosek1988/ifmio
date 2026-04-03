@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { apiClient } from '../../core/api/client'
-import { Building2, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Building2, Search, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 
 // ── Types ───────────────────────────────────────────
 
@@ -81,6 +81,9 @@ export default function CrmBuildingsPage() {
   const page = Number(searchParams.get('page') || '1')
 
   const [searchInput, setSearchInput] = useState(q)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; label: string } | null>(null)
+  const qc = useQueryClient()
 
   const offset = (page - 1) * PAGE_SIZE
 
@@ -98,6 +101,16 @@ export default function CrmBuildingsPage() {
       if (order) params.order = order
       return apiClient.get('/knowledge-base/buildings', { params }).then(r => r.data)
     },
+  })
+
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/knowledge-base/buildings/${id}`).then(r => r.data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['crm-buildings'] }); setConfirmDelete(null) },
+  })
+
+  const bulkDeleteMut = useMutation({
+    mutationFn: (ids: string[]) => Promise.all(ids.map(id => apiClient.delete(`/knowledge-base/buildings/${id}`))),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['crm-buildings'] }); setSelected(new Set()) },
   })
 
   const totalPages = Math.ceil((result?.total || 0) / PAGE_SIZE)
@@ -200,6 +213,37 @@ export default function CrmBuildingsPage() {
         </div>
       </div>
 
+      {/* Bulk actions */}
+      {selected.size > 0 && (
+        <div style={{ marginBottom: 8, padding: '8px 16px', background: '#fef3c7', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12, fontSize: '0.82rem' }}>
+          <span style={{ fontWeight: 500 }}>{selected.size} vybráno</span>
+          <button onClick={() => { if (confirm(`Opravdu smazat ${selected.size} budov?`)) bulkDeleteMut.mutate([...selected]) }}
+            style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #dc2626', background: '#fee2e2', color: '#dc2626', fontSize: '0.78rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+            disabled={bulkDeleteMut.isPending}>
+            <Trash2 size={13} /> Smazat vybrané
+          </button>
+          <button onClick={() => setSelected(new Set())} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.78rem', color: 'var(--text-muted)' }}>Zrušit výběr</button>
+        </div>
+      )}
+
+      {/* Confirm delete dialog */}
+      {confirmDelete && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+          onClick={() => setConfirmDelete(null)}>
+          <div style={{ background: '#fff', borderRadius: 12, padding: 24, maxWidth: 420, width: '90%' }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>Smazat budovu?</div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 16 }}>Opravdu smazat budovu <strong>{confirmDelete.label}</strong>? Smaže se i všechny jednotky, zdroje a vlastnictví.</div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setConfirmDelete(null)} style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer' }}>Zrušit</button>
+              <button onClick={() => deleteMut.mutate(confirmDelete.id)} disabled={deleteMut.isPending}
+                style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>
+                Smazat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div style={card}>
         {isLoading ? (
@@ -210,8 +254,11 @@ export default function CrmBuildingsPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
+                    <th style={{ ...thStyle, width: 32 }}>
+                      <input type="checkbox" checked={result?.data?.length > 0 && selected.size === result.data.length}
+                        onChange={e => setSelected(e.target.checked ? new Set(result!.data.map(b => b.id)) : new Set())} />
+                    </th>
                     <th style={thStyle} onClick={() => setSort('street')}>Adresa{sortIcon('street')}</th>
-                    <th style={thStyle} onClick={() => setSort('district')}>MČ{sortIcon('district')}</th>
                     <th style={thStyle}>Typ</th>
                     <th style={thStyle}>Organizace</th>
                     <th style={{ ...thStyle, textAlign: 'right' }}>IČO</th>
@@ -222,10 +269,13 @@ export default function CrmBuildingsPage() {
                     <th style={{ ...thStyle, cursor: 'pointer' }} onClick={() => setSort('lastEnrichedAt')}>
                       Enrichment{sortIcon('lastEnrichedAt')}
                     </th>
+                    <th style={{ ...thStyle, width: 40 }}></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {result?.data.map(b => (
+                  {result?.data.map(b => {
+                    const fullAddr = b.fullAddress || [b.street && `${b.street} ${b.houseNumber || ''}`.trim(), b.district, b.postalCode].filter(Boolean).join(', ')
+                    return (
                     <tr
                       key={b.id}
                       onClick={() => navigate(`/crm/buildings/${b.id}`)}
@@ -233,11 +283,16 @@ export default function CrmBuildingsPage() {
                       onMouseEnter={e => (e.currentTarget.style.background = 'var(--border-light, #f9fafb)')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                     >
-                      <td style={tdStyle}>
-                        <span style={{ fontWeight: 500 }}>{b.street || b.fullAddress?.split(',')[0] || '—'}</span>
-                        {b.houseNumber && <span> {b.houseNumber}</span>}
+                      <td style={tdStyle} onClick={e => e.stopPropagation()}>
+                        <input type="checkbox" checked={selected.has(b.id)} onChange={e => {
+                          const next = new Set(selected)
+                          e.target.checked ? next.add(b.id) : next.delete(b.id)
+                          setSelected(next)
+                        }} />
                       </td>
-                      <td style={tdStyle}>{b.district || '—'}</td>
+                      <td style={{ ...tdStyle, maxWidth: 300 }}>
+                        <span style={{ fontWeight: 500 }}>{fullAddr || '—'}</span>
+                      </td>
                       <td style={tdStyle}>
                         {b.managingOrg?.orgType ? (
                           <span style={{ padding: '2px 6px', borderRadius: 4, fontSize: '0.72rem', fontWeight: 600, background: b.managingOrg.orgType === 'SVJ' ? '#dbeafe' : '#fce7f3', color: b.managingOrg.orgType === 'SVJ' ? '#1d4ed8' : '#be185d' }}>
@@ -258,10 +313,18 @@ export default function CrmBuildingsPage() {
                       <td style={{ ...tdStyle, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                         {b.lastEnrichedAt ? formatRelativeDate(b.lastEnrichedAt) : 'nikdy'}
                       </td>
+                      <td style={tdStyle} onClick={e => e.stopPropagation()}>
+                        <button onClick={() => setConfirmDelete({ id: b.id, label: fullAddr })}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2 }}
+                          title="Smazat budovu">
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
                     </tr>
-                  ))}
+                    )
+                  })}
                   {(!result?.data || result.data.length === 0) && (
-                    <tr><td colSpan={8} style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>Žádné budovy</td></tr>
+                    <tr><td colSpan={9} style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>Žádné budovy</td></tr>
                   )}
                 </tbody>
               </table>

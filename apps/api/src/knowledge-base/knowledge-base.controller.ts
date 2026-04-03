@@ -159,6 +159,14 @@ export class KnowledgeBaseController {
     })
   }
 
+  @Delete('buildings/:id')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Smazat budovu z KB (cascade: units, sources, ownerships)' })
+  async deleteBuilding(@Param('id') id: string) {
+    await this.prisma.building.delete({ where: { id } })
+    return { deleted: true }
+  }
+
   @Get('organizations')
   @ApiOperation({ summary: 'Hledat organizace v KB' })
   async searchOrganizations(
