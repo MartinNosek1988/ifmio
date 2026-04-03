@@ -94,7 +94,7 @@ export class AresService {
         signal: AbortSignal.timeout(10000),
       });
 
-      if (res.status === 404) return null;
+      if (res.status === 404) { this.cacheSet(ico, null); return null; }
       if (!res.ok) {
         this.logger.warn(`ARES API responded with ${res.status} for ICO ${ico}`);
         return null;

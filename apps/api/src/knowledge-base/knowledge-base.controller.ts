@@ -1,7 +1,6 @@
 import { Controller, Get, Post, Patch, Delete, Param, Query, Body } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { IsString, IsNotEmpty, IsOptional, IsNumber, IsIn } from 'class-validator'
-import { Prisma } from '@prisma/client'
 import { KnowledgeBaseService } from './knowledge-base.service'
 import { PropertyEnrichmentOrchestrator } from './property-enrichment.orchestrator'
 import { BuildingIntelligenceService } from './building-intelligence.service'
@@ -115,8 +114,8 @@ export class KnowledgeBaseController {
     if (city) where.city = { contains: city, mode: 'insensitive' }
     if (district) where.district = { contains: district, mode: 'insensitive' }
     if (buildingType) where.buildingType = buildingType
-    if (minQuality) where.dataQualityScore = { ...((where.dataQualityScore as any) || {}), gte: Number(minQuality) }
-    if (maxQuality) where.dataQualityScore = { ...((where.dataQualityScore as any) || {}), lte: Number(maxQuality) }
+    if (minQuality) { const n = Number(minQuality); if (!Number.isNaN(n)) where.dataQualityScore = { ...((where.dataQualityScore as any) || {}), gte: n } }
+    if (maxQuality) { const n = Number(maxQuality); if (!Number.isNaN(n)) where.dataQualityScore = { ...((where.dataQualityScore as any) || {}), lte: n } }
     if (hasOrganization === 'true') where.managingOrgId = { not: null }
     if (hasOrganization === 'false') where.managingOrgId = null
 
@@ -132,7 +131,7 @@ export class KnowledgeBaseController {
         orderBy: { [sortField]: sortOrder },
         include: {
           managingOrg: { select: { ico: true, name: true, orgType: true } },
-          _count: { select: { units: true, properties: true } },
+          _count: { select: { units: true } },
         },
       }),
       this.prisma.building.count({ where: where as any }),
@@ -156,7 +155,6 @@ export class KnowledgeBaseController {
           },
         },
         sources: { orderBy: { fetchedAt: 'desc' }, take: 10 },
-        _count: { select: { properties: true } },
       },
     })
   }

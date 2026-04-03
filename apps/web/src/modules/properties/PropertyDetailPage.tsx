@@ -45,7 +45,7 @@ export default function PropertyDetailPage() {
   const { data: contracts = [] } = usePropertyContracts(id!);
   const { data: financialContexts = [] } = usePropertyFinancialContexts(id!);
   usePropertyOwnerships(id!);
-  const { data: buildingData } = useQuery({
+  const { data: buildingData, isLoading: buildingLoading, isError: buildingError } = useQuery({
     queryKey: ['property-building', property?.buildingId],
     queryFn: () => apiClient.get(`/knowledge-base/buildings/${property!.buildingId}`).then(r => r.data),
     enabled: !!property?.buildingId,
@@ -695,6 +695,10 @@ export default function PropertyDetailPage() {
                 Enrichnout budovu
               </button>
             </div>
+          ) : buildingError ? (
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 24, textAlign: 'center', color: 'var(--danger)' }}>
+              Nepodařilo se načíst data budovy
+            </div>
           ) : buildingData ? (() => {
             const bd = buildingData
             const enrichment = bd.enrichmentData as Record<string, any> | null
@@ -788,7 +792,7 @@ export default function PropertyDetailPage() {
               </div>
             )
           })() : (
-            <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>Načítám data budovy...</div>
+            <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>{buildingLoading ? 'Načítám data budovy...' : 'Data budovy nejsou dostupná'}</div>
           )}
         </div>
       )}

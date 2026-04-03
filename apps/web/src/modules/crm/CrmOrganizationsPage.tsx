@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
 import { apiClient } from '../../core/api/client'
 import { Landmark, Search } from 'lucide-react'
 
@@ -10,7 +9,6 @@ const card: React.CSSProperties = { background: 'var(--card-bg, #fff)', borderRa
 const inputStyle: React.CSSProperties = { padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border, #d1d5db)', fontSize: '0.82rem', background: 'var(--input-bg, #fff)' }
 
 export default function CrmOrganizationsPage() {
-  const navigate = useNavigate()
   const [q, setQ] = useState('')
   const [type, setType] = useState('')
   const [search, setSearch] = useState('')
@@ -61,9 +59,7 @@ export default function CrmOrganizationsPage() {
             </thead>
             <tbody>
               {orgs.map((o: any) => (
-                <tr key={o.id} onClick={() => navigate(`/crm/organizations/${o.id}`)} style={{ borderBottom: '1px solid var(--border-light, #f3f4f6)', cursor: 'pointer' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--border-light, #f9fafb)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                <tr key={o.id} style={{ borderBottom: '1px solid var(--border-light, #f3f4f6)' }}>
                   <td style={{ padding: '6px 8px', fontWeight: 500, maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.name}</td>
                   <td style={{ padding: '6px 8px', fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>{o.ico}</td>
                   <td style={{ padding: '6px 8px' }}>
