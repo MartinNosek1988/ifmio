@@ -4,6 +4,8 @@ import { PrismaService } from '../prisma/prisma.service'
 import { KnowledgeBaseService } from './knowledge-base.service'
 import { GeoRiskService } from './geo-risk.service'
 import { IprPriceService } from './ipr-price.service'
+import { AresService } from '../integrations/ares/ares.service'
+import { JusticeService } from '../integrations/justice/justice.service'
 
 // ── Types ───────────────────────────────────────────────
 
@@ -23,9 +25,13 @@ export interface BulkImportJob {
   completedAt?: Date
   lastProcessedId?: string | null
   error?: string
+  // Sequential full import tracking
+  currentBuilding?: string
+  currentStep?: string
+  avgQuality?: number
 }
 
-export type BulkImportStep = 'RUIAN' | 'ARES' | 'ENRICHMENT' | 'JUSTICE'
+export type BulkImportStep = 'RUIAN' | 'ARES' | 'ENRICHMENT' | 'JUSTICE' | 'FULL'
 
 export interface StartImportParams {
   region: string
@@ -64,6 +70,8 @@ export class BulkImportService {
     private kb: KnowledgeBaseService,
     private geoRisk: GeoRiskService,
     private iprPrice: IprPriceService,
+    private ares: AresService,
+    private justice: JusticeService,
   ) {}
 
   // ── Job Management ──────────────────────────────────
@@ -153,6 +161,9 @@ export class BulkImportService {
         break
       case 'JUSTICE':
         await this.bulkJusticeEnrichment(job)
+        break
+      case 'FULL':
+        await this.runFullSequentialImport(job)
         break
     }
   }
@@ -442,11 +453,15 @@ export class BulkImportService {
     houseNumber?: string,
     city?: string,
   ): Promise<{ id: string; dataQualityScore: number | null } | null> {
-    if (!street && !houseNumber) return null
+    if (!street || street.length < 3) return null
 
-    const where: Record<string, unknown> = {}
-    if (city) where.city = { contains: city, mode: 'insensitive' }
-    if (street) where.street = { contains: street.split(' ')[0], mode: 'insensitive' }
+    const streetName = street.replace(/\s+\d+[\w/\s-]*$/, '').trim()
+    if (streetName.length < 3) return null
+
+    const where: Record<string, unknown> = {
+      street: { contains: streetName, mode: 'insensitive' },
+    }
+    if (city) where.city = { equals: city, mode: 'insensitive' }
     if (houseNumber) where.houseNumber = houseNumber
 
     return this.prisma.building.findFirst({
@@ -526,32 +541,185 @@ export class BulkImportService {
   // ── KROK 4: Justice.cz Bulk ─────────────────────────
 
   private async bulkJusticeEnrichment(job: BulkImportJob): Promise<void> {
-    // Get organizations without Justice data
-    const orgs = await this.prisma.kbOrganization.findMany({
-      where: {
-        registryChanges: { none: {} },
-        isActive: true,
-      },
-      select: { id: true, ico: true },
-      take: 5000,
-    })
+    job.status = 'FAILED'
+    job.error = 'Bulk Justice.cz enrichment není zatím implementován. Použijte per-property enrichment.'
+    job.completedAt = new Date()
+  }
 
-    job.totalEstimated = orgs.length
+  // ── FULL Sequential Import ───────────────────────────
 
-    for (const org of orgs) {
-      if (job.status !== 'RUNNING') break
+  private async runFullSequentialImport(job: BulkImportJob): Promise<void> {
+    const batchSize = 200
+    let offset = job.lastProcessedId ? Number(job.lastProcessedId) : 0
+    let qualitySum = 0
+    let qualityCount = 0
 
-      try {
-        // Reuse existing JusticeService via dynamic import would be complex.
-        // For now, just mark as needing enrichment — the per-property orchestrator
-        // handles actual Justice.cz calls when a property is viewed.
-        job.processed++
-      } catch {
-        job.errors++
+    // Get total count
+    try {
+      const countUrl = this.buildRuianQueryUrl({ returnCountOnly: true })
+      const countRes = await fetch(countUrl, { signal: AbortSignal.timeout(15000) })
+      if (countRes.ok) {
+        const countData = await countRes.json()
+        job.totalEstimated = countData.count || 0
       }
+    } catch { /* ignore */ }
 
-      // Rate limit: max 1 req/s for Justice.cz
-      await this.delay(1000)
+    while (job.status === 'RUNNING') {
+      try {
+        // 1. Fetch RÚIAN batch
+        job.currentStep = 'RÚIAN'
+        const url = this.buildRuianQueryUrl({
+          resultRecordCount: batchSize,
+          resultOffset: offset,
+          outFields: 'kod,cislodomovni,cisloorientacni,cisloorientacnipismeno,psc,stavebniobjekt,ulice,adresa',
+          returnGeometry: true,
+          outSR: 4326,
+        })
+
+        const res = await fetch(url, { signal: AbortSignal.timeout(30000) })
+        if (!res.ok) { job.errors++; await this.delay(5000); continue }
+
+        const data = await res.json()
+        const features = data.features || []
+        if (features.length === 0) break
+
+        // Group by building
+        const buildingMap = new Map<string, {
+          ruianId: string; address: string; houseNumber?: string
+          orientationNumber?: string; postalCode?: string; lat?: number; lng?: number
+        }>()
+
+        for (const f of features) {
+          const a = f.attributes
+          const soId = String(a.stavebniobjekt || a.kod)
+          if (!buildingMap.has(soId)) {
+            buildingMap.set(soId, {
+              ruianId: soId,
+              address: a.adresa || '',
+              houseNumber: a.cislodomovni ? String(a.cislodomovni) : undefined,
+              orientationNumber: a.cisloorientacni ? `${a.cisloorientacni}${a.cisloorientacnipismeno || ''}` : undefined,
+              postalCode: a.psc ? String(a.psc) : undefined,
+              lat: f.geometry?.y,
+              lng: f.geometry?.x,
+            })
+          }
+        }
+
+        // 2. Process each building sequentially: upsert → ARES → enrich
+        for (const [, b] of buildingMap) {
+          if (job.status !== 'RUNNING') break
+
+          job.currentBuilding = b.address.slice(0, 60)
+
+          try {
+            // Step A: Upsert building from RÚIAN
+            job.currentStep = 'RÚIAN'
+            const parsed = this.parseRuianAddress(b.address)
+            const building = await this.prisma.building.upsert({
+              where: { ruianBuildingId: b.ruianId },
+              create: {
+                ruianBuildingId: b.ruianId,
+                street: parsed.street,
+                houseNumber: b.houseNumber,
+                orientationNumber: b.orientationNumber,
+                city: parsed.city || job.region,
+                district: parsed.district,
+                postalCode: b.postalCode || parsed.postalCode,
+                fullAddress: b.address,
+                lat: b.lat, lng: b.lng,
+                parcelNumbers: [],
+                dataQualityScore: 30,
+                lastEnrichedAt: new Date(),
+              },
+              update: { lastEnrichedAt: new Date(), ...(b.lat && { lat: b.lat }), ...(b.lng && { lng: b.lng }) },
+            })
+
+            // Step B: ARES search for SVJ/BD
+            job.currentStep = 'ARES'
+            if (parsed.street && parsed.city) {
+              try {
+                const streetName = parsed.street.replace(/\s+\d+[\w/\s-]*$/, '').trim()
+                if (streetName.length >= 3) {
+                  const aresResults = await this.ares.searchByName(`${streetName} ${b.houseNumber || ''}`.trim(), 3)
+                  const svj = aresResults.ekonomickeSubjekty.find(s =>
+                    (s.pravniForma || '').toLowerCase().includes('společenství vlastníků') ||
+                    (s.pravniForma || '').toLowerCase().includes('družstvo'),
+                  )
+                  if (svj) {
+                    const org = await this.kb.findOrCreateOrganization(svj.ico, {
+                      obchodniJmeno: svj.nazev, nazev: svj.nazev, dic: svj.dic, pravniForma: svj.pravniForma,
+                    })
+                    await this.prisma.building.update({
+                      where: { id: building.id },
+                      data: { managingOrgId: org.id },
+                    }).catch(() => {})
+                  }
+                }
+              } catch { /* ARES fail ok */ }
+              await this.delay(500) // ARES rate limit
+            }
+
+            // Step C: Geo enrichment (risks + POI)
+            job.currentStep = 'Enrichment'
+            let qualityBonus = 0
+            if (b.lat && b.lng) {
+              try { await this.geoRisk.getRiskProfile(b.lat, b.lng); qualityBonus += 5 } catch { /* ok */ }
+              try {
+                const price = await this.iprPrice.getLandPrice(b.lat, b.lng)
+                if (price) qualityBonus += 10
+              } catch { /* ok */ }
+              try {
+                const poi = await this.geoRisk.getNearbyPOI(b.lat, b.lng, 500)
+                if (poi.details.length > 0) qualityBonus += 5
+              } catch { /* ok */ }
+            }
+
+            // Step D: Justice.cz (if org found)
+            job.currentStep = 'Justice'
+            const updatedBuilding = await this.prisma.building.findUnique({
+              where: { id: building.id },
+              select: { managingOrgId: true, dataQualityScore: true },
+            })
+            if (updatedBuilding?.managingOrgId) {
+              try {
+                const org = await this.prisma.kbOrganization.findUnique({
+                  where: { id: updatedBuilding.managingOrgId },
+                  select: { ico: true },
+                })
+                if (org) {
+                  const subject = await this.justice.getSubjectByIco(org.ico)
+                  if (subject) qualityBonus += 10
+                }
+              } catch { /* ok */ }
+              await this.delay(1000) // Justice rate limit
+            }
+
+            // Update quality score
+            const finalScore = Math.min((updatedBuilding?.dataQualityScore || 30) + qualityBonus, 100)
+            await this.prisma.building.update({
+              where: { id: building.id },
+              data: { dataQualityScore: finalScore, lastEnrichedAt: new Date() },
+            })
+
+            qualitySum += finalScore
+            qualityCount++
+            job.avgQuality = Math.round(qualitySum / qualityCount)
+            job.created++
+          } catch {
+            job.errors++
+          }
+
+          job.processed++
+          job.lastProcessedId = String(offset + job.processed)
+        }
+
+        offset += batchSize
+        await this.delay(200) // RÚIAN rate limit
+      } catch (err) {
+        this.logger.warn(`Full import batch at offset ${offset} failed: ${err}`)
+        job.errors++
+        await this.delay(5000)
+      }
     }
 
     if (job.status === 'RUNNING') {

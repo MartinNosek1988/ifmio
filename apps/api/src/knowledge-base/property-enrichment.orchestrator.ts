@@ -290,6 +290,7 @@ export class PropertyEnrichmentOrchestrator {
           if (org) {
             for (const change of registryChanges.slice(0, 20)) {
               const changeDate = change.changeDate ? new Date(change.changeDate) : null
+              if (!changeDate) continue // null changeDate breaks unique constraint
               await this.prisma.kbRegistryChange.upsert({
                 where: {
                   organizationId_changeDate_changeType: {
