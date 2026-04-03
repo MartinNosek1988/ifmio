@@ -38,6 +38,7 @@ const ROUTE_LABELS: Record<string, string> = {
   buildings: 'Budovy',
   organizations: 'Organizace',
   import: 'Import dat',
+  map: 'Mapa',
   notifications: 'Notifikace',
   reporting: 'Reporting',
   reports: 'Výkazy',

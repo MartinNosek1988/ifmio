@@ -70,6 +70,7 @@ const KnowledgeBaseDashboard = lazy(() => import('../modules/admin/KnowledgeBase
 const CrmBuildingsPage = lazy(() => import('../modules/crm/CrmBuildingsPage'));
 const CrmBuildingDetailPage = lazy(() => import('../modules/crm/CrmBuildingDetailPage'));
 const CrmOrganizationsPage = lazy(() => import('../modules/crm/CrmOrganizationsPage'));
+const CrmMapPage = lazy(() => import('../modules/crm/CrmMapPage'));
 const CrmImportPage = lazy(() => import('../modules/crm/CrmImportPage'));
 const QrResolvePage = lazy(() => import('../modules/asset-qr/QrResolvePage'));
 const PrincipalsPage = lazy(() => import('../modules/principals/PrincipalsPage'));
@@ -234,6 +235,7 @@ export const router = createBrowserRouter([
       { path: 'crm/buildings/:id', element: withBoundary('CRM Detail budovy', CrmBuildingDetailPage) },
       { path: 'crm/organizations', element: withBoundary('CRM Organizace', CrmOrganizationsPage) },
       { path: 'crm/import', element: withBoundary('CRM Import', CrmImportPage) },
+      { path: 'crm/map', element: withBoundary('CRM Mapa', CrmMapPage) },
     ],
   },
 ]);

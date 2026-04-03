@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Building2, Users, FolderOpen, Calendar,
   Wrench, Headphones, Box, Gauge, FileText, UserCheck,
   Wallet, AlertTriangle, TrendingUp,
-  MessageSquare, Mail, Settings, BarChart3, Database, Download, Landmark,
+  MessageSquare, Mail, Settings, BarChart3, Database, Download, Landmark, MapPinned,
   ClipboardList, ClipboardCheck, ScrollText, UsersRound, FileCheck2, Columns3,
   User as UserIcon, LogOut, Shield, Menu, X, ChevronDown, Sparkles,
 } from 'lucide-react';
@@ -112,6 +112,7 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/crm', label: 'Přehled', icon: <LayoutDashboard size={17} /> },
       { to: '/crm/buildings', label: 'Budovy', icon: <Building2 size={17} /> },
       { to: '/crm/organizations', label: 'Organizace', icon: <Landmark size={17} /> },
+      { to: '/crm/map', label: 'Mapa', icon: <MapPinned size={17} /> },
       { to: '/crm/import', label: 'Import dat', icon: <Download size={17} /> },
     ],
   },

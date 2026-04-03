@@ -85,6 +85,34 @@ export class KnowledgeBaseController {
     return this.kb.getStats()
   }
 
+  @Get('buildings/map-points')
+  @ApiOperation({ summary: 'Lightweight body data pro mapu' })
+  async getBuildingMapPoints(
+    @Query('city') city?: string,
+    @Query('district') district?: string,
+    @Query('minQuality') minQuality?: string,
+    @Query('hasOrganization') hasOrg?: string,
+  ) {
+    const where: Record<string, unknown> = { lat: { not: null }, lng: { not: null } }
+    if (city) where.city = { equals: city, mode: 'insensitive' }
+    if (district) where.district = { equals: district, mode: 'insensitive' }
+    if (minQuality) { const n = Number(minQuality); if (!Number.isNaN(n)) where.dataQualityScore = { gte: n } }
+    if (hasOrg === 'true') where.managingOrgId = { not: null }
+
+    return this.prisma.building.findMany({
+      where: where as any,
+      select: {
+        id: true, lat: true, lng: true, street: true, houseNumber: true,
+        district: true, dataQualityScore: true, managingOrgId: true,
+      },
+      take: 10000,
+    }).then(rows => rows.map(r => ({
+      id: r.id, lat: r.lat, lng: r.lng,
+      street: r.street, houseNumber: r.houseNumber, district: r.district,
+      quality: r.dataQualityScore || 0, hasOrg: !!r.managingOrgId,
+    })))
+  }
+
   @Get('buildings/filter-options')
   @ApiOperation({ summary: 'Kaskádové filtrační hodnoty pro budovy' })
   async getBuildingFilterOptions(
