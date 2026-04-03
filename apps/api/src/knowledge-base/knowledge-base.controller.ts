@@ -85,6 +85,34 @@ export class KnowledgeBaseController {
     return this.kb.getStats()
   }
 
+  @Get('buildings/map-points')
+  @ApiOperation({ summary: 'Lightweight body data pro mapu' })
+  async getBuildingMapPoints(
+    @Query('city') city?: string,
+    @Query('district') district?: string,
+    @Query('minQuality') minQuality?: string,
+    @Query('hasOrganization') hasOrg?: string,
+  ) {
+    const where: Record<string, unknown> = { lat: { not: null }, lng: { not: null } }
+    if (city) where.city = { equals: city, mode: 'insensitive' }
+    if (district) where.district = { equals: district, mode: 'insensitive' }
+    if (minQuality) { const n = Number(minQuality); if (!Number.isNaN(n)) where.dataQualityScore = { gte: n } }
+    if (hasOrg === 'true') where.managingOrgId = { not: null }
+
+    return this.prisma.building.findMany({
+      where: where as any,
+      select: {
+        id: true, lat: true, lng: true, street: true, houseNumber: true,
+        district: true, dataQualityScore: true, managingOrgId: true,
+      },
+      take: 10000,
+    }).then(rows => rows.map(r => ({
+      id: r.id, lat: r.lat, lng: r.lng,
+      street: r.street, houseNumber: r.houseNumber, district: r.district,
+      quality: r.dataQualityScore || 0, hasOrg: !!r.managingOrgId,
+    })))
+  }
+
   @Get('buildings/filter-options')
   @ApiOperation({ summary: 'Kaskádové filtrační hodnoty pro budovy' })
   async getBuildingFilterOptions(
@@ -218,7 +246,9 @@ export class KnowledgeBaseController {
   async getOrtofoto(@Query('lat') lat: string, @Query('lng') lng: string, @Res() res: FastifyReply) {
     const latN = Number(lat)
     const lngN = Number(lng)
-    if (Number.isNaN(latN) || Number.isNaN(lngN)) return res.status(400).send('Invalid coordinates')
+    if (!Number.isFinite(latN) || !Number.isFinite(lngN) || latN < -90 || latN > 90 || lngN < -180 || lngN > 180) {
+      return res.status(400).send('Invalid coordinates')
+    }
     const r = 80
     const dLat = r / 111320
     const dLng = r / (111320 * Math.cos(latN * Math.PI / 180))
