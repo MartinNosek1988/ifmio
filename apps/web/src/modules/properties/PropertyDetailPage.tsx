@@ -777,7 +777,7 @@ export default function PropertyDetailPage() {
                   <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 }}>
                     <div style={{ fontWeight: 600, fontSize: '.85rem', marginBottom: 8 }}>Stav budovy</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '.82rem' }}>
-                      {enrichment.conditionPrediction.components.filter((c: any) => c.risk !== 'ok').slice(0, 5).map((c: any, i: number) => (
+                      {enrichment!.conditionPrediction.components.filter((c: any) => c.risk !== 'ok').slice(0, 5).map((c: any, i: number) => (
                         <div key={i}>
                           <span style={{ color: c.risk === 'critical' ? 'var(--danger)' : 'var(--warning)' }}>{c.risk === 'critical' ? '🔴' : '🟡'}</span> {c.name}: {c.recommendation}
                         </div>

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { apiClient } from '../../core/api/client'
-import { ArrowLeft, MapPin, Building2, Shield, AlertTriangle, FileText, Clock, Wrench } from 'lucide-react'
+import { ArrowLeft, MapPin, Building2, Shield, FileText, Clock, Wrench } from 'lucide-react'
 
 // ── Types ───────────────────────────────────────────
 
@@ -283,7 +283,7 @@ export default function CrmBuildingDetailPage() {
             <SectionTitle>Predikce stavu komponent</SectionTitle>
             {enrichment?.conditionPrediction?.components?.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {enrichment.conditionPrediction.components.map((c: any, i: number) => (
+                {enrichment!.conditionPrediction.components.map((c: any, i: number) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid var(--border-light, #f3f4f6)', fontSize: '0.82rem' }}>
                     <span>{c.name}</span>
                     <span style={{
@@ -303,7 +303,7 @@ export default function CrmBuildingDetailPage() {
             <SectionTitle>Checklist revizí</SectionTitle>
             {enrichment?.checklist?.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {enrichment.checklist.map((c: any, i: number) => (
+                {enrichment!.checklist.map((c: any, i: number) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', padding: '3px 0', borderBottom: '1px solid var(--border-light, #f3f4f6)' }}>
                     <span>{c.required ? '🔴' : '🟡'} {c.name}</span>
                     <span style={{ color: 'var(--text-muted)' }}>{c.period}</span>
