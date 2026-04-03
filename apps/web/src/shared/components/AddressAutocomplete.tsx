@@ -7,6 +7,7 @@ export interface AddressResult {
   fullAddress: string
   street: string
   city: string
+  district?: string
   postalCode: string
   lat?: number
   lng?: number
@@ -52,6 +53,7 @@ export function AddressAutocomplete({
         fullAddress: r.label || `${r.street}, ${r.city}, ${r.postalCode}`,
         street: r.street || '',
         city: r.city || '',
+        district: r.district,
         postalCode: r.postalCode || '',
         lat: r.lat,
         lng: r.lng,
