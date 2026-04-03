@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { apiClient } from '../../core/api/client'
-import { ArrowLeft, MapPin, Building2, Shield, FileText, Clock, Wrench } from 'lucide-react'
+import { ArrowLeft, MapPin, Building2, FileText, Clock, Wrench } from 'lucide-react'
 
 // ── Types ───────────────────────────────────────────
 
