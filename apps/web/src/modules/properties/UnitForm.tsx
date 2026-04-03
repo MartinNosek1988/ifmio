@@ -107,8 +107,6 @@ export default function UnitForm({ propertyId, unit, onClose, onSuccess }: Props
     background: 'var(--surface-2, var(--surface))', color: 'var(--text)', boxSizing: 'border-box',
   });
 
-  const hintStyle: React.CSSProperties = { fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 };
-
   // Show residential-specific fields
   const isResidential = ['RESIDENTIAL', 'NON_RESIDENTIAL'].includes(form.spaceType);
 
@@ -116,7 +114,7 @@ export default function UnitForm({ propertyId, unit, onClose, onSuccess }: Props
     <Modal
       open onClose={onClose}
       title={isEdit ? `Upravit — ${unit!.name}` : 'Nová jednotka'}
-      footer={<FormFooter onCancel={onClose} onSubmit={handleSubmit} isSubmitting={mutation.isPending} submitLabel={isEdit ? 'Uložit' : 'Vytvořit'} />}
+      footer={<FormFooter onCancel={onClose} onSubmit={handleSubmit} isSubmitting={mutation.isPending} submitLabel={isEdit ? 'Uložit' : 'Vytvořit'} data-testid-save="unit-form-save" data-testid-cancel="unit-form-cancel" />}
     >
       {/* ── Sekce 1: Identifikace (vždy otevřená) ─────────────── */}
       <FormSection title="Identifikace" collapsible={false}>
