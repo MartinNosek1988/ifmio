@@ -4,6 +4,7 @@ import { KnowledgeBaseService } from './knowledge-base.service'
 import { AresService } from '../integrations/ares/ares.service'
 import { IprPriceService, type PriceEstimate } from './ipr-price.service'
 import { GeoRiskService, type NearbyPOI, type GeoRiskProfile } from './geo-risk.service'
+import { BuildingIntelligenceService, type ConditionPrediction, type ChecklistItem, type DuplicateResult } from './building-intelligence.service'
 
 export interface EnrichmentResult {
   buildingId?: string
@@ -30,6 +31,9 @@ export interface EnrichmentResult {
   }
   nearbyPOI?: NearbyPOI
   risks?: GeoRiskProfile
+  conditionPrediction?: ConditionPrediction
+  checklist?: ChecklistItem[]
+  duplicate?: DuplicateResult
 }
 
 @Injectable()
@@ -41,6 +45,7 @@ export class PropertyEnrichmentOrchestrator {
     private ares: AresService,
     private iprPrice: IprPriceService,
     private geoRisk: GeoRiskService,
+    private intelligence: BuildingIntelligenceService,
     private prisma: PrismaService,
   ) {}
 
@@ -60,6 +65,11 @@ export class PropertyEnrichmentOrchestrator {
       qualityScore: 30,
       freeData: {},
       paidDataAvailable: [],
+    }
+
+    // === KROK 0: Duplicitní detekce ===
+    if (input.street && input.city) {
+      result.duplicate = await this.intelligence.checkDuplicate(input.street, input.city) ?? undefined
     }
 
     // === KROK 1: ARES — hledej SVJ/BD na adrese ===
@@ -170,7 +180,24 @@ export class PropertyEnrichmentOrchestrator {
       }
     }
 
-    // === KROK 7: Nabídni placené zdroje ===
+    // === KROK 7: Predikce stavu + checklist ===
+    // Use KB building data if available
+    const buildingData = result.buildingId
+      ? await this.prisma.building.findUnique({ where: { id: result.buildingId } }).catch(() => null)
+      : null
+
+    result.conditionPrediction = this.intelligence.predictCondition(
+      buildingData?.constructionYear ?? undefined,
+      buildingData?.materialType ?? undefined,
+    )
+    result.checklist = this.intelligence.generateChecklist({
+      constructionYear: buildingData?.constructionYear ?? undefined,
+      numberOfFloors: buildingData?.numberOfFloors ?? undefined,
+      numberOfUnits: buildingData?.numberOfUnits ?? undefined,
+      materialType: buildingData?.materialType ?? undefined,
+    })
+
+    // === KROK 8: Nabídni placené zdroje ===
     result.paidDataAvailable = [
       {
         source: 'CUZK_DALKOV',

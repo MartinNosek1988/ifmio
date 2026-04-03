@@ -3,7 +3,9 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { IsString, IsNotEmpty, IsOptional, IsNumber } from 'class-validator'
 import { KnowledgeBaseService } from './knowledge-base.service'
 import { PropertyEnrichmentOrchestrator } from './property-enrichment.orchestrator'
+import { BuildingIntelligenceService } from './building-intelligence.service'
 import { PrismaService } from '../prisma/prisma.service'
+import { ConfigService } from '@nestjs/config'
 
 class EnrichAddressDto {
   @IsString() @IsNotEmpty() city!: string
@@ -25,7 +27,9 @@ export class KnowledgeBaseController {
   constructor(
     private kb: KnowledgeBaseService,
     private orchestrator: PropertyEnrichmentOrchestrator,
+    private intelligence: BuildingIntelligenceService,
     private prisma: PrismaService,
+    private config: ConfigService,
   ) {}
 
   @Post('enrich')
@@ -128,5 +132,27 @@ export class KnowledgeBaseController {
         sources: { orderBy: { fetchedAt: 'desc' }, take: 10 },
       },
     })
+  }
+
+  @Get('properties/:id/qr')
+  @ApiOperation({ summary: 'QR kód pro portál nemovitosti' })
+  async getPropertyQR(@Param('id') id: string) {
+    const baseUrl = this.config.get('FRONTEND_URL') || this.config.get('CORS_ORIGIN') || 'https://ifmio.com'
+    const qrDataUrl = await this.intelligence.generateQR(id, baseUrl)
+    return { qrDataUrl, portalUrl: `${baseUrl}/portal/${id}` }
+  }
+
+  @Get('properties/:id/welcome-pack')
+  @ApiOperation({ summary: 'Welcome Pack HTML pro tisk' })
+  async getWelcomePack(@Param('id') id: string) {
+    const property = await this.prisma.property.findUniqueOrThrow({
+      where: { id },
+      select: { name: true, address: true, city: true, postalCode: true, ico: true, contactName: true, contactEmail: true, contactPhone: true },
+    })
+    const baseUrl = this.config.get('FRONTEND_URL') || 'https://ifmio.com'
+    const qrDataUrl = await this.intelligence.generateQR(id, baseUrl)
+    const mapped = { ...property, ico: property.ico ?? undefined, contactName: property.contactName ?? undefined, contactEmail: property.contactEmail ?? undefined, contactPhone: property.contactPhone ?? undefined, postalCode: property.postalCode ?? undefined }
+    const html = this.intelligence.generateWelcomePackHtml(mapped, qrDataUrl)
+    return { html }
   }
 }
