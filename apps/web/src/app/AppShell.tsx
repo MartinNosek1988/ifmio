@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Building2, Users, FolderOpen, Calendar,
   Wrench, Headphones, Box, Gauge, FileText, UserCheck,
   Wallet, AlertTriangle, TrendingUp,
-  MessageSquare, Mail, Settings, BarChart3,
+  MessageSquare, Mail, Settings, BarChart3, Database,
   ClipboardList, ClipboardCheck, ScrollText, UsersRound, FileCheck2, Columns3,
   User as UserIcon, LogOut, Shield, Menu, X, ChevronDown, Sparkles,
 } from 'lucide-react';
@@ -100,6 +100,7 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/asset-types', label: 'Typy zařízení', icon: <ClipboardList size={17} /> },
       { to: '/mio', label: 'Mio AI', icon: <Sparkles size={17} /> },
       { to: '/mio/insights', label: 'Mio Insights', icon: <AlertTriangle size={17} />, roles: ['fm', 'owner'] },
+      { to: '/knowledge-base', label: 'Knowledge Base', icon: <Database size={17} /> },
       { to: '/audit', label: 'Audit log', icon: <ScrollText size={17} /> },
       { to: '/settings', label: 'Nastavení', icon: <Settings size={17} /> },
     ],

@@ -66,6 +66,7 @@ const RevisionSettingsPage = lazy(() => import('../modules/revisions/RevisionSet
 const AssetTypesPage = lazy(() => import('../modules/asset-types/AssetTypesPage'));
 const AssetPassportPage = lazy(() => import('../modules/assets/AssetPassportPage'));
 const SuperAdminPage = lazy(() => import('../modules/super-admin/SuperAdminPage'));
+const KnowledgeBaseDashboard = lazy(() => import('../modules/admin/KnowledgeBaseDashboard'));
 const QrResolvePage = lazy(() => import('../modules/asset-qr/QrResolvePage'));
 const PrincipalsPage = lazy(() => import('../modules/principals/PrincipalsPage'));
 const PrincipalDetailPage = lazy(() => import('../modules/principals/PrincipalDetailPage'));
@@ -223,6 +224,7 @@ export const router = createBrowserRouter([
       { path: 'notifications', element: withBoundary('Notifikace', NotificationsPage) },
       { path: 'profile', element: withBoundary('Profil', ProfilePage) },
       { path: 'super-admin', element: withBoundary('Super Admin', SuperAdminPage) },
+      { path: 'knowledge-base', element: withBoundary('Knowledge Base', KnowledgeBaseDashboard) },
     ],
   },
 ]);
