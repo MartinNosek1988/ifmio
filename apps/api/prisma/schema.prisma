@@ -4735,6 +4735,7 @@ model StatutoryBodyKb {
   dateTo            DateTime?
   createdAt         DateTime        @default(now())
 
+  @@unique([organizationId, firstName, lastName, role])
   @@index([organizationId])
   @@map("kb_statutory_bodies")
 }
@@ -4795,6 +4796,7 @@ model KbRegistryChange {
   rawData           Json?
   fetchedAt         DateTime        @default(now())
 
+  @@unique([organizationId, changeDate, changeType])
   @@index([organizationId])
   @@index([changeDate])
   @@map("kb_registry_changes")
@@ -4814,6 +4816,7 @@ model KbSbirkaListina {
   extractedData     Json?           // AI-extracted structured data
   fetchedAt         DateTime        @default(now())
 
+  @@unique([organizationId, justiceDocId])
   @@index([organizationId])
   @@index([documentType])
   @@map("kb_sbirka_listin")
