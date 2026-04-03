@@ -66,6 +66,7 @@ export class KnowledgeBaseController {
   ) {}
 
   @Post('enrich')
+  @Roles(...ROLES_MANAGE)
   @ApiOperation({ summary: 'Enrichment z adresy — RÚIAN→ARES→ČÚZK chain' })
   async enrichFromAddress(@Body() body: EnrichAddressDto) {
     return this.orchestrator.enrichFromAddress(body)
@@ -171,7 +172,12 @@ export class KnowledgeBaseController {
 
   @Get('properties/:id/qr')
   @ApiOperation({ summary: 'QR kód pro portál nemovitosti' })
-  async getPropertyQR(@Param('id') id: string) {
+  async getPropertyQR(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    // Verify tenant owns the property
+    await this.prisma.withTenant().property.findUniqueOrThrow({
+      where: { id, tenantId: user.tenantId },
+      select: { id: true },
+    })
     const baseUrl = this.config.get('FRONTEND_URL') || this.config.get('CORS_ORIGIN') || 'https://ifmio.com'
     const qrDataUrl = await this.intelligence.generateQR(id, baseUrl)
     return { qrDataUrl, portalUrl: `${baseUrl}/portal/${id}` }
@@ -345,6 +351,7 @@ export class KnowledgeBaseController {
     const where: Record<string, unknown> = {
       dataQualityScore: { gte: 70 },
     }
+    if (task.region) where.city = { contains: task.region, mode: 'insensitive' }
     if (task.district) where.district = { contains: task.district, mode: 'insensitive' }
     if (task.cadastralArea) where.cadastralTerritoryName = { contains: task.cadastralArea, mode: 'insensitive' }
 

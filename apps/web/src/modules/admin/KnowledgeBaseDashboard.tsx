@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '../../core/api/client'
-import { Database, Play, Pause, RefreshCw, Plus, Trash2, RotateCcw, CheckCircle2 } from 'lucide-react'
+import { Database, Play, Pause, Plus, Trash2, RotateCcw, CheckCircle2 } from 'lucide-react'
 
 // ── Types ───────────────────────────────────────────
 
@@ -145,7 +145,7 @@ export default function KnowledgeBaseDashboard() {
       </div>
 
       {coverageLoading ? (
-        <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>Nacitam...</div>
+        <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>Načítám...</div>
       ) : (
         <>
           {/* Top row: Coverage + Quality */}
@@ -173,7 +173,7 @@ function CoverageTable({ districts, total }: {
 }) {
   return (
     <div style={card}>
-      <div style={headerStyle}>Pokryti per mestska cast</div>
+      <div style={headerStyle}>Pokrytí per městská část</div>
       <div style={{ maxHeight: 380, overflowY: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
           <thead>
@@ -190,7 +190,7 @@ function CoverageTable({ districts, total }: {
               const pct = total > 0 ? Math.round((d._count / total) * 100) : 0
               return (
                 <tr key={i} style={{ borderBottom: '1px solid var(--border-light, #f3f4f6)' }}>
-                  <td style={{ padding: '6px 8px', fontWeight: 500 }}>{d.district || '(nezadano)'}</td>
+                  <td style={{ padding: '6px 8px', fontWeight: 500 }}>{d.district || '(nezadáno)'}</td>
                   <td style={{ padding: '6px 8px', textAlign: 'right' }}>{d._count}</td>
                   <td style={{ padding: '6px 8px', textAlign: 'right', color: q >= 70 ? 'var(--success, #16a34a)' : q >= 40 ? 'var(--warning, #d97706)' : 'var(--danger, #dc2626)' }}>
                     {Math.round(q)}
@@ -212,7 +212,7 @@ function CoverageTable({ districts, total }: {
               )
             })}
             {districts.length === 0 && (
-              <tr><td colSpan={4} style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)' }}>Zadna data</td></tr>
+              <tr><td colSpan={4} style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)' }}>Žádná data</td></tr>
             )}
           </tbody>
         </table>
@@ -224,10 +224,10 @@ function CoverageTable({ districts, total }: {
 // ── Quality Breakdown ───────────────────────────────
 
 const QUALITY_LEVELS: Record<string, { label: string; color: string }> = {
-  excellent: { label: '80-100 Excelentni', color: '#16a34a' },
-  good: { label: '50-79 Dobra', color: '#2563eb' },
-  basic: { label: '20-49 Zakladni', color: '#d97706' },
-  empty: { label: '0-19 Prazdna', color: '#dc2626' },
+  excellent: { label: '80-100 Excelentní', color: '#16a34a' },
+  good: { label: '50-79 Dobrá', color: '#2563eb' },
+  basic: { label: '20-49 Základní', color: '#d97706' },
+  empty: { label: '0-19 Prázdná', color: '#dc2626' },
 }
 
 function QualityBreakdown({ breakdown, total }: { breakdown: CoverageData['qualityBreakdown']; total: number }) {
@@ -267,7 +267,7 @@ function QualityBreakdown({ breakdown, total }: { breakdown: CoverageData['quali
 
 const IMPORT_STEPS = [
   { key: 'RUIAN', label: 'RUIAN import' },
-  { key: 'ARES', label: 'ARES parovani' },
+  { key: 'ARES', label: 'ARES párování' },
   { key: 'ENRICHMENT', label: 'Auto-enrichment' },
   { key: 'JUSTICE', label: 'Justice.cz' },
 ] as const
@@ -298,7 +298,7 @@ function BulkImportPanel({ jobs, city }: { jobs: BulkImportJob[]; city: string }
       <div style={headerStyle}>Bulk Import</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {IMPORT_STEPS.map(step => {
-          const job = jobs.find(j => j.step === step.key)
+          const job = jobs.find(j => j.step === step.key && j.region === city)
           const isRunning = job?.status === 'RUNNING'
           const isPaused = job?.status === 'PAUSED'
           const isCompleted = job?.status === 'COMPLETED'
@@ -326,7 +326,7 @@ function BulkImportPanel({ jobs, city }: { jobs: BulkImportJob[]; city: string }
                   )}
                   {isPaused && (
                     <button style={btnSmall} onClick={() => resumeMutation.mutate(job!.id)}>
-                      <Play size={12} /> Pokracovat
+                      <Play size={12} /> Pokračovat
                     </button>
                   )}
                 </div>
@@ -343,7 +343,7 @@ function BulkImportPanel({ jobs, city }: { jobs: BulkImportJob[]; city: string }
                     }} />
                   </div>
                   <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                    {job.processed.toLocaleString('cs-CZ')}/{job.totalEstimated.toLocaleString('cs-CZ')} &middot; {job.created} vytvoreno &middot; {job.errors} chyb
+                    {job.processed.toLocaleString('cs-CZ')}/{job.totalEstimated.toLocaleString('cs-CZ')} &middot; {job.created} vytvořeno &middot; {job.errors} chyb
                     {job.status === 'FAILED' && <span style={{ color: 'var(--danger)' }}> &middot; {job.error}</span>}
                   </div>
                 </>
@@ -396,9 +396,9 @@ function EvidenceTaskList({ tasks }: { tasks: EvidenceTask[] }) {
   return (
     <div style={card}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <div style={headerStyle}>Ukoly evidence</div>
+        <div style={headerStyle}>Úkoly evidence</div>
         <button style={btnPrimary} onClick={() => setShowForm(!showForm)}>
-          <Plus size={14} /> Pridat
+          <Plus size={14} /> Přidat
         </button>
       </div>
 
@@ -406,17 +406,17 @@ function EvidenceTaskList({ tasks }: { tasks: EvidenceTask[] }) {
         <div style={{ padding: 12, background: 'var(--border-light, #f9fafb)', borderRadius: 8, marginBottom: 12, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, fontSize: '0.8rem' }}>
           <input style={inputStyle} placeholder="Oblast (Praha 7)" value={form.district} onChange={e => setForm(f => ({ ...f, district: e.target.value }))} />
           <input style={inputStyle} placeholder="KU (Holesovice)" value={form.cadastralArea} onChange={e => setForm(f => ({ ...f, cadastralArea: e.target.value }))} />
-          <input style={inputStyle} placeholder="Zamestnanec" value={form.assigneeName} onChange={e => setForm(f => ({ ...f, assigneeName: e.target.value }))} />
-          <input style={inputStyle} placeholder="Cil (pocet)" type="number" value={form.targetCount} onChange={e => setForm(f => ({ ...f, targetCount: e.target.value }))} />
+          <input style={inputStyle} placeholder="Zaměstnanec" value={form.assigneeName} onChange={e => setForm(f => ({ ...f, assigneeName: e.target.value }))} />
+          <input style={inputStyle} placeholder="Cíl (počet)" type="number" value={form.targetCount} onChange={e => setForm(f => ({ ...f, targetCount: e.target.value }))} />
           <input style={inputStyle} type="date" value={form.deadline} onChange={e => setForm(f => ({ ...f, deadline: e.target.value }))} />
-          <button style={btnPrimary} onClick={handleCreate} disabled={createMutation.isPending}>Vytvorit</button>
+          <button style={btnPrimary} onClick={handleCreate} disabled={createMutation.isPending}>Vytvořit</button>
         </div>
       )}
 
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
         <thead>
           <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
-            <th style={{ padding: '6px 6px' }}>Zamestnanec</th>
+            <th style={{ padding: '6px 6px' }}>Zaměstnanec</th>
             <th style={{ padding: '6px 6px' }}>Oblast</th>
             <th style={{ padding: '6px 6px', textAlign: 'right' }}>Cil</th>
             <th style={{ padding: '6px 6px', textAlign: 'right' }}>Hotovo</th>
@@ -429,7 +429,7 @@ function EvidenceTaskList({ tasks }: { tasks: EvidenceTask[] }) {
             const pct = t.targetCount > 0 ? Math.round((t.currentCount / t.targetCount) * 100) : 0
             return (
               <tr key={t.id} style={{ borderBottom: '1px solid var(--border-light, #f3f4f6)' }}>
-                <td style={{ padding: '6px 6px', fontWeight: 500 }}>{t.assigneeName || '(neprirazeno)'}</td>
+                <td style={{ padding: '6px 6px', fontWeight: 500 }}>{t.assigneeName || '(nepřiřazeno)'}</td>
                 <td style={{ padding: '6px 6px' }}>{t.district || t.cadastralArea || t.region}</td>
                 <td style={{ padding: '6px 6px', textAlign: 'right' }}>{t.targetCount}</td>
                 <td style={{ padding: '6px 6px', textAlign: 'right' }}>{t.currentCount}</td>
@@ -446,7 +446,7 @@ function EvidenceTaskList({ tasks }: { tasks: EvidenceTask[] }) {
                   </span>
                 </td>
                 <td style={{ padding: '6px 6px', display: 'flex', gap: 4 }}>
-                  <button style={btnSmall} onClick={() => recalcMutation.mutate(t.id)} title="Prepocitat">
+                  <button style={btnSmall} onClick={() => recalcMutation.mutate(t.id)} title="Přepočítat">
                     <RotateCcw size={12} />
                   </button>
                   <button style={{ ...btnSmall, color: 'var(--danger, #dc2626)' }} onClick={() => deleteMutation.mutate(t.id)} title="Smazat">
@@ -457,7 +457,7 @@ function EvidenceTaskList({ tasks }: { tasks: EvidenceTask[] }) {
             )
           })}
           {tasks.length === 0 && (
-            <tr><td colSpan={6} style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)' }}>Zadne ukoly</td></tr>
+            <tr><td colSpan={6} style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)' }}>Žádné úkoly</td></tr>
           )}
         </tbody>
       </table>

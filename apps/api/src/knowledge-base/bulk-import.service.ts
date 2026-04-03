@@ -40,6 +40,7 @@ export interface StartImportParams {
 const RUIAN_ARCGIS_BASE = 'https://ags.cuzk.cz/arcgis/rest/services/RUIAN/Vyhledavaci_sluzba_nad_daty_RUIAN/MapServer'
 
 // Praha bounding box in S-JTSK (EPSG:5514)
+// TODO: derive bbox from region param (currently only Praha is supported)
 const PRAHA_BBOX_SJTSK = {
   xmin: -755000,
   ymin: -1055000,
@@ -55,6 +56,7 @@ const ARES_BASE = 'https://ares.gov.cz/ekonomicke-subjekty-v-be/rest'
 @Injectable()
 export class BulkImportService {
   private readonly logger = new Logger(BulkImportService.name)
+  // TODO: persist jobs to DB for restart resilience (in-memory is fine for MVP)
   private activeJobs = new Map<string, BulkImportJob>()
 
   constructor(
@@ -67,6 +69,10 @@ export class BulkImportService {
   // ── Job Management ──────────────────────────────────
 
   async startImport(params: StartImportParams): Promise<BulkImportJob> {
+    if (params.step === 'RUIAN' && !params.region.toLowerCase().includes('praha')) {
+      throw new Error('Bulk RÚIAN import je zatím dostupný pouze pro Prahu')
+    }
+
     const job: BulkImportJob = {
       id: randomUUID(),
       status: 'RUNNING',
