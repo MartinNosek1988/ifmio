@@ -358,11 +358,16 @@ export class BulkImportService {
       if (pscMatch) {
         postalCode = pscMatch[1]
         const cityDistrict = pscMatch[2]
-        // Check for "Praha X" pattern → city=Praha, district=Praha X
-        const prahaMatch = cityDistrict.match(/^(Praha)\s+(\d+)$/)
+        // "Praha 1 - Nové Město" → city=Praha, district=Praha 1, quarter=Nové Město
+        // "Praha 2"              → city=Praha, district=Praha 2
+        const prahaMatch = cityDistrict.match(/^(Praha\s+\d+)\s*-\s*(.+)$/)
         if (prahaMatch) {
           city = 'Praha'
-          district = cityDistrict // "Praha 2"
+          district = prahaMatch[1].trim() // "Praha 1"
+          quarter = prahaMatch[2].trim()  // "Nové Město"
+        } else if (/^Praha\s+\d+$/.test(cityDistrict)) {
+          city = 'Praha'
+          district = cityDistrict
         } else {
           const dashIdx = cityDistrict.indexOf(' - ')
           if (dashIdx >= 0) {
@@ -375,8 +380,8 @@ export class BulkImportService {
       }
     }
 
-    // Middle parts = quarter (Vyšehrad, Letná, etc.)
-    if (parts.length >= 3) {
+    // Middle parts = quarter (Vyšehrad, Letná, etc.) — only if not already set from dash pattern
+    if (parts.length >= 3 && !quarter) {
       quarter = parts.slice(1, -1).join(', ').trim() || undefined
     }
 
@@ -650,8 +655,9 @@ export class BulkImportService {
           if (parsed.city && parsed.city.toLowerCase() !== 'praha') return false
           // District filter if specified
           if (job.district) {
-            return parsed.district?.toLowerCase() === job.district.toLowerCase() ||
-                   b.address.toLowerCase().includes(job.district.toLowerCase())
+            if (parsed.district?.toLowerCase() === job.district.toLowerCase()) return true
+            // Boundary-aware: "Praha 1" must not match "Praha 10"
+            return new RegExp(job.district + '(\\s|,|$)', 'i').test(b.address)
           }
           return true
         })

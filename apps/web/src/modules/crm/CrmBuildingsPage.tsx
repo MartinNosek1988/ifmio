@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { apiClient } from '../../core/api/client'
@@ -85,6 +85,9 @@ export default function CrmBuildingsPage() {
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; label: string } | null>(null)
   const qc = useQueryClient()
 
+  // Clear selection on page/filter change
+  useEffect(() => setSelected(new Set()), [page, city, district, quarter, street, houseNumber, orientationNumber])
+
   const offset = (page - 1) * PAGE_SIZE
 
   // Cascade filter options
@@ -130,7 +133,12 @@ export default function CrmBuildingsPage() {
   })
 
   const bulkDeleteMut = useMutation({
-    mutationFn: (ids: string[]) => Promise.all(ids.map(id => apiClient.delete(`/knowledge-base/buildings/${id}`))),
+    mutationFn: async (ids: string[]) => {
+      const results = await Promise.allSettled(ids.map(id => apiClient.delete(`/knowledge-base/buildings/${id}`)))
+      const failed = results.filter(r => r.status === 'rejected').length
+      if (failed > 0) alert(`${ids.length - failed} smazáno, ${failed} selhalo`)
+      return results
+    },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['crm-buildings'] }); setSelected(new Set()) },
   })
 

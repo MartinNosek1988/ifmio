@@ -246,7 +246,9 @@ export class KnowledgeBaseController {
   async getOrtofoto(@Query('lat') lat: string, @Query('lng') lng: string, @Res() res: FastifyReply) {
     const latN = Number(lat)
     const lngN = Number(lng)
-    if (Number.isNaN(latN) || Number.isNaN(lngN)) return res.status(400).send('Invalid coordinates')
+    if (!Number.isFinite(latN) || !Number.isFinite(lngN) || latN < -90 || latN > 90 || lngN < -180 || lngN > 180) {
+      return res.status(400).send('Invalid coordinates')
+    }
     const r = 80
     const dLat = r / 111320
     const dLng = r / (111320 * Math.cos(latN * Math.PI / 180))
