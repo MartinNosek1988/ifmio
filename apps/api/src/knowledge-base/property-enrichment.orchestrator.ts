@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { KnowledgeBaseService } from './knowledge-base.service'
 import { AresService } from '../integrations/ares/ares.service'
+import { JusticeService, type RegistryChange, type SbirkaDocument } from '../integrations/justice/justice.service'
 import { IprPriceService, type PriceEstimate } from './ipr-price.service'
 import { GeoRiskService, type NearbyPOI, type GeoRiskProfile } from './geo-risk.service'
 import { BuildingIntelligenceService, type ConditionPrediction, type ChecklistItem, type DuplicateResult } from './building-intelligence.service'
@@ -34,6 +35,11 @@ export interface EnrichmentResult {
   conditionPrediction?: ConditionPrediction
   checklist?: ChecklistItem[]
   duplicate?: DuplicateResult
+  justice?: {
+    subject?: { subjektId: string; spisovaZnacka?: string; rejstrik?: string; soud?: string }
+    registryChanges: RegistryChange[]
+    sbirkaListin: SbirkaDocument[]
+  }
 }
 
 @Injectable()
@@ -43,6 +49,7 @@ export class PropertyEnrichmentOrchestrator {
   constructor(
     private kb: KnowledgeBaseService,
     private ares: AresService,
+    private justice: JusticeService,
     private iprPrice: IprPriceService,
     private geoRisk: GeoRiskService,
     private intelligence: BuildingIntelligenceService,
@@ -224,6 +231,66 @@ export class PropertyEnrichmentOrchestrator {
         qualityBonus: 10,
       },
     ]
+
+    // === KROK 9: Justice.cz — OR history + Sbírka listin ===
+    if (result.freeData.organization?.ico) {
+      try {
+        const subject = await this.justice.getSubjectByIco(result.freeData.organization.ico)
+        if (subject) {
+          const [registryChanges, sbirkaListin] = await Promise.all([
+            this.justice.getRegistryHistory(subject.subjektId),
+            this.justice.getDocumentList(subject.subjektId),
+          ])
+          result.justice = {
+            subject: {
+              subjektId: subject.subjektId,
+              spisovaZnacka: subject.spisovaZnacka,
+              rejstrik: subject.rejstrik,
+              soud: subject.soud,
+            },
+            registryChanges,
+            sbirkaListin,
+          }
+          result.sources.push('JUSTICE_OR')
+          result.qualityScore += 10
+
+          // Persist to KB
+          const org = await this.prisma.kbOrganization.findUnique({
+            where: { ico: result.freeData.organization.ico },
+          })
+          if (org) {
+            // Save registry changes
+            for (const change of registryChanges.slice(0, 20)) {
+              await this.prisma.kbRegistryChange.create({
+                data: {
+                  organizationId: org.id,
+                  changeDate: change.changeDate ? new Date(change.changeDate) : null,
+                  changeType: change.changeType,
+                  description: change.description,
+                },
+              }).catch(() => {})
+            }
+            // Save Sbírka listin
+            for (const doc of sbirkaListin.slice(0, 30)) {
+              await this.prisma.kbSbirkaListina.create({
+                data: {
+                  organizationId: org.id,
+                  documentType: doc.documentType,
+                  documentName: doc.documentName,
+                  filingDate: doc.filingDate ? new Date(doc.filingDate) : null,
+                  periodFrom: doc.periodFrom ? new Date(doc.periodFrom) : null,
+                  periodTo: doc.periodTo ? new Date(doc.periodTo) : null,
+                  justiceDocId: doc.documentId,
+                  downloadUrl: doc.downloadUrl,
+                },
+              }).catch(() => {})
+            }
+          }
+        }
+      } catch (err) {
+        this.logger.debug(`Justice.cz enrichment failed: ${err}`)
+      }
+    }
 
     // === Ulož Building do KB ===
     try {

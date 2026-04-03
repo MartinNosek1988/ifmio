@@ -434,6 +434,40 @@ function PropertyFormInner({ property, isEdit, createMutation, updateMutation, n
                 </div>
               )}
 
+              {/* Justice.cz — OR + Sbírka listin */}
+              {enrichmentResult.justice?.subject && (
+                <div style={{ marginBottom: 8, fontSize: '0.78rem' }}>
+                  <span style={{ fontWeight: 600 }}>⚖️ Obchodní rejstřík:</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2 }}>
+                    {enrichmentResult.justice.subject.spisovaZnacka && (
+                      <span>Sp. zn.: {enrichmentResult.justice.subject.spisovaZnacka}{enrichmentResult.justice.subject.soud ? ` (${enrichmentResult.justice.subject.soud})` : ''}</span>
+                    )}
+                    {enrichmentResult.justice.registryChanges?.length > 0 && (
+                      <span>📝 {enrichmentResult.justice.registryChanges.length} zápisů v OR</span>
+                    )}
+                    {enrichmentResult.justice.sbirkaListin?.length > 0 && (
+                      <div>
+                        <span>📄 Sbírka listin: {enrichmentResult.justice.sbirkaListin.length} dokumentů</span>
+                        <div style={{ marginLeft: 12, fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                          {enrichmentResult.justice.sbirkaListin
+                            .filter((d: any) => d.documentType === 'ucetni_zaverka')
+                            .slice(0, 3)
+                            .map((d: any, i: number) => (
+                              <div key={i}>📊 {d.documentName}{d.downloadUrl && <a href={d.downloadUrl} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 4, color: 'var(--primary)' }}>↗</a>}</div>
+                            ))}
+                          {enrichmentResult.justice.sbirkaListin
+                            .filter((d: any) => d.documentType === 'stanovy')
+                            .slice(0, 1)
+                            .map((d: any, i: number) => (
+                              <div key={`s${i}`}>📜 {d.documentName}{d.downloadUrl && <a href={d.downloadUrl} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 4, color: 'var(--primary)' }}>↗</a>}</div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Paid data */}
               {enrichmentResult.paidDataAvailable?.length > 0 && (
                 <div style={{ padding: '6px 10px', background: 'var(--warning-light, #fef3c7)', borderRadius: 6, fontSize: '0.72rem', color: '#92400e' }}>

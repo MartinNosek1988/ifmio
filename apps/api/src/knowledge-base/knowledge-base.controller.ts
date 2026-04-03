@@ -130,6 +130,8 @@ export class KnowledgeBaseController {
         managedBuildings: { select: { id: true, street: true, city: true } },
         statutoryBodies: true,
         sources: { orderBy: { fetchedAt: 'desc' }, take: 10 },
+        registryChanges: { orderBy: { changeDate: 'desc' }, take: 20 },
+        sbirkaListiny: { orderBy: { filingDate: 'desc' }, take: 30 },
       },
     })
   }
