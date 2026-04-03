@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Query, Body } from '@nestjs/common'
+import { Controller, Get, Post, Patch, Delete, Param, Query, Body } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { IsString, IsNotEmpty, IsOptional, IsNumber, IsIn } from 'class-validator'
 import { KnowledgeBaseService } from './knowledge-base.service'
@@ -28,6 +28,26 @@ class BulkImportDto {
   @IsString() @IsOptional() district?: string
   @IsString() @IsOptional() cadastralCode?: string
   @IsIn(['RUIAN', 'ARES', 'ENRICHMENT', 'JUSTICE']) step!: BulkImportStep
+}
+
+class CreateEvidenceTaskDto {
+  @IsString() @IsNotEmpty() region!: string
+  @IsString() @IsOptional() district?: string
+  @IsString() @IsOptional() cadastralArea?: string
+  @IsString() @IsOptional() assigneeId?: string
+  @IsString() @IsOptional() assigneeName?: string
+  @IsNumber() targetCount!: number
+  @IsString() @IsOptional() deadline?: string
+  @IsString() @IsOptional() note?: string
+}
+
+class UpdateEvidenceTaskDto {
+  @IsString() @IsOptional() assigneeId?: string
+  @IsString() @IsOptional() assigneeName?: string
+  @IsNumber() @IsOptional() targetCount?: number
+  @IsString() @IsOptional() deadline?: string
+  @IsString() @IsOptional() note?: string
+  @IsIn(['ACTIVE', 'COMPLETED', 'PAUSED']) @IsOptional() status?: string
 }
 
 const VALID_ORG_TYPES = ['SVJ', 'BD', 'SRO', 'AS', 'MUNICIPALITY', 'STATE_ORG', 'OTHER_ORG']
@@ -254,5 +274,88 @@ export class KnowledgeBaseController {
   async resumeImport(@Param('jobId') jobId: string) {
     const ok = this.bulkImport.resumeJob(jobId)
     return { status: ok ? 'resumed' : 'not_found' }
+  }
+
+  // ── Admin: Evidence Tasks ─────────────────────────────
+
+  @Get('evidence-tasks')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Seznam evidence tasků' })
+  async listEvidenceTasks(@Query('status') status?: string) {
+    const where: Record<string, unknown> = {}
+    if (status && ['ACTIVE', 'COMPLETED', 'PAUSED'].includes(status)) {
+      where.status = status
+    }
+    return this.prisma.kbEvidenceTask.findMany({
+      where: where as any,
+      orderBy: { createdAt: 'desc' },
+    })
+  }
+
+  @Post('evidence-tasks')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Vytvořit evidence task' })
+  async createEvidenceTask(@Body() body: CreateEvidenceTaskDto) {
+    return this.prisma.kbEvidenceTask.create({
+      data: {
+        region: body.region,
+        district: body.district,
+        cadastralArea: body.cadastralArea,
+        assigneeId: body.assigneeId,
+        assigneeName: body.assigneeName,
+        targetCount: body.targetCount,
+        deadline: body.deadline ? new Date(body.deadline) : null,
+        note: body.note,
+      },
+    })
+  }
+
+  @Patch('evidence-tasks/:id')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Upravit evidence task' })
+  async updateEvidenceTask(@Param('id') id: string, @Body() body: UpdateEvidenceTaskDto) {
+    const data: Record<string, unknown> = {}
+    if (body.assigneeId !== undefined) data.assigneeId = body.assigneeId
+    if (body.assigneeName !== undefined) data.assigneeName = body.assigneeName
+    if (body.targetCount !== undefined) data.targetCount = body.targetCount
+    if (body.deadline !== undefined) data.deadline = body.deadline ? new Date(body.deadline) : null
+    if (body.note !== undefined) data.note = body.note
+    if (body.status !== undefined) data.status = body.status
+
+    return this.prisma.kbEvidenceTask.update({
+      where: { id },
+      data: data as any,
+    })
+  }
+
+  @Delete('evidence-tasks/:id')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Smazat evidence task' })
+  async deleteEvidenceTask(@Param('id') id: string) {
+    await this.prisma.kbEvidenceTask.delete({ where: { id } })
+    return { deleted: true }
+  }
+
+  @Post('evidence-tasks/:id/recalculate')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Přepočítat progress evidence tasku' })
+  async recalculateTaskProgress(@Param('id') id: string) {
+    const task = await this.prisma.kbEvidenceTask.findUniqueOrThrow({ where: { id } })
+
+    const where: Record<string, unknown> = {
+      dataQualityScore: { gte: 70 },
+    }
+    if (task.district) where.district = { contains: task.district, mode: 'insensitive' }
+    if (task.cadastralArea) where.cadastralTerritoryName = { contains: task.cadastralArea, mode: 'insensitive' }
+
+    const currentCount = await this.prisma.building.count({ where: where as any })
+
+    return this.prisma.kbEvidenceTask.update({
+      where: { id },
+      data: {
+        currentCount,
+        status: currentCount >= task.targetCount ? 'COMPLETED' : task.status,
+      },
+    })
   }
 }

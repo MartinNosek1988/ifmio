@@ -4818,3 +4818,25 @@ model KbSbirkaListina {
   @@index([documentType])
   @@map("kb_sbirka_listin")
 }
+
+// ─── EVIDENCE TASKS — přiřazení oblastí zaměstnancům ────
+
+model KbEvidenceTask {
+  id              String    @id @default(uuid())
+  assigneeId      String?
+  assigneeName    String?
+  region          String
+  district        String?
+  cadastralArea   String?
+  targetCount     Int
+  currentCount    Int       @default(0)
+  deadline        DateTime?
+  status          String    @default("ACTIVE") // ACTIVE, COMPLETED, PAUSED
+  note            String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status])
+  @@index([assigneeId])
+  @@map("kb_evidence_tasks")
+}
