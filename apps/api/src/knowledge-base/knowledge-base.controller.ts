@@ -1,7 +1,20 @@
-import { Controller, Get, Param, Query } from '@nestjs/common'
+import { Controller, Get, Post, Param, Query, Body } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
+import { IsString, IsNotEmpty, IsOptional, IsNumber } from 'class-validator'
 import { KnowledgeBaseService } from './knowledge-base.service'
+import { PropertyEnrichmentOrchestrator } from './property-enrichment.orchestrator'
 import { PrismaService } from '../prisma/prisma.service'
+
+class EnrichAddressDto {
+  @IsString() @IsNotEmpty() city!: string
+  @IsString() @IsOptional() street?: string
+  @IsString() @IsOptional() district?: string
+  @IsString() @IsOptional() postalCode?: string
+  @IsString() @IsOptional() houseNumber?: string
+  @IsNumber() @IsOptional() lat?: number
+  @IsNumber() @IsOptional() lng?: number
+  @IsString() @IsOptional() ruianCode?: string
+}
 
 const VALID_ORG_TYPES = ['SVJ', 'BD', 'SRO', 'AS', 'MUNICIPALITY', 'STATE_ORG', 'OTHER_ORG']
 
@@ -11,8 +24,15 @@ const VALID_ORG_TYPES = ['SVJ', 'BD', 'SRO', 'AS', 'MUNICIPALITY', 'STATE_ORG', 
 export class KnowledgeBaseController {
   constructor(
     private kb: KnowledgeBaseService,
+    private orchestrator: PropertyEnrichmentOrchestrator,
     private prisma: PrismaService,
   ) {}
+
+  @Post('enrich')
+  @ApiOperation({ summary: 'Enrichment z adresy — RÚIAN→ARES→ČÚZK chain' })
+  async enrichFromAddress(@Body() body: EnrichAddressDto) {
+    return this.orchestrator.enrichFromAddress(body)
+  }
 
   @Get('stats')
   @ApiOperation({ summary: 'KB statistiky' })

@@ -8,6 +8,7 @@ import { AddressAutocomplete } from '../../shared/components/AddressAutocomplete
 import type { PropertyLegalMode, AccountingSystemType } from './properties-api'
 import { Info, Search, ArrowLeft } from 'lucide-react'
 import { integrationsApi } from '../integrations/api/integrations.api'
+import { apiClient } from '../../core/api/client'
 import { LoadingState } from '../../shared/components'
 import { useToast } from '../../shared/components/toast/Toast'
 import { Link } from 'react-router-dom'
@@ -110,6 +111,8 @@ function PropertyFormInner({ property, isEdit, createMutation, updateMutation, n
   const [aresSuccess, setAresSuccess] = useState('')
   const [aresDefunct, setAresDefunct] = useState('')
   const [ruianVerified, setRuianVerified] = useState(false)
+  const [enrichmentLoading, setEnrichmentLoading] = useState(false)
+  const [enrichmentResult, setEnrichmentResult] = useState<any>(null)
 
   const set = (key: string, value: string | boolean) =>
     setForm((f) => ({ ...f, [key]: value }))
@@ -273,7 +276,7 @@ function PropertyFormInner({ property, isEdit, createMutation, updateMutation, n
             Vyhledat adresu v RÚIAN
           </div>
           <AddressAutocomplete
-            onSelect={(addr) => {
+            onSelect={async (addr) => {
               setForm(f => ({
                 ...f,
                 address: addr.street,
@@ -281,12 +284,68 @@ function PropertyFormInner({ property, isEdit, createMutation, updateMutation, n
                 postalCode: formatPsc(addr.postalCode),
               }))
               setRuianVerified(true)
+
+              // Enrichment chain
+              setEnrichmentLoading(true)
+              try {
+                const res = await apiClient.post('/knowledge-base/enrich', {
+                  street: addr.street, city: addr.city,
+                  district: addr.district, postalCode: addr.postalCode,
+                  houseNumber: addr.street?.match(/\d+/)?.[0],
+                  lat: addr.lat, lng: addr.lng, ruianCode: addr.ruianCode,
+                })
+                setEnrichmentResult(res.data)
+                // Auto-fill from enrichment
+                const org = res.data?.freeData?.organization
+                if (org) {
+                  setForm(f => ({
+                    ...f,
+                    name: f.name || org.name,
+                    ico: f.ico || org.ico,
+                    dic: f.dic || org.dic || '',
+                    legalMode: org.type === 'SVJ' ? 'SVJ' as PropertyLegalMode : org.type === 'BD' ? 'BD' as PropertyLegalMode : f.legalMode,
+                    isVatPayer: !!(org.dic || f.dic),
+                  }))
+                }
+              } catch { /* enrichment failed — basic RÚIAN data still filled */ }
+              finally { setEnrichmentLoading(false) }
             }}
             placeholder="Začněte psát adresu nemovitosti..."
           />
           {ruianVerified && (
             <div style={{ marginTop: 8, fontSize: '0.78rem', color: 'var(--success, #16a34a)', display: 'flex', alignItems: 'center', gap: 4 }}>
               ✓ Adresa ověřena z RÚIAN
+            </div>
+          )}
+          {enrichmentLoading && (
+            <div style={{ marginTop: 8, fontSize: '0.82rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              ⏳ Vyhledávám údaje o budově (ARES, ČÚZK)...
+            </div>
+          )}
+          {enrichmentResult && !enrichmentLoading && (
+            <div style={{ marginTop: 10, padding: 12, background: 'var(--gray-50)', borderRadius: 8, fontSize: '0.82rem' }}>
+              <div style={{ fontWeight: 600, color: 'var(--dark)', marginBottom: 6 }}>
+                ✅ Nalezeno ({enrichmentResult.sources?.join(', ')}) — skóre {enrichmentResult.qualityScore}/100
+              </div>
+              {enrichmentResult.freeData?.organization && (
+                <div style={{ marginBottom: 6 }}>
+                  <span style={{ display: 'inline-block', padding: '1px 6px', borderRadius: 4, background: 'var(--primary-50)', color: 'var(--primary)', fontWeight: 600, fontSize: '0.72rem', marginRight: 6 }}>
+                    {enrichmentResult.freeData.organization.type}
+                  </span>
+                  <strong>{enrichmentResult.freeData.organization.name}</strong>
+                  <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>IČO: {enrichmentResult.freeData.organization.ico}</span>
+                </div>
+              )}
+              {enrichmentResult.freeData?.statutoryBodies?.length > 0 && (
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                  Statutární orgán: {enrichmentResult.freeData.statutoryBodies.map((sb: any) => `${sb.role}: ${sb.fullName}`).join(', ')}
+                </div>
+              )}
+              {enrichmentResult.paidDataAvailable?.length > 0 && (
+                <div style={{ marginTop: 8, padding: '6px 10px', background: 'var(--warning-light, #fef3c7)', borderRadius: 6, fontSize: '0.75rem', color: '#92400e' }}>
+                  🔒 Dostupné placené zdroje: {enrichmentResult.paidDataAvailable.map((p: any) => p.name).join(', ')} — brzy dostupné
+                </div>
+              )}
             </div>
           )}
           <div style={{ marginTop: 6, fontSize: '0.72rem', color: 'var(--text-muted)' }}>
