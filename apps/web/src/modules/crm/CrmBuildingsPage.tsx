@@ -276,8 +276,8 @@ export default function CrmBuildingsPage() {
                 <thead>
                   <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
                     <th style={{ ...thStyle, width: 32 }}>
-                      <input type="checkbox" checked={result?.data?.length > 0 && selected.size === result.data.length}
-                        onChange={e => setSelected(e.target.checked ? new Set(result!.data.map(b => b.id)) : new Set())} />
+                      <input type="checkbox" checked={(result?.data?.length ?? 0) > 0 && selected.size === (result?.data?.length ?? 0)}
+                        onChange={e => setSelected(e.target.checked ? new Set((result?.data ?? []).map(b => b.id)) : new Set())} />
                     </th>
                     <th style={thStyle} onClick={() => setSort('street')}>Ulice{sortIcon('street')}</th>
                     <th style={thStyle} onClick={() => setSort('houseNumber')}>ČP{sortIcon('houseNumber')}</th>
