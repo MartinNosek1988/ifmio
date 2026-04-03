@@ -38,14 +38,25 @@ export function AddressAutocomplete({
   const listboxId = useId()
 
   const search = useCallback(async (q: string) => {
-    if (q.length < 3) { setResults([]); setIsOpen(false); return }
+    if (q.length < 3) { requestIdRef.current++; setIsLoading(false); setResults([]); setIsOpen(false); return }
     const currentRequestId = ++requestIdRef.current
     setIsLoading(true)
     try {
-      const res = await apiClient.get('/ruian/search', { params: { q } })
+      const res = await apiClient.get('/integrations/ruian/address', { params: { q } })
       // Ignore stale responses (race condition fix)
       if (currentRequestId !== requestIdRef.current) return
-      const data = Array.isArray(res.data) ? res.data : []
+      const raw = Array.isArray(res.data) ? res.data : []
+      // Map backend RuianAddress → AddressResult
+      const data: AddressResult[] = raw.map((r: any, i: number) => ({
+        id: r.ruianCode || String(i),
+        fullAddress: r.label || `${r.street}, ${r.city}, ${r.postalCode}`,
+        street: r.street || '',
+        city: r.city || '',
+        postalCode: r.postalCode || '',
+        lat: r.lat,
+        lng: r.lng,
+        ruianCode: r.ruianCode,
+      }))
       setResults(data.slice(0, 10))
       setIsOpen(data.length > 0)
       setActiveIndex(-1)
