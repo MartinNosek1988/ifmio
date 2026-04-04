@@ -1,12 +1,20 @@
 import { z } from 'zod';
 
 export const PropertyTypeValues = [
-  'bytdum',
-  'roddum',
-  'komer',
-  'prumysl',
-  'pozemek',
-  'garaz',
+  'SVJ',
+  'BD',
+  'RENTAL_RESIDENTIAL',
+  'RENTAL_MUNICIPAL',
+  'CONDO_NO_SVJ',
+  'MIXED_USE',
+  'SINGLE_FAMILY',
+  'COMMERCIAL_OFFICE',
+  'COMMERCIAL_RETAIL',
+  'COMMERCIAL_WAREHOUSE',
+  'COMMERCIAL_INDUSTRIAL',
+  'PARKING',
+  'LAND',
+  'OTHER',
 ] as const;
 
 export const OwnershipTypeValues = [

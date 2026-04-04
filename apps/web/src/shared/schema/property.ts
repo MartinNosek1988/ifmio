@@ -1,6 +1,6 @@
 import type { BaseEntity } from './base';
 
-export type PropertyType = 'SVJ' | 'Druzstvo' | 'Pronajem' | 'Jina';
+export type PropertyType = 'SVJ' | 'BD' | 'RENTAL_RESIDENTIAL' | 'RENTAL_MUNICIPAL' | 'CONDO_NO_SVJ' | 'MIXED_USE' | 'SINGLE_FAMILY' | 'COMMERCIAL_OFFICE' | 'COMMERCIAL_RETAIL' | 'COMMERCIAL_WAREHOUSE' | 'COMMERCIAL_INDUSTRIAL' | 'PARKING' | 'LAND' | 'OTHER';
 export type PropertyEnvironment = 'CZ' | 'SK' | 'INT';
 
 export interface Property extends BaseEntity {

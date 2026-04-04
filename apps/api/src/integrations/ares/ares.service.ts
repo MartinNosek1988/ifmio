@@ -55,6 +55,7 @@ export interface AresSearchResult {
 const ARES_BASE = 'https://ares.gov.cz/ekonomicke-subjekty-v-be/rest';
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 min
+const NEGATIVE_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h — don't re-query missing IČO
 const CACHE_MAX_SIZE = 500;
 
 @Injectable()
@@ -84,9 +85,12 @@ export class AresService {
       throw new BadRequestException('Neplatné IČO – musí mít 8 číslic a platný kontrolní součet');
     }
 
-    // Check cache
+    // Check cache (negative results use longer TTL to avoid re-querying missing IČO)
     const cached = this.cache.get(ico);
-    if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.data;
+    if (cached) {
+      const ttl = cached.data === null ? NEGATIVE_CACHE_TTL_MS : CACHE_TTL_MS;
+      if (Date.now() - cached.ts < ttl) return cached.data;
+    }
 
     try {
       const res = await fetch(`${ARES_BASE}/ekonomicke-subjekty/${ico}`, {
@@ -124,18 +128,24 @@ export class AresService {
     }
 
     try {
-      const params = new URLSearchParams({
-        obchodniJmeno: name.trim(),
-        pocet: String(Math.min(limit, 100)),
-      });
-
-      const res = await fetch(`${ARES_BASE}/ekonomicke-subjekty/vyhledat?${params}`, {
-        headers: { Accept: 'application/json' },
+      // ARES v2 GET /vyhledat is broken (requires IČO). Use POST with JSON body instead.
+      const res = await fetch(`${ARES_BASE}/ekonomicke-subjekty/vyhledat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          obchodniJmeno: name.trim(),
+          start: 0,
+          pocet: Math.min(limit, 100),
+        }),
         signal: AbortSignal.timeout(10000),
       });
 
       if (!res.ok) {
-        this.logger.warn(`ARES search responded with ${res.status}`);
+        const body = await res.text().catch(() => '')
+        this.logger.warn(`ARES search responded with ${res.status}: ${body.slice(0, 200)}`);
         return { pocetCelkem: 0, ekonomickeSubjekty: [] };
       }
 
@@ -149,7 +159,7 @@ export class AresService {
         ekonomickeSubjekty: subjects,
       };
     } catch (err) {
-      this.logger.error('ARES search failed', (err as Error).stack);
+      this.logger.warn(`ARES search failed for "${name}": ${(err as Error).message}`);
       return { pocetCelkem: 0, ekonomickeSubjekty: [] };
     }
   }

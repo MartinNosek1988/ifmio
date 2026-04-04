@@ -21,7 +21,7 @@ describe('Audit Extended (e2e)', () => {
         address: 'Auditní 1',
         city: 'Praha',
         postalCode: '110 00',
-        type: 'bytdum',
+        type: 'SVJ',
         ownership: 'vlastnictvi',
       })
       .expect(201)
@@ -81,7 +81,7 @@ describe('Audit Extended (e2e)', () => {
           address: 'Ověřovací 1',
           city: 'Brno',
           postalCode: '602 00',
-          type: 'roddum',
+          type: 'SINGLE_FAMILY',
           ownership: 'vlastnictvi',
         })
         .expect(201)

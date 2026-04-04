@@ -29,7 +29,7 @@ describe('Properties Extended (e2e)', () => {
           address: 'Hlavní 42',
           city: 'Praha',
           postalCode: '110 00',
-          type: 'bytdum',
+          type: 'SVJ',
           ownership: 'vlastnictvi',
           ico: '12345678',
           dic: 'CZ12345678',
@@ -38,7 +38,7 @@ describe('Properties Extended (e2e)', () => {
         .expect(201)
 
       expect(res.body).toHaveProperty('id')
-      expect(res.body.type).toBe('bytdum')
+      expect(res.body.type).toBe('SVJ')
       expect(res.body.ownership).toBe('vlastnictvi')
       propertyId = res.body.id
     })
@@ -50,7 +50,7 @@ describe('Properties Extended (e2e)', () => {
           address: 'Test',
           city: 'Praha',
           postalCode: '110 00',
-          type: 'bytdum',
+          type: 'SVJ',
           ownership: 'vlastnictvi',
         })
         .expect(400)
@@ -76,7 +76,7 @@ describe('Properties Extended (e2e)', () => {
           address: 'Test',
           city: 'Praha',
           postalCode: '110 00',
-          type: 'bytdum',
+          type: 'SVJ',
           ownership: 'neplatny',
         })
         .expect(400)
@@ -131,7 +131,12 @@ describe('Properties Extended (e2e)', () => {
   // ── Všechny PropertyType hodnoty ──
 
   describe('Všechny PropertyType hodnoty', () => {
-    const types = ['bytdum', 'roddum', 'komer', 'prumysl', 'pozemek', 'garaz']
+    const types = [
+      'SVJ', 'BD', 'RENTAL_RESIDENTIAL', 'RENTAL_MUNICIPAL',
+      'CONDO_NO_SVJ', 'MIXED_USE', 'SINGLE_FAMILY',
+      'COMMERCIAL_OFFICE', 'COMMERCIAL_RETAIL', 'COMMERCIAL_WAREHOUSE',
+      'COMMERCIAL_INDUSTRIAL', 'PARKING', 'LAND', 'OTHER',
+    ]
 
     for (const type of types) {
       it(`type '${type}' → 201`, async () => {
@@ -164,7 +169,7 @@ describe('Properties Extended (e2e)', () => {
             address: 'Test 1',
             city: 'Brno',
             postalCode: '602 00',
-            type: 'bytdum',
+            type: 'SVJ',
             ownership,
           })
           .expect(201)
@@ -184,7 +189,7 @@ describe('Properties Extended (e2e)', () => {
           address: 'Smazaná 1',
           city: 'Praha',
           postalCode: '110 00',
-          type: 'bytdum',
+          type: 'SVJ',
           ownership: 'vlastnictvi',
         })
         .expect(201)

@@ -1,6 +1,6 @@
 import type { UUID, ISODate } from './common';
 
-export type PropertyType = 'bytdum' | 'roddum' | 'komer' | 'prumysl' | 'pozemek' | 'garaz';
+export type PropertyType = 'SVJ' | 'BD' | 'RENTAL_RESIDENTIAL' | 'RENTAL_MUNICIPAL' | 'CONDO_NO_SVJ' | 'MIXED_USE' | 'SINGLE_FAMILY' | 'COMMERCIAL_OFFICE' | 'COMMERCIAL_RETAIL' | 'COMMERCIAL_WAREHOUSE' | 'COMMERCIAL_INDUSTRIAL' | 'PARKING' | 'LAND' | 'OTHER';
 export type OwnershipType = 'vlastnictvi' | 'druzstvo' | 'pronajem';
 export type PropertyStatus = 'active' | 'inactive' | 'archived';
 

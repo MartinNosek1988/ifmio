@@ -20,7 +20,7 @@ describe('Security — XSS Prevention (e2e)', () => {
         address: 'Bezpečná 1',
         city: 'Praha',
         postalCode: '110 00',
-        type: 'bytdum',
+        type: 'SVJ',
         ownership: 'vlastnictvi',
       })
       .expect(201)
@@ -40,7 +40,7 @@ describe('Security — XSS Prevention (e2e)', () => {
           address: 'Testovací 1',
           city: 'Praha',
           postalCode: '110 00',
-          type: 'bytdum',
+          type: 'SVJ',
           ownership: 'vlastnictvi',
         })
         .expect(201)
@@ -59,7 +59,7 @@ describe('Security — XSS Prevention (e2e)', () => {
           address: '<img onerror=alert(1) src=x>Ulice 1',
           city: 'Praha',
           postalCode: '110 00',
-          type: 'bytdum',
+          type: 'SVJ',
           ownership: 'vlastnictvi',
         })
         .expect(201)

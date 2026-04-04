@@ -129,8 +129,11 @@ export class PropertyEnrichmentOrchestrator {
     }
 
     // === KROK 2: ČÚZK Nahlížení — STUB ===
-    // TODO: Napojit ČÚZK Dálkový přístup (placený) nebo VDP službu
-    // ČÚZK Nahlížení nemá stabilní REST API (HTML + CAPTCHA)
+    // TODO: ČÚZK Nahlížení do KN — real integration
+    // Free: https://nahlizenidokn.cuzk.cz/ — HTML scraping (cheerio), rate limited, CAPTCHA risk
+    // Paid: https://dpkn.cuzk.cz/ — SOAP API, ~2 Kč/dotaz, spolehlivé
+    // Data: jednotky, vlastníci, podíly na SČ, LV, zástavní práva, exekuce
+    // Priority: HIGH — bez ČÚZK nemáme vlastníky ani jednotky z katastru
 
     // === KROK 3: IPR Praha cenová mapa ===
     if (input.lat && input.lng) {

@@ -510,12 +510,20 @@ model UserPropertyAssignment {
 }
 
 enum PropertyType {
-  bytdum
-  roddum
-  komer
-  prumysl
-  pozemek
-  garaz
+  SVJ
+  BD
+  RENTAL_RESIDENTIAL
+  RENTAL_MUNICIPAL
+  CONDO_NO_SVJ
+  MIXED_USE
+  SINGLE_FAMILY
+  COMMERCIAL_OFFICE
+  COMMERCIAL_RETAIL
+  COMMERCIAL_WAREHOUSE
+  COMMERCIAL_INDUSTRIAL
+  PARKING
+  LAND
+  OTHER
 }
 
 enum OwnershipType {
@@ -4580,6 +4588,59 @@ enum KbDataSource {
   IMPORT
 }
 
+// ═══ Územní hierarchie ČR (z RÚIAN číselníků) ═══
+
+enum TerritoryLevel {
+  STATE         // Česká republika (1)
+  REGION        // Kraj (14)
+  DISTRICT      // Okres (77)
+  MUNICIPALITY  // Obec (6 258)
+  CITY_PART     // Městská část / městský obvod (142)
+  CADASTRAL     // Katastrální území (13 027)
+}
+
+model Territory {
+  id             String          @id @default(uuid())
+
+  // RÚIAN identifikace
+  code           String          @unique  // RÚIAN kód (LAU, NUTS, kód obce...)
+  name           String                   // "Praha", "Vinohrady", "Středočeský kraj"
+  nameNormalized String?                  // lowercase bez diakritiky pro search
+
+  // Typ
+  level          TerritoryLevel
+
+  // Hierarchie (self-referencing)
+  parentId       String?
+  parent         Territory?      @relation("TerritoryTree", fields: [parentId], references: [id])
+  children       Territory[]     @relation("TerritoryTree")
+
+  // Doplňkové údaje
+  population     Int?            // počet obyvatel
+  area           Float?          // rozloha km²
+  lat            Float?          // GPS centroid
+  lng            Float?          // GPS centroid
+
+  // Pro obce
+  zipCode        String?         // PSČ (hlavní)
+  isCity         Boolean         @default(false)  // statutární město
+  hasDistricts   Boolean         @default(false)  // má městské části
+  totalBuildings Int?            // celkový počet budov z RÚIAN
+
+  // Metadata
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  // Relace na Building
+  buildings      Building[]      @relation("BuildingTerritory")
+
+  @@index([level])
+  @@index([parentId])
+  @@index([name])
+  @@index([nameNormalized])
+  @@map("territories")
+}
+
 model Building {
   id                     String          @id @default(uuid())
   ruianBuildingId        String?         @unique
@@ -4612,6 +4673,8 @@ model Building {
   penbValidUntil         DateTime?
   managingOrgId          String?
   managingOrg            KbOrganization? @relation(fields: [managingOrgId], references: [id])
+  territoryId            String?
+  territory              Territory?      @relation("BuildingTerritory", fields: [territoryId], references: [id])
   dataQualityScore       Float?          @default(0)
   lastEnrichedAt         DateTime?
   enrichmentData         Json?
@@ -4626,6 +4689,7 @@ model Building {
   @@index([postalCode])
   @@index([cadastralTerritoryCode])
   @@index([managingOrgId])
+  @@index([territoryId])
   @@map("kb_buildings")
 }
 

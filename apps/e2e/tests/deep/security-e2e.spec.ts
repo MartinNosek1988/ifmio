@@ -74,7 +74,7 @@ test.describe('Security — E2E', () => {
           address: 'XSS 1',
           city: 'Praha',
           postalCode: '110 00',
-          type: 'bytdum',
+          type: 'SVJ',
           ownership: 'vlastnictvi',
         },
       })

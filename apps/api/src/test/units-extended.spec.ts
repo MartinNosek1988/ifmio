@@ -21,7 +21,7 @@ describe('Units Extended (e2e)', () => {
         address: 'Jednotková 1',
         city: 'Praha',
         postalCode: '110 00',
-        type: 'bytdum',
+        type: 'SVJ',
         ownership: 'vlastnictvi',
       })
       .expect(201)

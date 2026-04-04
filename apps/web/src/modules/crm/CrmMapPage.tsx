@@ -56,14 +56,20 @@ interface MapPoint {
   hasOrg: boolean
 }
 
+interface TerritoryOption {
+  id: string
+  code: string
+  name: string
+  level: string
+  lat?: number
+  lng?: number
+  hasDistricts?: boolean
+  _count?: { buildings: number; children: number }
+}
+
 // ── Constants ───────────────────────────────────────
 
-const PRAHA_CENTER: [number, number] = [50.08, 14.42]
-const PRAHA_DISTRICTS = [
-  '', 'Praha 1', 'Praha 2', 'Praha 3', 'Praha 4', 'Praha 5', 'Praha 6', 'Praha 7',
-  'Praha 8', 'Praha 9', 'Praha 10', 'Praha 11', 'Praha 12', 'Praha 13', 'Praha 14',
-  'Praha 15', 'Praha 16', 'Praha 17', 'Praha 18', 'Praha 19', 'Praha 20', 'Praha 21', 'Praha 22',
-]
+const CZ_CENTER: [number, number] = [49.82, 15.47]
 
 const inputStyle: React.CSSProperties = {
   padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border, #d1d5db)',
@@ -74,15 +80,48 @@ const inputStyle: React.CSSProperties = {
 
 export default function CrmMapPage() {
   const navigate = useNavigate()
-  const [district, setDistrict] = useState('')
+  const [krajId, setKrajId] = useState('')
+  const [okresId, setOkresId] = useState('')
+  const [obecId, setObecId] = useState('')
+  const [mcId, setMcId] = useState('')
   const [minQuality, setMinQuality] = useState('')
   const [hasOrg, setHasOrg] = useState('')
 
+  const activeTerritoryId = mcId || obecId || okresId || krajId
+
+  // Territory cascade
+  const { data: kraje = [] } = useQuery<TerritoryOption[]>({
+    queryKey: ['territories', 'REGION'],
+    queryFn: () => apiClient.get('/knowledge-base/territories', { params: { level: 'REGION' } }).then(r => r.data),
+  })
+
+  const { data: okresy = [] } = useQuery<TerritoryOption[]>({
+    queryKey: ['territories', 'DISTRICT', krajId],
+    queryFn: () => apiClient.get('/knowledge-base/territories', { params: { level: 'DISTRICT', parentId: krajId } }).then(r => r.data),
+    enabled: !!krajId,
+  })
+
+  const { data: obce = [] } = useQuery<TerritoryOption[]>({
+    queryKey: ['territories', 'MUNICIPALITY', okresId],
+    queryFn: () => apiClient.get('/knowledge-base/territories', { params: { level: 'MUNICIPALITY', parentId: okresId } }).then(r => r.data),
+    enabled: !!okresId,
+  })
+
+  const selectedObec = obce.find(o => o.id === obecId)
+  const obecHasDistricts = selectedObec?.hasDistricts ?? false
+
+  const { data: mestskeCasti = [] } = useQuery<TerritoryOption[]>({
+    queryKey: ['territories', 'CITY_PART', obecId],
+    queryFn: () => apiClient.get('/knowledge-base/territories', { params: { level: 'CITY_PART', parentId: obecId } }).then(r => r.data),
+    enabled: !!obecId && obecHasDistricts,
+  })
+
+  // Map points
   const { data: points = [], isLoading } = useQuery<MapPoint[]>({
-    queryKey: ['crm-map-points', district, minQuality, hasOrg],
+    queryKey: ['crm-map-points', activeTerritoryId, minQuality, hasOrg],
     queryFn: () => {
       const params: Record<string, string> = {}
-      if (district) params.district = district
+      if (activeTerritoryId) params.territoryId = activeTerritoryId
       if (minQuality) params.minQuality = minQuality
       if (hasOrg) params.hasOrganization = hasOrg
       return apiClient.get('/knowledge-base/buildings/map-points', { params }).then(r => r.data)
@@ -93,6 +132,17 @@ export default function CrmMapPage() {
     points.filter(p => p.lat && p.lng),
     [points],
   )
+
+  // Auto-center on selected territory
+  const selectedTerritory = mcId ? mestskeCasti.find(t => t.id === mcId)
+    : obecId ? obce.find(t => t.id === obecId)
+    : okresId ? okresy.find(t => t.id === okresId)
+    : krajId ? kraje.find(t => t.id === krajId)
+    : null
+  const mapCenter: [number, number] = selectedTerritory?.lat != null && selectedTerritory?.lng != null
+    ? [selectedTerritory.lat, selectedTerritory.lng]
+    : CZ_CENTER
+  const mapZoom = mcId ? 14 : obecId ? 13 : okresId ? 11 : krajId ? 10 : 7
 
   return (
     <div style={{ maxWidth: 1400, margin: '0 auto' }}>
@@ -107,11 +157,29 @@ export default function CrmMapPage() {
         </div>
 
         {/* Filters */}
-        <div style={{ display: 'flex', gap: 6 }}>
-          <select value={district} onChange={e => setDistrict(e.target.value)} style={inputStyle}>
-            <option value="">Všechny MČ</option>
-            {PRAHA_DISTRICTS.filter(Boolean).map(d => <option key={d} value={d}>{d}</option>)}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <select value={krajId} onChange={e => { setKrajId(e.target.value); setOkresId(''); setObecId(''); setMcId('') }} style={inputStyle}>
+            <option value="">Kraj: vše</option>
+            {kraje.map(k => <option key={k.id} value={k.id}>{k.name}</option>)}
           </select>
+          {krajId && (
+            <select value={okresId} onChange={e => { setOkresId(e.target.value); setObecId(''); setMcId('') }} style={inputStyle}>
+              <option value="">Okres: vše</option>
+              {okresy.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+            </select>
+          )}
+          {okresId && (
+            <select value={obecId} onChange={e => { setObecId(e.target.value); setMcId('') }} style={inputStyle}>
+              <option value="">Obec: vše</option>
+              {obce.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+            </select>
+          )}
+          {obecId && obecHasDistricts && (
+            <select value={mcId} onChange={e => setMcId(e.target.value)} style={inputStyle}>
+              <option value="">MČ: vše</option>
+              {mestskeCasti.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+          )}
           <select value={minQuality} onChange={e => setMinQuality(e.target.value)} style={inputStyle}>
             <option value="">Quality: vše</option>
             <option value="70">70+</option>
@@ -135,7 +203,7 @@ export default function CrmMapPage() {
 
       {/* Map */}
       <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border, #e5e7eb)' }}>
-        <MapContainer center={PRAHA_CENTER} zoom={12} style={{ height: 'calc(100vh - 200px)', width: '100%' }}>
+        <MapContainer key={`${mapCenter[0]}-${mapCenter[1]}-${mapZoom}`} center={mapCenter} zoom={mapZoom} style={{ height: 'calc(100vh - 200px)', width: '100%' }}>
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

@@ -1,15 +1,20 @@
 import { useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '../../core/api/client'
-import { Database, Play, Pause, Plus, Trash2, RotateCcw, CheckCircle2 } from 'lucide-react'
+import { Database, Play, Pause, Plus, Trash2, RotateCcw, CheckCircle2, ChevronRight, ChevronDown } from 'lucide-react'
 
 // ── Types ───────────────────────────────────────────
 
-interface CoverageData {
-  total: number
-  withOrganization: number
-  districts: Array<{ district: string | null; _count: { _all: number }; _avg: { dataQualityScore: number | null } }>
-  qualityBreakdown: Array<{ level: string; count: number }>
+interface TerritoryCoverage {
+  id: string
+  code: string
+  name: string
+  level: string
+  totalBuildings: number | null
+  inKb: number
+  coveragePercent: number | null
+  avgQuality: number
+  hasChildren: boolean
 }
 
 interface BulkImportJob {
@@ -100,11 +105,12 @@ const inputStyle: React.CSSProperties = {
 // ── Main Component ──────────────────────────────────
 
 export default function KnowledgeBaseDashboard() {
-  const [city, setCity] = useState('Praha')
-
-  const { data: coverage, isLoading: coverageLoading } = useQuery<CoverageData>({
-    queryKey: ['kb-coverage', city],
-    queryFn: () => apiClient.get('/knowledge-base/stats/coverage', { params: { city } }).then(r => r.data),
+  const { data: stats } = useQuery<{ buildings: number; avgQuality: number; withOrg: number }>({
+    queryKey: ['kb-stats'],
+    queryFn: () => apiClient.get('/knowledge-base/stats').then(r => {
+      const d = r.data
+      return { buildings: d.buildings || 0, avgQuality: Math.round(d.avgQuality || 0), withOrg: d.organizations || 0 }
+    }),
     refetchInterval: 30000,
   })
 
@@ -119,166 +125,179 @@ export default function KnowledgeBaseDashboard() {
     queryFn: () => apiClient.get('/knowledge-base/evidence-tasks').then(r => r.data),
   })
 
-  const avgQuality = coverage?.districts?.length
-    ? Math.round(coverage.districts.reduce((s, d) => s + (d._avg.dataQualityScore || 0), 0) / coverage.districts.length)
-    : 0
-
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>
           <h1 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Database size={22} /> Knowledge Base
+            <Database size={22} /> CRM / Knowledge Base
           </h1>
-          {coverage && (
+          {stats && (
             <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: 4 }}>
-              {coverage.total.toLocaleString('cs-CZ')} budov &middot; {'\u00D8'} quality {avgQuality} &middot; {coverage.withOrganization} s SVJ/BD
+              {stats.buildings.toLocaleString('cs-CZ')} budov &middot; {'\u00D8'} quality {stats.avgQuality} &middot; {stats.withOrg} organizací
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <select value={city} onChange={e => setCity(e.target.value)} style={inputStyle}>
-            <option value="Praha">Praha</option>
-            <option value="Brno">Brno</option>
-            <option value="Ostrava">Ostrava</option>
-            <option value="Plzeň">Plzeň</option>
-          </select>
-        </div>
       </div>
 
-      {coverageLoading ? (
-        <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>Načítám...</div>
-      ) : (
-        <>
-          {/* Top row: Coverage + Quality */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 16, marginBottom: 16 }}>
-            <CoverageTable districts={coverage?.districts || []} total={coverage?.total || 0} />
-            <QualityBreakdown breakdown={coverage?.qualityBreakdown || []} total={coverage?.total || 0} />
-          </div>
+      {/* Top row: Territory Coverage Tree + Import */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: 16, marginBottom: 16 }}>
+        <TerritoryCoverageTree />
+        <BulkImportPanel jobs={jobs} />
+      </div>
 
-          {/* Bottom row: Bulk Import + Evidence Tasks */}
-          <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: 16 }}>
-            <BulkImportPanel jobs={jobs} city={city} />
-            <EvidenceTaskList tasks={tasks} />
-          </div>
-        </>
-      )}
+      {/* Bottom: Evidence Tasks */}
+      <EvidenceTaskList tasks={tasks} />
     </div>
   )
 }
 
-// ── Coverage Table ──────────────────────────────────
+// ── Territory Coverage Tree ─────────────────────────
 
-function CoverageTable({ districts, total }: {
-  districts: CoverageData['districts']
-  total: number
-}) {
+function TerritoryCoverageTree() {
   return (
     <div style={card}>
-      <div style={headerStyle}>Pokrytí per městská část</div>
-      <div style={{ maxHeight: 380, overflowY: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-          <thead>
-            <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
-              <th style={{ padding: '6px 8px' }}>Cast</th>
-              <th style={{ padding: '6px 8px', textAlign: 'right' }}>V KB</th>
-              <th style={{ padding: '6px 8px', textAlign: 'right' }}>Avg Q</th>
-              <th style={{ padding: '6px 8px', width: 180 }}>Kvalita</th>
-            </tr>
-          </thead>
-          <tbody>
-            {districts.map((d, i) => {
-              const q = d._avg.dataQualityScore || 0
-              const pct = total > 0 ? Math.round((d._count._all / total) * 100) : 0
-              return (
-                <tr key={i} style={{ borderBottom: '1px solid var(--border-light, #f3f4f6)' }}>
-                  <td style={{ padding: '6px 8px', fontWeight: 500 }}>{d.district || '(nezadáno)'}</td>
-                  <td style={{ padding: '6px 8px', textAlign: 'right' }}>{d._count._all}</td>
-                  <td style={{ padding: '6px 8px', textAlign: 'right', color: q >= 70 ? 'var(--success, #16a34a)' : q >= 40 ? 'var(--warning, #d97706)' : 'var(--danger, #dc2626)' }}>
-                    {Math.round(q)}
-                  </td>
-                  <td style={{ padding: '6px 8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <div style={{ flex: 1, height: 8, background: 'var(--border-light, #f3f4f6)', borderRadius: 4, overflow: 'hidden' }}>
-                        <div style={{
-                          height: '100%',
-                          width: `${Math.min(q, 100)}%`,
-                          borderRadius: 4,
-                          background: q >= 70 ? 'var(--success, #16a34a)' : q >= 40 ? 'var(--warning, #d97706)' : 'var(--danger, #dc2626)',
-                        }} />
-                      </div>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', minWidth: 28 }}>{pct}%</span>
-                    </div>
-                  </td>
-                </tr>
-              )
-            })}
-            {districts.length === 0 && (
-              <tr><td colSpan={4} style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)' }}>Žádná data</td></tr>
-            )}
-          </tbody>
-        </table>
+      <div style={headerStyle}>Pokrytí per území</div>
+      {/* Table header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', borderBottom: '2px solid var(--border)' }}>
+        <span style={{ width: 16, flexShrink: 0 }} />
+        <span style={{ flex: 1 }}>Území</span>
+        <span style={{ minWidth: 55, textAlign: 'right' }}>Celkem</span>
+        <span style={{ minWidth: 50, textAlign: 'right' }}>V KB</span>
+        <span style={{ minWidth: 50, textAlign: 'right' }}>Pokrytí</span>
+        <span style={{ minWidth: 35, textAlign: 'right' }}>Avg Q</span>
+        <span style={{ width: 80 }} />
+      </div>
+      <div style={{ maxHeight: 500, overflowY: 'auto' }}>
+        <TerritoryCoverageLevel parentId={undefined} depth={0} />
       </div>
     </div>
   )
 }
 
-// ── Quality Breakdown ───────────────────────────────
+function TerritoryCoverageLevel({ parentId, depth }: { parentId: string | undefined; depth: number }) {
+  const { data: items = [], isLoading } = useQuery<TerritoryCoverage[]>({
+    queryKey: ['territory-coverage', parentId],
+    queryFn: () => {
+      const params: Record<string, string> = {}
+      if (parentId) params.parentId = parentId
+      return apiClient.get('/knowledge-base/stats/territory-coverage', { params }).then(r => r.data)
+    },
+  })
 
-const QUALITY_LEVELS: Record<string, { label: string; color: string }> = {
-  excellent: { label: '80-100 Excelentní', color: '#16a34a' },
-  good: { label: '50-79 Dobrá', color: '#2563eb' },
-  basic: { label: '20-49 Základní', color: '#d97706' },
-  empty: { label: '0-19 Prázdná', color: '#dc2626' },
+  if (isLoading && depth === 0) {
+    return <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem' }}>Načítám...</div>
+  }
+
+  if (items.length === 0) {
+    if (depth === 0) return <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem' }}>Spusťte seed teritorií</div>
+    return null
+  }
+
+  return (
+    <div>
+      {items.map(t => (
+        <TerritoryCoverageRow key={t.id} item={t} depth={depth} />
+      ))}
+    </div>
+  )
 }
 
-function QualityBreakdown({ breakdown, total }: { breakdown: CoverageData['qualityBreakdown']; total: number }) {
+function TerritoryCoverageRow({ item, depth }: { item: TerritoryCoverage; depth: number }) {
+  const [expanded, setExpanded] = useState(false)
+
+  const qColor = item.avgQuality >= 70 ? '#16a34a' : item.avgQuality >= 40 ? '#d97706' : '#dc2626'
+  const covColor = item.coveragePercent != null
+    ? item.coveragePercent >= 80 ? '#16a34a' : item.coveragePercent >= 30 ? '#d97706' : '#dc2626'
+    : 'var(--text-muted)'
+  const indent = depth * 20
+
   return (
-    <div style={card}>
-      <div style={headerStyle}>Kvalita dat</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {(['excellent', 'good', 'basic', 'empty'] as const).map(level => {
-          const item = breakdown.find(b => b.level === level)
-          const count = item?.count || 0
-          const pct = total > 0 ? Math.round((count / total) * 100) : 0
-          const cfg = QUALITY_LEVELS[level]
-          return (
-            <div key={level}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: 4 }}>
-                <span>{cfg.label}</span>
-                <span style={{ fontWeight: 600 }}>{count.toLocaleString('cs-CZ')} ({pct}%)</span>
-              </div>
-              <div style={{ height: 10, background: 'var(--border-light, #f3f4f6)', borderRadius: 5, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${pct}%`, background: cfg.color, borderRadius: 5 }} />
-              </div>
+    <>
+      <div
+        style={{
+          display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px',
+          paddingLeft: 8 + indent, fontSize: '0.82rem',
+          borderBottom: '1px solid var(--border-light, #f3f4f6)',
+          cursor: item.hasChildren ? 'pointer' : 'default',
+          background: expanded ? 'var(--border-light, #f9fafb)' : 'transparent',
+        }}
+        onClick={() => item.hasChildren && setExpanded(!expanded)}
+      >
+        {/* Expand icon */}
+        <span style={{ width: 16, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+          {item.hasChildren && (expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
+        </span>
+
+        {/* Name */}
+        <span style={{ flex: 1, fontWeight: item.inKb > 0 ? 500 : 400 }}>
+          {item.name}
+        </span>
+
+        {/* Total buildings (from RÚIAN) */}
+        <span style={{ minWidth: 55, textAlign: 'right', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+          {item.totalBuildings != null ? item.totalBuildings.toLocaleString('cs-CZ') : '—'}
+        </span>
+
+        {/* In KB */}
+        <span style={{ minWidth: 50, textAlign: 'right', fontWeight: 600, fontSize: '0.78rem' }}>
+          {item.inKb > 0 ? item.inKb.toLocaleString('cs-CZ') : '—'}
+        </span>
+
+        {/* Coverage % */}
+        <span style={{ minWidth: 50, textAlign: 'right', fontSize: '0.78rem', fontWeight: 600, color: covColor }}>
+          {item.coveragePercent != null ? `${item.coveragePercent}%` : '—'}
+        </span>
+
+        {/* Avg quality */}
+        <span style={{ minWidth: 35, textAlign: 'right', fontSize: '0.78rem', color: item.inKb > 0 ? qColor : 'var(--text-muted)' }}>
+          {item.inKb > 0 ? item.avgQuality : '—'}
+        </span>
+
+        {/* Coverage bar */}
+        <div style={{ width: 80, flexShrink: 0 }}>
+          {item.coveragePercent != null && (
+            <div style={{ height: 6, background: '#e5e7eb', borderRadius: 3, overflow: 'hidden' }}>
+              <div style={{
+                height: '100%', width: `${Math.min(item.coveragePercent, 100)}%`,
+                background: covColor, borderRadius: 3,
+              }} />
             </div>
-          )
-        })}
+          )}
+        </div>
       </div>
 
-      {total > 0 && (
-        <div style={{ marginTop: 16, padding: '10px 12px', background: 'var(--border-light, #f9fafb)', borderRadius: 8, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          Celkem {total.toLocaleString('cs-CZ')} budov v Knowledge Base
-        </div>
-      )}
-    </div>
+      {/* Children */}
+      {expanded && <TerritoryCoverageLevel parentId={item.id} depth={depth + 1} />}
+    </>
   )
 }
 
-// ── Bulk Import Panel ───────────────────────────────
+// ─── Bulk Import Panel ───────────────────────────────
 
-const PRAHA_DISTRICTS = [
-  '', 'Praha 1', 'Praha 2', 'Praha 3', 'Praha 4', 'Praha 5', 'Praha 6', 'Praha 7',
-  'Praha 8', 'Praha 9', 'Praha 10', 'Praha 11', 'Praha 12', 'Praha 13', 'Praha 14',
-  'Praha 15', 'Praha 16', 'Praha 17', 'Praha 18', 'Praha 19', 'Praha 20', 'Praha 21', 'Praha 22',
-]
-
-function BulkImportPanel({ jobs, city }: { jobs: BulkImportJob[]; city: string }) {
+function BulkImportPanel({ jobs }: { jobs: BulkImportJob[] }) {
   const qc = useQueryClient()
+  const [region, setRegion] = useState('Praha')
   const [district, setDistrict] = useState('')
 
-  const fullJob = jobs.find(j => j.step === 'FULL' && j.region === city)
+  // Fetch MČ from territory for selected city
+  const { data: cityParts = [] } = useQuery<Array<{ id: string; name: string }>>({
+    queryKey: ['territories-mc-for-import', region],
+    queryFn: async () => {
+      // Find the municipality, then get its CITY_PART children
+      const obec = await apiClient.get('/knowledge-base/territories', {
+        params: { level: 'MUNICIPALITY', q: region },
+      }).then(r => r.data)
+      if (obec.length === 0) return []
+      const mc = await apiClient.get('/knowledge-base/territories', {
+        params: { level: 'CITY_PART', parentId: obec[0].id },
+      }).then(r => r.data)
+      return mc.map((m: any) => ({ id: m.id, name: m.name }))
+    },
+  })
+
+  const fullJob = jobs.find(j => j.step === 'FULL' && j.region === region)
   const isRunning = fullJob?.status === 'RUNNING'
   const isPaused = fullJob?.status === 'PAUSED'
   const isCompleted = fullJob?.status === 'COMPLETED'
@@ -289,7 +308,7 @@ function BulkImportPanel({ jobs, city }: { jobs: BulkImportJob[]; city: string }
 
   const startMutation = useMutation({
     mutationFn: () =>
-      apiClient.post('/knowledge-base/bulk-import/full', { region: city, district: district || undefined }).then(r => r.data),
+      apiClient.post('/knowledge-base/bulk-import/full', { region, district: district || undefined }).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['kb-import-jobs'] }),
   })
 
@@ -310,14 +329,22 @@ function BulkImportPanel({ jobs, city }: { jobs: BulkImportJob[]; city: string }
       <div style={headerStyle}>Kompletní import</div>
 
       {/* Controls */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
-        <select value={district} onChange={e => setDistrict(e.target.value)} style={inputStyle} disabled={isRunning}>
-          <option value="">Všechny městské části</option>
-          {PRAHA_DISTRICTS.filter(Boolean).map(d => <option key={d} value={d}>{d}</option>)}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <select value={region} onChange={e => { setRegion(e.target.value); setDistrict('') }} style={inputStyle} disabled={isRunning}>
+          <option value="Praha">Praha</option>
+          <option value="Brno">Brno</option>
+          <option value="Ostrava">Ostrava</option>
+          <option value="Plzeň">Plzeň</option>
         </select>
+        {cityParts.length > 0 && (
+          <select value={district} onChange={e => setDistrict(e.target.value)} style={inputStyle} disabled={isRunning}>
+            <option value="">Všechny MČ</option>
+            {cityParts.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+          </select>
+        )}
         {!isRunning && !isPaused && (
           <button style={btnPrimary} onClick={() => startMutation.mutate()} disabled={startMutation.isPending}>
-            <Play size={14} /> Spustit kompletní import
+            <Play size={14} /> Spustit
           </button>
         )}
         {isRunning && (
@@ -335,7 +362,6 @@ function BulkImportPanel({ jobs, city }: { jobs: BulkImportJob[]; city: string }
       {/* Progress */}
       {fullJob && (
         <div style={{ padding: '10px 12px', background: 'var(--border-light, #f9fafb)', borderRadius: 8 }}>
-          {/* Current building */}
           {isRunning && fullJob.currentBuilding && (
             <div style={{ fontSize: '0.78rem', marginBottom: 6, fontWeight: 500 }}>
               Zpracovávám: {fullJob.currentBuilding}
@@ -343,7 +369,6 @@ function BulkImportPanel({ jobs, city }: { jobs: BulkImportJob[]; city: string }
             </div>
           )}
 
-          {/* Progress bar */}
           <div style={{ height: 8, background: '#e5e7eb', borderRadius: 4, overflow: 'hidden', marginBottom: 6 }}>
             <div style={{
               height: '100%',
@@ -354,7 +379,6 @@ function BulkImportPanel({ jobs, city }: { jobs: BulkImportJob[]; city: string }
             }} />
           </div>
 
-          {/* Stats */}
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', gap: 12 }}>
             <span>{fullJob.processed.toLocaleString('cs-CZ')}/{fullJob.totalEstimated.toLocaleString('cs-CZ')} ({pct}%)</span>
             <span>{fullJob.created} vytvořeno</span>
@@ -376,7 +400,7 @@ function BulkImportPanel({ jobs, city }: { jobs: BulkImportJob[]; city: string }
 
       {!fullJob && (
         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', padding: '8px 0' }}>
-          Sekvenční import: RÚIAN → ARES → Enrichment → Justice.cz per budova
+          Sekvenční import: RÚIAN &rarr; ARES &rarr; Enrichment &rarr; Justice.cz per budova
         </div>
       )}
     </div>
@@ -445,7 +469,7 @@ function EvidenceTaskList({ tasks }: { tasks: EvidenceTask[] }) {
           <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
             <th style={{ padding: '6px 6px' }}>Zaměstnanec</th>
             <th style={{ padding: '6px 6px' }}>Oblast</th>
-            <th style={{ padding: '6px 6px', textAlign: 'right' }}>Cil</th>
+            <th style={{ padding: '6px 6px', textAlign: 'right' }}>Cíl</th>
             <th style={{ padding: '6px 6px', textAlign: 'right' }}>Hotovo</th>
             <th style={{ padding: '6px 6px', textAlign: 'right' }}>%</th>
             <th style={{ padding: '6px 6px', width: 80 }}></th>

@@ -1,8 +1,23 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import { apiClient } from '../../core/api/client'
 import { ArrowLeft, MapPin, Building2, FileText, Clock, Wrench, RefreshCw } from 'lucide-react'
+
+// ── Leaflet icon fix (Vite) ─────────────────────────
+
+delete (L.Icon.Default.prototype as any)._getIconUrl
+
+const buildingIcon = L.divIcon({
+  className: '',
+  html: '<div style="width:20px;height:20px;background:#0d9488;border:3px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.4)"></div>',
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
+  popupAnchor: [0, -12],
+})
 
 // ── Types ───────────────────────────────────────────
 
@@ -99,11 +114,25 @@ export default function CrmBuildingDetailPage() {
           <div style={card}>
             <SectionTitle>Lokalita</SectionTitle>
             {building.lat && building.lng && (
-              <img
-                src={buildOrthoUrl(building.lat, building.lng)}
-                alt="Letecký snímek"
-                style={{ width: '100%', borderRadius: 8, maxHeight: 200, objectFit: 'cover', marginBottom: 10 }}
-              />
+              <div style={{ height: 280, borderRadius: 8, overflow: 'hidden', marginBottom: 10 }}>
+                <MapContainer
+                  center={[building.lat, building.lng]}
+                  zoom={18}
+                  style={{ height: '100%', width: '100%' }}
+                  scrollWheelZoom={false}
+                  dragging={false}
+                  zoomControl={false}
+                >
+                  <TileLayer
+                    url="https://ags.cuzk.gov.cz/arcgis1/rest/services/ORTOFOTO_WM/MapServer/tile/{z}/{y}/{x}"
+                    attribution="&copy; ČÚZK"
+                    maxZoom={20}
+                  />
+                  <Marker position={[building.lat, building.lng]} icon={buildingIcon}>
+                    <Popup>{building.fullAddress || building.street || 'Budova'}</Popup>
+                  </Marker>
+                </MapContainer>
+              </div>
             )}
             <InfoGrid items={[
               { label: 'GPS', value: building.lat && building.lng ? `${building.lat.toFixed(4)}°N, ${building.lng.toFixed(4)}°E` : '—' },
@@ -167,8 +196,20 @@ export default function CrmBuildingDetailPage() {
             <SectionTitle>Rizikový profil</SectionTitle>
             {enrichment?.risks ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.82rem' }}>
-                <span>🌊 Záplavy: {enrichment.risks.flood?.inFloodZone ? '⚠️ V záplavovém území' : '✅ Mimo zónu'}</span>
-                <span>☢️ Radon: {enrichment.risks.radon?.index === 'high' ? '⚠️ Vysoký' : enrichment.risks.radon?.index === 'medium' ? '🟡 Střední' : enrichment.risks.radon?.index === 'low' ? '✅ Nízký' : '❓ Neznámý'}</span>
+                <span>🌊 Záplavy: <RiskBadge
+                  source={enrichment.risks.flood?.source}
+                  available={!enrichment.risks.flood?.source?.includes('N/A')}
+                  positive={!enrichment.risks.flood?.inFloodZone}
+                  positiveLabel="Mimo zónu"
+                  negativeLabel="V záplavovém území"
+                /></span>
+                <span>☢️ Radon: <RiskBadge
+                  source={enrichment.risks.radon?.source}
+                  available={!enrichment.risks.radon?.source?.includes('N/A')}
+                  positive={enrichment.risks.radon?.index === 'low'}
+                  positiveLabel={enrichment.risks.radon?.index === 'low' ? 'Nízký' : enrichment.risks.radon?.index === 'medium' ? 'Střední' : enrichment.risks.radon?.index === 'high' ? 'Vysoký' : 'Neznámý'}
+                  negativeLabel={enrichment.risks.radon?.index === 'high' ? 'Vysoký' : 'Střední'}
+                /></span>
                 {enrichment.risks.heritage && <span>🏛️ Památky: {enrichment.risks.heritage.isProtected ? `⚠️ ${enrichment.risks.heritage.protectionType?.join(', ')}` : '✅ Bez ochrany'}</span>}
                 {enrichment.risks.insolvency && <span>⚖️ Insolvence: {enrichment.risks.insolvency.hasInsolvency ? '⚠️ Nalezena' : '✅ Bez'}</span>}
               </div>
@@ -376,9 +417,17 @@ function DocTypeBadge({ type }: { type: string }) {
   return <span style={{ fontSize: '0.72rem', padding: '2px 6px', borderRadius: 4, background: 'var(--border-light, #f3f4f6)' }}>{labels[type] || type}</span>
 }
 
-function buildOrthoUrl(lat: number, lng: number): string {
-  const base = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1'
-  return `${base}/knowledge-base/ortofoto?lat=${lat}&lng=${lng}`
+function RiskBadge({ source, available, positive, positiveLabel, negativeLabel }: {
+  source?: string; available: boolean; positive: boolean; positiveLabel: string; negativeLabel: string
+}) {
+  if (!available) {
+    return <span style={{ padding: '1px 6px', borderRadius: 4, fontSize: '0.72rem', fontWeight: 600, background: '#fef3c7', color: '#92400e' }}
+      title={source || 'Služba nedostupná'}>Služba nedostupná</span>
+  }
+  if (positive) {
+    return <span style={{ color: '#16a34a' }}>✅ {positiveLabel}</span>
+  }
+  return <span style={{ color: '#dc2626' }}>⚠️ {negativeLabel}</span>
 }
 
 const linkBtn: React.CSSProperties = {
