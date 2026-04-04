@@ -15,6 +15,7 @@ interface BuildingRow {
   city: string
   district?: string
   quarter?: string
+  cadastralTerritoryName?: string
   postalCode?: string
   buildingType?: string
   numberOfUnits?: number
@@ -354,38 +355,42 @@ export default function CrmBuildingsPage() {
         ) : (
           <>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
                 <thead>
-                  <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
-                    <th style={{ ...thStyle, width: 32 }}>
+                  <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left', position: 'sticky', top: 0, background: 'var(--card-bg, #fff)', zIndex: 1 }}>
+                    <th style={{ ...thStyle, width: 36 }}>
                       <input type="checkbox" checked={(result?.data?.length ?? 0) > 0 && selected.size === (result?.data?.length ?? 0)}
                         onChange={e => setSelected(e.target.checked ? new Set((result?.data ?? []).map(b => b.id)) : new Set())} />
                     </th>
+                    <th style={thStyle} onClick={() => setSort('city')}>Město{sortIcon('city')}</th>
+                    <th style={thStyle} onClick={() => setSort('district')}>MČ{sortIcon('district')}</th>
+                    <th style={thStyle}>KÚ</th>
                     <th style={thStyle} onClick={() => setSort('street')}>Ulice{sortIcon('street')}</th>
                     <th style={thStyle} onClick={() => setSort('houseNumber')}>ČP{sortIcon('houseNumber')}</th>
                     <th style={thStyle} onClick={() => setSort('orientationNumber')}>ČO{sortIcon('orientationNumber')}</th>
-                    <th style={thStyle} onClick={() => setSort('district')}>MČ{sortIcon('district')}</th>
-                    <th style={thStyle}>Typ</th>
                     <th style={thStyle}>Organizace</th>
-                    <th style={{ ...thStyle, textAlign: 'center', cursor: 'pointer' }} onClick={() => setSort('dataQualityScore')}>
-                      Quality{sortIcon('dataQualityScore')}
+                    <th style={thStyle}>IČO</th>
+                    <th style={{ ...thStyle, textAlign: 'center' }} onClick={() => setSort('dataQualityScore')}>
+                      Q{sortIcon('dataQualityScore')}
                     </th>
-                    <th style={{ ...thStyle, cursor: 'pointer' }} onClick={() => setSort('lastEnrichedAt')}>
+                    <th style={thStyle} onClick={() => setSort('lastEnrichedAt')}>
                       Enrichment{sortIcon('lastEnrichedAt')}
                     </th>
-                    <th style={{ ...thStyle, width: 40 }}></th>
+                    <th style={{ ...thStyle, width: 32 }}></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {result?.data.map(b => {
+                  {result?.data.map((b, idx) => {
                     const fullAddr = b.fullAddress || [b.street, b.district, b.postalCode].filter(Boolean).join(', ')
+                    const streetName = parseStreetName(b.street)
+                    const ku = b.quarter || b.cadastralTerritoryName || '—'
                     return (
                     <tr
                       key={b.id}
                       onClick={() => navigate(`/crm/buildings/${b.id}`)}
-                      style={{ borderBottom: '1px solid var(--border-light, #f3f4f6)', cursor: 'pointer' }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--border-light, #f9fafb)')}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                      style={{ borderBottom: '1px solid var(--border-light, #f3f4f6)', cursor: 'pointer', background: idx % 2 === 1 ? 'var(--border-light, #f9fafb)' : 'transparent' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#f0fdfa')}
+                      onMouseLeave={e => (e.currentTarget.style.background = idx % 2 === 1 ? 'var(--border-light, #f9fafb)' : 'transparent')}
                     >
                       <td style={tdStyle} onClick={e => e.stopPropagation()}>
                         <input type="checkbox" checked={selected.has(b.id)} onChange={e => {
@@ -394,24 +399,22 @@ export default function CrmBuildingsPage() {
                           setSelected(next)
                         }} />
                       </td>
-                      <td style={{ ...tdStyle, fontWeight: 500 }}>{b.street || '—'}</td>
+                      <td style={tdStyle}>{b.city || '—'}</td>
+                      <td style={tdStyle}>{b.district || '—'}</td>
+                      <td style={{ ...tdStyle, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ku}</td>
+                      <td style={{ ...tdStyle, fontWeight: 500 }}>{streetName}</td>
                       <td style={tdStyle}>{b.houseNumber || '—'}</td>
                       <td style={tdStyle}>{b.orientationNumber || '—'}</td>
-                      <td style={tdStyle}>{b.district || '—'}</td>
-                      <td style={tdStyle}>
-                        {b.managingOrg?.orgType ? (
-                          <span style={{ padding: '2px 6px', borderRadius: 4, fontSize: '0.72rem', fontWeight: 600, background: b.managingOrg.orgType === 'SVJ' ? '#dbeafe' : '#fce7f3', color: b.managingOrg.orgType === 'SVJ' ? '#1d4ed8' : '#be185d' }}>
-                            {b.managingOrg.orgType}
-                          </span>
-                        ) : '—'}
-                      </td>
-                      <td style={{ ...tdStyle, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <td style={{ ...tdStyle, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {b.managingOrg?.name || '—'}
+                      </td>
+                      <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: '0.72rem' }}>
+                        {b.managingOrg?.ico || '—'}
                       </td>
                       <td style={{ ...tdStyle, textAlign: 'center' }}>
                         <QualityBadge score={b.dataQualityScore || 0} />
                       </td>
-                      <td style={{ ...tdStyle, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      <td style={{ ...tdStyle, fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                         {b.lastEnrichedAt ? formatRelativeDate(b.lastEnrichedAt) : 'nikdy'}
                       </td>
                       <td style={tdStyle} onClick={e => e.stopPropagation()}>
@@ -425,7 +428,7 @@ export default function CrmBuildingsPage() {
                     )
                   })}
                   {(!result?.data || result.data.length === 0) && (
-                    <tr><td colSpan={10} style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>Žádné budovy</td></tr>
+                    <tr><td colSpan={12} style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>Žádné budovy</td></tr>
                   )}
                 </tbody>
               </table>
@@ -481,8 +484,18 @@ export default function CrmBuildingsPage() {
 
 // ── Helpers ──────────────────────────────────────────
 
-const thStyle: React.CSSProperties = { padding: '8px 8px', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }
-const tdStyle: React.CSSProperties = { padding: '8px 8px' }
+const thStyle: React.CSSProperties = { padding: '6px 6px', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap', fontSize: '0.72rem' }
+const tdStyle: React.CSSProperties = { padding: '5px 6px' }
+
+/** Extract street name without house numbers: "Korunovační 270/10" → "Korunovační" */
+function parseStreetName(street?: string): string {
+  if (!street) return '—'
+  // "č.p. 30" or "č.p. 654" → no real street name
+  if (/^č\.?\s?p\.?\s+\d/i.test(street)) return '—'
+  // Remove trailing house number: "Korunovační 270/10" → "Korunovační"
+  const cleaned = street.replace(/\s+\d+[\w/\s-]*$/, '').trim()
+  return cleaned || '—'
+}
 
 function QualityBadge({ score }: { score: number }) {
   const color = score >= 60 ? '#16a34a' : score >= 30 ? '#d97706' : '#dc2626'

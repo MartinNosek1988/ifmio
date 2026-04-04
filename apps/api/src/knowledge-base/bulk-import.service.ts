@@ -255,7 +255,12 @@ export class BulkImportService {
           try {
             const parsed = this.parseRuianAddress(b.addresses[0] || '')
             // Skip non-Praha (bbox includes suburbs like Vestec, Chýnice)
-            if (parsed.city && parsed.city.toLowerCase() !== 'praha') continue
+            // If city parsed → must be 'Praha'; if not parsed → check raw address
+            if (parsed.city) {
+              if (parsed.city.toLowerCase() !== 'praha') continue
+            } else {
+              if (!(/Praha/i).test(b.addresses[0] || '')) continue
+            }
             const territoryId = await this.findTerritoryForBuilding(parsed)
             await this.prisma.building.upsert({
               where: { ruianBuildingId: b.ruianId },
@@ -656,7 +661,11 @@ export class BulkImportService {
         const filteredBuildings = [...buildingMap.values()].filter(b => {
           const parsed = this.parseRuianAddress(b.address)
           // Skip non-Praha addresses (bbox includes suburbs)
-          if (parsed.city && parsed.city.toLowerCase() !== 'praha') return false
+          if (parsed.city) {
+            if (parsed.city.toLowerCase() !== 'praha') return false
+          } else {
+            if (!(/Praha/i).test(b.address)) return false
+          }
           // District filter if specified
           if (job.district) {
             if (parsed.district?.toLowerCase() === job.district.toLowerCase()) return true
