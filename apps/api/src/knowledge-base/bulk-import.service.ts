@@ -311,10 +311,11 @@ export class BulkImportService {
     const base = `${RUIAN_ARCGIS_BASE}/1/query`
 
     // Build WHERE clause with optional district filter
-    // "Praha 1" must not match "Praha 10" — use boundary patterns: "Praha 1 " or "Praha 1,"
+    // "Praha 1" must not match "Praha 10" — use boundary patterns + end-of-string
+    // RÚIAN addresses end with district: "Rybná 693/20, Staré Město, 11000 Praha 1"
     let where = '1=1'
     if (district && VALID_DISTRICTS.includes(district)) {
-      where = `(adresa LIKE '%${district} %' OR adresa LIKE '%${district},%')`
+      where = `(adresa LIKE '%${district} %' OR adresa LIKE '%${district},%' OR adresa LIKE '%${district}')`
     }
 
     const qs = new URLSearchParams({
