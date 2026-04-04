@@ -215,6 +215,8 @@ export default function PropertyForm({ property, onClose }: Props) {
           onSubmit={handleSubmit}
           isSubmitting={isPending}
           submitLabel={isEdit ? 'Uložit' : 'Vytvořit'}
+          data-testid-save="property-form-save"
+          data-testid-cancel="property-form-cancel"
         />
       ) : undefined}
     >
@@ -273,19 +275,19 @@ export default function PropertyForm({ property, onClose }: Props) {
             </FormField>
           </div>
 
-          <FormField label="Název" name="name" error={errors.name}>
+          <FormField label="Název" name="name" error={errors.name} data-testid-error="property-form-error-name">
             <input data-testid="property-form-name" value={form.name} onChange={(e) => set('name', e.target.value)} onBlur={() => handleBlur('name')} style={inputStyle('name')} />
           </FormField>
 
-          <FormField label="Adresa" name="address" error={errors.address}>
+          <FormField label="Adresa" name="address" error={errors.address} data-testid-error="property-form-error-address">
             <input data-testid="property-form-address" value={form.address} onChange={(e) => set('address', e.target.value)} onBlur={() => handleBlur('address')} style={inputStyle('address')} />
           </FormField>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: 12 }}>
-            <FormField label="Město" name="city" error={errors.city}>
+            <FormField label="Město" name="city" error={errors.city} data-testid-error="property-form-error-city">
               <input data-testid="property-form-city" value={form.city} onChange={(e) => set('city', e.target.value)} onBlur={() => handleBlur('city')} style={inputStyle('city')} />
             </FormField>
-            <FormField label="PSČ" name="postalCode" error={errors.postalCode}>
+            <FormField label="PSČ" name="postalCode" error={errors.postalCode} data-testid-error="property-form-error-postalCode">
               <input data-testid="property-form-zip" value={form.postalCode} onChange={(e) => set('postalCode', e.target.value)} onBlur={() => handleBlur('postalCode')} style={inputStyle('postalCode')} />
             </FormField>
           </div>

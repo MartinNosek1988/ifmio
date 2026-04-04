@@ -28,6 +28,7 @@ import { ErrorBoundary } from '../shared/components';
 
 const DashboardPage = lazy(() => import('../modules/dashboard/DashboardPage'));
 const PropertiesPage = lazy(() => import('../modules/properties/PropertiesPage'));
+const PropertyFormPage = lazy(() => import('../modules/properties/PropertyFormPage'));
 const PropertyDetailPage = lazy(() => import('../modules/properties/PropertyDetailPage'));
 const UnitDetailPage = lazy(() => import('../modules/properties/UnitDetailPage'));
 const FinancePage = lazy(() => import('../modules/finance/FinancePage'));
@@ -65,6 +66,12 @@ const RevisionSettingsPage = lazy(() => import('../modules/revisions/RevisionSet
 const AssetTypesPage = lazy(() => import('../modules/asset-types/AssetTypesPage'));
 const AssetPassportPage = lazy(() => import('../modules/assets/AssetPassportPage'));
 const SuperAdminPage = lazy(() => import('../modules/super-admin/SuperAdminPage'));
+const KnowledgeBaseDashboard = lazy(() => import('../modules/admin/KnowledgeBaseDashboard'));
+const CrmBuildingsPage = lazy(() => import('../modules/crm/CrmBuildingsPage'));
+const CrmBuildingDetailPage = lazy(() => import('../modules/crm/CrmBuildingDetailPage'));
+const CrmOrganizationsPage = lazy(() => import('../modules/crm/CrmOrganizationsPage'));
+const CrmMapPage = lazy(() => import('../modules/crm/CrmMapPage'));
+const CrmImportPage = lazy(() => import('../modules/crm/CrmImportPage'));
 const QrResolvePage = lazy(() => import('../modules/asset-qr/QrResolvePage'));
 const PrincipalsPage = lazy(() => import('../modules/principals/PrincipalsPage'));
 const PrincipalDetailPage = lazy(() => import('../modules/principals/PrincipalDetailPage'));
@@ -171,6 +178,8 @@ export const router = createBrowserRouter([
       { path: 'portal/documents', element: withBoundary('Dokumenty', MyDocumentsPage) },
       { path: 'portal/konto', element: withBoundary('Konto', MyKontoPage) },
       { path: 'properties', element: withBoundary('Nemovitosti', PropertiesPage) },
+      { path: 'properties/new', element: withBoundary('Nová nemovitost', PropertyFormPage) },
+      { path: 'properties/:id/edit', element: withBoundary('Upravit nemovitost', PropertyFormPage) },
       { path: 'properties/:id', element: withBoundary('Detail nemovitosti', PropertyDetailPage) },
       { path: 'properties/:id/units/:unitId', element: withBoundary('Detail jednotky', UnitDetailPage) },
       { path: 'properties/:id/assemblies', element: withBoundary('Shromáždění', AssemblyListPage) },
@@ -220,6 +229,13 @@ export const router = createBrowserRouter([
       { path: 'notifications', element: withBoundary('Notifikace', NotificationsPage) },
       { path: 'profile', element: withBoundary('Profil', ProfilePage) },
       { path: 'super-admin', element: withBoundary('Super Admin', SuperAdminPage) },
+      { path: 'knowledge-base', element: withBoundary('Knowledge Base', KnowledgeBaseDashboard) },
+      { path: 'crm', element: withBoundary('CRM Přehled', KnowledgeBaseDashboard) },
+      { path: 'crm/buildings', element: withBoundary('CRM Budovy', CrmBuildingsPage) },
+      { path: 'crm/buildings/:id', element: withBoundary('CRM Detail budovy', CrmBuildingDetailPage) },
+      { path: 'crm/organizations', element: withBoundary('CRM Organizace', CrmOrganizationsPage) },
+      { path: 'crm/import', element: withBoundary('CRM Import', CrmImportPage) },
+      { path: 'crm/map', element: withBoundary('CRM Mapa', CrmMapPage) },
     ],
   },
 ]);

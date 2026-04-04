@@ -54,9 +54,13 @@ export interface AresSearchResult {
 
 const ARES_BASE = 'https://ares.gov.cz/ekonomicke-subjekty-v-be/rest';
 
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 min
+const CACHE_MAX_SIZE = 500;
+
 @Injectable()
 export class AresService {
   private readonly logger = new Logger(AresService.name);
+  private readonly cache = new Map<string, { data: AresSubject | null; ts: number }>();
 
   /** Validate IČO: must be 8 digits and pass checksum (weights [8,7,6,5,4,3,2], mod 11). */
   validateIco(ico: string): boolean {
@@ -80,23 +84,38 @@ export class AresService {
       throw new BadRequestException('Neplatné IČO – musí mít 8 číslic a platný kontrolní součet');
     }
 
+    // Check cache
+    const cached = this.cache.get(ico);
+    if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.data;
+
     try {
       const res = await fetch(`${ARES_BASE}/ekonomicke-subjekty/${ico}`, {
         headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(10000),
       });
 
-      if (res.status === 404) return null;
+      if (res.status === 404) { this.cacheSet(ico, null); return null; }
       if (!res.ok) {
         this.logger.warn(`ARES API responded with ${res.status} for ICO ${ico}`);
         return null;
       }
 
       const data = await res.json();
-      return this.mapSubject(data);
+      const subject = this.mapSubject(data);
+      this.cacheSet(ico, subject);
+      return subject;
     } catch (err) {
       this.logger.error(`ARES lookup failed for ICO ${ico}`, (err as Error).stack);
       return null;
     }
+  }
+
+  private cacheSet(ico: string, data: AresSubject | null): void {
+    if (this.cache.size >= CACHE_MAX_SIZE) {
+      const oldest = this.cache.keys().next().value;
+      if (oldest) this.cache.delete(oldest);
+    }
+    this.cache.set(ico, { data, ts: Date.now() });
   }
 
   async searchByName(name: string, limit = 10): Promise<AresSearchResult> {
@@ -112,6 +131,7 @@ export class AresService {
 
       const res = await fetch(`${ARES_BASE}/ekonomicke-subjekty/vyhledat?${params}`, {
         headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(10000),
       });
 
       if (!res.ok) {

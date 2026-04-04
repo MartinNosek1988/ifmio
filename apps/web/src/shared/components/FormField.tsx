@@ -13,6 +13,7 @@ interface FormFieldProps {
   computedSource?: string
   children: ReactNode
   className?: string
+  'data-testid-error'?: string
 }
 
 /**
@@ -34,7 +35,9 @@ export function FormField({
   computedSource,
   children,
   className,
+  ...rest
 }: FormFieldProps) {
+  const errorTestId = rest['data-testid-error']
   return (
     <div className={className} style={{ marginBottom: 12 }}>
       {/* Label row */}
@@ -82,6 +85,7 @@ export function FormField({
       {error && (
         <div
           role="alert"
+          data-testid={errorTestId}
           style={{
             color: 'var(--danger)',
             fontSize: '0.78rem',

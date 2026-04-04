@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 
 export interface CuzkParcel {
   parcelniCislo: string;
@@ -20,6 +20,14 @@ export class CuzkService {
     parcelniCislo: string,
     katastralniUzemi: string,
   ): Promise<CuzkParcel | null> {
+    // Input sanitization — prevent SQL/ArcGIS injection
+    if (!/^[0-9/]+$/.test(parcelniCislo)) {
+      throw new BadRequestException('Neplatné parcelní číslo — povoleny pouze číslice a /')
+    }
+    if (!/^[0-9]+$/.test(katastralniUzemi)) {
+      throw new BadRequestException('Neplatný kód katastrálního území — povoleny pouze číslice')
+    }
+
     try {
       // Layer 3 = parcely (parcels) in ČÚZK ArcGIS service
       const params = new URLSearchParams({
@@ -32,6 +40,7 @@ export class CuzkService {
       const url = `${CUZK_ARCGIS_BASE}/3/query?${params}`;
       const res = await fetch(url, {
         headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(10000),
       });
 
       if (!res.ok) {

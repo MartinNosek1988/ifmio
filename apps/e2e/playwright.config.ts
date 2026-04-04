@@ -5,8 +5,9 @@ dotenv.config();
 export default defineConfig({
   testDir: './tests',
   timeout: 30_000,
+  globalTimeout: 25 * 60 * 1000,
   retries: 1,
-  workers: 1,
+  workers: process.env.CI ? 2 : 1,
   globalSetup: './global-setup.ts',
   globalTeardown: './global-teardown.ts',
   use: {

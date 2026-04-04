@@ -205,7 +205,7 @@ export function InvoiceForm({ invoice, transactions, onClose }: {
 
   return (
     <Modal open onClose={onClose} title={isEdit ? 'Upravit doklad' : 'Nový doklad'} wide
-      footer={<FormFooter onCancel={onClose} onSubmit={handleSubmit} isSubmitting={isPending} submitLabel={isEdit ? 'Uložit' : 'Vytvořit'} />}>
+      footer={<FormFooter onCancel={onClose} onSubmit={handleSubmit} isSubmitting={isPending} submitLabel={isEdit ? 'Uložit' : 'Vytvořit'} data-testid-save="finance-doklad-form-save" data-testid-cancel="finance-doklad-form-cancel" />}>
 
       {/* ── Sekce 1: Identifikace (vždy otevřená) ─────────────── */}
       <FormSection title="Identifikace dokladu" collapsible={false}>
@@ -242,6 +242,7 @@ export function InvoiceForm({ invoice, transactions, onClose }: {
               error={errors.amountBase}
               required
               name="amountBase"
+              data-testid="finance-doklad-form-amount"
             />
           </div>
           <FormField label="DPH sazba" name="vatRate">

@@ -6,7 +6,7 @@ import type { Column } from '../../shared/components';
 import { PROPERTY_TYPE_LABELS, label } from '../../constants/labels';
 import { useProperties } from './use-properties';
 import type { ApiProperty } from './properties-api';
-import PropertyForm, { LEGAL_MODE_LABEL } from './PropertyForm';
+import { LEGAL_MODE_LABEL } from './PropertyForm';
 
 const OWNERSHIP_LABELS: Record<string, string> = {
   vlastnictvi: 'Vlastnictví',
@@ -18,7 +18,7 @@ export default function PropertiesPage() {
   const navigate = useNavigate();
   const { data: properties = [], isLoading, error } = useProperties();
   const [search, setSearch] = useState('');
-  const [showForm, setShowForm] = useState(false);
+  // Property creation now uses route navigation (/properties/new)
 
   const filtered = useMemo(() => {
     if (!search) return properties;
@@ -98,7 +98,7 @@ export default function PropertiesPage() {
           <h1 className="page-title">Nemovitosti</h1>
           <p className="page-subtitle">{stats.count} nemovitostí, {stats.units} jednotek</p>
         </div>
-        <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)} data-testid="property-add-btn">
+        <Button variant="primary" icon={<Plus size={15} />} onClick={() => navigate('/properties/new')} data-testid="property-add-btn">
           Nová nemovitost
         </Button>
       </div>
@@ -126,9 +126,6 @@ export default function PropertiesPage() {
         />
       )}
 
-      {showForm && (
-        <PropertyForm onClose={() => setShowForm(false)} />
-      )}
     </div>
   );
 }

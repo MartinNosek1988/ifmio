@@ -131,6 +131,8 @@ interface FormFooterProps {
   cancelLabel?: string
   showDraft?: boolean
   onSaveDraft?: () => void
+  'data-testid-save'?: string
+  'data-testid-cancel'?: string
 }
 
 export function FormFooter({
@@ -142,7 +144,10 @@ export function FormFooter({
   cancelLabel = 'Zrušit',
   showDraft = false,
   onSaveDraft,
+  ...rest
 }: FormFooterProps) {
+  const saveTestId = rest['data-testid-save']
+  const cancelTestId = rest['data-testid-cancel']
   return (
     <div
       style={{
@@ -154,7 +159,7 @@ export function FormFooter({
         marginTop: 8,
       }}
     >
-      <button type="button" className="btn" onClick={onCancel}>
+      <button type="button" className="btn" onClick={onCancel} data-testid={cancelTestId}>
         {cancelLabel}
       </button>
       {showDraft && onSaveDraft && (
@@ -168,6 +173,7 @@ export function FormFooter({
         onClick={onSubmit}
         disabled={isSubmitting || !isValid}
         title={!isValid ? 'Opravte chyby ve formuláři' : undefined}
+        data-testid={saveTestId}
       >
         {isSubmitting ? 'Ukládám...' : submitLabel}
       </button>

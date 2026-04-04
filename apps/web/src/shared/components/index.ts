@@ -31,3 +31,5 @@ export { ResponsiveTable } from './ResponsiveTable';
 export type { RColumn } from './ResponsiveTable';
 export { AuditTimeline } from './AuditTimeline';
 export { GdprErasureWizard } from './GdprErasureWizard';
+export { AddressAutocomplete } from './AddressAutocomplete';
+export type { AddressResult } from './AddressAutocomplete';
