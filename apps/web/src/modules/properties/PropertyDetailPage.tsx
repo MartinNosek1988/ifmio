@@ -99,7 +99,7 @@ export default function PropertyDetailPage() {
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
 
   // PropertyTypeConfig drives which tabs are visible
-  const ptConfig = getPropertyTypeConfig(property.type);
+  const ptConfig = getPropertyTypeConfig(property?.type ?? 'OTHER');
   const configTabs = ptConfig.ui.detailTabs;
 
   const refetchOwnerships = () => queryClient.invalidateQueries({ queryKey: ['ownerships'] });

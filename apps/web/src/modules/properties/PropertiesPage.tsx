@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Building2, Plus } from 'lucide-react';
 import { KpiCard, Table, Badge, SearchBar, Button, EmptyState, LoadingState, ErrorState } from '../../shared/components';
 import type { Column } from '../../shared/components';
-import { PROPERTY_TYPE_LABELS, label } from '../../constants/labels';
 import { getPropertyTypeConfig } from '@ifmio/shared-types';
 import { useProperties } from './use-properties';
 import type { ApiProperty } from './properties-api';
