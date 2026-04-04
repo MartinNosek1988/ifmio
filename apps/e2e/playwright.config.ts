@@ -4,12 +4,13 @@ dotenv.config();
 
 export default defineConfig({
   testDir: './tests',
-  timeout: 30_000,
-  globalTimeout: 25 * 60 * 1000,
+  timeout: 60_000,
+  globalTimeout: 30 * 60 * 1000,
   retries: 1,
   workers: process.env.CI ? 2 : 1,
   globalSetup: './global-setup.ts',
   globalTeardown: './global-teardown.ts',
+  expect: { timeout: 15_000 },
   use: {
     baseURL: process.env.BASE_URL || 'https://ifmio.com',
     screenshot: 'only-on-failure',

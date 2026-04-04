@@ -6,6 +6,7 @@ import { useCreateProperty, useUpdateProperty } from './use-properties';
 import type { ApiProperty, PropertyLegalMode, AccountingSystemType } from './properties-api';
 import { Info, Search, Pencil, Upload } from 'lucide-react';
 import { integrationsApi } from '../integrations/api/integrations.api';
+import { getPropertyTypeOptions } from '@ifmio/shared-types';
 
 const CuzkImportTab = lazy(() => import('./CuzkImportTab'));
 
@@ -14,22 +15,12 @@ interface Props {
   onClose: () => void;
 }
 
-const PROPERTY_TYPES = [
-  { value: 'SVJ', label: 'Bytový dům — SVJ' },
-  { value: 'BD', label: 'Bytový dům — Družstevní' },
-  { value: 'RENTAL_RESIDENTIAL', label: 'Bytový dům — Nájemní' },
-  { value: 'RENTAL_MUNICIPAL', label: 'Bytový dům — Obecní' },
-  { value: 'CONDO_NO_SVJ', label: 'Bytový dům — Bez SVJ' },
-  { value: 'MIXED_USE', label: 'Bytový dům — Smíšený' },
-  { value: 'SINGLE_FAMILY', label: 'Rodinný dům' },
-  { value: 'COMMERCIAL_OFFICE', label: 'Kancelářská budova' },
-  { value: 'COMMERCIAL_RETAIL', label: 'Obchodní prostory' },
-  { value: 'COMMERCIAL_WAREHOUSE', label: 'Sklad / logistika' },
-  { value: 'COMMERCIAL_INDUSTRIAL', label: 'Průmyslový objekt' },
-  { value: 'PARKING', label: 'Garáže / parkování' },
-  { value: 'LAND', label: 'Pozemek' },
-  { value: 'OTHER', label: 'Jiné' },
-];
+const TYPE_OPTIONS = getPropertyTypeOptions();
+const GROUPED_TYPES = {
+  'Rezidenční': TYPE_OPTIONS.filter(o => o.category === 'RESIDENTIAL'),
+  'Komerční': TYPE_OPTIONS.filter(o => o.category === 'COMMERCIAL'),
+  'Ostatní': TYPE_OPTIONS.filter(o => o.category === 'SPECIAL'),
+};
 
 const OWNERSHIP_TYPES = [
   { value: 'vlastnictvi', label: 'Vlastnictví' },
@@ -273,7 +264,11 @@ export default function PropertyForm({ property, onClose }: Props) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
             <FormField label="Typ nemovitosti" name="type">
               <select data-testid="property-form-type" value={form.type} onChange={(e) => set('type', e.target.value)} style={inputStyle()}>
-                {PROPERTY_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                {Object.entries(GROUPED_TYPES).map(([group, items]) => (
+                  <optgroup key={group} label={group}>
+                    {items.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </optgroup>
+                ))}
               </select>
             </FormField>
             <FormField label="Typ vlastnictví" name="ownership">

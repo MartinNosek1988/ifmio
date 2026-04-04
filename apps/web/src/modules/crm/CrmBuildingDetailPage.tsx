@@ -199,17 +199,22 @@ export default function CrmBuildingDetailPage() {
                 <span>🌊 Záplavy: <RiskBadge
                   source={enrichment.risks.flood?.source}
                   available={!enrichment.risks.flood?.source?.includes('N/A')}
-                  positive={!enrichment.risks.flood?.inFloodZone}
+                  positive={enrichment.risks.flood?.inFloodZone === false}
                   positiveLabel="Mimo zónu"
                   negativeLabel="V záplavovém území"
                 /></span>
-                <span>☢️ Radon: <RiskBadge
-                  source={enrichment.risks.radon?.source}
-                  available={!enrichment.risks.radon?.source?.includes('N/A')}
-                  positive={enrichment.risks.radon?.index === 'low'}
-                  positiveLabel={enrichment.risks.radon?.index === 'low' ? 'Nízký' : enrichment.risks.radon?.index === 'medium' ? 'Střední' : enrichment.risks.radon?.index === 'high' ? 'Vysoký' : 'Neznámý'}
-                  negativeLabel={enrichment.risks.radon?.index === 'high' ? 'Vysoký' : 'Střední'}
-                /></span>
+                <span>☢️ Radon: {(() => {
+                  const radonIndex = enrichment.risks.radon?.index
+                  const radonLabel = ({ low: 'Nízký', medium: 'Střední', high: 'Vysoký' } as Record<string, string>)[radonIndex || ''] ?? 'Neznámý'
+                  const radonAvailable = !enrichment.risks.radon?.source?.includes('N/A') && radonIndex != null
+                  return <RiskBadge
+                    source={enrichment.risks.radon?.source}
+                    available={radonAvailable}
+                    positive={radonIndex === 'low'}
+                    positiveLabel={radonLabel}
+                    negativeLabel={radonLabel}
+                  />
+                })()}</span>
                 {enrichment.risks.heritage && <span>🏛️ Památky: {enrichment.risks.heritage.isProtected ? `⚠️ ${enrichment.risks.heritage.protectionType?.join(', ')}` : '✅ Bez ochrany'}</span>}
                 {enrichment.risks.insolvency && <span>⚖️ Insolvence: {enrichment.risks.insolvency.hasInsolvency ? '⚠️ Nalezena' : '✅ Bez'}</span>}
               </div>
