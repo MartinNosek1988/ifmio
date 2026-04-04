@@ -23,7 +23,7 @@ describe('Contracts (e2e)', () => {
         address: 'Smluvní 1',
         city: 'Praha',
         postalCode: '110 00',
-        type: 'bytdum',
+        type: 'SVJ',
         ownership: 'pronajem',
       })
       .expect(201)

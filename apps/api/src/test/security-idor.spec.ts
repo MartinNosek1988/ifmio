@@ -40,7 +40,7 @@ describe('Security — IDOR / Cross-Tenant Isolation (e2e)', () => {
         address: 'Tajná 1',
         city: 'Praha',
         postalCode: '110 00',
-        type: 'bytdum',
+        type: 'SVJ',
         ownership: 'vlastnictvi',
       })
       .expect(201)

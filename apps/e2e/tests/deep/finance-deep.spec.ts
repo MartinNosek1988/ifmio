@@ -11,7 +11,7 @@ async function createPropertyApi(page: any, name: string): Promise<string> {
   const token = await getToken(page);
   const res = await page.request.post(`${API_URL}/api/v1/properties`, {
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    data: { name, address: 'Finanční 1', city: 'Praha', postalCode: '11000', type: 'bytdum', ownership: 'vlastnictvi' },
+    data: { name, address: 'Finanční 1', city: 'Praha', postalCode: '11000', type: 'SVJ', ownership: 'vlastnictvi' },
   });
   return (await res.json()).id;
 }

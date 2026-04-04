@@ -20,7 +20,7 @@ describe('Work Orders Extended (e2e)', () => {
         address: 'Pracovní 1',
         city: 'Brno',
         postalCode: '602 00',
-        type: 'bytdum',
+        type: 'SVJ',
         ownership: 'vlastnictvi',
       })
       .expect(201)

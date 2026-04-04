@@ -22,7 +22,7 @@ export default function CuzkImportTab({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate()
   const fileRef = useRef<HTMLInputElement>(null)
   const [preview, setPreview] = useState<CuzkImportResult | null>(null)
-  const [form, setForm] = useState({ propertyName: '', propertyAddress: '', propertyCity: '', postalCode: '', propertyType: 'bytdum', ownership: 'vlastnictvi' })
+  const [form, setForm] = useState({ propertyName: '', propertyAddress: '', propertyCity: '', postalCode: '', propertyType: 'SVJ', ownership: 'vlastnictvi' })
   const [error, setError] = useState('')
   const [showValidation, setShowValidation] = useState(false)
 

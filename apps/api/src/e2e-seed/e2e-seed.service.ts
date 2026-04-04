@@ -39,7 +39,7 @@ export class E2eSeedService {
           address: 'Lipová 42',
           city: 'Praha',
           postalCode: '11000',
-          type: 'bytdum',
+          type: 'SVJ',
           ownership: 'vlastnictvi',
           legalMode: 'SVJ',
         },

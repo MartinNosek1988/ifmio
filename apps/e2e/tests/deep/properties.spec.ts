@@ -12,7 +12,7 @@ async function createTestPropertyViaApi(page: any): Promise<string> {
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     data: {
       name: TEST_PROPERTY_NAME, address: 'Testovací 123', city: 'Brno',
-      postalCode: '60200', type: 'bytdum', ownership: 'vlastnictvi',
+      postalCode: '60200', type: 'SVJ', ownership: 'vlastnictvi',
       legalMode: 'SVJ', ico: '99887766', dic: 'CZ99887766',
     },
   });
@@ -114,7 +114,7 @@ test.describe('Properties — Deep CRUD', () => {
       await page.locator('[data-testid="property-add-btn"]').click();
       await expect(page.locator('[data-testid="property-form-name"]')).toBeVisible();
 
-      await page.locator('[data-testid="property-form-type"]').selectOption('bytdum');
+      await page.locator('[data-testid="property-form-type"]').selectOption('SVJ');
       await page.locator('[data-testid="property-form-ownership"]').selectOption('vlastnictvi');
       await page.locator('[data-testid="property-form-name"]').fill(TEST_PROPERTY_NAME);
       await page.locator('[data-testid="property-form-address"]').fill('Testovací 123');

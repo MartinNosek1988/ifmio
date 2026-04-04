@@ -11,7 +11,7 @@ async function createPropertyApi(page: any, name: string, overrides: Record<stri
   const token = await getToken(page);
   const res = await page.request.post(`${API_URL}/api/v1/properties`, {
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    data: { name, address: 'Test 1', city: 'Praha', postalCode: '11000', type: 'bytdum', ownership: 'vlastnictvi', ...overrides },
+    data: { name, address: 'Test 1', city: 'Praha', postalCode: '11000', type: 'SVJ', ownership: 'vlastnictvi', ...overrides },
   });
   return (await res.json()).id;
 }
@@ -412,7 +412,7 @@ test.describe('Properties — Edge Cases', () => {
     const token = await getToken(page);
     const res = await page.request.post(`${API_URL}/api/v1/properties`, {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      data: { name: 'Long Address Test', address: longAddress, city: 'Praha', postalCode: '11000', type: 'bytdum', ownership: 'vlastnictvi' },
+      data: { name: 'Long Address Test', address: longAddress, city: 'Praha', postalCode: '11000', type: 'SVJ', ownership: 'vlastnictvi' },
     });
     // Document: API may accept or reject long addresses
     // No @MaxLength on address in DTO, so it should be accepted

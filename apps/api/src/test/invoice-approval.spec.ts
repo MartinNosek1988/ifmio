@@ -20,7 +20,7 @@ describe('Invoice Approval Workflow (e2e)', () => {
     const propRes = await ownerApi
       .post('/api/v1/properties', {
         name: 'Approval-Test', address: 'A 1', city: 'Praha',
-        postalCode: '11000', type: 'bytdum', ownership: 'vlastnictvi',
+        postalCode: '11000', type: 'SVJ', ownership: 'vlastnictvi',
       })
       .expect(201)
     const propertyId = propRes.body.id

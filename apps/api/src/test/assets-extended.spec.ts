@@ -21,7 +21,7 @@ describe('Assets Extended (e2e)', () => {
         address: 'Majetková 1',
         city: 'Brno',
         postalCode: '602 00',
-        type: 'bytdum',
+        type: 'SVJ',
         ownership: 'vlastnictvi',
       })
       .expect(201)

@@ -15,12 +15,20 @@ interface Props {
 }
 
 const PROPERTY_TYPES = [
-  { value: 'bytdum', label: 'Bytový dům' },
-  { value: 'roddum', label: 'Rodinný dům' },
-  { value: 'komer', label: 'Komerční' },
-  { value: 'prumysl', label: 'Průmyslový' },
-  { value: 'pozemek', label: 'Pozemek' },
-  { value: 'garaz', label: 'Garáž' },
+  { value: 'SVJ', label: 'Bytový dům — SVJ' },
+  { value: 'BD', label: 'Bytový dům — Družstevní' },
+  { value: 'RENTAL_RESIDENTIAL', label: 'Bytový dům — Nájemní' },
+  { value: 'RENTAL_MUNICIPAL', label: 'Bytový dům — Obecní' },
+  { value: 'CONDO_NO_SVJ', label: 'Bytový dům — Bez SVJ' },
+  { value: 'MIXED_USE', label: 'Bytový dům — Smíšený' },
+  { value: 'SINGLE_FAMILY', label: 'Rodinný dům' },
+  { value: 'COMMERCIAL_OFFICE', label: 'Kancelářská budova' },
+  { value: 'COMMERCIAL_RETAIL', label: 'Obchodní prostory' },
+  { value: 'COMMERCIAL_WAREHOUSE', label: 'Sklad / logistika' },
+  { value: 'COMMERCIAL_INDUSTRIAL', label: 'Průmyslový objekt' },
+  { value: 'PARKING', label: 'Garáže / parkování' },
+  { value: 'LAND', label: 'Pozemek' },
+  { value: 'OTHER', label: 'Jiné' },
 ];
 
 const OWNERSHIP_TYPES = [
@@ -62,7 +70,7 @@ export default function PropertyForm({ property, onClose }: Props) {
     address: property?.address || '',
     city: property?.city || '',
     postalCode: property?.postalCode || '',
-    type: property?.type || 'bytdum',
+    type: property?.type || 'SVJ',
     ownership: property?.ownership || 'vlastnictvi',
     legalMode: (property?.legalMode || 'OWNERSHIP') as PropertyLegalMode,
     ico: property?.ico || '',

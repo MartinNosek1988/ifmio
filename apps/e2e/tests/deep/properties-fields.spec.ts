@@ -8,7 +8,7 @@ async function createPropertyApi(page: any, data: Record<string, unknown>): Prom
   const token = await getFreshToken(page);
   const res = await page.request.post(`${API_URL}/api/v1/properties`, {
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    data: { name: 'Field Test', address: 'Test 1', city: 'Praha', postalCode: '11000', type: 'bytdum', ownership: 'vlastnictvi', ...data },
+    data: { name: 'Field Test', address: 'Test 1', city: 'Praha', postalCode: '11000', type: 'SVJ', ownership: 'vlastnictvi', ...data },
   });
   return (await res.json()).id;
 }
@@ -124,7 +124,7 @@ test.describe('Properties — Pole formuláře vytvoření', () => {
     const token = await getFreshToken(page);
     const res = await page.request.post(`${API_URL}/api/v1/properties`, {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      data: { name: 'PSČ Space Test', address: 'Test', city: 'Praha', postalCode: '123 45', type: 'bytdum', ownership: 'vlastnictvi' },
+      data: { name: 'PSČ Space Test', address: 'Test', city: 'Praha', postalCode: '123 45', type: 'SVJ', ownership: 'vlastnictvi' },
     });
     // Document: API may accept or reject spaces in PSČ (no regex validation in DTO)
     expect(res.status()).toBeLessThan(500);
@@ -141,12 +141,12 @@ test.describe('Properties — Pole formuláře vytvoření', () => {
   test('pole Typ — všechny options (6 typů)', async ({ page }) => {
     await openCreateForm(page);
     const options = await page.locator('[data-testid="property-form-type"] option').allTextContents();
-    expect(options.length).toBe(6); // bytdum, roddum, komer, prumysl, pozemek, garaz
+    expect(options.length).toBe(14); // SVJ, BD, RENTAL_*, SINGLE_FAMILY, COMMERCIAL_*, etc.
   });
 
-  test('pole Typ — výchozí hodnota bytdum', async ({ page }) => {
+  test('pole Typ — výchozí hodnota SVJ', async ({ page }) => {
     await openCreateForm(page);
-    expect(await page.locator('[data-testid="property-form-type"]').inputValue()).toBe('bytdum');
+    expect(await page.locator('[data-testid="property-form-type"]').inputValue()).toBe('SVJ');
   });
 
   // ─── OWNERSHIP (select) ────────────────────────────────────────
@@ -254,7 +254,7 @@ test.describe('Properties — Detail zobrazení polí', () => {
     await login(page);
     propertyId = await createPropertyApi(page, {
       name: 'Detail Fields E2E', address: 'Sokolská 42', city: 'Praha 2',
-      postalCode: '12000', type: 'bytdum', ownership: 'vlastnictvi',
+      postalCode: '12000', type: 'SVJ', ownership: 'vlastnictvi',
       legalMode: 'SVJ', ico: '98765432', dic: 'CZ98765432',
     });
     await ctx.close();
@@ -290,7 +290,7 @@ test.describe('Properties — Detail zobrazení polí', () => {
   });
 
   test('detail NEZOBRAZÍ IČO pro rodinný dům', async ({ page }) => {
-    const rdId = await createPropertyApi(page, { name: 'RD No IČO E2E', type: 'roddum', legalMode: 'OWNERSHIP' });
+    const rdId = await createPropertyApi(page, { name: 'RD No IČO E2E', type: 'SINGLE_FAMILY', legalMode: 'OWNERSHIP' });
     await page.goto(`/properties/${rdId}`);
     await page.waitForLoadState('domcontentloaded');
     // IČ label should not be visible (no ico field for OWNERSHIP legalMode)
@@ -320,7 +320,7 @@ test.describe('Properties — Editace pole po poli', () => {
     await login(page);
     propertyId = await createPropertyApi(page, {
       name: 'Edit Fields E2E', address: 'Editační 1', city: 'Brno',
-      postalCode: '60200', type: 'bytdum', ownership: 'vlastnictvi',
+      postalCode: '60200', type: 'SVJ', ownership: 'vlastnictvi',
     });
     await ctx.close();
   });

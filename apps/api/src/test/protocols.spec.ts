@@ -245,7 +245,7 @@ describe('Protocols API', () => {
       address: 'Ulice 1',
       city: 'Praha',
       postalCode: '10000',
-      type: 'bytdum',
+      type: 'SVJ',
       ownership: 'vlastnictvi',
     }).expect(201)
 
@@ -292,7 +292,7 @@ describe('Protocols API', () => {
       address: 'Ulice 99',
       city: 'Brno',
       postalCode: '60200',
-      type: 'bytdum',
+      type: 'SVJ',
       ownership: 'vlastnictvi',
     }).expect(201)
 

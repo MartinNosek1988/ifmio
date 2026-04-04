@@ -250,15 +250,14 @@ export class TerritorySeedService {
         if (!res.ok) continue
         const data = await res.json()
         const count = data.count || 0
-        if (count > 0) {
-          await this.prisma.territory.update({
-            where: { id: child.id },
-            data: { totalBuildings: count },
-          })
-        }
+        await this.prisma.territory.update({
+          where: { id: child.id },
+          data: { totalBuildings: count },
+        })
         await new Promise(r => setTimeout(r, 300)) // rate limit
-      } catch {
-        this.logger.warn(`Failed to count RÚIAN buildings for ${child.name}`)
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        this.logger.warn(`Failed to count RÚIAN buildings for ${child.name}: ${msg}`)
       }
     }
   }

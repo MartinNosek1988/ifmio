@@ -22,7 +22,7 @@ test.describe('Helpdesk Flows — E2E', () => {
         address: 'E2E 1',
         city: 'Praha',
         postalCode: '110 00',
-        type: 'bytdum',
+        type: 'SVJ',
         ownership: 'vlastnictvi',
       },
     })
