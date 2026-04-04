@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
+import { PropertyScopeService } from '../common/services/property-scope.service'
 import type { AuthUser } from '@ifmio/shared-types'
 import type { CreateInsuranceDto, UpdateInsuranceDto, CreateInsuranceClaimDto, UpdateInsuranceClaimDto } from './insurance.dto'
 
@@ -32,22 +33,26 @@ function serializeClaim(item: any) {
 
 @Injectable()
 export class InsuranceService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private scope: PropertyScopeService,
+  ) {}
 
   // ── Insurance CRUD ──────────────────────────────────
 
   async findAll(user: AuthUser, propertyId: string) {
+    const where = await this.scope.scopeByPropertyId(user, { tenantId: user.tenantId, propertyId })
     const items = await this.prisma.insurance.findMany({
-      where: { tenantId: user.tenantId, propertyId },
+      where,
       include: { _count: { select: { claims: true } } },
       orderBy: { validFrom: 'desc' },
     })
     return items.map(serialize)
   }
 
-  async findOne(user: AuthUser, id: string) {
+  async findOne(user: AuthUser, propertyId: string, id: string) {
     const item = await this.prisma.insurance.findFirst({
-      where: { id, tenantId: user.tenantId },
+      where: { id, tenantId: user.tenantId, propertyId },
       include: { claims: { orderBy: { eventDate: 'desc' } } },
     })
     if (!item) throw new NotFoundException('Pojistka nenalezena')
@@ -58,6 +63,7 @@ export class InsuranceService {
   }
 
   async create(user: AuthUser, propertyId: string, dto: CreateInsuranceDto) {
+    await this.scope.scopeByPropertyId(user, { propertyId })
     const item = await this.prisma.insurance.create({
       data: {
         tenantId: user.tenantId,
@@ -81,8 +87,8 @@ export class InsuranceService {
     return serialize(item)
   }
 
-  async update(user: AuthUser, id: string, dto: UpdateInsuranceDto) {
-    await this.findOne(user, id)
+  async update(user: AuthUser, propertyId: string, id: string, dto: UpdateInsuranceDto) {
+    await this.findOne(user, propertyId, id)
     const item = await this.prisma.insurance.update({
       where: { id },
       data: {
@@ -104,14 +110,16 @@ export class InsuranceService {
     return serialize(item)
   }
 
-  async remove(user: AuthUser, id: string) {
-    await this.findOne(user, id)
+  async remove(user: AuthUser, propertyId: string, id: string) {
+    await this.findOne(user, propertyId, id)
     await this.prisma.insurance.delete({ where: { id } })
   }
 
   // ── Claims CRUD ─────────────────────────────────────
 
   async findClaims(user: AuthUser, insuranceId: string) {
+    const ins = await this.prisma.insurance.findFirst({ where: { id: insuranceId, tenantId: user.tenantId } })
+    if (!ins) throw new NotFoundException('Pojistka nenalezena')
     const items = await this.prisma.insuranceClaim.findMany({
       where: { tenantId: user.tenantId, insuranceId },
       orderBy: { eventDate: 'desc' },
@@ -120,10 +128,8 @@ export class InsuranceService {
   }
 
   async createClaim(user: AuthUser, insuranceId: string, dto: CreateInsuranceClaimDto) {
-    // Verify insurance exists and belongs to tenant
     const ins = await this.prisma.insurance.findFirst({ where: { id: insuranceId, tenantId: user.tenantId } })
     if (!ins) throw new NotFoundException('Pojistka nenalezena')
-
     const item = await this.prisma.insuranceClaim.create({
       data: {
         tenantId: user.tenantId,
@@ -145,7 +151,6 @@ export class InsuranceService {
   async updateClaim(user: AuthUser, id: string, dto: UpdateInsuranceClaimDto) {
     const existing = await this.prisma.insuranceClaim.findFirst({ where: { id, tenantId: user.tenantId } })
     if (!existing) throw new NotFoundException('Pojistná událost nenalezena')
-
     const item = await this.prisma.insuranceClaim.update({
       where: { id },
       data: {
@@ -173,17 +178,16 @@ export class InsuranceService {
     await this.prisma.insuranceClaim.delete({ where: { id } })
   }
 
-  // ── Dashboard — expiring policies ───────────────────
+  // ── Dashboard ───────────────────────────────────────
 
   async getExpiringCount(user: AuthUser, daysAhead = 60): Promise<number> {
     const deadline = new Date()
     deadline.setDate(deadline.getDate() + daysAhead)
-    return this.prisma.insurance.count({
-      where: {
-        tenantId: user.tenantId,
-        isActive: true,
-        validTo: { not: null, lte: deadline },
-      },
+    const where = await this.scope.scopeByPropertyId(user, {
+      tenantId: user.tenantId,
+      isActive: true,
+      validTo: { not: null, lte: deadline },
     })
+    return this.prisma.insurance.count({ where })
   }
 }

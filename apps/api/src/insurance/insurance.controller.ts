@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Param, Body } from '@nestjs/common'
+import { Controller, Get, Post, Put, Delete, Param, Body, HttpCode, HttpStatus } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { InsuranceService } from './insurance.service'
 import { CreateInsuranceDto, UpdateInsuranceDto, CreateInsuranceClaimDto, UpdateInsuranceClaimDto } from './insurance.dto'
@@ -23,8 +23,8 @@ export class InsuranceController {
 
   @Get('properties/:propertyId/insurances/:id')
   @ApiOperation({ summary: 'Detail pojistky' })
-  findOne(@CurrentUser() user: AuthUser, @Param('id') id: string) {
-    return this.service.findOne(user, id)
+  findOne(@CurrentUser() user: AuthUser, @Param('propertyId') propertyId: string, @Param('id') id: string) {
+    return this.service.findOne(user, propertyId, id)
   }
 
   @Post('properties/:propertyId/insurances')
@@ -37,15 +37,16 @@ export class InsuranceController {
   @Put('properties/:propertyId/insurances/:id')
   @Roles(...ROLES_MANAGE)
   @ApiOperation({ summary: 'Upravit pojistku' })
-  update(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: UpdateInsuranceDto) {
-    return this.service.update(user, id, dto)
+  update(@CurrentUser() user: AuthUser, @Param('propertyId') propertyId: string, @Param('id') id: string, @Body() dto: UpdateInsuranceDto) {
+    return this.service.update(user, propertyId, id, dto)
   }
 
   @Delete('properties/:propertyId/insurances/:id')
   @Roles(...ROLES_MANAGE)
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Smazat pojistku' })
-  remove(@CurrentUser() user: AuthUser, @Param('id') id: string) {
-    return this.service.remove(user, id)
+  remove(@CurrentUser() user: AuthUser, @Param('propertyId') propertyId: string, @Param('id') id: string) {
+    return this.service.remove(user, propertyId, id)
   }
 
   // ── Claims CRUD ─────────────────────────────────────
@@ -72,6 +73,7 @@ export class InsuranceController {
 
   @Delete('insurances/:insuranceId/claims/:id')
   @Roles(...ROLES_MANAGE)
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Smazat pojistnou událost' })
   removeClaim(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.service.removeClaim(user, id)
