@@ -10,7 +10,7 @@ export function ErrorState({
   onRetry,
 }: Props) {
   return (
-    <div className="error-state">
+    <div className="error-state" data-testid="error-state">
       <div className="error-state__icon">!</div>
       <div className="error-state__title">{title}</div>
       <div className="error-state__message">{message}</div>
