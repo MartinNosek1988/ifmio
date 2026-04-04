@@ -38,6 +38,9 @@ interface NavSection {
   roles?: UXRole[];
 }
 
+// TODO: Sidebar items should be filtered by PropertyTypeConfig.features
+// e.g. hide "Shromáždění" for COMMERCIAL_OFFICE, hide "Fond oprav" for RENTAL_RESIDENTIAL
+// Requires: selected property context → getPropertyTypeConfig(property.type).features.hasAssembly
 const NAV_SECTIONS: NavSection[] = [
   {
     title: 'Přehled',
