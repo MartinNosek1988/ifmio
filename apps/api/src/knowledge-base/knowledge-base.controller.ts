@@ -89,6 +89,39 @@ export class KnowledgeBaseController {
     return this.kb.getStats()
   }
 
+  @Get('stats/territory-coverage')
+  @ApiOperation({ summary: 'Coverage tree — počet budov a avg quality per territory' })
+  async getTerritoryCoverage(@Query('parentId') parentId?: string) {
+    const where = parentId ? { parentId } : { level: 'REGION' as const }
+
+    const territories = await this.prisma.territory.findMany({
+      where: where as any,
+      orderBy: { name: 'asc' },
+      select: {
+        id: true, code: true, name: true, level: true,
+        _count: { select: { children: true } },
+      },
+    })
+
+    return Promise.all(territories.map(async t => {
+      const descendantIds = await this.getDescendantTerritoryIds(t.id)
+      const stats = await this.prisma.building.aggregate({
+        where: { territoryId: { in: descendantIds } },
+        _count: { _all: true },
+        _avg: { dataQualityScore: true },
+      })
+      return {
+        id: t.id,
+        code: t.code,
+        name: t.name,
+        level: t.level,
+        buildingCount: stats._count._all,
+        avgQuality: Math.round(stats._avg.dataQualityScore || 0),
+        hasChildren: t._count.children > 0,
+      }
+    }))
+  }
+
   // ── Territory endpoints ─────────────────────────────
 
   @Get('territories')

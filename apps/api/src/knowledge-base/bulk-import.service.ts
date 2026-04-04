@@ -256,6 +256,7 @@ export class BulkImportService {
             const parsed = this.parseRuianAddress(b.addresses[0] || '')
             // Skip non-Praha (bbox includes suburbs like Vestec, Chýnice)
             if (parsed.city && parsed.city.toLowerCase() !== 'praha') continue
+            const territoryId = await this.findTerritoryForBuilding(parsed)
             await this.prisma.building.upsert({
               where: { ruianBuildingId: b.ruianId },
               create: {
@@ -273,12 +274,14 @@ export class BulkImportService {
                 parcelNumbers: [],
                 dataQualityScore: 30,
                 lastEnrichedAt: new Date(),
+                ...(territoryId && { territoryId }),
               },
               update: {
                 lastEnrichedAt: new Date(),
                 // Only update if we have better data
                 ...(b.lat && { lat: b.lat }),
                 ...(b.lng && { lng: b.lng }),
+                ...(territoryId && { territoryId }),
               },
             })
             job.created++
@@ -673,6 +676,7 @@ export class BulkImportService {
             // Step A: Upsert building from RÚIAN
             job.currentStep = 'RÚIAN'
             const parsed = this.parseRuianAddress(b.address)
+            const territoryId = await this.findTerritoryForBuilding(parsed)
             const building = await this.prisma.building.upsert({
               where: { ruianBuildingId: b.ruianId },
               create: {
@@ -689,6 +693,7 @@ export class BulkImportService {
                 parcelNumbers: [],
                 dataQualityScore: 30,
                 lastEnrichedAt: new Date(),
+                ...(territoryId && { territoryId }),
               },
               update: {
                 lastEnrichedAt: new Date(),
@@ -696,6 +701,7 @@ export class BulkImportService {
                 ...(b.lng && { lng: b.lng }),
                 ...(parsed.district && { district: parsed.district }),
                 ...(parsed.quarter && { quarter: parsed.quarter }),
+                ...(territoryId && { territoryId }),
               },
             })
 
@@ -804,6 +810,43 @@ export class BulkImportService {
   }
 
   // ── Helpers ─────────────────────────────────────────
+
+  /**
+   * Find the best matching Territory for a parsed building address.
+   * Priority: KÚ (by quarter name) → MČ (by district name) → Obec (by city name)
+   */
+  private async findTerritoryForBuilding(parsed: {
+    city?: string; district?: string; quarter?: string
+  }): Promise<string | null> {
+    // 1. Try KÚ by quarter name (most specific)
+    if (parsed.quarter) {
+      const ku = await this.prisma.territory.findFirst({
+        where: { level: 'CADASTRAL', name: { equals: parsed.quarter, mode: 'insensitive' } },
+        select: { id: true },
+      })
+      if (ku) return ku.id
+    }
+
+    // 2. Try MČ by district name (e.g., "Praha 1")
+    if (parsed.district) {
+      const mc = await this.prisma.territory.findFirst({
+        where: { level: 'CITY_PART', name: { equals: parsed.district, mode: 'insensitive' } },
+        select: { id: true },
+      })
+      if (mc) return mc.id
+    }
+
+    // 3. Try obec by city name
+    if (parsed.city) {
+      const obec = await this.prisma.territory.findFirst({
+        where: { level: 'MUNICIPALITY', name: { equals: parsed.city, mode: 'insensitive' } },
+        select: { id: true },
+      })
+      if (obec) return obec.id
+    }
+
+    return null
+  }
 
   private delay(ms: number): Promise<void> {
     return new Promise(r => setTimeout(r, ms))
