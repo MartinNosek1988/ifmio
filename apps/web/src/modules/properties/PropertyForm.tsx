@@ -6,7 +6,7 @@ import { useCreateProperty, useUpdateProperty } from './use-properties';
 import type { ApiProperty, PropertyLegalMode, AccountingSystemType } from './properties-api';
 import { Info, Search, Pencil, Upload } from 'lucide-react';
 import { integrationsApi } from '../integrations/api/integrations.api';
-import { getPropertyTypeOptions, getTypesByCategory } from '@ifmio/shared-types';
+import { getPropertyTypeOptions } from '@ifmio/shared-types';
 
 const CuzkImportTab = lazy(() => import('./CuzkImportTab'));
 
@@ -16,9 +16,11 @@ interface Props {
 }
 
 const TYPE_OPTIONS = getPropertyTypeOptions();
-const RESIDENTIAL_TYPES = getTypesByCategory('RESIDENTIAL');
-const COMMERCIAL_TYPES = getTypesByCategory('COMMERCIAL');
-const SPECIAL_TYPES = getTypesByCategory('SPECIAL');
+const GROUPED_TYPES = {
+  'Rezidenční': TYPE_OPTIONS.filter(o => o.category === 'RESIDENTIAL'),
+  'Komerční': TYPE_OPTIONS.filter(o => o.category === 'COMMERCIAL'),
+  'Ostatní': TYPE_OPTIONS.filter(o => o.category === 'SPECIAL'),
+};
 
 const OWNERSHIP_TYPES = [
   { value: 'vlastnictvi', label: 'Vlastnictví' },
@@ -262,15 +264,11 @@ export default function PropertyForm({ property, onClose }: Props) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
             <FormField label="Typ nemovitosti" name="type">
               <select data-testid="property-form-type" value={form.type} onChange={(e) => set('type', e.target.value)} style={inputStyle()}>
-                <optgroup label="Rezidenční">
-                  {TYPE_OPTIONS.filter(t => RESIDENTIAL_TYPES.includes(t.value)).map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </optgroup>
-                <optgroup label="Komerční">
-                  {TYPE_OPTIONS.filter(t => COMMERCIAL_TYPES.includes(t.value)).map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </optgroup>
-                <optgroup label="Ostatní">
-                  {TYPE_OPTIONS.filter(t => SPECIAL_TYPES.includes(t.value)).map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </optgroup>
+                {Object.entries(GROUPED_TYPES).map(([group, items]) => (
+                  <optgroup key={group} label={group}>
+                    {items.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </optgroup>
+                ))}
               </select>
             </FormField>
             <FormField label="Typ vlastnictví" name="ownership">

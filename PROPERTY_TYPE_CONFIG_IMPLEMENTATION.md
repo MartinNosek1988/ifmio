@@ -1,5 +1,7 @@
 # Jak dostat doménové modely do ifmio — implementační plán
 
+> **Zdroj pravdy**: `packages/shared-types/src/property-type-config.ts`
+
 > Princip: PropertyType řídí CELÝ UX — formuláře, sloupce, workflow, terminologii, validace.
 > Jeden konfigurační objekt per typ → celá aplikace se adaptuje.
 
@@ -10,7 +12,7 @@
 Jeden TypeScript soubor, který je ZDROJEM PRAVDY pro celou aplikaci.
 Všechny komponenty čtou z tohoto configu — žádné hardcoded if/else.
 
-### Soubor: `packages/shared/src/property-type-config.ts`
+### Soubor: `packages/shared-types/src/property-type-config.ts`
 
 ```typescript
 // ============================================================

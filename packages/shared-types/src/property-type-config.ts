@@ -167,7 +167,7 @@ const COMMERCIAL_VALIDATION: PropertyValidation = {
 
 // ── Configuration ──────────────────────────────────────
 
-export const PROPERTY_TYPE_CONFIG: Record<PropertyType, PropertyTypeDefinition> = {
+export const PROPERTY_TYPE_CONFIG: Readonly<Record<PropertyType, PropertyTypeDefinition>> = {
 
   [PropertyType.SVJ]: {
     type: PropertyType.SVJ, category: 'RESIDENTIAL',
@@ -350,7 +350,7 @@ export const PROPERTY_TYPE_CONFIG: Record<PropertyType, PropertyTypeDefinition> 
     ui: {
       badgeColor: '#64748B', icon: 'Landmark', shortLabel: 'KAN',
       label: 'Kancelářská budova', description: 'Komerční pronájem kancelářských prostor, lease management.',
-      detailTabs: COMMERCIAL_TABS, unitColumns: COMMERCIAL_UNIT_COLS, personColumns: COMMERCIAL_PERSON_COLS,
+      detailTabs: [...COMMERCIAL_TABS], unitColumns: [...COMMERCIAL_UNIT_COLS], personColumns: [...COMMERCIAL_PERSON_COLS],
     },
     legalReferences: [
       { primaryLaw: 'NOZ', paragraphs: '§2302-§2315', description: 'Nájem prostoru k podnikání' },
@@ -366,7 +366,7 @@ export const PROPERTY_TYPE_CONFIG: Record<PropertyType, PropertyTypeDefinition> 
     ui: {
       badgeColor: '#F43F5E', icon: 'Store', shortLabel: 'OBC',
       label: 'Obchodní prostory', description: 'Retail, obchodní centrum, high-street.',
-      detailTabs: COMMERCIAL_TABS, unitColumns: COMMERCIAL_UNIT_COLS, personColumns: COMMERCIAL_PERSON_COLS,
+      detailTabs: [...COMMERCIAL_TABS], unitColumns: [...COMMERCIAL_UNIT_COLS], personColumns: [...COMMERCIAL_PERSON_COLS],
     },
     legalReferences: [{ primaryLaw: 'NOZ', paragraphs: '§2302-§2315', description: 'Nájem prostoru k podnikání' }],
   },
@@ -379,7 +379,7 @@ export const PROPERTY_TYPE_CONFIG: Record<PropertyType, PropertyTypeDefinition> 
     ui: {
       badgeColor: '#71717A', icon: 'Warehouse', shortLabel: 'SKL',
       label: 'Sklad / logistika', description: 'Skladové a logistické prostory.',
-      detailTabs: COMMERCIAL_TABS, unitColumns: COMMERCIAL_UNIT_COLS, personColumns: COMMERCIAL_PERSON_COLS,
+      detailTabs: [...COMMERCIAL_TABS], unitColumns: [...COMMERCIAL_UNIT_COLS], personColumns: [...COMMERCIAL_PERSON_COLS],
     },
     legalReferences: [{ primaryLaw: 'NOZ', paragraphs: '§2302-§2315', description: 'Nájem prostoru k podnikání' }],
   },
@@ -392,7 +392,7 @@ export const PROPERTY_TYPE_CONFIG: Record<PropertyType, PropertyTypeDefinition> 
     ui: {
       badgeColor: '#78716C', icon: 'Factory', shortLabel: 'PRŮ',
       label: 'Průmyslový objekt', description: 'Výrobní a průmyslové nemovitosti.',
-      detailTabs: COMMERCIAL_TABS, unitColumns: COMMERCIAL_UNIT_COLS, personColumns: COMMERCIAL_PERSON_COLS,
+      detailTabs: [...COMMERCIAL_TABS], unitColumns: [...COMMERCIAL_UNIT_COLS], personColumns: [...COMMERCIAL_PERSON_COLS],
     },
     legalReferences: [{ primaryLaw: 'NOZ', paragraphs: '§2302-§2315', description: 'Nájem prostoru k podnikání' }],
   },
@@ -476,19 +476,19 @@ export const PROPERTY_TYPE_CONFIG: Record<PropertyType, PropertyTypeDefinition> 
 
 // ── Helpers ────────────────────────────────────────────
 
-export function getPropertyTypeConfig(type: string): PropertyTypeDefinition {
+export function getPropertyTypeConfig(type: PropertyType | string): PropertyTypeDefinition {
   return PROPERTY_TYPE_CONFIG[type as PropertyType] ?? PROPERTY_TYPE_CONFIG[PropertyType.OTHER]
 }
 
-export function getPropertyTypeLabel(type: string): string {
+export function getPropertyTypeLabel(type: PropertyType | string): string {
   return getPropertyTypeConfig(type).ui.label
 }
 
-export function getTerminology(type: string): PropertyTerminology {
+export function getTerminology(type: PropertyType | string): PropertyTerminology {
   return getPropertyTypeConfig(type).terminology
 }
 
-export function hasFeature(type: string, feature: keyof PropertyFeatures): boolean {
+export function hasFeature(type: PropertyType | string, feature: keyof PropertyFeatures): boolean {
   return getPropertyTypeConfig(type).features[feature]
 }
 
