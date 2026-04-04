@@ -21,7 +21,7 @@ describe('Financial Calculations (e2e)', () => {
         address: 'Výpočtová 1',
         city: 'Praha',
         postalCode: '110 00',
-        type: 'bytdum',
+        type: 'SVJ',
         ownership: 'vlastnictvi',
       })
       .expect(201)

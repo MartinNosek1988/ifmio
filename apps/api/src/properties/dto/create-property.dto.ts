@@ -6,8 +6,8 @@ export class CreatePropertyDto {
   @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(500) address!: string;
   @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(255) city!: string;
   @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(20) postalCode!: string;
-  @ApiProperty({ enum: ['bytdum', 'roddum', 'komer', 'prumysl', 'pozemek', 'garaz'] })
-  @IsEnum(['bytdum', 'roddum', 'komer', 'prumysl', 'pozemek', 'garaz'])
+  @ApiProperty({ enum: ['SVJ', 'BD', 'RENTAL_RESIDENTIAL', 'RENTAL_MUNICIPAL', 'CONDO_NO_SVJ', 'MIXED_USE', 'SINGLE_FAMILY', 'COMMERCIAL_OFFICE', 'COMMERCIAL_RETAIL', 'COMMERCIAL_WAREHOUSE', 'COMMERCIAL_INDUSTRIAL', 'PARKING', 'LAND', 'OTHER'] })
+  @IsEnum(['SVJ', 'BD', 'RENTAL_RESIDENTIAL', 'RENTAL_MUNICIPAL', 'CONDO_NO_SVJ', 'MIXED_USE', 'SINGLE_FAMILY', 'COMMERCIAL_OFFICE', 'COMMERCIAL_RETAIL', 'COMMERCIAL_WAREHOUSE', 'COMMERCIAL_INDUSTRIAL', 'PARKING', 'LAND', 'OTHER'])
   type!: string;
   @ApiProperty({ enum: ['vlastnictvi', 'druzstvo', 'pronajem'] })
   @IsEnum(['vlastnictvi', 'druzstvo', 'pronajem'])

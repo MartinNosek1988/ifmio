@@ -14,12 +14,20 @@ import { useToast } from '../../shared/components/toast/Toast'
 import { Link } from 'react-router-dom'
 
 const PROPERTY_TYPES = [
-  { value: 'bytdum', label: 'Bytový dům' },
-  { value: 'roddum', label: 'Rodinný dům' },
-  { value: 'komer', label: 'Komerční' },
-  { value: 'prumysl', label: 'Průmyslový' },
-  { value: 'pozemek', label: 'Pozemek' },
-  { value: 'garaz', label: 'Garáž' },
+  { value: 'SVJ', label: 'Bytový dům — SVJ' },
+  { value: 'BD', label: 'Bytový dům — Družstevní' },
+  { value: 'RENTAL_RESIDENTIAL', label: 'Bytový dům — Nájemní' },
+  { value: 'RENTAL_MUNICIPAL', label: 'Bytový dům — Obecní' },
+  { value: 'CONDO_NO_SVJ', label: 'Bytový dům — Bez SVJ' },
+  { value: 'MIXED_USE', label: 'Bytový dům — Smíšený' },
+  { value: 'SINGLE_FAMILY', label: 'Rodinný dům' },
+  { value: 'COMMERCIAL_OFFICE', label: 'Kancelářská budova' },
+  { value: 'COMMERCIAL_RETAIL', label: 'Obchodní prostory' },
+  { value: 'COMMERCIAL_WAREHOUSE', label: 'Sklad / logistika' },
+  { value: 'COMMERCIAL_INDUSTRIAL', label: 'Průmyslový objekt' },
+  { value: 'PARKING', label: 'Garáže / parkování' },
+  { value: 'LAND', label: 'Pozemek' },
+  { value: 'OTHER', label: 'Jiné' },
 ]
 
 const OWNERSHIP_TYPES = [
@@ -74,7 +82,7 @@ function PropertyFormInner({ property, isEdit, createMutation, updateMutation, n
     address: property?.address || '',
     city: property?.city || '',
     postalCode: property?.postalCode || '',
-    type: property?.type || 'bytdum',
+    type: property?.type || 'SVJ',
     ownership: property?.ownership || 'vlastnictvi',
     legalMode: (property?.legalMode || 'OWNERSHIP') as PropertyLegalMode,
     ico: property?.ico || '',
@@ -93,7 +101,7 @@ function PropertyFormInner({ property, isEdit, createMutation, updateMutation, n
     setForm({
       name: property.name || '', address: property.address || '',
       city: property.city || '', postalCode: property.postalCode || '',
-      type: property.type || 'bytdum', ownership: property.ownership || 'vlastnictvi',
+      type: property.type || 'SVJ', ownership: property.ownership || 'vlastnictvi',
       legalMode: (property.legalMode || 'OWNERSHIP') as PropertyLegalMode,
       ico: property.ico || '', dic: property.dic || '',
       isVatPayer: property.isVatPayer || false,

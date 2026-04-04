@@ -39,7 +39,7 @@ describe('Domain-wide Property Scope (e2e)', () => {
     const resA = await ownerApi
       .post('/api/v1/properties', {
         name: 'Scope A', address: 'A 1', city: 'Praha',
-        postalCode: '11000', type: 'bytdum', ownership: 'vlastnictvi',
+        postalCode: '11000', type: 'SVJ', ownership: 'vlastnictvi',
       })
       .expect(201)
     propertyA = resA.body.id
@@ -47,7 +47,7 @@ describe('Domain-wide Property Scope (e2e)', () => {
     const resB = await ownerApi
       .post('/api/v1/properties', {
         name: 'Scope B', address: 'B 2', city: 'Brno',
-        postalCode: '60200', type: 'bytdum', ownership: 'vlastnictvi',
+        postalCode: '60200', type: 'SVJ', ownership: 'vlastnictvi',
       })
       .expect(201)
     propertyB = resB.body.id

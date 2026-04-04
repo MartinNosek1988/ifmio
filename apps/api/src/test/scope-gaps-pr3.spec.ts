@@ -25,7 +25,7 @@ describe('Scope Gaps PR3 (e2e)', () => {
     const resA = await ownerApi
       .post('/api/v1/properties', {
         name: 'GapTestA', address: 'Ulice A 1', city: 'Praha',
-        postalCode: '11000', type: 'bytdum', ownership: 'vlastnictvi',
+        postalCode: '11000', type: 'SVJ', ownership: 'vlastnictvi',
       })
       .expect(201)
     propertyA = resA.body.id
@@ -33,7 +33,7 @@ describe('Scope Gaps PR3 (e2e)', () => {
     const resB = await ownerApi
       .post('/api/v1/properties', {
         name: 'GapTestB', address: 'Ulice B 2', city: 'Brno',
-        postalCode: '60200', type: 'bytdum', ownership: 'vlastnictvi',
+        postalCode: '60200', type: 'SVJ', ownership: 'vlastnictvi',
       })
       .expect(201)
     propertyB = resB.body.id

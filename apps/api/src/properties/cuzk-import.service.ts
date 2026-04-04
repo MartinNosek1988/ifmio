@@ -274,7 +274,7 @@ export class CuzkImportService {
           address: dto.propertyAddress,
           city: dto.propertyCity,
           postalCode: dto.postalCode,
-          type: (dto.propertyType ?? 'bytdum') as PropertyType,
+          type: (dto.propertyType ?? 'SVJ') as PropertyType,
           ownership: (dto.ownership ?? 'vlastnictvi') as OwnershipType,
           importSource: 'cuzk_domsys',
           importedAt: new Date(),

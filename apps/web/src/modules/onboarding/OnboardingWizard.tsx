@@ -42,7 +42,7 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
     address: '',
     city: '',
     postalCode: '',
-    type: 'bytdum',
+    type: 'SVJ',
     ownership: 'vlastnictvi',
   })
   const [unitForm, setUnitForm] = useState({ name: '', floor: '', area: '' })

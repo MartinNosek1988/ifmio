@@ -21,7 +21,7 @@ describe('Property Scope (e2e)', () => {
         address: 'Ulice A 1',
         city: 'Praha',
         postalCode: '11000',
-        type: 'bytdum',
+        type: 'SVJ',
         ownership: 'vlastnictvi',
       })
       .expect(201)
@@ -33,7 +33,7 @@ describe('Property Scope (e2e)', () => {
         address: 'Ulice B 2',
         city: 'Brno',
         postalCode: '60200',
-        type: 'bytdum',
+        type: 'SVJ',
         ownership: 'vlastnictvi',
       })
       .expect(201)

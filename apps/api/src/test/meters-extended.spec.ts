@@ -22,7 +22,7 @@ describe('Meters Extended (e2e)', () => {
         address: 'Měřicí 1',
         city: 'Ostrava',
         postalCode: '702 00',
-        type: 'bytdum',
+        type: 'SVJ',
         ownership: 'vlastnictvi',
       })
       .expect(201)
