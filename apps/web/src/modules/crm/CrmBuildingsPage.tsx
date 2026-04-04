@@ -66,7 +66,7 @@ export default function CrmBuildingsPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const city = searchParams.get('city') || 'Praha'
+  const city = searchParams.get('city') ?? ''
   const district = searchParams.get('district') || ''
   const quarter = searchParams.get('quarter') || ''
   const street = searchParams.get('street') || ''
@@ -204,7 +204,7 @@ export default function CrmBuildingsPage() {
 
       {/* Cascade Filters — 6 levels */}
       <div style={{ ...card, marginBottom: 8, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', padding: '10px 16px' }}>
-        <CascadeSelect label="Město" value={city} options={filterOpts?.cities || ['Praha']} onChange={v => setFilter('city', v)} />
+        <CascadeSelect label="Město" value={city} options={filterOpts?.cities || []} onChange={v => setFilter('city', v)} />
         <CascadeSelect label="MČ" value={district} options={filterOpts?.districts || []} onChange={v => setFilter('district', v)} disabled={!city} />
         <CascadeSelect label="KÚ/Čtvrť" value={quarter} options={filterOpts?.quarters || []} onChange={v => setFilter('quarter', v)} disabled={!district} />
         <CascadeSelect label="Ulice" value={street} options={filterOpts?.streets || []} onChange={v => setFilter('street', v)} disabled={!district && !quarter} />

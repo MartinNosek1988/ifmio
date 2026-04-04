@@ -81,7 +81,7 @@ export default function CrmMapPage() {
   const { data: points = [], isLoading } = useQuery<MapPoint[]>({
     queryKey: ['crm-map-points', district, minQuality, hasOrg],
     queryFn: () => {
-      const params: Record<string, string> = { city: 'Praha' }
+      const params: Record<string, string> = {}
       if (district) params.district = district
       if (minQuality) params.minQuality = minQuality
       if (hasOrg) params.hasOrganization = hasOrg

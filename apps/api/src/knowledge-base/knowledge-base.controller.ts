@@ -232,6 +232,19 @@ export class KnowledgeBaseController {
     })
   }
 
+  @Delete('buildings/purge')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Smazat VŠECHNY budovy z KB (pro reimport)' })
+  async purgeAllBuildings() {
+    // Unlink properties & units before deleting (no cascade on these FKs)
+    await this.prisma.property.updateMany({ where: { buildingId: { not: null } }, data: { buildingId: null } })
+    await this.prisma.unit.updateMany({ where: { buildingUnitId: { not: null } }, data: { buildingUnitId: null } })
+    // BuildingSource, BuildingUnit (+ children) have onDelete: Cascade from Building
+    await this.prisma.buildingSource.deleteMany({})
+    const result = await this.prisma.building.deleteMany({})
+    return { deleted: result.count }
+  }
+
   @Delete('buildings/:id')
   @Roles(...ROLES_MANAGE)
   @ApiOperation({ summary: 'Smazat budovu z KB (cascade: units, sources, ownerships)' })
