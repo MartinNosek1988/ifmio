@@ -6,6 +6,7 @@ import { KnowledgeBaseService } from './knowledge-base.service'
 import { PropertyEnrichmentOrchestrator } from './property-enrichment.orchestrator'
 import { BuildingIntelligenceService } from './building-intelligence.service'
 import { BulkImportService, type BulkImportStep } from './bulk-import.service'
+import { TerritorySeedService } from './territory-seed.service'
 import { PrismaService } from '../prisma/prisma.service'
 import { ConfigService } from '@nestjs/config'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
@@ -60,6 +61,10 @@ class UpdateEvidenceTaskDto {
 
 const VALID_ORG_TYPES = ['SVJ', 'BD', 'SRO', 'AS', 'MUNICIPALITY', 'STATE_ORG', 'OTHER_ORG']
 
+function removeDiacritics(str: string): string {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+}
+
 @ApiTags('KnowledgeBase')
 @ApiBearerAuth()
 @Controller('knowledge-base')
@@ -72,6 +77,7 @@ export class KnowledgeBaseController {
     private prisma: PrismaService,
     private config: ConfigService,
     private superAdmin: SuperAdminService,
+    private territorySeed: TerritorySeedService,
   ) {}
 
   @Post('enrich')
@@ -87,17 +93,142 @@ export class KnowledgeBaseController {
     return this.kb.getStats()
   }
 
+  @Get('stats/territory-coverage')
+  @ApiOperation({ summary: 'Coverage tree — počet budov a avg quality per territory' })
+  async getTerritoryCoverage(@Query('parentId') parentId?: string) {
+    const where = parentId ? { parentId } : { level: 'REGION' as const }
+
+    const territories = await this.prisma.territory.findMany({
+      where: where as any,
+      orderBy: { name: 'asc' },
+      select: {
+        id: true, code: true, name: true, level: true,
+        _count: { select: { children: true } },
+      },
+    })
+
+    // TODO: N+1 query — optimize with recursive CTE for large datasets (OK for now, max 77 okresů)
+    return Promise.all(territories.map(async t => {
+      const descendantIds = await this.getDescendantTerritoryIds(t.id)
+      const stats = await this.prisma.building.aggregate({
+        where: { territoryId: { in: descendantIds } },
+        _count: { _all: true },
+        _avg: { dataQualityScore: true },
+      })
+      return {
+        id: t.id,
+        code: t.code,
+        name: t.name,
+        level: t.level,
+        buildingCount: stats._count._all,
+        avgQuality: Math.round(stats._avg.dataQualityScore || 0),
+        hasChildren: t._count.children > 0,
+      }
+    }))
+  }
+
+  // ── Territory endpoints ─────────────────────────────
+
+  @Get('territories')
+  @ApiOperation({ summary: 'Kaskádový seznam území (level + parentId/parentCode)' })
+  async getTerritories(
+    @Query('level') level?: string,
+    @Query('parentId') parentId?: string,
+    @Query('parentCode') parentCode?: string,
+    @Query('q') q?: string,
+  ) {
+    const where: Record<string, unknown> = {}
+    if (level) where.level = level
+    if (parentId) where.parentId = parentId
+    if (parentCode) {
+      const parent = await this.prisma.territory.findUnique({ where: { code: parentCode } })
+      if (parent) where.parentId = parent.id
+    }
+    if (q) where.nameNormalized = { contains: removeDiacritics(q), mode: 'insensitive' }
+
+    return this.prisma.territory.findMany({
+      where: where as any,
+      orderBy: { name: 'asc' },
+      select: {
+        id: true, code: true, name: true, level: true, parentId: true,
+        population: true, lat: true, lng: true, isCity: true, hasDistricts: true,
+        _count: { select: { buildings: true, children: true } },
+      },
+    })
+  }
+
+  @Get('territories/:code/tree')
+  @ApiOperation({ summary: 'Strom území od daného uzlu (depth=1-3)' })
+  async getTerritoryTree(@Param('code') code: string, @Query('depth') depth?: string) {
+    const maxDepth = Math.min(Number(depth) || 2, 3)
+    const includeChildren = (d: number): any =>
+      d <= 0 ? false : {
+        orderBy: { name: 'asc' as const },
+        include: { children: includeChildren(d - 1), _count: { select: { buildings: true } } },
+      }
+
+    return this.prisma.territory.findUnique({
+      where: { code },
+      include: {
+        children: includeChildren(maxDepth),
+        _count: { select: { buildings: true } },
+      },
+    })
+  }
+
+  @Get('territories/:code/breadcrumb')
+  @ApiOperation({ summary: 'Cesta od území ke státu' })
+  async getTerritoryBreadcrumb(@Param('code') code: string) {
+    const parts: Array<{ code: string; name: string; level: string }> = []
+    let current = await this.prisma.territory.findUnique({ where: { code } })
+    while (current) {
+      parts.unshift({ code: current.code, name: current.name, level: current.level })
+      current = current.parentId
+        ? await this.prisma.territory.findUnique({ where: { id: current.parentId } })
+        : null
+    }
+    return parts
+  }
+
+  @Post('territories/seed')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Seed územní hierarchie z RÚIAN (super admin)' })
+  async seedTerritories(@CurrentUser() user: AuthUser) {
+    this.superAdmin.assertSuperAdmin(user.email)
+    return this.territorySeed.seed()
+  }
+
+  @Post('territories/seed-obce/:okresCode')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Seed obcí pro daný okres z RÚIAN' })
+  async seedObceForOkres(
+    @CurrentUser() user: AuthUser,
+    @Param('okresCode') okresCode: string,
+  ) {
+    this.superAdmin.assertSuperAdmin(user.email)
+    const created = await this.territorySeed.seedObceForOkres(okresCode)
+    return { created }
+  }
+
+  // ── Building endpoints ─────────────────────────────
+
   @Get('buildings/map-points')
   @ApiOperation({ summary: 'Lightweight body data pro mapu' })
   async getBuildingMapPoints(
     @Query('city') city?: string,
     @Query('district') district?: string,
+    @Query('territoryId') territoryId?: string,
     @Query('minQuality') minQuality?: string,
     @Query('hasOrganization') hasOrg?: string,
   ) {
     const where: Record<string, unknown> = { lat: { not: null }, lng: { not: null } }
-    if (city) where.city = { equals: city, mode: 'insensitive' }
-    if (district) where.district = { equals: district, mode: 'insensitive' }
+    if (territoryId) {
+      const ids = await this.getDescendantTerritoryIds(territoryId)
+      where.territoryId = { in: ids }
+    } else {
+      if (city) where.city = { equals: city, mode: 'insensitive' }
+      if (district) where.district = { equals: district, mode: 'insensitive' }
+    }
     if (minQuality) { const n = Number(minQuality); if (!Number.isNaN(n)) where.dataQualityScore = { gte: n } }
     if (hasOrg === 'true') where.managingOrgId = { not: null }
 
@@ -123,27 +254,28 @@ export class KnowledgeBaseController {
     @Query('quarter') quarter?: string,
     @Query('street') street?: string,
     @Query('houseNumber') houseNumber?: string,
+    @Query('territoryId') territoryId?: string,
   ) {
     const base: Record<string, unknown> = {}
-    if (city) base.city = { equals: city, mode: 'insensitive' }
-    if (district) base.district = { equals: district, mode: 'insensitive' }
-    if (quarter) base.quarter = { equals: quarter, mode: 'insensitive' }
+    if (territoryId) {
+      const ids = await this.getDescendantTerritoryIds(territoryId)
+      base.territoryId = { in: ids }
+    } else {
+      if (city) base.city = { equals: city, mode: 'insensitive' }
+      if (district) base.district = { equals: district, mode: 'insensitive' }
+      if (quarter) base.quarter = { equals: quarter, mode: 'insensitive' }
+    }
     if (street) base.street = { equals: street, mode: 'insensitive' }
     if (houseNumber) base.houseNumber = houseNumber
 
-    const [cities, districts, quarters, streets, houseNumbers, orientationNumbers] = await Promise.all([
-      this.prisma.building.findMany({ where: {} as any, select: { city: true }, distinct: ['city'], orderBy: { city: 'asc' } }),
-      city ? this.prisma.building.findMany({ where: { city: { equals: city, mode: 'insensitive' } } as any, select: { district: true }, distinct: ['district'], orderBy: { district: 'asc' } }) : Promise.resolve([]),
-      district ? this.prisma.building.findMany({ where: { ...base, quarter: { not: null } } as any, select: { quarter: true }, distinct: ['quarter'], orderBy: { quarter: 'asc' } }) : Promise.resolve([]),
-      (district || quarter) ? this.prisma.building.findMany({ where: { ...base, street: { not: null } } as any, select: { street: true }, distinct: ['street'], orderBy: { street: 'asc' }, take: 500 }) : Promise.resolve([]),
+    const hasScope = !!(territoryId || city || district || quarter)
+    const [streets, houseNumbers, orientationNumbers] = await Promise.all([
+      hasScope ? this.prisma.building.findMany({ where: { ...base, street: { not: null } } as any, select: { street: true }, distinct: ['street'], orderBy: { street: 'asc' }, take: 500 }) : Promise.resolve([]),
       street ? this.prisma.building.findMany({ where: { ...base, houseNumber: { not: null } } as any, select: { houseNumber: true }, distinct: ['houseNumber'], orderBy: { houseNumber: 'asc' }, take: 200 }) : Promise.resolve([]),
       (street && houseNumber) ? this.prisma.building.findMany({ where: { ...base, orientationNumber: { not: null } } as any, select: { orientationNumber: true }, distinct: ['orientationNumber'], orderBy: { orientationNumber: 'asc' }, take: 100 }) : Promise.resolve([]),
     ])
 
     return {
-      cities: cities.map(c => c.city).filter(Boolean),
-      districts: districts.map(d => d.district).filter(Boolean),
-      quarters: quarters.map(q => q.quarter).filter(Boolean),
       streets: streets.map(s => s.street).filter(Boolean),
       houseNumbers: houseNumbers.map(h => h.houseNumber).filter(Boolean),
       orientationNumbers: orientationNumbers.map(o => o.orientationNumber).filter(Boolean),
@@ -157,6 +289,7 @@ export class KnowledgeBaseController {
     @Query('city') city?: string,
     @Query('district') district?: string,
     @Query('quarter') quarter?: string,
+    @Query('territoryId') territoryId?: string,
     @Query('street') streetFilter?: string,
     @Query('houseNumber') houseNumber?: string,
     @Query('orientationNumber') orientationNumber?: string,
@@ -182,9 +315,14 @@ export class KnowledgeBaseController {
         { managingOrg: { ico: { startsWith: q } } },
       ]
     }
-    if (city) where.city = { equals: city, mode: 'insensitive' }
-    if (district) where.district = { equals: district, mode: 'insensitive' }
-    if (quarter) where.quarter = { equals: quarter, mode: 'insensitive' }
+    if (territoryId) {
+      const ids = await this.getDescendantTerritoryIds(territoryId)
+      where.territoryId = { in: ids }
+    } else {
+      if (city) where.city = { equals: city, mode: 'insensitive' }
+      if (district) where.district = { equals: district, mode: 'insensitive' }
+      if (quarter) where.quarter = { equals: quarter, mode: 'insensitive' }
+    }
     if (streetFilter) where.street = { equals: streetFilter, mode: 'insensitive' }
     if (houseNumber) where.houseNumber = houseNumber
     if (orientationNumber) where.orientationNumber = orientationNumber
@@ -540,5 +678,26 @@ export class KnowledgeBaseController {
         status: currentCount >= task.targetCount ? 'COMPLETED' : task.status,
       },
     })
+  }
+
+  // ── Helpers ───────────────────────────────────────────
+
+  /**
+   * Recursively resolve territory + all descendant IDs for filtering.
+   * Max 3 levels deep to prevent runaway queries.
+   */
+  private async getDescendantTerritoryIds(territoryId: string): Promise<string[]> {
+    const ids = [territoryId]
+    let currentLevel = [territoryId]
+    for (let depth = 0; depth < 4 && currentLevel.length > 0; depth++) {
+      const children = await this.prisma.territory.findMany({
+        where: { parentId: { in: currentLevel } },
+        select: { id: true },
+      })
+      const childIds = children.map(c => c.id)
+      ids.push(...childIds)
+      currentLevel = childIds
+    }
+    return ids
   }
 }

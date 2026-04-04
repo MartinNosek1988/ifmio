@@ -31,7 +31,16 @@ interface BuildingsResponse {
   offset: number
 }
 
-// ── Constants ───────────────────────────────────────
+interface TerritoryOption {
+  id: string
+  code: string
+  name: string
+  level: string
+  hasDistricts?: boolean
+  _count?: { buildings: number; children: number }
+}
+
+// ── Constants ────────────────────────────────────────
 
 const QUALITY_PRESETS = [
   { label: 'Vše', min: '', max: '' },
@@ -43,7 +52,7 @@ const QUALITY_PRESETS = [
 
 const PAGE_SIZE = 20
 
-// ── Styles ──────────────────────────────────────────
+// ── Styles ───────────────────────────────────────────
 
 const card: React.CSSProperties = {
   background: 'var(--card-bg, #fff)',
@@ -60,18 +69,24 @@ const inputStyle: React.CSSProperties = {
   background: 'var(--input-bg, #fff)',
 }
 
-// ── Component ───────────────────────────────────────
+// ── Component ─────────────────────────────────────────
 
 export default function CrmBuildingsPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const city = searchParams.get('city') ?? ''
-  const district = searchParams.get('district') || ''
-  const quarter = searchParams.get('quarter') || ''
+  // Territory cascade state
+  const krajId = searchParams.get('krajId') || ''
+  const okresId = searchParams.get('okresId') || ''
+  const obecId = searchParams.get('obecId') || ''
+  const mcId = searchParams.get('mcId') || ''
+  const kuId = searchParams.get('kuId') || ''
+
+  // Street-level filters
   const street = searchParams.get('street') || ''
   const houseNumber = searchParams.get('houseNumber') || ''
   const orientationNumber = searchParams.get('orientationNumber') || ''
+
   const q = searchParams.get('q') || ''
   const minQuality = searchParams.get('minQuality') || ''
   const maxQuality = searchParams.get('maxQuality') || ''
@@ -85,35 +100,72 @@ export default function CrmBuildingsPage() {
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; label: string } | null>(null)
   const qc = useQueryClient()
 
-  // Clear selection on page/filter change
-  useEffect(() => setSelected(new Set()), [page, city, district, quarter, street, houseNumber, orientationNumber])
+  // The most specific territory selected (for building queries)
+  const activeTerritoryId = kuId || mcId || obecId || okresId || krajId
+
+  // Clear selection on filter change
+  useEffect(() => setSelected(new Set()), [page, activeTerritoryId, street, houseNumber, orientationNumber])
 
   const offset = (page - 1) * PAGE_SIZE
 
-  // Cascade filter options
+  // ── Territory cascade queries ─────────────────────
+
+  const { data: kraje = [] } = useQuery<TerritoryOption[]>({
+    queryKey: ['territories', 'REGION'],
+    queryFn: () => apiClient.get('/knowledge-base/territories', { params: { level: 'REGION' } }).then(r => r.data),
+  })
+
+  const { data: okresy = [] } = useQuery<TerritoryOption[]>({
+    queryKey: ['territories', 'DISTRICT', krajId],
+    queryFn: () => apiClient.get('/knowledge-base/territories', { params: { level: 'DISTRICT', parentId: krajId } }).then(r => r.data),
+    enabled: !!krajId,
+  })
+
+  const { data: obce = [] } = useQuery<TerritoryOption[]>({
+    queryKey: ['territories', 'MUNICIPALITY', okresId],
+    queryFn: () => apiClient.get('/knowledge-base/territories', { params: { level: 'MUNICIPALITY', parentId: okresId } }).then(r => r.data),
+    enabled: !!okresId,
+  })
+
+  // MČ: only for cities with districts (Praha, Brno, Ostrava, Plzeň)
+  const selectedObec = obce.find(o => o.id === obecId)
+  const obecHasDistricts = selectedObec?.hasDistricts ?? false
+
+  const { data: mestskeCasti = [] } = useQuery<TerritoryOption[]>({
+    queryKey: ['territories', 'CITY_PART', obecId],
+    queryFn: () => apiClient.get('/knowledge-base/territories', { params: { level: 'CITY_PART', parentId: obecId } }).then(r => r.data),
+    enabled: !!obecId && obecHasDistricts,
+  })
+
+  const { data: katastry = [] } = useQuery<TerritoryOption[]>({
+    queryKey: ['territories', 'CADASTRAL', mcId || obecId],
+    queryFn: () => apiClient.get('/knowledge-base/territories', { params: { level: 'CADASTRAL', parentId: mcId || obecId } }).then(r => r.data),
+    enabled: !!(mcId || (obecId && !obecHasDistricts)),
+  })
+
+  // ── Street-level filter options ───────────────────
+
   const { data: filterOpts } = useQuery<{
-    cities: string[]; districts: string[]; quarters: string[]; streets: string[]
-    houseNumbers: string[]; orientationNumbers: string[]
+    streets: string[]; houseNumbers: string[]; orientationNumbers: string[]
   }>({
-    queryKey: ['crm-filter-options', city, district, quarter, street, houseNumber],
+    queryKey: ['crm-filter-options', activeTerritoryId, street, houseNumber],
     queryFn: () => {
       const p: Record<string, string> = {}
-      if (city) p.city = city
-      if (district) p.district = district
-      if (quarter) p.quarter = quarter
+      if (activeTerritoryId) p.territoryId = activeTerritoryId
       if (street) p.street = street
       if (houseNumber) p.houseNumber = houseNumber
       return apiClient.get('/knowledge-base/buildings/filter-options', { params: p }).then(r => r.data)
     },
+    enabled: !!activeTerritoryId,
   })
 
+  // ── Buildings query ────────────────────────────────
+
   const { data: result, isLoading } = useQuery<BuildingsResponse>({
-    queryKey: ['crm-buildings', city, district, quarter, street, houseNumber, orientationNumber, q, minQuality, maxQuality, hasOrganization, sort, order, page],
+    queryKey: ['crm-buildings', activeTerritoryId, street, houseNumber, orientationNumber, q, minQuality, maxQuality, hasOrganization, sort, order, page],
     queryFn: () => {
       const params: Record<string, string> = { limit: String(PAGE_SIZE), offset: String(offset) }
-      if (city) params.city = city
-      if (district) params.district = district
-      if (quarter) params.quarter = quarter
+      if (activeTerritoryId) params.territoryId = activeTerritoryId
       if (street) params.street = street
       if (houseNumber) params.houseNumber = houseNumber
       if (orientationNumber) params.orientationNumber = orientationNumber
@@ -144,17 +196,28 @@ export default function CrmBuildingsPage() {
 
   const totalPages = Math.ceil((result?.total || 0) / PAGE_SIZE)
 
-  const CASCADE = ['city', 'district', 'quarter', 'street', 'houseNumber', 'orientationNumber']
+  // Territory cascade keys in order
+  const TERRITORY_CASCADE = ['krajId', 'okresId', 'obecId', 'mcId', 'kuId']
+  const STREET_CASCADE = ['street', 'houseNumber', 'orientationNumber']
 
   const setFilter = (key: string, value: string) => {
     const next = new URLSearchParams(searchParams)
     if (value) next.set(key, value)
     else next.delete(key)
-    // Reset all levels below the changed one
-    const idx = CASCADE.indexOf(key)
-    if (idx >= 0) {
-      for (let i = idx + 1; i < CASCADE.length; i++) next.delete(CASCADE[i])
+
+    // Reset all levels below the changed one in territory cascade
+    const tIdx = TERRITORY_CASCADE.indexOf(key)
+    if (tIdx >= 0) {
+      for (let i = tIdx + 1; i < TERRITORY_CASCADE.length; i++) next.delete(TERRITORY_CASCADE[i])
+      // Also reset street-level when territory changes
+      for (const k of STREET_CASCADE) next.delete(k)
     }
+    // Reset street cascade below
+    const sIdx = STREET_CASCADE.indexOf(key)
+    if (sIdx >= 0) {
+      for (let i = sIdx + 1; i < STREET_CASCADE.length; i++) next.delete(STREET_CASCADE[i])
+    }
+
     next.set('page', '1')
     setSearchParams(next)
   }
@@ -202,15 +265,26 @@ export default function CrmBuildingsPage() {
         )}
       </div>
 
-      {/* Cascade Filters — 6 levels */}
-      <div style={{ ...card, marginBottom: 8, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', padding: '10px 16px' }}>
-        <CascadeSelect label="Město" value={city} options={filterOpts?.cities || []} onChange={v => setFilter('city', v)} />
-        <CascadeSelect label="MČ" value={district} options={filterOpts?.districts || []} onChange={v => setFilter('district', v)} disabled={!city} />
-        <CascadeSelect label="KÚ/Čtvrť" value={quarter} options={filterOpts?.quarters || []} onChange={v => setFilter('quarter', v)} disabled={!district} />
-        <CascadeSelect label="Ulice" value={street} options={filterOpts?.streets || []} onChange={v => setFilter('street', v)} disabled={!district && !quarter} />
-        <CascadeSelect label="ČP" value={houseNumber} options={filterOpts?.houseNumbers || []} onChange={v => setFilter('houseNumber', v)} disabled={!street} />
-        <CascadeSelect label="ČO" value={orientationNumber} options={filterOpts?.orientationNumbers || []} onChange={v => setFilter('orientationNumber', v)} disabled={!houseNumber} />
+      {/* Territory Cascade: Kraj → Okres → Obec → MČ → KÚ */}
+      <div style={{ ...card, marginBottom: 8, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'flex-end', padding: '10px 16px' }}>
+        <CascadeSelect label="Kraj" value={krajId} options={kraje} onChange={v => setFilter('krajId', v)} />
+        <CascadeSelect label="Okres" value={okresId} options={okresy} onChange={v => setFilter('okresId', v)} disabled={!krajId} />
+        <CascadeSelect label="Obec" value={obecId} options={obce} onChange={v => setFilter('obecId', v)} disabled={!okresId} />
+        {obecHasDistricts && (
+          <CascadeSelect label="MČ" value={mcId} options={mestskeCasti} onChange={v => setFilter('mcId', v)} disabled={!obecId} />
+        )}
+        <CascadeSelect label="KÚ" value={kuId} options={katastry} onChange={v => setFilter('kuId', v)}
+          disabled={obecHasDistricts ? !mcId : !obecId} />
       </div>
+
+      {/* Street-level cascade: Ulice → ČP → ČO */}
+      {activeTerritoryId && (
+        <div style={{ ...card, marginBottom: 8, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'flex-end', padding: '10px 16px' }}>
+          <StringCascadeSelect label="Ulice" value={street} options={filterOpts?.streets || []} onChange={v => setFilter('street', v)} />
+          <StringCascadeSelect label="ČP" value={houseNumber} options={filterOpts?.houseNumbers || []} onChange={v => setFilter('houseNumber', v)} disabled={!street} />
+          <StringCascadeSelect label="ČO" value={orientationNumber} options={filterOpts?.orientationNumbers || []} onChange={v => setFilter('orientationNumber', v)} disabled={!houseNumber} />
+        </div>
+      )}
 
       {/* Secondary filters */}
       <div style={{ ...card, marginBottom: 16, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', padding: '10px 16px' }}>
@@ -452,10 +526,35 @@ function paginationRange(current: number, total: number): (string | number)[] {
   return pages
 }
 
+// Territory cascade select — works with TerritoryOption objects
 function CascadeSelect({ label, value, options, onChange, disabled }: {
+  label: string; value: string; options: TerritoryOption[]; onChange: (v: string) => void; disabled?: boolean
+}) {
+  const selectStyle: React.CSSProperties = {
+    padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border, #d1d5db)',
+    fontSize: '0.78rem', background: disabled ? 'var(--border-light, #f3f4f6)' : 'var(--input-bg, #fff)',
+    minWidth: 100, maxWidth: 200,
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 500 }}>{label}</label>
+      <select value={value} onChange={e => onChange(e.target.value)} style={selectStyle} disabled={disabled}>
+        <option value="">Vše</option>
+        {options.map(o => (
+          <option key={o.id} value={o.id}>
+            {o.name}{o._count?.buildings ? ` (${o._count.buildings})` : ''}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
+// String cascade select — works with plain string arrays (for street-level)
+function StringCascadeSelect({ label, value, options, onChange, disabled }: {
   label: string; value: string; options: string[]; onChange: (v: string) => void; disabled?: boolean
 }) {
-  const inputStyle: React.CSSProperties = {
+  const selectStyle: React.CSSProperties = {
     padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border, #d1d5db)',
     fontSize: '0.78rem', background: disabled ? 'var(--border-light, #f3f4f6)' : 'var(--input-bg, #fff)',
     minWidth: 90, maxWidth: 160,
@@ -463,7 +562,7 @@ function CascadeSelect({ label, value, options, onChange, disabled }: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 500 }}>{label}</label>
-      <select value={value} onChange={e => onChange(e.target.value)} style={inputStyle} disabled={disabled}>
+      <select value={value} onChange={e => onChange(e.target.value)} style={selectStyle} disabled={disabled}>
         <option value="">Vše</option>
         {options.map(o => <option key={o} value={o}>{o}</option>)}
       </select>
