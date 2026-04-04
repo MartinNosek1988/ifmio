@@ -138,7 +138,7 @@ test.describe('Properties — Pole formuláře vytvoření', () => {
     expect(tagName.toLowerCase()).toBe('select');
   });
 
-  test('pole Typ — všechny options (6 typů)', async ({ page }) => {
+  test('pole Typ — všechny options (14 typů)', async ({ page }) => {
     await openCreateForm(page);
     const options = await page.locator('[data-testid="property-form-type"] option').allTextContents();
     expect(options.length).toBe(14); // SVJ, BD, RENTAL_*, SINGLE_FAMILY, COMMERCIAL_*, etc.
