@@ -335,6 +335,15 @@ function BulkImportPanel({ jobs }: { jobs: BulkImportJob[] }) {
           <option value="Brno">Brno</option>
           <option value="Ostrava">Ostrava</option>
           <option value="Plzeň">Plzeň</option>
+          <option value="Liberec">Liberec</option>
+          <option value="Olomouc">Olomouc</option>
+          <option value="České Budějovice">České Budějovice</option>
+          <option value="Hradec Králové">Hradec Králové</option>
+          <option value="Ústí nad Labem">Ústí nad Labem</option>
+          <option value="Pardubice">Pardubice</option>
+          <option value="Zlín">Zlín</option>
+          <option value="Karlovy Vary">Karlovy Vary</option>
+          <option value="Jihlava">Jihlava</option>
         </select>
         {cityParts.length > 0 && (
           <select value={district} onChange={e => setDistrict(e.target.value)} style={inputStyle} disabled={isRunning}>
