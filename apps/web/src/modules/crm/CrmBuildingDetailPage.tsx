@@ -233,7 +233,7 @@ export default function CrmBuildingDetailPage() {
             <SectionTitle>Zdroje dat</SectionTitle>
             {(enrichment?.sources as any[])?.length > 0 ? (
               <div style={{ fontSize: '0.78rem' }}>
-                {(enrichment!.sources as any[]).map((s: any, i: number) => {
+                {(enrichment?.sources as any[] ?? []).map((s: any, i: number) => {
                   const icon = s.status === 'ok' ? '✅' : s.status === 'error' ? '❌' : '⚠️'
                   return (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid var(--border-light, #f3f4f6)' }}>

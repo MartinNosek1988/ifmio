@@ -782,7 +782,10 @@ export class BulkImportService {
               try {
                 const poi = await this.geoRisk.getNearbyPOI(b.lat, b.lng, 500)
                 // Save POI even if details are empty (counts like schools=3 are still valuable)
-                const hasAnyPoi = poi.schools > 0 || poi.doctors > 0 || poi.supermarkets > 0 || poi.details.length > 0
+                const hasAnyPoi = Object.entries(poi).some(([key, value]) => {
+                  if (key === 'details') return Array.isArray(value) && value.length > 0
+                  return typeof value === 'number' && value > 0
+                })
                 if (hasAnyPoi) { enrichCache.poi = poi; qualityBonus += 5 }
                 sources.push({ name: 'Overpass', fetchedAt: new Date().toISOString(), status: hasAnyPoi ? 'ok' : 'no_data' })
               } catch (err) {
