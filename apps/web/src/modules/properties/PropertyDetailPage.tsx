@@ -1,8 +1,21 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { apiClient } from '../../core/api/client';
 import { ArrowLeft, Plus, Pencil, Layers, Trash2, UserPlus, ChevronLeft, ChevronRight } from 'lucide-react';
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+
+const _propertyBuildingIcon = L.divIcon({
+  className: '',
+  html: '<div style="width:20px;height:20px;background:#0d9488;border:3px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.4)"></div>',
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
+  popupAnchor: [0, -12],
+});
 import { usePropertyPickerStore } from '../../core/stores/property-picker.store';
 import { KpiCard, Table, Badge, Button, Modal, EmptyState, LoadingState, ErrorState } from '../../shared/components';
 import { useToast } from '../../shared/components/toast/Toast';
@@ -709,10 +722,25 @@ export default function PropertyDetailPage() {
                 <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 }}>
                   <div style={{ fontWeight: 600, fontSize: '.85rem', marginBottom: 8 }}>Lokalita</div>
                   {bd.lat && bd.lng && (
-                    <img
-                      src={`${import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1'}/knowledge-base/ortofoto?lat=${bd.lat}&lng=${bd.lng}`}
-                      alt="Ortofoto" style={{ width: '100%', borderRadius: 8, maxHeight: 180, objectFit: 'cover', marginBottom: 8 }}
-                    />
+                    <div style={{ height: 200, borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
+                      <MapContainer
+                        center={[bd.lat, bd.lng]}
+                        zoom={18}
+                        style={{ height: '100%', width: '100%' }}
+                        scrollWheelZoom={false}
+                        dragging={false}
+                        zoomControl={false}
+                      >
+                        <TileLayer
+                          url="https://ags.cuzk.gov.cz/arcgis1/rest/services/ORTOFOTO_WM/MapServer/tile/{z}/{y}/{x}"
+                          attribution="&copy; ČÚZK"
+                          maxZoom={20}
+                        />
+                        <Marker position={[bd.lat, bd.lng]} icon={_propertyBuildingIcon}>
+                          <Popup>{bd.fullAddress || bd.street || 'Budova'}</Popup>
+                        </Marker>
+                      </MapContainer>
+                    </div>
                   )}
                   <div style={{ fontSize: '.82rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
                     {bd.district && <div><span style={{ color: 'var(--text-muted)' }}>MČ:</span> {bd.district}</div>}
