@@ -211,10 +211,56 @@ export class TerritorySeedService {
       } catch (err) {
         this.logger.warn(`Failed to fetch Praha KÚ from RÚIAN: ${err}`)
       }
+
+      // Count RÚIAN buildings per Praha MČ
+      await this.countRuianBuildingsForChildren(praha.id)
     }
 
     this.logger.log(`Territory seed complete: ${stats.regions} krajů, ${stats.districts} okresů, ${stats.cityParts} MČ, ${stats.cadastral} KÚ`)
     return stats
+  }
+
+  /**
+   * Count total buildings from RÚIAN for each child territory and store in totalBuildings.
+   * Uses RÚIAN AdresniMisto layer (1) with district LIKE pattern.
+   */
+  async countRuianBuildingsForChildren(parentId: string): Promise<void> {
+    const children = await this.prisma.territory.findMany({
+      where: { parentId, level: { in: ['CITY_PART', 'MUNICIPALITY'] } },
+      select: { id: true, name: true, level: true },
+    })
+
+    const RUIAN_ADDR_LAYER = `${RUIAN_BASE}/1/query`
+    const PRAHA_BBOX = '-755000,-1055000,-725000,-1035000'
+
+    for (const child of children) {
+      try {
+        // "Praha 1" end-of-string safe pattern
+        const district = child.name
+        const where = `(adresa LIKE '%${district} %' OR adresa LIKE '%${district},%' OR adresa LIKE '%${district}')`
+        const params = new URLSearchParams({
+          where,
+          geometry: PRAHA_BBOX,
+          geometryType: 'esriGeometryEnvelope',
+          inSR: '5514',
+          returnCountOnly: 'true',
+          f: 'json',
+        })
+        const res = await fetch(`${RUIAN_ADDR_LAYER}?${params}`, { signal: AbortSignal.timeout(15000) })
+        if (!res.ok) continue
+        const data = await res.json()
+        const count = data.count || 0
+        if (count > 0) {
+          await this.prisma.territory.update({
+            where: { id: child.id },
+            data: { totalBuildings: count },
+          })
+        }
+        await new Promise(r => setTimeout(r, 300)) // rate limit
+      } catch {
+        this.logger.warn(`Failed to count RÚIAN buildings for ${child.name}`)
+      }
+    }
   }
 
   /**

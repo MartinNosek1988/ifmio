@@ -4617,6 +4617,7 @@ model Territory {
   zipCode        String?         // PSČ (hlavní)
   isCity         Boolean         @default(false)  // statutární město
   hasDistricts   Boolean         @default(false)  // má městské části
+  totalBuildings Int?            // celkový počet budov z RÚIAN
 
   // Metadata
   createdAt      DateTime        @default(now())

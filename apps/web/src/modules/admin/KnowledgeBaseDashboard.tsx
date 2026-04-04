@@ -10,7 +10,9 @@ interface TerritoryCoverage {
   code: string
   name: string
   level: string
-  buildingCount: number
+  totalBuildings: number | null
+  inKb: number
+  coveragePercent: number | null
   avgQuality: number
   hasChildren: boolean
 }
@@ -157,6 +159,16 @@ function TerritoryCoverageTree() {
   return (
     <div style={card}>
       <div style={headerStyle}>Pokrytí per území</div>
+      {/* Table header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', borderBottom: '2px solid var(--border)' }}>
+        <span style={{ width: 16, flexShrink: 0 }} />
+        <span style={{ flex: 1 }}>Území</span>
+        <span style={{ minWidth: 55, textAlign: 'right' }}>Celkem</span>
+        <span style={{ minWidth: 50, textAlign: 'right' }}>V KB</span>
+        <span style={{ minWidth: 50, textAlign: 'right' }}>Pokrytí</span>
+        <span style={{ minWidth: 35, textAlign: 'right' }}>Avg Q</span>
+        <span style={{ width: 80 }} />
+      </div>
       <div style={{ maxHeight: 500, overflowY: 'auto' }}>
         <TerritoryCoverageLevel parentId={undefined} depth={0} />
       </div>
@@ -196,6 +208,9 @@ function TerritoryCoverageRow({ item, depth }: { item: TerritoryCoverage; depth:
   const [expanded, setExpanded] = useState(false)
 
   const qColor = item.avgQuality >= 70 ? '#16a34a' : item.avgQuality >= 40 ? '#d97706' : '#dc2626'
+  const covColor = item.coveragePercent != null
+    ? item.coveragePercent >= 80 ? '#16a34a' : item.coveragePercent >= 30 ? '#d97706' : '#dc2626'
+    : 'var(--text-muted)'
   const indent = depth * 20
 
   return (
@@ -216,27 +231,37 @@ function TerritoryCoverageRow({ item, depth }: { item: TerritoryCoverage; depth:
         </span>
 
         {/* Name */}
-        <span style={{ flex: 1, fontWeight: item.buildingCount > 0 ? 500 : 400 }}>
+        <span style={{ flex: 1, fontWeight: item.inKb > 0 ? 500 : 400 }}>
           {item.name}
         </span>
 
-        {/* Building count */}
-        <span style={{ minWidth: 60, textAlign: 'right', fontWeight: 600, fontSize: '0.78rem' }}>
-          {item.buildingCount > 0 ? item.buildingCount.toLocaleString('cs-CZ') : '—'}
+        {/* Total buildings (from RÚIAN) */}
+        <span style={{ minWidth: 55, textAlign: 'right', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+          {item.totalBuildings != null ? item.totalBuildings.toLocaleString('cs-CZ') : '—'}
+        </span>
+
+        {/* In KB */}
+        <span style={{ minWidth: 50, textAlign: 'right', fontWeight: 600, fontSize: '0.78rem' }}>
+          {item.inKb > 0 ? item.inKb.toLocaleString('cs-CZ') : '—'}
+        </span>
+
+        {/* Coverage % */}
+        <span style={{ minWidth: 50, textAlign: 'right', fontSize: '0.78rem', fontWeight: 600, color: covColor }}>
+          {item.coveragePercent != null ? `${item.coveragePercent}%` : '—'}
         </span>
 
         {/* Avg quality */}
-        <span style={{ minWidth: 40, textAlign: 'right', fontSize: '0.78rem', color: item.buildingCount > 0 ? qColor : 'var(--text-muted)' }}>
-          {item.buildingCount > 0 ? item.avgQuality : '—'}
+        <span style={{ minWidth: 35, textAlign: 'right', fontSize: '0.78rem', color: item.inKb > 0 ? qColor : 'var(--text-muted)' }}>
+          {item.inKb > 0 ? item.avgQuality : '—'}
         </span>
 
-        {/* Quality bar */}
+        {/* Coverage bar */}
         <div style={{ width: 80, flexShrink: 0 }}>
-          {item.buildingCount > 0 && (
+          {item.coveragePercent != null && (
             <div style={{ height: 6, background: '#e5e7eb', borderRadius: 3, overflow: 'hidden' }}>
               <div style={{
-                height: '100%', width: `${Math.min(item.avgQuality, 100)}%`,
-                background: qColor, borderRadius: 3,
+                height: '100%', width: `${Math.min(item.coveragePercent, 100)}%`,
+                background: covColor, borderRadius: 3,
               }} />
             </div>
           )}
