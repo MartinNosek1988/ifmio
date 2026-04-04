@@ -272,6 +272,7 @@ export class BulkImportService {
                 city: parsed.city || job.region,
                 district: parsed.district,
                 quarter: parsed.quarter,
+                cadastralTerritoryName: parsed.quarter || undefined,
                 postalCode: b.postalCode || parsed.postalCode,
                 fullAddress: b.addresses[0],
                 lat: b.lat,
@@ -704,6 +705,7 @@ export class BulkImportService {
                 city: parsed.city || job.region,
                 district: parsed.district,
                 quarter: parsed.quarter,
+                cadastralTerritoryName: parsed.quarter || undefined,
                 postalCode: b.postalCode || parsed.postalCode,
                 fullAddress: b.address,
                 lat: b.lat, lng: b.lng,
@@ -717,7 +719,7 @@ export class BulkImportService {
                 ...(b.lat && { lat: b.lat }),
                 ...(b.lng && { lng: b.lng }),
                 ...(parsed.district && { district: parsed.district }),
-                ...(parsed.quarter && { quarter: parsed.quarter }),
+                ...(parsed.quarter && { quarter: parsed.quarter, cadastralTerritoryName: parsed.quarter }),
                 ...(territoryId && { territoryId }),
               },
             })
@@ -740,7 +742,7 @@ export class BulkImportService {
                   if (svj) {
                     aresFound = true
                     const org = await this.kb.findOrCreateOrganization(svj.ico, {
-                      obchodniJmeno: svj.nazev, nazev: svj.nazev, dic: svj.dic, pravniForma: svj.pravniForma,
+                      obchodniJmeno: svj.nazev, nazev: svj.nazev, dic: svj.dic, pravniForma: svj.pravniForma, pravniFormaKod: svj.pravniFormaKod,
                     })
                     await this.prisma.building.update({
                       where: { id: building.id },
