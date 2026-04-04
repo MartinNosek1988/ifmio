@@ -255,7 +255,12 @@ export class BulkImportService {
           try {
             const parsed = this.parseRuianAddress(b.addresses[0] || '')
             // Skip non-Praha (bbox includes suburbs like Vestec, Chýnice)
-            if (parsed.city && parsed.city.toLowerCase() !== 'praha') continue
+            // If city parsed → must be 'Praha'; if not parsed → check raw address
+            if (parsed.city) {
+              if (parsed.city.toLowerCase() !== 'praha') continue
+            } else {
+              if (!(/Praha/i).test(b.addresses[0] || '')) continue
+            }
             const territoryId = await this.findTerritoryForBuilding(parsed)
             await this.prisma.building.upsert({
               where: { ruianBuildingId: b.ruianId },
@@ -347,8 +352,12 @@ export class BulkImportService {
     // "Neklanova 152/44, Vyšehrad, 12800 Praha 2"  → street, quarter, PSČ district
     // "č.p. 654, 76311 Želechovice"                 → street, PSČ city
     // "K Remízku 419, 25250 Vestec"                 → street, PSČ city
+    // "č.p. 30"                                      → single part, no comma
     const parts = addr.split(',').map(s => s.trim())
-    const street = parts[0] || undefined
+
+    // Handle "č.p. NNN" — extract just house number, no street
+    const cpMatch = parts[0]?.match(/^č\.?\s?p\.?\s+(\d+)$/i)
+    const street = cpMatch ? undefined : (parts[0] || undefined)
 
     let city: string | undefined
     let postalCode: string | undefined
@@ -384,6 +393,13 @@ export class BulkImportService {
       }
     }
 
+    // Single-part address with no PSČ — try to extract Praha info from raw text
+    if (!city && /Praha\s+\d+/i.test(addr)) {
+      city = 'Praha'
+      const dMatch = addr.match(/Praha\s+(\d+)/i)
+      if (dMatch) district = `Praha ${dMatch[1]}`
+    }
+
     // Middle parts = quarter (Vyšehrad, Letná, etc.) — only if not already set from dash pattern
     if (parts.length >= 3 && !quarter) {
       quarter = parts.slice(1, -1).join(', ').trim() || undefined
@@ -410,15 +426,12 @@ export class BulkImportService {
 
       while (job.status === 'RUNNING') {
         try {
-          const params = new URLSearchParams({
-            obchodniJmeno: term,
-            pocet: String(pageSize),
-            start: String(start),
-          })
-          const url = `${ARES_BASE}/ekonomicke-subjekty/vyhledat?${params}`
-          const res = await fetch(url, {
+          // ARES v2 GET /vyhledat is broken — use POST with JSON body
+          const res = await fetch(`${ARES_BASE}/ekonomicke-subjekty/vyhledat`, {
+            method: 'POST',
             signal: AbortSignal.timeout(15000),
-            headers: { Accept: 'application/json' },
+            headers: { 'Content-Type': 'application/json; charset=utf-8', Accept: 'application/json' },
+            body: JSON.stringify({ obchodniJmeno: term, pocet: pageSize, start }),
           })
 
           if (!res.ok) {
@@ -656,7 +669,11 @@ export class BulkImportService {
         const filteredBuildings = [...buildingMap.values()].filter(b => {
           const parsed = this.parseRuianAddress(b.address)
           // Skip non-Praha addresses (bbox includes suburbs)
-          if (parsed.city && parsed.city.toLowerCase() !== 'praha') return false
+          if (parsed.city) {
+            if (parsed.city.toLowerCase() !== 'praha') return false
+          } else {
+            if (!(/Praha/i).test(b.address)) return false
+          }
           // District filter if specified
           if (job.district) {
             if (parsed.district?.toLowerCase() === job.district.toLowerCase()) return true
@@ -711,10 +728,14 @@ export class BulkImportService {
               try {
                 const streetName = parsed.street.replace(/\s+\d+[\w/\s-]*$/, '').trim()
                 if (streetName.length >= 3) {
-                  const aresResults = await this.ares.searchByName(`${streetName} ${b.houseNumber || ''}`.trim(), 3)
+                  // Search "Společenství vlastníků {street} {houseNumber}" — matches SVJ naming convention
+                  const searchTerm = `Společenství vlastníků ${streetName} ${b.houseNumber || ''}`.trim()
+                  const aresResults = await this.ares.searchByName(searchTerm, 5)
                   const svj = aresResults.ekonomickeSubjekty.find(s =>
-                    (s.pravniForma || '').toLowerCase().includes('společenství vlastníků') ||
-                    (s.pravniForma || '').toLowerCase().includes('družstvo'),
+                    s.pravniForma === '145' || // SVJ
+                    s.pravniForma === '751' || // BD
+                    (s.nazev || '').toLowerCase().includes('společenství vlastníků') ||
+                    (s.nazev || '').toLowerCase().includes('družstvo'),
                   )
                   if (svj) {
                     const org = await this.kb.findOrCreateOrganization(svj.ico, {
@@ -723,10 +744,12 @@ export class BulkImportService {
                     await this.prisma.building.update({
                       where: { id: building.id },
                       data: { managingOrgId: org.id },
-                    }).catch(() => {})
+                    }).catch(err => this.logger.warn(`ARES org link failed for building ${building.id}: ${err}`))
                   }
                 }
-              } catch { /* ARES fail ok */ }
+              } catch (err) {
+                this.logger.warn(`ARES search failed for ${b.address.slice(0, 40)}: ${err instanceof Error ? err.message : err}`)
+              }
               await this.delay(500) // ARES rate limit
             }
 
@@ -739,15 +762,21 @@ export class BulkImportService {
                 const risks = await this.geoRisk.getRiskProfile(b.lat, b.lng)
                 enrichCache.risks = risks
                 qualityBonus += 5
-              } catch { /* ok */ }
+              } catch (err) {
+                this.logger.warn(`GeoRisk failed for ${building.id}: ${err instanceof Error ? err.message : err}`)
+              }
               try {
                 const price = await this.iprPrice.getLandPrice(b.lat, b.lng)
                 if (price) { enrichCache.priceEstimate = price; qualityBonus += 10 }
-              } catch { /* ok */ }
+              } catch (err) {
+                this.logger.warn(`IPR price failed for ${building.id}: ${err instanceof Error ? err.message : err}`)
+              }
               try {
                 const poi = await this.geoRisk.getNearbyPOI(b.lat, b.lng, 500)
                 if (poi.details.length > 0) { enrichCache.poi = poi; qualityBonus += 5 }
-              } catch { /* ok */ }
+              } catch (err) {
+                this.logger.warn(`POI failed for ${building.id}: ${err instanceof Error ? err.message : err}`)
+              }
             }
 
             // Step D: Justice.cz (if org found)
@@ -766,7 +795,9 @@ export class BulkImportService {
                   const subject = await this.justice.getSubjectByIco(org.ico)
                   if (subject) qualityBonus += 10
                 }
-              } catch { /* ok */ }
+              } catch (err) {
+                this.logger.warn(`Justice.cz failed for ${building.id}: ${err instanceof Error ? err.message : err}`)
+              }
               await this.delay(1000) // Justice rate limit
             }
 

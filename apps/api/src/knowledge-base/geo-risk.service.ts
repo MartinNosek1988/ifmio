@@ -136,44 +136,36 @@ export class GeoRiskService {
     }
   }
 
-  private async checkFloodZone(lat: number, lng: number): Promise<FloodRisk> {
-    // VÚV TGM + IPR Praha flood APIs are unstable
-    // TODO: napojit po ověření stabilního endpointu
-    try {
-      const res = await fetch(
-        `https://gis.vuv.cz/arcgis/rest/services/zaplavova_uzemi/MapServer/0/query?geometry=${lng},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=*&f=json&inSR=4326`,
-        { signal: AbortSignal.timeout(5000) },
-      )
-      if (res.ok) {
-        const data = await res.json()
-        if (data.features?.length > 0) {
-          return { inFloodZone: true, level: 'medium', source: 'VUV_TGM' }
-        }
-        return { inFloodZone: false, level: 'none', source: 'VUV_TGM' }
-      }
-    } catch { /* timeout or error */ }
-    return { inFloodZone: false, level: 'none', source: 'N/A — API nedostupné' }
+  private async checkFloodZone(_lat: number, _lng: number): Promise<FloodRisk> {
+    // VÚV TGM ArcGIS server is down (404 since ~2026-03).
+    // No alternative public flood zone API available for ČR.
+    return { inFloodZone: false, level: 'none', source: 'N/A — VÚV TGM server nedostupný' }
   }
 
   private async checkRadon(lat: number, lng: number): Promise<RadonRisk> {
-    // CGS radon API — endpoint changes frequently
-    // TODO: ověřit aktuální URL na mapy.geology.cz
+    // CGS radon — corrected URL: Geohazardy/radon50 (not Radon/radon_50)
+    // Field: katvysled (numeric) or radon_popis (text)
     try {
       const res = await fetch(
-        `https://mapy.geology.cz/arcgis/rest/services/Radon/radon_50/MapServer/0/query?geometry=${lng},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=*&f=json&inSR=4326`,
+        `https://mapy.geology.cz/arcgis/rest/services/Geohazardy/radon50/MapServer/0/query?geometry=${lng},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=katvysled,radon_popis&f=json&inSR=4326`,
         { signal: AbortSignal.timeout(5000) },
       )
       if (res.ok) {
         const data = await res.json()
         if (data.features?.length > 0) {
-          const val = data.features[0].attributes?.RADON ?? data.features[0].attributes?.radon
-          if (val === 1 || val === 'nizky') return { index: 'low', source: 'CGS' }
-          if (val === 2 || val === 'stredni') return { index: 'medium', source: 'CGS' }
-          if (val === 3 || val === 'vysoky') return { index: 'high', source: 'CGS' }
+          const a = data.features[0].attributes
+          const val = a?.katvysled
+          const popis: string = (a?.radon_popis || '').toLowerCase()
+          if (val === 1 || popis.includes('nizk') || popis.includes('nízk')) return { index: 'low', source: 'CGS' }
+          if (val === 2 || popis.includes('stredn') || popis.includes('středn')) return { index: 'medium', source: 'CGS' }
+          if (val === 3 || popis.includes('vysok') || popis.includes('vysok')) return { index: 'high', source: 'CGS' }
         }
+        return { index: 'unknown', source: 'CGS — žádná data pro lokaci' }
       }
-    } catch { /* timeout */ }
-    return { index: 'unknown', source: 'N/A — API nedostupné' }
+    } catch (err) {
+      this.logger.warn(`Radon check failed: ${(err as Error).message}`)
+    }
+    return { index: 'unknown', source: 'N/A — CGS API nedostupné' }
   }
 
   async checkInsolvency(ico: string): Promise<InsolvencyCheck> {

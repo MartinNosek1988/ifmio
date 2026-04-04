@@ -102,7 +102,7 @@ export class KnowledgeBaseController {
       where: where as any,
       orderBy: { name: 'asc' },
       select: {
-        id: true, code: true, name: true, level: true,
+        id: true, code: true, name: true, level: true, totalBuildings: true,
         _count: { select: { children: true } },
       },
     })
@@ -115,12 +115,30 @@ export class KnowledgeBaseController {
         _count: { _all: true },
         _avg: { dataQualityScore: true },
       })
+
+      // Sum totalBuildings from this territory + descendants
+      let totalBuildings: number | null = null
+      if (t.totalBuildings != null) {
+        totalBuildings = t.totalBuildings
+      } else {
+        const childTotals = await this.prisma.territory.aggregate({
+          where: { id: { in: descendantIds }, totalBuildings: { not: null } },
+          _sum: { totalBuildings: true },
+        })
+        if (childTotals._sum.totalBuildings != null) {
+          totalBuildings = childTotals._sum.totalBuildings
+        }
+      }
+
+      const inKb = stats._count._all
       return {
         id: t.id,
         code: t.code,
         name: t.name,
         level: t.level,
-        buildingCount: stats._count._all,
+        totalBuildings,
+        inKb,
+        coveragePercent: totalBuildings && totalBuildings > 0 ? Math.round((inKb / totalBuildings) * 1000) / 10 : null,
         avgQuality: Math.round(stats._avg.dataQualityScore || 0),
         hasChildren: t._count.children > 0,
       }
