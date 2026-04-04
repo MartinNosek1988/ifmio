@@ -55,6 +55,7 @@ export interface AresSearchResult {
 const ARES_BASE = 'https://ares.gov.cz/ekonomicke-subjekty-v-be/rest';
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 min
+const NEGATIVE_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h — don't re-query missing IČO
 const CACHE_MAX_SIZE = 500;
 
 @Injectable()
@@ -84,9 +85,12 @@ export class AresService {
       throw new BadRequestException('Neplatné IČO – musí mít 8 číslic a platný kontrolní součet');
     }
 
-    // Check cache
+    // Check cache (negative results use longer TTL to avoid re-querying missing IČO)
     const cached = this.cache.get(ico);
-    if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.data;
+    if (cached) {
+      const ttl = cached.data === null ? NEGATIVE_CACHE_TTL_MS : CACHE_TTL_MS;
+      if (Date.now() - cached.ts < ttl) return cached.data;
+    }
 
     try {
       const res = await fetch(`${ARES_BASE}/ekonomicke-subjekty/${ico}`, {
