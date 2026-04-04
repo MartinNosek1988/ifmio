@@ -224,7 +224,7 @@ export default function HelpdeskPage() {
           <option value="">Všechny stavy</option>
           {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
-        <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} style={selectStyle}>
+        <select data-testid="priority-filter" value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} style={selectStyle}>
           <option value="">Všechny priority</option>
           {Object.entries(PRIORITY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>

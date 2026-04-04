@@ -401,6 +401,7 @@ export default function AppShell() {
           <div className="user-menu-wrap" ref={userMenuRef}>
             <div
               className="topbar__avatar"
+              data-testid="user-menu"
               title={meData?.name ?? 'Uzivatel'}
               onClick={() => setShowUserMenu((v) => !v)}
               style={{ cursor: 'pointer' }}
