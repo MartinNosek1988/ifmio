@@ -131,7 +131,12 @@ describe('Properties Extended (e2e)', () => {
   // ── Všechny PropertyType hodnoty ──
 
   describe('Všechny PropertyType hodnoty', () => {
-    const types = ['SVJ', 'BD', 'RENTAL_RESIDENTIAL', 'SINGLE_FAMILY', 'COMMERCIAL_OFFICE', 'PARKING', 'LAND', 'OTHER']
+    const types = [
+      'SVJ', 'BD', 'RENTAL_RESIDENTIAL', 'RENTAL_MUNICIPAL',
+      'CONDO_NO_SVJ', 'MIXED_USE', 'SINGLE_FAMILY',
+      'COMMERCIAL_OFFICE', 'COMMERCIAL_RETAIL', 'COMMERCIAL_WAREHOUSE',
+      'COMMERCIAL_INDUSTRIAL', 'PARKING', 'LAND', 'OTHER',
+    ]
 
     for (const type of types) {
       it(`type '${type}' → 201`, async () => {

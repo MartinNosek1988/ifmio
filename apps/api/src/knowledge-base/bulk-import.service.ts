@@ -732,8 +732,8 @@ export class BulkImportService {
                   const searchTerm = `Společenství vlastníků ${streetName} ${b.houseNumber || ''}`.trim()
                   const aresResults = await this.ares.searchByName(searchTerm, 5)
                   const svj = aresResults.ekonomickeSubjekty.find(s =>
-                    s.pravniForma === '145' || // SVJ
-                    s.pravniForma === '751' || // BD
+                    s.pravniFormaKod === 145 || // SVJ (Společenství vlastníků jednotek)
+                    s.pravniFormaKod === 110 || // BD (Bytové družstvo)
                     (s.nazev || '').toLowerCase().includes('společenství vlastníků') ||
                     (s.nazev || '').toLowerCase().includes('družstvo'),
                   )
