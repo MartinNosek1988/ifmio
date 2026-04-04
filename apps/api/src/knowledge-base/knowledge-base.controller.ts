@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Query, Body, Res } from '@nestjs/common'
+import { Controller, Get, Post, Patch, Delete, Param, Query, Body, Res, BadRequestException } from '@nestjs/common'
 import type { FastifyReply } from 'fastify'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { IsString, IsNotEmpty, IsOptional, IsNumber, IsIn } from 'class-validator'
@@ -12,6 +12,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator'
 import { Roles } from '../common/decorators/roles.decorator'
 import { Public } from '../common/decorators/public.decorator'
 import { ROLES_MANAGE } from '../common/constants/roles.constants'
+import { SuperAdminService } from '../super-admin/super-admin.service'
 import type { AuthUser } from '@ifmio/shared-types'
 
 class EnrichAddressDto {
@@ -70,6 +71,7 @@ export class KnowledgeBaseController {
     private bulkImport: BulkImportService,
     private prisma: PrismaService,
     private config: ConfigService,
+    private superAdmin: SuperAdminService,
   ) {}
 
   @Post('enrich')
@@ -234,15 +236,25 @@ export class KnowledgeBaseController {
 
   @Delete('buildings/purge')
   @Roles(...ROLES_MANAGE)
-  @ApiOperation({ summary: 'Smazat VŠECHNY budovy z KB (pro reimport)' })
-  async purgeAllBuildings() {
-    // Unlink properties & units before deleting (no cascade on these FKs)
-    await this.prisma.property.updateMany({ where: { buildingId: { not: null } }, data: { buildingId: null } })
-    await this.prisma.unit.updateMany({ where: { buildingUnitId: { not: null } }, data: { buildingUnitId: null } })
-    // BuildingSource, BuildingUnit (+ children) have onDelete: Cascade from Building
-    await this.prisma.buildingSource.deleteMany({})
-    const result = await this.prisma.building.deleteMany({})
-    return { deleted: result.count }
+  @ApiOperation({ summary: 'Smazat VŠECHNY budovy z KB (super admin only, pro reimport)' })
+  async purgeAllBuildings(
+    @CurrentUser() user: AuthUser,
+    @Body() body: { confirm?: string },
+  ) {
+    this.superAdmin.assertSuperAdmin(user.email)
+    if (body?.confirm !== 'DELETE ALL BUILDINGS') {
+      throw new BadRequestException('Vyžadován potvrzovací parametr: { "confirm": "DELETE ALL BUILDINGS" }')
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // Unlink properties & units before deleting (no cascade on these FKs)
+      await tx.property.updateMany({ where: { buildingId: { not: null } }, data: { buildingId: null } })
+      await tx.unit.updateMany({ where: { buildingUnitId: { not: null } }, data: { buildingUnitId: null } })
+      // BuildingSource, BuildingUnit (+ children) have onDelete: Cascade from Building
+      await tx.buildingSource.deleteMany({})
+      const result = await tx.building.deleteMany({})
+      return { deleted: result.count }
+    })
   }
 
   @Delete('buildings/:id')

@@ -9,9 +9,10 @@ import { BuildingIntelligenceService } from './building-intelligence.service'
 import { BulkImportService } from './bulk-import.service'
 import { PrismaModule } from '../prisma/prisma.module'
 import { IntegrationsModule } from '../integrations/integrations.module'
+import { SuperAdminModule } from '../super-admin/super-admin.module'
 
 @Module({
-  imports: [PrismaModule, IntegrationsModule],
+  imports: [PrismaModule, IntegrationsModule, SuperAdminModule],
   controllers: [KnowledgeBaseController],
   providers: [KnowledgeBaseService, BuildingEnrichmentService, PropertyEnrichmentOrchestrator, IprPriceService, GeoRiskService, BuildingIntelligenceService, BulkImportService],
   exports: [KnowledgeBaseService, BuildingEnrichmentService],
