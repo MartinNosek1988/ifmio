@@ -27,6 +27,7 @@ import PropertyForm, { LEGAL_MODE_LABEL } from './PropertyForm';
 import UnitForm, { SPACE_TYPES } from './UnitForm';
 import BulkUnitForm from './BulkUnitForm';
 import OccupancyForm from './OccupancyForm';
+import InsuranceTab from '../insurance/InsuranceTab';
 import { usePropertyContracts, type ApiManagementContract } from './management-contracts-api';
 import { usePropertyFinancialContexts, type ApiFinancialContext } from './financial-contexts-api';
 import { usePropertyOwnerships, useUnitOwnershipsByProperty, type ApiOwnership } from './ownerships-api';
@@ -94,7 +95,7 @@ export default function PropertyDetailPage() {
     enabled: !!id,
   });
 
-  type DetailTab = 'overview' | 'units' | 'owners' | 'groups' | 'meters' | 'components' | 'representatives' | 'assemblies' | 'per-rollam' | 'floor-plans' | 'map' | 'profile' | 'building'
+  type DetailTab = 'overview' | 'units' | 'owners' | 'groups' | 'meters' | 'components' | 'representatives' | 'assemblies' | 'per-rollam' | 'floor-plans' | 'map' | 'profile' | 'building' | 'insurance'
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
 
   const refetchOwnerships = () => queryClient.invalidateQueries({ queryKey: ['ownerships'] });
@@ -403,6 +404,7 @@ export default function PropertyDetailPage() {
           { key: 'per-rollam' as DetailTab, label: 'Per rollam' },
           { key: 'floor-plans' as DetailTab, label: 'Půdorysy' },
           { key: 'map' as DetailTab, label: 'Mapa' },
+          { key: 'insurance' as DetailTab, label: 'Pojištění', configKey: 'insurance' },
           { key: 'building' as DetailTab, label: 'O budově' },
           { key: 'profile' as DetailTab, label: 'Profil' },
         ]).map(t => (
@@ -688,6 +690,9 @@ export default function PropertyDetailPage() {
           )}
         </div>
       )}
+
+      {/* ── POJIŠTĚNÍ TAB ──────────────────────────────────────── */}
+      {detailTab === 'insurance' && <InsuranceTab property={property} />}
 
       {/* ── O BUDOVĚ TAB ────────────────────────────────────────── */}
       {detailTab === 'building' && (
