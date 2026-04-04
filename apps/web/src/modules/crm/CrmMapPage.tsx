@@ -63,6 +63,7 @@ interface TerritoryOption {
   level: string
   lat?: number
   lng?: number
+  hasDistricts?: boolean
   _count?: { buildings: number; children: number }
 }
 
@@ -107,7 +108,7 @@ export default function CrmMapPage() {
   })
 
   const selectedObec = obce.find(o => o.id === obecId)
-  const obecHasDistricts = (selectedObec as any)?.hasDistricts ?? false
+  const obecHasDistricts = selectedObec?.hasDistricts ?? false
 
   const { data: mestskeCasti = [] } = useQuery<TerritoryOption[]>({
     queryKey: ['territories', 'CITY_PART', obecId],
@@ -138,7 +139,7 @@ export default function CrmMapPage() {
     : okresId ? okresy.find(t => t.id === okresId)
     : krajId ? kraje.find(t => t.id === krajId)
     : null
-  const mapCenter: [number, number] = selectedTerritory?.lat && selectedTerritory?.lng
+  const mapCenter: [number, number] = selectedTerritory?.lat != null && selectedTerritory?.lng != null
     ? [selectedTerritory.lat, selectedTerritory.lng]
     : CZ_CENTER
   const mapZoom = mcId ? 14 : obecId ? 13 : okresId ? 11 : krajId ? 10 : 7

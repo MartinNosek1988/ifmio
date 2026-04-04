@@ -40,7 +40,7 @@ interface TerritoryOption {
   _count?: { buildings: number; children: number }
 }
 
-// ── Constants ─────��─────────────────────────────────
+// ── Constants ────────────────────────────────────────
 
 const QUALITY_PRESETS = [
   { label: 'Vše', min: '', max: '' },
@@ -52,7 +52,7 @@ const QUALITY_PRESETS = [
 
 const PAGE_SIZE = 20
 
-// ── Styles ─────────��────────────────────────────────
+// ── Styles ───────────────────────────────────────────
 
 const card: React.CSSProperties = {
   background: 'var(--card-bg, #fff)',
@@ -69,7 +69,7 @@ const inputStyle: React.CSSProperties = {
   background: 'var(--input-bg, #fff)',
 }
 
-// ── Component ───���───────────────────────────────────
+// ── Component ─────────────────────────────────────────
 
 export default function CrmBuildingsPage() {
   const navigate = useNavigate()
@@ -159,7 +159,7 @@ export default function CrmBuildingsPage() {
     enabled: !!activeTerritoryId,
   })
 
-  // ── Buildings query ──────��────────────────────────
+  // ── Buildings query ────────────────────────────────
 
   const { data: result, isLoading } = useQuery<BuildingsResponse>({
     queryKey: ['crm-buildings', activeTerritoryId, street, houseNumber, orientationNumber, q, minQuality, maxQuality, hasOrganization, sort, order, page],

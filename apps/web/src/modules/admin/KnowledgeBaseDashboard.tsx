@@ -249,7 +249,7 @@ function TerritoryCoverageRow({ item, depth }: { item: TerritoryCoverage; depth:
   )
 }
 
-// ���─ Bulk Import Panel ───────────────────────────────
+// ─── Bulk Import Panel ───────────────────────────────
 
 function BulkImportPanel({ jobs }: { jobs: BulkImportJob[] }) {
   const qc = useQueryClient()
@@ -262,7 +262,7 @@ function BulkImportPanel({ jobs }: { jobs: BulkImportJob[] }) {
     queryFn: async () => {
       // Find the municipality, then get its CITY_PART children
       const obec = await apiClient.get('/knowledge-base/territories', {
-        params: { level: 'MUNICIPALITY', q: region.toLowerCase() },
+        params: { level: 'MUNICIPALITY', q: region },
       }).then(r => r.data)
       if (obec.length === 0) return []
       const mc = await apiClient.get('/knowledge-base/territories', {

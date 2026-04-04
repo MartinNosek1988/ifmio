@@ -818,32 +818,34 @@ export class BulkImportService {
   private async findTerritoryForBuilding(parsed: {
     city?: string; district?: string; quarter?: string
   }): Promise<string | null> {
-    // 1. Try KÚ by quarter name (most specific)
-    if (parsed.quarter) {
+    // Resolve parent obec first for scoped lookups (avoids name collisions across cities)
+    const obec = parsed.city
+      ? await this.prisma.territory.findFirst({
+          where: { level: 'MUNICIPALITY', name: { equals: parsed.city, mode: 'insensitive' } },
+          select: { id: true },
+        })
+      : null
+
+    // 1. Try KÚ by quarter name — scoped to obec
+    if (parsed.quarter && obec) {
       const ku = await this.prisma.territory.findFirst({
-        where: { level: 'CADASTRAL', name: { equals: parsed.quarter, mode: 'insensitive' } },
+        where: { level: 'CADASTRAL', name: { equals: parsed.quarter, mode: 'insensitive' }, parentId: obec.id },
         select: { id: true },
       })
       if (ku) return ku.id
     }
 
-    // 2. Try MČ by district name (e.g., "Praha 1")
-    if (parsed.district) {
+    // 2. Try MČ by district name — scoped to obec
+    if (parsed.district && obec) {
       const mc = await this.prisma.territory.findFirst({
-        where: { level: 'CITY_PART', name: { equals: parsed.district, mode: 'insensitive' } },
+        where: { level: 'CITY_PART', name: { equals: parsed.district, mode: 'insensitive' }, parentId: obec.id },
         select: { id: true },
       })
       if (mc) return mc.id
     }
 
-    // 3. Try obec by city name
-    if (parsed.city) {
-      const obec = await this.prisma.territory.findFirst({
-        where: { level: 'MUNICIPALITY', name: { equals: parsed.city, mode: 'insensitive' } },
-        select: { id: true },
-      })
-      if (obec) return obec.id
-    }
+    // 3. Fall back to obec
+    if (obec) return obec.id
 
     return null
   }

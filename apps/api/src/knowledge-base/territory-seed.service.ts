@@ -183,29 +183,33 @@ export class TerritorySeedService {
       })
 
       // Fetch MOMC (městské části) from RÚIAN layer 8
-      const mcResults = await this.fetchRuianLayer(8, 'obec=554782', 'kod,nazev')
-      const mcMap = new Map<string, string>()
-      for (const f of mcResults) {
-        const code = String(f.attributes.kod)
-        const t = await this.upsert({
-          code: `MC-${code}`, name: f.attributes.nazev, level: 'CITY_PART',
-          parentId: praha.id,
-        })
-        mcMap.set(code, t.id)
-        stats.cityParts++
+      try {
+        const mcResults = await this.fetchRuianLayer(8, 'obec=554782', 'kod,nazev')
+        for (const f of mcResults) {
+          const code = String(f.attributes.kod)
+          await this.upsert({
+            code: `MC-${code}`, name: f.attributes.nazev, level: 'CITY_PART',
+            parentId: praha.id,
+          })
+          stats.cityParts++
+        }
+      } catch (err) {
+        this.logger.warn(`Failed to fetch Praha MOMC from RÚIAN: ${err}`)
       }
 
       // Fetch KÚ from RÚIAN layer 7
-      const kuResults = await this.fetchRuianLayer(7, 'obec=554782', 'kod,nazev')
-      for (const f of kuResults) {
-        const code = String(f.attributes.kod)
-        // KÚ parent = best matching MOMC, or Praha directly
-        // (mapping KÚ→MČ requires extra logic; parent to Praha for now)
-        await this.upsert({
-          code: `KU-${code}`, name: f.attributes.nazev, level: 'CADASTRAL',
-          parentId: praha.id,
-        })
-        stats.cadastral++
+      try {
+        const kuResults = await this.fetchRuianLayer(7, 'obec=554782', 'kod,nazev')
+        for (const f of kuResults) {
+          const code = String(f.attributes.kod)
+          await this.upsert({
+            code: `KU-${code}`, name: f.attributes.nazev, level: 'CADASTRAL',
+            parentId: praha.id,
+          })
+          stats.cadastral++
+        }
+      } catch (err) {
+        this.logger.warn(`Failed to fetch Praha KÚ from RÚIAN: ${err}`)
       }
     }
 
@@ -221,19 +225,39 @@ export class TerritorySeedService {
     const okres = await this.prisma.territory.findUnique({ where: { code: okresCode } })
     if (!okres) return 0
 
-    // RÚIAN uses internal numeric codes for okres; we need the nutslau prefix
-    // Query all obce and filter by nutslau prefix matching the okres code
-    // For now: fetch all obce where nutslau starts with the NUTS3 prefix
-    const nuts3 = okresCode.substring(0, 5) // e.g., CZ020 from CZ0201
-    const allObce = await this.fetchRuianLayer(12, '1=1', 'kod,nazev,okres,nutslau', 10000)
+    // Step 1: Find the RÚIAN numeric okres code by sampling an obec with matching nutslau
+    // nutslau format: CZ0201XXXXXX where CZ0201 = okresCode
+    let ruianOkresCode: number | null = null
+    try {
+      const sample = await this.fetchRuianLayer(12, `nutslau LIKE '${okresCode}%'`, 'kod,okres', 1)
+      if (sample.length > 0 && sample[0].attributes.okres) {
+        ruianOkresCode = sample[0].attributes.okres
+      }
+    } catch {
+      this.logger.warn(`Could not resolve RÚIAN okres code for ${okresCode}`)
+    }
 
-    // Map RÚIAN okres numeric codes → our okres codes via nutslau
+    if (!ruianOkresCode) {
+      this.logger.warn(`No RÚIAN okres code found for ${okresCode}, falling back to nutslau prefix`)
+    }
+
+    // Step 2: Fetch obce — filter by RÚIAN numeric okres code (precise) or nutslau prefix (fallback)
+    let allObce: Array<{ attributes: Record<string, any> }>
+    try {
+      const where = ruianOkresCode ? `okres=${ruianOkresCode}` : '1=1'
+      allObce = await this.fetchRuianLayer(12, where, 'kod,nazev,okres,nutslau', 10000)
+    } catch (err) {
+      this.logger.warn(`Failed to fetch obce for okres ${okresCode}: ${err}`)
+      return 0
+    }
+
     let created = 0
     for (const f of allObce) {
-      const nutslau: string = f.attributes.nutslau || ''
-      // nutslau format: CZ0100554782 = NUTS3(5) + obec_kod
-      const obceNuts3 = nutslau.substring(0, 5)
-      if (obceNuts3 !== nuts3) continue
+      // If we used fallback 1=1 query, filter by nutslau prefix
+      if (!ruianOkresCode) {
+        const nutslau: string = f.attributes.nutslau || ''
+        if (!nutslau.startsWith(okresCode)) continue
+      }
 
       const code = `OBEC-${f.attributes.kod}`
       const existing = await this.prisma.territory.findUnique({ where: { code } })

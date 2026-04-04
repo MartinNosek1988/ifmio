@@ -61,6 +61,10 @@ class UpdateEvidenceTaskDto {
 
 const VALID_ORG_TYPES = ['SVJ', 'BD', 'SRO', 'AS', 'MUNICIPALITY', 'STATE_ORG', 'OTHER_ORG']
 
+function removeDiacritics(str: string): string {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+}
+
 @ApiTags('KnowledgeBase')
 @ApiBearerAuth()
 @Controller('knowledge-base')
@@ -103,6 +107,7 @@ export class KnowledgeBaseController {
       },
     })
 
+    // TODO: N+1 query — optimize with recursive CTE for large datasets (OK for now, max 77 okresů)
     return Promise.all(territories.map(async t => {
       const descendantIds = await this.getDescendantTerritoryIds(t.id)
       const stats = await this.prisma.building.aggregate({
@@ -139,7 +144,7 @@ export class KnowledgeBaseController {
       const parent = await this.prisma.territory.findUnique({ where: { code: parentCode } })
       if (parent) where.parentId = parent.id
     }
-    if (q) where.nameNormalized = { contains: q.toLowerCase(), mode: 'insensitive' }
+    if (q) where.nameNormalized = { contains: removeDiacritics(q), mode: 'insensitive' }
 
     return this.prisma.territory.findMany({
       where: where as any,
@@ -675,7 +680,7 @@ export class KnowledgeBaseController {
     })
   }
 
-  // ── Helpers ���─────────────────────────────────────────
+  // ── Helpers ───────────────────────────────────────────
 
   /**
    * Recursively resolve territory + all descendant IDs for filtering.
