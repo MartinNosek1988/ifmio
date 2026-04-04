@@ -72,7 +72,7 @@ export default function CrmBuildingDetailPage() {
               {building.street || building.fullAddress?.split(',')[0]} {building.houseNumber || ''}, {building.city}
             </h1>
             <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: 4 }}>
-              {org?.orgType && <span style={{ padding: '2px 6px', borderRadius: 4, fontSize: '0.72rem', fontWeight: 600, background: '#dbeafe', color: '#1d4ed8', marginRight: 8 }}>{org.orgType}</span>}
+              {org?.orgType && <span style={{ padding: '2px 6px', borderRadius: 4, fontSize: '0.72rem', fontWeight: 600, background: org.orgType === 'SVJ' ? '#ccfbf1' : org.orgType === 'BD' ? '#dbeafe' : '#f3f4f6', color: org.orgType === 'SVJ' ? '#0d9488' : org.orgType === 'BD' ? '#1d4ed8' : '#6b7280', marginRight: 8 }}>{org.orgType}</span>}
               {building.district && <span>{building.district} &middot; </span>}
               {building.cadastralTerritoryName && <span>KÚ: {building.cadastralTerritoryName} &middot; </span>}
               {building.ruianBuildingId && <span>RÚIAN: {building.ruianBuildingId}</span>}

@@ -89,7 +89,7 @@ export class KnowledgeBaseService {
         isVatPayer: !!aresData?.dic,
         isActive: !aresData?.datumZaniku,
         dateCancelled: aresData?.datumZaniku ? new Date(String(aresData.datumZaniku)) : null,
-        orgType: this.detectOrgType(aresData?.pravniForma as string | undefined),
+        orgType: this.detectOrgType(aresData?.pravniForma as string | undefined, aresData?.pravniFormaKod as number | undefined),
         lastAresSync: aresData ? new Date() : null,
         czNace: [],
         dataQualityScore: aresData ? 60 : 10,
@@ -137,11 +137,17 @@ export class KnowledgeBaseService {
     return Math.min(score, 100)
   }
 
-  private detectOrgType(legalFormName?: string): KbOrgType | null {
+  detectOrgType(legalFormName?: string, legalFormCode?: number): KbOrgType | null {
+    // Check numeric code first (most reliable)
+    if (legalFormCode === 145) return 'SVJ'
+    if (legalFormCode === 110) return 'BD'
+    if (legalFormCode === 112) return 'SRO'
+    if (legalFormCode === 121) return 'AS'
+    // Fallback to text matching
     if (!legalFormName) return null
     const lower = legalFormName.toLowerCase()
-    if (lower.includes('společenství vlastníků')) return 'SVJ'
-    if (lower.includes('družstvo')) return 'BD'
+    if (lower.includes('společenství vlastníků') || lower.includes('spolecenstvi vlastniku')) return 'SVJ'
+    if (lower.includes('družstvo') || lower.includes('druzstvo')) return 'BD'
     if (lower.includes('s.r.o.') || lower.includes('společnost s ručením')) return 'SRO'
     if (lower.includes('a.s.') || lower.includes('akciová')) return 'AS'
     return 'OTHER_ORG'
