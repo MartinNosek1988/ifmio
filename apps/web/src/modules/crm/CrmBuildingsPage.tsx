@@ -428,7 +428,24 @@ export default function CrmBuildingsPage() {
                     )
                   })}
                   {(!result?.data || result.data.length === 0) && (
-                    <tr><td colSpan={12} style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>Žádné budovy</td></tr>
+                    <tr><td colSpan={12} style={{ padding: 40, textAlign: 'center' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                        <Building2 size={36} style={{ color: 'var(--text-muted)', opacity: 0.5 }} />
+                        <div style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Žádné budovy v databázi</div>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', maxWidth: 300 }}>
+                          {activeTerritoryId ? 'V tomto území nebyly nalezeny žádné budovy.' : 'Spusťte import budov z RÚIAN pro začátek.'}
+                        </div>
+                        {!activeTerritoryId && (
+                          <button onClick={() => navigate('/crm/import')} style={{
+                            marginTop: 4, padding: '6px 14px', borderRadius: 8, border: 'none',
+                            background: 'var(--primary, #0d9488)', color: '#fff', fontSize: '0.78rem',
+                            fontWeight: 600, cursor: 'pointer',
+                          }}>
+                            Spustit import
+                          </button>
+                        )}
+                      </div>
+                    </td></tr>
                   )}
                 </tbody>
               </table>

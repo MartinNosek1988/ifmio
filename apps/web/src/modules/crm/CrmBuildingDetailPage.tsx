@@ -196,8 +196,20 @@ export default function CrmBuildingDetailPage() {
             <SectionTitle>Rizikový profil</SectionTitle>
             {enrichment?.risks ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.82rem' }}>
-                <span>🌊 Záplavy: {enrichment.risks.flood?.inFloodZone ? '⚠️ V záplavovém území' : '✅ Mimo zónu'}</span>
-                <span>☢️ Radon: {enrichment.risks.radon?.index === 'high' ? '⚠️ Vysoký' : enrichment.risks.radon?.index === 'medium' ? '🟡 Střední' : enrichment.risks.radon?.index === 'low' ? '✅ Nízký' : '❓ Neznámý'}</span>
+                <span>🌊 Záplavy: <RiskBadge
+                  source={enrichment.risks.flood?.source}
+                  available={!enrichment.risks.flood?.source?.includes('N/A')}
+                  positive={!enrichment.risks.flood?.inFloodZone}
+                  positiveLabel="Mimo zónu"
+                  negativeLabel="V záplavovém území"
+                /></span>
+                <span>☢️ Radon: <RiskBadge
+                  source={enrichment.risks.radon?.source}
+                  available={!enrichment.risks.radon?.source?.includes('N/A')}
+                  positive={enrichment.risks.radon?.index === 'low'}
+                  positiveLabel={enrichment.risks.radon?.index === 'low' ? 'Nízký' : enrichment.risks.radon?.index === 'medium' ? 'Střední' : enrichment.risks.radon?.index === 'high' ? 'Vysoký' : 'Neznámý'}
+                  negativeLabel={enrichment.risks.radon?.index === 'high' ? 'Vysoký' : 'Střední'}
+                /></span>
                 {enrichment.risks.heritage && <span>🏛️ Památky: {enrichment.risks.heritage.isProtected ? `⚠️ ${enrichment.risks.heritage.protectionType?.join(', ')}` : '✅ Bez ochrany'}</span>}
                 {enrichment.risks.insolvency && <span>⚖️ Insolvence: {enrichment.risks.insolvency.hasInsolvency ? '⚠️ Nalezena' : '✅ Bez'}</span>}
               </div>
@@ -403,6 +415,19 @@ function DocTypeBadge({ type }: { type: string }) {
     other: 'Jiný',
   }
   return <span style={{ fontSize: '0.72rem', padding: '2px 6px', borderRadius: 4, background: 'var(--border-light, #f3f4f6)' }}>{labels[type] || type}</span>
+}
+
+function RiskBadge({ source, available, positive, positiveLabel, negativeLabel }: {
+  source?: string; available: boolean; positive: boolean; positiveLabel: string; negativeLabel: string
+}) {
+  if (!available) {
+    return <span style={{ padding: '1px 6px', borderRadius: 4, fontSize: '0.72rem', fontWeight: 600, background: '#fef3c7', color: '#92400e' }}
+      title={source || 'Služba nedostupná'}>Služba nedostupná</span>
+  }
+  if (positive) {
+    return <span style={{ color: '#16a34a' }}>✅ {positiveLabel}</span>
+  }
+  return <span style={{ color: '#dc2626' }}>⚠️ {negativeLabel}</span>
 }
 
 const linkBtn: React.CSSProperties = {
