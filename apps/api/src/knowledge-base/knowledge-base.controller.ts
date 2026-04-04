@@ -6,6 +6,7 @@ import { KnowledgeBaseService } from './knowledge-base.service'
 import { PropertyEnrichmentOrchestrator } from './property-enrichment.orchestrator'
 import { BuildingIntelligenceService } from './building-intelligence.service'
 import { BulkImportService, type BulkImportStep } from './bulk-import.service'
+import { TerritorySeedService } from './territory-seed.service'
 import { PrismaService } from '../prisma/prisma.service'
 import { ConfigService } from '@nestjs/config'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
@@ -72,6 +73,7 @@ export class KnowledgeBaseController {
     private prisma: PrismaService,
     private config: ConfigService,
     private superAdmin: SuperAdminService,
+    private territorySeed: TerritorySeedService,
   ) {}
 
   @Post('enrich')
@@ -86,6 +88,91 @@ export class KnowledgeBaseController {
   async getStats() {
     return this.kb.getStats()
   }
+
+  // ── Territory endpoints ─────────────────────────────
+
+  @Get('territories')
+  @ApiOperation({ summary: 'Kaskádový seznam území (level + parentId/parentCode)' })
+  async getTerritories(
+    @Query('level') level?: string,
+    @Query('parentId') parentId?: string,
+    @Query('parentCode') parentCode?: string,
+    @Query('q') q?: string,
+  ) {
+    const where: Record<string, unknown> = {}
+    if (level) where.level = level
+    if (parentId) where.parentId = parentId
+    if (parentCode) {
+      const parent = await this.prisma.territory.findUnique({ where: { code: parentCode } })
+      if (parent) where.parentId = parent.id
+    }
+    if (q) where.nameNormalized = { contains: q.toLowerCase(), mode: 'insensitive' }
+
+    return this.prisma.territory.findMany({
+      where: where as any,
+      orderBy: { name: 'asc' },
+      select: {
+        id: true, code: true, name: true, level: true, parentId: true,
+        population: true, lat: true, lng: true, isCity: true, hasDistricts: true,
+        _count: { select: { buildings: true, children: true } },
+      },
+    })
+  }
+
+  @Get('territories/:code/tree')
+  @ApiOperation({ summary: 'Strom území od daného uzlu (depth=1-3)' })
+  async getTerritoryTree(@Param('code') code: string, @Query('depth') depth?: string) {
+    const maxDepth = Math.min(Number(depth) || 2, 3)
+    const includeChildren = (d: number): any =>
+      d <= 0 ? false : {
+        orderBy: { name: 'asc' as const },
+        include: { children: includeChildren(d - 1), _count: { select: { buildings: true } } },
+      }
+
+    return this.prisma.territory.findUnique({
+      where: { code },
+      include: {
+        children: includeChildren(maxDepth),
+        _count: { select: { buildings: true } },
+      },
+    })
+  }
+
+  @Get('territories/:code/breadcrumb')
+  @ApiOperation({ summary: 'Cesta od území ke státu' })
+  async getTerritoryBreadcrumb(@Param('code') code: string) {
+    const parts: Array<{ code: string; name: string; level: string }> = []
+    let current = await this.prisma.territory.findUnique({ where: { code } })
+    while (current) {
+      parts.unshift({ code: current.code, name: current.name, level: current.level })
+      current = current.parentId
+        ? await this.prisma.territory.findUnique({ where: { id: current.parentId } })
+        : null
+    }
+    return parts
+  }
+
+  @Post('territories/seed')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Seed územní hierarchie z RÚIAN (super admin)' })
+  async seedTerritories(@CurrentUser() user: AuthUser) {
+    this.superAdmin.assertSuperAdmin(user.email)
+    return this.territorySeed.seed()
+  }
+
+  @Post('territories/seed-obce/:okresCode')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Seed obcí pro daný okres z RÚIAN' })
+  async seedObceForOkres(
+    @CurrentUser() user: AuthUser,
+    @Param('okresCode') okresCode: string,
+  ) {
+    this.superAdmin.assertSuperAdmin(user.email)
+    const created = await this.territorySeed.seedObceForOkres(okresCode)
+    return { created }
+  }
+
+  // ── Building endpoints ─────────────────────────────
 
   @Get('buildings/map-points')
   @ApiOperation({ summary: 'Lightweight body data pro mapu' })
