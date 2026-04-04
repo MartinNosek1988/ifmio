@@ -724,12 +724,12 @@ export class BulkImportService {
 
             // Step B: ARES search for SVJ/BD
             job.currentStep = 'ARES'
+            let aresFound = false
             if (parsed.street && parsed.city) {
               try {
                 const streetName = parsed.street.replace(/\s+\d+[\w/\s-]*$/, '').trim()
                 if (streetName.length >= 3) {
-                  // Search "Společenství vlastníků {street} {houseNumber}" — matches SVJ naming convention
-                  const searchTerm = `Společenství vlastníků ${streetName} ${b.houseNumber || ''}`.trim()
+                  const searchTerm = `Spolecenstvi vlastniku ${streetName} ${b.houseNumber || ''}`.trim()
                   const aresResults = await this.ares.searchByName(searchTerm, 5)
                   const svj = aresResults.ekonomickeSubjekty.find(s =>
                     s.pravniFormaKod === 145 || // SVJ (Společenství vlastníků jednotek)
@@ -738,6 +738,7 @@ export class BulkImportService {
                     (s.nazev || '').toLowerCase().includes('družstvo'),
                   )
                   if (svj) {
+                    aresFound = true
                     const org = await this.kb.findOrCreateOrganization(svj.ico, {
                       obchodniJmeno: svj.nazev, nazev: svj.nazev, dic: svj.dic, pravniForma: svj.pravniForma,
                     })
@@ -757,27 +758,43 @@ export class BulkImportService {
             job.currentStep = 'Enrichment'
             let qualityBonus = 0
             const enrichCache: Record<string, unknown> = {}
+            const sources: Array<{ name: string; fetchedAt: string; status: string }> = []
+            // Track RÚIAN source
+            sources.push({ name: 'RÚIAN', fetchedAt: new Date().toISOString(), status: 'ok' })
             if (b.lat && b.lng) {
               try {
                 const risks = await this.geoRisk.getRiskProfile(b.lat, b.lng)
                 enrichCache.risks = risks
                 qualityBonus += 5
+                sources.push({ name: 'GeoRisk', fetchedAt: new Date().toISOString(), status: 'ok' })
               } catch (err) {
                 this.logger.warn(`GeoRisk failed for ${building.id}: ${err instanceof Error ? err.message : err}`)
+                sources.push({ name: 'GeoRisk', fetchedAt: new Date().toISOString(), status: 'error' })
               }
               try {
                 const price = await this.iprPrice.getLandPrice(b.lat, b.lng)
                 if (price) { enrichCache.priceEstimate = price; qualityBonus += 10 }
+                sources.push({ name: 'IPR', fetchedAt: new Date().toISOString(), status: price ? 'ok' : 'no_data' })
               } catch (err) {
                 this.logger.warn(`IPR price failed for ${building.id}: ${err instanceof Error ? err.message : err}`)
+                sources.push({ name: 'IPR', fetchedAt: new Date().toISOString(), status: 'error' })
               }
               try {
                 const poi = await this.geoRisk.getNearbyPOI(b.lat, b.lng, 500)
-                if (poi.details.length > 0) { enrichCache.poi = poi; qualityBonus += 5 }
+                // Save POI even if details are empty (counts like schools=3 are still valuable)
+                const hasAnyPoi = poi.schools > 0 || poi.doctors > 0 || poi.supermarkets > 0 || poi.details.length > 0
+                if (hasAnyPoi) { enrichCache.poi = poi; qualityBonus += 5 }
+                sources.push({ name: 'Overpass', fetchedAt: new Date().toISOString(), status: hasAnyPoi ? 'ok' : 'no_data' })
               } catch (err) {
                 this.logger.warn(`POI failed for ${building.id}: ${err instanceof Error ? err.message : err}`)
+                sources.push({ name: 'Overpass', fetchedAt: new Date().toISOString(), status: 'error' })
               }
             }
+            // Add ARES source
+            if (parsed.street && parsed.city) {
+              sources.push({ name: 'ARES', fetchedAt: new Date().toISOString(), status: aresFound ? 'ok' : 'no_match' })
+            }
+            enrichCache.sources = sources
 
             // Step D: Justice.cz (if org found)
             job.currentStep = 'Justice'
@@ -794,9 +811,11 @@ export class BulkImportService {
                 if (org) {
                   const subject = await this.justice.getSubjectByIco(org.ico)
                   if (subject) qualityBonus += 10
+                  sources.push({ name: 'Justice.cz', fetchedAt: new Date().toISOString(), status: subject ? 'ok' : 'no_data' })
                 }
               } catch (err) {
                 this.logger.warn(`Justice.cz failed for ${building.id}: ${err instanceof Error ? err.message : err}`)
+                sources.push({ name: 'Justice.cz', fetchedAt: new Date().toISOString(), status: 'error' })
               }
               await this.delay(1000) // Justice rate limit
             }
@@ -817,7 +836,8 @@ export class BulkImportService {
             qualityCount++
             job.avgQuality = Math.round(qualitySum / qualityCount)
             job.created++
-          } catch {
+          } catch (err) {
+            this.logger.warn(`Full import failed for ${b.address.slice(0, 40)}: ${err instanceof Error ? err.message : err}`)
             job.errors++
           }
 

@@ -54,6 +54,11 @@ export interface AresSearchResult {
 
 const ARES_BASE = 'https://ares.gov.cz/ekonomicke-subjekty-v-be/rest';
 
+/** Strip Czech diacritics — ARES POST has UTF-8 encoding issues from some clients */
+function stripDiacritics(str: string): string {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 min
 const NEGATIVE_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h — don't re-query missing IČO
 const CACHE_MAX_SIZE = 500;
@@ -136,7 +141,7 @@ export class AresService {
           Accept: 'application/json',
         },
         body: JSON.stringify({
-          obchodniJmeno: name.trim(),
+          obchodniJmeno: stripDiacritics(name.trim()),
           start: 0,
           pocet: Math.min(limit, 100),
         }),

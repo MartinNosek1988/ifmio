@@ -231,7 +231,19 @@ export default function CrmBuildingDetailPage() {
           {/* Zdroje dat */}
           <div style={card}>
             <SectionTitle>Zdroje dat</SectionTitle>
-            {building.sources?.length > 0 ? (
+            {(enrichment?.sources as any[])?.length > 0 ? (
+              <div style={{ fontSize: '0.78rem' }}>
+                {(enrichment.sources as any[]).map((s: any, i: number) => {
+                  const icon = s.status === 'ok' ? '✅' : s.status === 'error' ? '❌' : '⚠️'
+                  return (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid var(--border-light, #f3f4f6)' }}>
+                      <span style={{ fontWeight: 500 }}>{icon} {s.name}</span>
+                      <span style={{ color: 'var(--text-muted)' }}>{s.fetchedAt ? new Date(s.fetchedAt).toLocaleDateString('cs-CZ') : '—'}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : building.sources?.length > 0 ? (
               <div style={{ fontSize: '0.78rem' }}>
                 {building.sources.map((s: any, i: number) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid var(--border-light, #f3f4f6)' }}>
