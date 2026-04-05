@@ -112,11 +112,14 @@ export class KnowledgeBaseController {
     })
     if (!building) throw new NotFoundException('Budova nenalezena')
 
-    // Use RÚIAN address code to find stavba
-    const addressCode = building.ruianAddressId ? Number(building.ruianAddressId) : null
-    if (!addressCode) throw new BadRequestException('Budova nemá RÚIAN kód adresního místa')
-
-    const stavba = await this.cuzkApiKn.getStavbaByAdresniMisto(addressCode)
+    // Try RÚIAN address code first, fallback to building code
+    let stavba = null
+    if (building.ruianAddressId) {
+      stavba = await this.cuzkApiKn.getStavbaByAdresniMisto(Number(building.ruianAddressId))
+    }
+    if (!stavba && building.ruianBuildingId) {
+      stavba = await this.cuzkApiKn.getStavbaDetail(Number(building.ruianBuildingId))
+    }
     if (!stavba) return { status: 'no_data', message: 'Stavba nenalezena v katastru' }
 
     // Update building with LV + KÚ

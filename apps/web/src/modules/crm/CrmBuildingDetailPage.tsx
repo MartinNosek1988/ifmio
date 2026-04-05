@@ -298,7 +298,7 @@ export default function CrmBuildingDetailPage() {
           ) : (
             <div style={{ padding: 24, textAlign: 'center' }}>
               <div style={{ color: 'var(--text-muted)', marginBottom: 12 }}>Žádné jednotky v KB</div>
-              {building.ruianAddressId && (
+              {(building.ruianAddressId || building.ruianBuildingId) && (
                 <button onClick={() => cuzkEnrichMut.mutate()} disabled={cuzkEnrichMut.isPending}
                   style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'var(--primary, #0d9488)', color: '#fff', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}>
                   {cuzkEnrichMut.isPending ? 'Načítám z katastru...' : 'Načíst z katastru (ČÚZK)'}
