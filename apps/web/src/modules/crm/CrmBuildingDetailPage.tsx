@@ -129,9 +129,8 @@ export default function CrmBuildingDetailPage() {
                   zoomControl={false}
                 >
                   <TileLayer
-                    url="https://ags.cuzk.gov.cz/arcgis1/rest/services/ORTOFOTO_WM/MapServer/tile/{z}/{y}/{x}"
-                    attribution="&copy; ČÚZK"
-                    maxZoom={20}
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
                   />
                   <Marker position={[building.lat, building.lng]} icon={buildingIcon}>
                     <Popup>{building.fullAddress || building.street || 'Budova'}</Popup>
@@ -147,8 +146,14 @@ export default function CrmBuildingDetailPage() {
             ]} />
             {building.lat && building.lng && (
               <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                <a href={`https://mapy.cz/zakladni?x=${building.lng}&y=${building.lat}&z=18`} target="_blank" rel="noopener noreferrer" style={linkBtn}>Otevřít mapu</a>
-                <a href={`https://mapy.cz/panorama?x=${building.lng}&y=${building.lat}&z=18`} target="_blank" rel="noopener noreferrer" style={linkBtn}>Street View</a>
+                <a href={building.street && building.houseNumber
+                  ? `https://maps.google.com/maps?q=${encodeURIComponent(`${building.street} ${building.houseNumber}, ${building.city}, Česko`)}`
+                  : `https://maps.google.com/maps?q=${building.lat},${building.lng}`
+                } target="_blank" rel="noopener noreferrer" style={linkBtn}>Otevřít mapu</a>
+                <a href={building.street && building.houseNumber
+                  ? `https://maps.google.com/maps?q=${encodeURIComponent(`${building.street} ${building.houseNumber}, ${building.city}, Česko`)}&layer=c`
+                  : `https://www.google.com/maps/@${building.lat},${building.lng},3a,75y,90t/data=!3m6!1e1!3m4!1s!2e0!7i16384!8i8192`
+                } target="_blank" rel="noopener noreferrer" style={linkBtn}>Street View</a>
               </div>
             )}
           </div>
@@ -179,6 +184,39 @@ export default function CrmBuildingDetailPage() {
             ) : (
               <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>Bez přiřazené organizace</div>
             )}
+          </div>
+
+          {/* ČÚZK Katastr */}
+          {enrichment?.cuzk && (
+            <div style={card}>
+              <SectionTitle>Katastr nemovitostí (ČÚZK)</SectionTitle>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px 16px', fontSize: '0.82rem' }}>
+                <div><span style={{ color: 'var(--text-muted)' }}>Typ:</span> {enrichment.cuzk.typStavby}</div>
+                <div><span style={{ color: 'var(--text-muted)' }}>Využití:</span> {enrichment.cuzk.zpusobVyuziti}</div>
+                <div><span style={{ color: 'var(--text-muted)' }}>Č.p.:</span> {enrichment.cuzk.cislaDomovni?.join(', ')}</div>
+                <div><span style={{ color: 'var(--text-muted)' }}>LV:</span> {enrichment.cuzk.lv?.cislo}</div>
+                <div><span style={{ color: 'var(--text-muted)' }}>KÚ:</span> {enrichment.cuzk.lv?.katastralniUzemi}</div>
+                <div><span style={{ color: 'var(--text-muted)' }}>Část obce:</span> {enrichment.cuzk.castObce}</div>
+                <div><span style={{ color: 'var(--text-muted)' }}>Parcely:</span> {enrichment.cuzk.parcely?.map((p: any) => p.kmenoveCislo + (p.poddeleni ? '/' + p.poddeleni : '')).join(', ') || '—'}</div>
+                <div><span style={{ color: 'var(--text-muted)' }}>Jednotek:</span> {enrichment.cuzk.jednotekCount}</div>
+                {enrichment.cuzk.parcelaDetail && (
+                  <div><span style={{ color: 'var(--text-muted)' }}>Výměra:</span> {enrichment.cuzk.parcelaDetail.vymera} m²</div>
+                )}
+                {enrichment.cuzk.zpusobyOchrany?.length > 0 && (
+                  <div style={{ gridColumn: '1 / -1' }}><span style={{ color: 'var(--text-muted)' }}>Ochrana:</span> {enrichment.cuzk.zpusobyOchrany.join(', ')}</div>
+                )}
+              </div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 6 }}>Zdroj: ČÚZK API KN · {new Date(enrichment.cuzk.fetchedAt).toLocaleDateString('cs-CZ')}</div>
+            </div>
+          )}
+
+          {/* Stub: Vlastnická struktura */}
+          <div style={{ ...card, opacity: 0.6 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <SectionTitle>Vlastnická struktura</SectionTitle>
+              <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: 4, background: '#fef3c7', color: '#92400e' }}>Připravujeme</span>
+            </div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Vlastníci, podíly, zástavní práva, exekuce — vyžaduje ČÚZK Dálkový přístup (~2 Kč/dotaz)</div>
           </div>
 
           {/* POI */}
