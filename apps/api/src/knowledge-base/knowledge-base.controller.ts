@@ -98,9 +98,16 @@ export class KnowledgeBaseController {
     return this.bulkImport.reEnrichBuildings(ids)
   }
 
+  @Post('buildings/:id/re-enrich')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Kompletní re-enrichment budovy — RÚIAN + ARES + ČÚZK + GeoRisk + POI + IPR + Justice' })
+  async reEnrichBuilding(@Param('id') id: string) {
+    return this.bulkImport.fullReEnrich(id)
+  }
+
   @Post('buildings/:id/enrich-cuzk')
   @Roles(...ROLES_MANAGE)
-  @ApiOperation({ summary: 'Načíst data z ČÚZK katastru pro budovu (jednotky, LV, podíly)' })
+  @ApiOperation({ summary: 'Alias — volá kompletní re-enrich pipeline' })
   async enrichFromCuzk(@Param('id') id: string) {
     if (!this.cuzkApiKn.isConfigured) {
       throw new BadRequestException('ČÚZK API key není nakonfigurován')

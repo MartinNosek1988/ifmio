@@ -6,6 +6,7 @@ import { GeoRiskService } from './geo-risk.service'
 import { IprPriceService } from './ipr-price.service'
 import { AresService } from '../integrations/ares/ares.service'
 import { JusticeService } from '../integrations/justice/justice.service'
+import { CuzkApiKnService } from '../integrations/cuzk/cuzk-api-kn.service'
 
 // ── Types ───────────────────────────────────────────────
 
@@ -79,6 +80,7 @@ export class BulkImportService {
     private iprPrice: IprPriceService,
     private ares: AresService,
     private justice: JusticeService,
+    private cuzkApiKn: CuzkApiKnService,
   ) {}
 
   // ── Job Management ──────────────────────────────────
@@ -869,6 +871,144 @@ export class BulkImportService {
       job.status = 'COMPLETED'
       job.completedAt = new Date()
     }
+  }
+
+  // ── Unified re-enrich pipeline ──────��────────────────
+
+  async fullReEnrich(buildingId: string): Promise<{ qualityScore: number; sources: any[] }> {
+    const building = await this.prisma.building.findUnique({ where: { id: buildingId } })
+    if (!building) throw new Error('Building not found')
+
+    const enrichCache: Record<string, unknown> = {}
+    const sources: Array<{ name: string; fetchedAt: string; status: string }> = []
+
+    // 1. RÚIAN backfill — get addressCode from GPS if missing
+    if (!building.ruianAddressId && building.lat && building.lng) {
+      try {
+        const url = `https://ags.cuzk.cz/arcgis/rest/services/RUIAN/Vyhledavaci_sluzba_nad_daty_RUIAN/MapServer/1/query?geometry=${building.lng},${building.lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=kod&returnGeometry=false&f=json&inSR=4326`
+        const res = await fetch(url, { signal: AbortSignal.timeout(10000) })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.features?.[0]?.attributes?.kod) {
+            await this.prisma.building.update({ where: { id: buildingId }, data: { ruianAddressId: String(data.features[0].attributes.kod) } })
+            building.ruianAddressId = String(data.features[0].attributes.kod)
+            sources.push({ name: 'RÚIAN backfill', fetchedAt: new Date().toISOString(), status: 'ok' })
+          }
+        }
+      } catch (err) { this.logger.warn(`RÚIAN backfill failed: ${(err as Error).message}`); sources.push({ name: 'RÚIAN backfill', fetchedAt: new Date().toISOString(), status: 'error' }) }
+    }
+
+    // 2. ARES — SVJ/BD search
+    if (building.street && building.city && !building.managingOrgId) {
+      try {
+        const streetName = building.street.replace(/\s+\d+[\w/\s-]*$/, '').trim()
+        if (streetName.length >= 3) {
+          const searchTerm = `Spolecenstvi vlastniku ${streetName} ${building.houseNumber || ''}`.trim()
+          const aresResults = await this.ares.searchByName(searchTerm, 5)
+          const svj = aresResults.ekonomickeSubjekty.find(s => s.pravniFormaKod === 145 || s.pravniFormaKod === 110 || (s.nazev || '').toLowerCase().includes('společenství vlastníků'))
+          if (svj) {
+            const org = await this.kb.findOrCreateOrganization(svj.ico, { obchodniJmeno: svj.nazev, nazev: svj.nazev, dic: svj.dic, pravniForma: svj.pravniForma, pravniFormaKod: svj.pravniFormaKod })
+            await this.prisma.building.update({ where: { id: buildingId }, data: { managingOrgId: org.id } }).catch(() => {})
+          }
+          sources.push({ name: 'ARES', fetchedAt: new Date().toISOString(), status: svj ? 'ok' : 'no_match' })
+        }
+      } catch (err) { this.logger.warn(`ARES failed: ${(err as Error).message}`); sources.push({ name: 'ARES', fetchedAt: new Date().toISOString(), status: 'error' }) }
+      await this.delay(500)
+    }
+
+    // 3-5. GeoRisk + POI + IPR
+    if (building.lat && building.lng) {
+      try { enrichCache.risks = await this.geoRisk.getRiskProfile(building.lat, building.lng); sources.push({ name: 'GeoRisk', fetchedAt: new Date().toISOString(), status: 'ok' }) }
+      catch { sources.push({ name: 'GeoRisk', fetchedAt: new Date().toISOString(), status: 'error' }) }
+
+      try { const p = await this.iprPrice.getLandPrice(building.lat, building.lng); if (p) enrichCache.priceEstimate = p; sources.push({ name: 'IPR', fetchedAt: new Date().toISOString(), status: p ? 'ok' : 'no_data' }) }
+      catch { sources.push({ name: 'IPR', fetchedAt: new Date().toISOString(), status: 'error' }) }
+
+      try {
+        const poi = await this.geoRisk.getNearbyPOI(building.lat, building.lng, 500)
+        const hasAny = Object.entries(poi).some(([k, v]) => k === 'details' ? Array.isArray(v) && v.length > 0 : typeof v === 'number' && v > 0)
+        if (hasAny) enrichCache.poi = poi
+        sources.push({ name: 'Overpass', fetchedAt: new Date().toISOString(), status: hasAny ? 'ok' : 'no_data' })
+      } catch { sources.push({ name: 'Overpass', fetchedAt: new Date().toISOString(), status: 'error' }) }
+    }
+
+    // 6. ČÚZK API KN
+    if (this.cuzkApiKn.isConfigured && (building.ruianAddressId || building.ruianBuildingId)) {
+      try {
+        let stavba = building.ruianAddressId ? await this.cuzkApiKn.getStavbaByAdresniMisto(Number(building.ruianAddressId)) : null
+        if (!stavba && building.ruianBuildingId) stavba = await this.cuzkApiKn.getStavbaDetail(Number(building.ruianBuildingId))
+        if (stavba) {
+          const cuzkData: Record<string, unknown> = {
+            stavbaId: stavba.id, typStavby: stavba.typStavby?.nazev, zpusobVyuziti: stavba.zpusobVyuziti?.nazev,
+            cislaDomovni: stavba.cislaDomovni, castObce: stavba.castObce?.nazev, obec: stavba.obec?.nazev,
+            lv: stavba.lv ? { cislo: stavba.lv.cislo, katastralniUzemi: stavba.lv.katastralniUzemi?.nazev, katastralniUzemiKod: stavba.lv.katastralniUzemi?.kod } : null,
+            parcely: (stavba.parcely ?? []).map((p: any) => ({ id: p.id, kmenoveCislo: p.kmenoveCisloParcely, poddeleni: p.poddeleniCislaParcely })),
+            zpusobyOchrany: (stavba.zpusobyOchrany ?? []).map((z: any) => z.nazev),
+            jednotekCount: stavba.jednotky?.length ?? 0, fetchedAt: new Date().toISOString(),
+          }
+          // Parcela detail
+          if (stavba.parcely?.[0]?.id) {
+            try { const p = await this.cuzkApiKn.getParcelaDetail(stavba.parcely[0].id); if (p) cuzkData.parcelaDetail = { vymera: (p as any).vymera, druhPozemku: (p as any).druhPozemku?.nazev } } catch {}
+          }
+          enrichCache.cuzk = cuzkData
+          await this.prisma.building.update({ where: { id: buildingId }, data: { landRegistrySheet: stavba.lv?.cislo?.toString(), cadastralTerritoryCode: stavba.lv?.katastralniUzemi?.kod?.toString(), cadastralTerritoryName: stavba.lv?.katastralniUzemi?.nazev } })
+          // Upsert units
+          for (const jRef of stavba.jednotky ?? []) {
+            try {
+              const j = await this.cuzkApiKn.getJednotkaDetail(jRef.id)
+              if (!j) continue
+              const un = String(j.cisloJednotky)
+              await this.prisma.buildingUnit.upsert({
+                where: { buildingId_unitNumber: { buildingId, unitNumber: un } },
+                create: { buildingId, unitNumber: un, unitType: j.zpusobVyuziti?.nazev?.includes('byt') ? 'APARTMENT' : 'NON_RESIDENTIAL', usage: j.zpusobVyuziti?.nazev, shareNumerator: j.podilNaSpolecnychCastechDomu?.citatel, shareDenominator: j.podilNaSpolecnychCastechDomu?.jmenovatel, lvNumber: j.lv?.cislo?.toString(), cuzkStavbaId: stavba!.id },
+                update: { unitType: j.zpusobVyuziti?.nazev?.includes('byt') ? 'APARTMENT' : 'NON_RESIDENTIAL', usage: j.zpusobVyuziti?.nazev, shareNumerator: j.podilNaSpolecnychCastechDomu?.citatel, shareDenominator: j.podilNaSpolecnychCastechDomu?.jmenovatel, lvNumber: j.lv?.cislo?.toString(), cuzkStavbaId: stavba!.id },
+              })
+            } catch {}
+          }
+          sources.push({ name: 'ČÚZK API', fetchedAt: new Date().toISOString(), status: 'ok' })
+        } else { sources.push({ name: 'ČÚZK API', fetchedAt: new Date().toISOString(), status: 'no_data' }) }
+      } catch (err) { this.logger.warn(`ČÚZK failed: ${(err as Error).message}`); sources.push({ name: 'ČÚZK API', fetchedAt: new Date().toISOString(), status: 'error' }) }
+    }
+
+    // 7. Justice.cz
+    const org = await this.prisma.building.findUnique({ where: { id: buildingId }, select: { managingOrgId: true } })
+    if (org?.managingOrgId) {
+      try {
+        const orgData = await this.prisma.kbOrganization.findUnique({ where: { id: org.managingOrgId }, select: { ico: true } })
+        if (orgData) { const subj = await this.justice.getSubjectByIco(orgData.ico); sources.push({ name: 'Justice.cz', fetchedAt: new Date().toISOString(), status: subj ? 'ok' : 'no_data' }) }
+      } catch { sources.push({ name: 'Justice.cz', fetchedAt: new Date().toISOString(), status: 'error' }) }
+      await this.delay(1000)
+    }
+
+    // 8. Sources
+    enrichCache.sources = sources
+
+    // 9. Quality score — real calculation
+    const b = await this.prisma.building.findUnique({ where: { id: buildingId } })
+    let score = 0
+    if (b?.lat && b?.lng) score += 5
+    if (b?.houseNumber) score += 5
+    if (b?.numberOfFloors) score += 3
+    if (b?.numberOfUnits) score += 3
+    if (b?.builtUpArea) score += 2
+    if (b?.ruianAddressId) score += 3
+    if (b?.cadastralTerritoryName) score += 2
+    if (b?.managingOrgId) score += 10
+    if (enrichCache.cuzk) { const c = enrichCache.cuzk as any; if (c.typStavby) score += 5; if (c.jednotekCount > 0) score += 10; if (c.lv) score += 5; if (c.parcelaDetail) score += 5; if (c.zpusobyOchrany?.length) score += 3 }
+    if (enrichCache.risks) score += 5
+    if (enrichCache.poi) score += 5
+    if (enrichCache.priceEstimate) score += 5
+    if (sources.some(s => s.name === 'Justice.cz' && s.status === 'ok')) score += 10
+    if (sources.some(s => s.name === 'ARES' && s.status === 'ok')) score += 5
+    const finalScore = Math.min(score, 100)
+
+    // 10. Save
+    await this.prisma.building.update({
+      where: { id: buildingId },
+      data: { dataQualityScore: finalScore, lastEnrichedAt: new Date(), enrichmentData: JSON.parse(JSON.stringify(enrichCache)), enrichedAt: new Date() },
+    })
+
+    return { qualityScore: finalScore, sources }
   }
 
   // ── Re-enrich existing buildings ─────────────────────
