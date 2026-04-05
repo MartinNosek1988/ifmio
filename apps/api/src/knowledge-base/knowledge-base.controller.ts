@@ -7,6 +7,7 @@ import { PropertyEnrichmentOrchestrator } from './property-enrichment.orchestrat
 import { BuildingIntelligenceService } from './building-intelligence.service'
 import { BulkImportService, type BulkImportStep } from './bulk-import.service'
 import { TerritorySeedService } from './territory-seed.service'
+import { CuzkApiKnService } from '../integrations/cuzk/cuzk-api-kn.service'
 import { PrismaService } from '../prisma/prisma.service'
 import { ConfigService } from '@nestjs/config'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
@@ -77,6 +78,7 @@ export class KnowledgeBaseController {
     private prisma: PrismaService,
     private config: ConfigService,
     private superAdmin: SuperAdminService,
+    private cuzkApiKn: CuzkApiKnService,
     private territorySeed: TerritorySeedService,
   ) {}
 
@@ -94,6 +96,70 @@ export class KnowledgeBaseController {
     const ids = body.buildingIds?.slice(0, 50) ?? []
     if (ids.length === 0) return { enriched: 0 }
     return this.bulkImport.reEnrichBuildings(ids)
+  }
+
+  @Post('buildings/:id/enrich-cuzk')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Načíst data z ČÚZK katastru pro budovu (jednotky, LV, podíly)' })
+  async enrichFromCuzk(@Param('id') id: string) {
+    if (!this.cuzkApiKn.isConfigured) {
+      throw new BadRequestException('ČÚZK API key není nakonfigurován')
+    }
+
+    const building = await this.prisma.building.findUnique({
+      where: { id },
+      select: { id: true, ruianAddressId: true, ruianBuildingId: true },
+    })
+    if (!building) throw new BadRequestException('Budova nenalezena')
+
+    // Try address code first, then building code
+    const addressCode = building.ruianAddressId ? Number(building.ruianAddressId) : null
+    if (!addressCode) throw new BadRequestException('Budova nemá RÚIAN kód adresního místa')
+
+    const stavba = await this.cuzkApiKn.getStavbaByAdresniMisto(addressCode)
+    if (!stavba) return { status: 'no_data', message: 'Stavba nenalezena v katastru' }
+
+    // Update building with LV + KÚ
+    await this.prisma.building.update({
+      where: { id },
+      data: {
+        landRegistrySheet: stavba.lv?.cislo?.toString(),
+        cadastralTerritoryCode: stavba.lv?.katastralniUzemi?.kod?.toString(),
+        cadastralTerritoryName: stavba.lv?.katastralniUzemi?.nazev,
+      },
+    })
+
+    // Fetch + upsert individual units
+    let unitsCreated = 0
+    for (const jRef of stavba.jednotky ?? []) {
+      const jednotka = await this.cuzkApiKn.getJednotkaDetail(jRef.id)
+      if (!jednotka) continue
+
+      const unitNumber = String(jednotka.cisloJednotky)
+      await this.prisma.buildingUnit.upsert({
+        where: { buildingId_unitNumber: { buildingId: id, unitNumber } },
+        create: {
+          buildingId: id,
+          unitNumber,
+          unitType: jednotka.zpusobVyuziti?.nazev?.includes('byt') ? 'APARTMENT' : 'NON_RESIDENTIAL',
+          usage: jednotka.zpusobVyuziti?.nazev,
+          shareNumerator: jednotka.podilNaSpolecnychCastechDomu?.citatel,
+          shareDenominator: jednotka.podilNaSpolecnychCastechDomu?.jmenovatel,
+          lvNumber: jednotka.lv?.cislo?.toString(),
+          cuzkStavbaId: stavba.id,
+        },
+        update: {
+          usage: jednotka.zpusobVyuziti?.nazev,
+          shareNumerator: jednotka.podilNaSpolecnychCastechDomu?.citatel,
+          shareDenominator: jednotka.podilNaSpolecnychCastechDomu?.jmenovatel,
+          lvNumber: jednotka.lv?.cislo?.toString(),
+          cuzkStavbaId: stavba.id,
+        },
+      })
+      unitsCreated++
+    }
+
+    return { status: 'ok', stavbaId: stavba.id, lv: stavba.lv?.cislo, unitsEnriched: unitsCreated }
   }
 
   @Get('stats')

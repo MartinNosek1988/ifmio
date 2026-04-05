@@ -52,6 +52,11 @@ export default function CrmBuildingDetailPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['crm-building', id] }),
   })
 
+  const cuzkEnrichMut = useMutation({
+    mutationFn: () => apiClient.post(`/knowledge-base/buildings/${id}/enrich-cuzk`).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['crm-building', id] }),
+  })
+
   if (isLoading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Načítám...</div>
   if (!building) return <div style={{ padding: 40, textAlign: 'center' }}>Budova nenalezena</div>
 
@@ -271,10 +276,10 @@ export default function CrmBuildingDetailPage() {
                 <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
                   <th style={{ padding: '6px 8px' }}>Číslo</th>
                   <th style={{ padding: '6px 8px' }}>Typ</th>
+                  <th style={{ padding: '6px 8px' }}>Využití</th>
                   <th style={{ padding: '6px 8px', textAlign: 'right' }}>Plocha m²</th>
-                  <th style={{ padding: '6px 8px', textAlign: 'right' }}>Pokojů</th>
-                  <th style={{ padding: '6px 8px' }}>Dispozice</th>
-                  <th style={{ padding: '6px 8px' }}>Podíl</th>
+                  <th style={{ padding: '6px 8px' }}>Podíl na SČ</th>
+                  <th style={{ padding: '6px 8px' }}>LV</th>
                 </tr>
               </thead>
               <tbody>
@@ -282,15 +287,25 @@ export default function CrmBuildingDetailPage() {
                   <tr key={u.id} style={{ borderBottom: '1px solid var(--border-light, #f3f4f6)' }}>
                     <td style={{ padding: '6px 8px', fontWeight: 500 }}>{u.unitNumber || '—'}</td>
                     <td style={{ padding: '6px 8px' }}>{u.unitType || '—'}</td>
+                    <td style={{ padding: '6px 8px' }}>{u.usage || '—'}</td>
                     <td style={{ padding: '6px 8px', textAlign: 'right' }}>{u.area || '—'}</td>
-                    <td style={{ padding: '6px 8px', textAlign: 'right' }}>{u.roomCount || '—'}</td>
-                    <td style={{ padding: '6px 8px' }}>{u.roomLayout || '—'}</td>
-                    <td style={{ padding: '6px 8px' }}>{u.shareNumerator && u.shareDenominator ? `${u.shareNumerator}/${u.shareDenominator}` : '—'}</td>
+                    <td style={{ padding: '6px 8px', fontFamily: 'monospace' }}>{u.shareNumerator && u.shareDenominator ? `${u.shareNumerator}/${u.shareDenominator}` : '—'}</td>
+                    <td style={{ padding: '6px 8px', fontFamily: 'monospace' }}>{u.lvNumber || '—'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          ) : <NoData label="Žádné jednotky v KB" />}
+          ) : (
+            <div style={{ padding: 24, textAlign: 'center' }}>
+              <div style={{ color: 'var(--text-muted)', marginBottom: 12 }}>Žádné jednotky v KB</div>
+              {building.ruianAddressId && (
+                <button onClick={() => cuzkEnrichMut.mutate()} disabled={cuzkEnrichMut.isPending}
+                  style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'var(--primary, #0d9488)', color: '#fff', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}>
+                  {cuzkEnrichMut.isPending ? 'Načítám z katastru...' : 'Načíst z katastru (ČÚZK)'}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
