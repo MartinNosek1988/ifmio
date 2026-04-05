@@ -14,6 +14,7 @@ import { WhatsAppAutomationService } from '../whatsapp/whatsapp-automation.servi
 import { AiBatchService } from '../finance/ai-batch.service';
 import { RetentionService } from './retention.service';
 import { PvkService } from '../pvk/pvk.service';
+import { CuzkEnrichService } from '../knowledge-base/cuzk-enrich.service';
 
 const ONE_HOUR = 60 * 60 * 1000;
 const FIFTEEN_MIN = 15 * 60 * 1000;
@@ -52,6 +53,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     private readonly aiBatch: AiBatchService,
     private readonly retention: RetentionService,
     private readonly pvk: PvkService,
+    private readonly cuzkEnrich: CuzkEnrichService,
   ) {}
 
   onModuleInit() {
@@ -70,6 +72,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     this.initBatchPolling();
     this.initMioRetention();
     this.initPvkSync();
+    this.initCuzkEnrich();
   }
 
   onModuleDestroy() {
@@ -116,6 +119,10 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     if (this.pvkSyncInterval) {
       clearInterval(this.pvkSyncInterval);
       this.pvkSyncInterval = null;
+    }
+    if (this.cuzkEnrichInterval) {
+      clearInterval(this.cuzkEnrichInterval);
+      this.cuzkEnrichInterval = null;
     }
     this.logger.log('Cron intervals cleared');
   }
@@ -562,6 +569,25 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(`PVK monthly sync: ${tenants.length} tenants processed`);
     } catch (err) {
       this.logger.error('PVK sync job FAILED', (err as Error).stack);
+    }
+  }
+
+  // ── ČÚZK daily enrich (3:00 AM) ─────────────────────
+
+  private cuzkEnrichInterval: ReturnType<typeof setInterval> | null = null;
+
+  private initCuzkEnrich() {
+    this.logger.log('ČÚZK daily enrich — every 24h at ~3:00');
+    this.cuzkEnrichInterval = setInterval(() => this.maybeRunCuzkEnrich(), ONE_HOUR);
+  }
+
+  private async maybeRunCuzkEnrich() {
+    const now = new Date();
+    if (now.getHours() !== 3) return;
+    try {
+      await this.cuzkEnrich.runDailyEnrich();
+    } catch (err) {
+      this.logger.error('ČÚZK daily enrich FAILED', (err as Error).stack);
     }
   }
 }
