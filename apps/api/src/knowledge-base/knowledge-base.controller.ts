@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Query, Body, Res, BadRequestException } from '@nestjs/common'
+import { Controller, Get, Post, Patch, Delete, Param, Query, Body, Res, BadRequestException, NotFoundException } from '@nestjs/common'
 import type { FastifyReply } from 'fastify'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { IsString, IsNotEmpty, IsOptional, IsNumber, IsIn } from 'class-validator'
@@ -110,9 +110,9 @@ export class KnowledgeBaseController {
       where: { id },
       select: { id: true, ruianAddressId: true, ruianBuildingId: true },
     })
-    if (!building) throw new BadRequestException('Budova nenalezena')
+    if (!building) throw new NotFoundException('Budova nenalezena')
 
-    // Try address code first, then building code
+    // Use RÚIAN address code to find stavba
     const addressCode = building.ruianAddressId ? Number(building.ruianAddressId) : null
     if (!addressCode) throw new BadRequestException('Budova nemá RÚIAN kód adresního místa')
 
@@ -149,6 +149,7 @@ export class KnowledgeBaseController {
           cuzkStavbaId: stavba.id,
         },
         update: {
+          unitType: jednotka.zpusobVyuziti?.nazev?.includes('byt') ? 'APARTMENT' : 'NON_RESIDENTIAL',
           usage: jednotka.zpusobVyuziti?.nazev,
           shareNumerator: jednotka.podilNaSpolecnychCastechDomu?.citatel,
           shareDenominator: jednotka.podilNaSpolecnychCastechDomu?.jmenovatel,
