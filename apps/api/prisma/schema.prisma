@@ -4711,6 +4711,9 @@ model BuildingUnit {
   roomLayout        String?
   shareNumerator    Int?
   shareDenominator  Int?
+  lvNumber          String?
+  usage             String?
+  cuzkStavbaId      Int?
   lastEnrichedAt    DateTime?
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
@@ -4718,6 +4721,7 @@ model BuildingUnit {
   sources           BuildingUnitSource[]
   units             Unit[]
 
+  @@unique([buildingId, unitNumber])
   @@index([buildingId])
   @@map("kb_building_units")
 }
