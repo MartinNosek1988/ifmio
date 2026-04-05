@@ -191,7 +191,7 @@ function TerritoryCoverageLevel({ parentId, depth }: { parentId: string | undefi
   }
 
   if (items.length === 0) {
-    if (depth === 0) return <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem' }}>Spusťte seed teritorií</div>
+    if (depth === 0) return <SeedTerritoryPrompt />
     return null
   }
 
@@ -200,6 +200,26 @@ function TerritoryCoverageLevel({ parentId, depth }: { parentId: string | undefi
       {items.map(t => (
         <TerritoryCoverageRow key={t.id} item={t} depth={depth} />
       ))}
+    </div>
+  )
+}
+
+function SeedTerritoryPrompt() {
+  const qc = useQueryClient()
+  const seedMut = useMutation({
+    mutationFn: () => apiClient.post('/knowledge-base/territories/seed').then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['territory-coverage'] }),
+  })
+  return (
+    <div style={{ padding: 24, textAlign: 'center' }}>
+      <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginBottom: 12 }}>
+        Územní hierarchie zatím není načtena. Seedujte kraje, okresy a Praha MČ/KÚ z RÚIAN.
+      </div>
+      <button onClick={() => seedMut.mutate()} disabled={seedMut.isPending}
+        style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'var(--primary, #0d9488)', color: '#fff', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}>
+        {seedMut.isPending ? 'Seeduji...' : 'Seed teritorií'}
+      </button>
+      {seedMut.isError && <div style={{ marginTop: 8, color: 'var(--danger)', fontSize: '0.78rem' }}>Seed selhal (vyžaduje super admin oprávnění)</div>}
     </div>
   )
 }
