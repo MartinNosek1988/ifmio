@@ -220,6 +220,7 @@ export class BulkImportService {
         // Group by stavebniobjekt (building ID) to deduplicate
         const buildingMap = new Map<string, {
           ruianId: string
+          addressCode?: string
           addresses: string[]
           houseNumber?: string
           orientationNumber?: string
@@ -235,6 +236,7 @@ export class BulkImportService {
           if (!buildingMap.has(soId)) {
             buildingMap.set(soId, {
               ruianId: soId,
+              addressCode: a.kod ? String(a.kod) : undefined,
               addresses: [],
               houseNumber: a.cislodomovni ? String(a.cislodomovni) : undefined,
               orientationNumber: a.cisloorientacni
@@ -266,6 +268,7 @@ export class BulkImportService {
               where: { ruianBuildingId: b.ruianId },
               create: {
                 ruianBuildingId: b.ruianId,
+                ruianAddressId: b.addressCode,
                 street: parsed.street,
                 houseNumber: b.houseNumber,
                 orientationNumber: b.orientationNumber,
@@ -284,7 +287,7 @@ export class BulkImportService {
               },
               update: {
                 lastEnrichedAt: new Date(),
-                // Only update if we have better data
+                ...(b.addressCode && { ruianAddressId: b.addressCode }),
                 ...(b.lat && { lat: b.lat }),
                 ...(b.lng && { lng: b.lng }),
                 ...(territoryId && { territoryId }),
@@ -646,7 +649,7 @@ export class BulkImportService {
 
         // Group by building
         const buildingMap = new Map<string, {
-          ruianId: string; address: string; houseNumber?: string
+          ruianId: string; addressCode?: string; address: string; houseNumber?: string
           orientationNumber?: string; postalCode?: string; lat?: number; lng?: number
         }>()
 
@@ -656,6 +659,7 @@ export class BulkImportService {
           if (!buildingMap.has(soId)) {
             buildingMap.set(soId, {
               ruianId: soId,
+              addressCode: a.kod ? String(a.kod) : undefined,
               address: a.adresa || '',
               houseNumber: a.cislodomovni ? String(a.cislodomovni) : undefined,
               orientationNumber: a.cisloorientacni ? `${a.cisloorientacni}${a.cisloorientacnipismeno || ''}` : undefined,
@@ -699,6 +703,7 @@ export class BulkImportService {
               where: { ruianBuildingId: b.ruianId },
               create: {
                 ruianBuildingId: b.ruianId,
+                ruianAddressId: b.addressCode,
                 street: parsed.street,
                 houseNumber: b.houseNumber,
                 orientationNumber: b.orientationNumber,
@@ -716,6 +721,7 @@ export class BulkImportService {
               },
               update: {
                 lastEnrichedAt: new Date(),
+                ...(b.addressCode && { ruianAddressId: b.addressCode }),
                 ...(b.lat && { lat: b.lat }),
                 ...(b.lng && { lng: b.lng }),
                 ...(parsed.district && { district: parsed.district }),

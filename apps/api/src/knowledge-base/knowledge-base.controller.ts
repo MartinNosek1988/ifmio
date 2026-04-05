@@ -122,13 +122,41 @@ export class KnowledgeBaseController {
     }
     if (!stavba) return { status: 'no_data', message: 'Stavba nenalezena v katastru' }
 
-    // Update building with LV + KÚ
+    // Build ČÚZK enrichment data
+    const cuzkData: Record<string, unknown> = {
+      stavbaId: stavba.id,
+      typStavby: stavba.typStavby?.nazev,
+      zpusobVyuziti: stavba.zpusobVyuziti?.nazev,
+      cislaDomovni: stavba.cislaDomovni,
+      castObce: stavba.castObce?.nazev,
+      obec: stavba.obec?.nazev,
+      lv: stavba.lv ? { cislo: stavba.lv.cislo, katastralniUzemi: stavba.lv.katastralniUzemi?.nazev, katastralniUzemiKod: stavba.lv.katastralniUzemi?.kod } : null,
+      parcely: (stavba.parcely ?? []).map((p: any) => ({ id: p.id, kmenoveCislo: p.kmenoveCisloParcely, poddeleni: p.poddeleniCislaParcely, katastralniUzemi: p.katastralniUzemi?.nazev })),
+      zpusobyOchrany: (stavba.zpusobyOchrany ?? []).map((z: any) => z.nazev),
+      adresniMista: stavba.adresniMista,
+      jednotekCount: stavba.jednotky?.length ?? 0,
+      fetchedAt: new Date().toISOString(),
+    }
+
+    // Parcela detail (bonus call if budget allows)
+    if (stavba.parcely?.[0]?.id) {
+      const parcela = await this.cuzkApiKn.getParcelaDetail(stavba.parcely[0].id)
+      if (parcela) {
+        cuzkData.parcelaDetail = { vymera: (parcela as any).vymera, druhPozemku: (parcela as any).druhPozemku?.nazev, zpusobVyuziti: (parcela as any).zpusobVyuziti?.nazev }
+      }
+    }
+
+    // Merge with existing enrichmentData
+    const existing = await this.prisma.building.findUnique({ where: { id }, select: { enrichmentData: true } })
+    const mergedEnrichment = { ...((existing?.enrichmentData as any) ?? {}), cuzk: cuzkData }
+
     await this.prisma.building.update({
       where: { id },
       data: {
         landRegistrySheet: stavba.lv?.cislo?.toString(),
         cadastralTerritoryCode: stavba.lv?.katastralniUzemi?.kod?.toString(),
         cadastralTerritoryName: stavba.lv?.katastralniUzemi?.nazev,
+        enrichmentData: mergedEnrichment,
       },
     })
 

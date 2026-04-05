@@ -13,7 +13,9 @@ export interface CuzkStavba {
   jednotky: Array<{ id: number; cisloJednotky: number }>
   zpusobVyuziti: { kod: number; nazev: string } | null
   zpusobyOchrany: Array<{ kod: number; nazev: string }>
-  parcely: Array<{ id: number; typParcely: string; kmenoveCisloParcely: number; poddeleniCislaParcely?: number }>
+  parcely: Array<{ id: number; typParcely: string; kmenoveCisloParcely: number; poddeleniCislaParcely?: number; katastralniUzemi?: { kod: number; nazev: string } }>
+  adresniMista?: number[]
+  docasna?: boolean
 }
 
 export interface CuzkJednotka {
@@ -97,6 +99,23 @@ export class CuzkApiKnService {
     const result = await this.apiFetch<{ data: CuzkJednotka }>(`/Jednotky/${jednotkaId}`)
     return result?.data ?? null
   }
+
+  /** Detail parcely dle ID */
+  async getParcelaDetail(parcelaId: number): Promise<Record<string, unknown> | null> {
+    const result = await this.apiFetch<{ data: Record<string, unknown> }>(`/Parcely/${parcelaId}`)
+    return result?.data ?? null
+  }
+
+  /** Práva stavby — bezplatné přes API KN */
+  async getPravaStavby(stavbaId: number): Promise<Record<string, unknown> | null> {
+    const result = await this.apiFetch<{ data: Record<string, unknown> }>(`/PravaStavby/Stavba/${stavbaId}`)
+    return result?.data ?? null
+  }
+
+  // TODO: WSDP SOAP endpoint — potřebuje separátní credentials + SOAP client
+  // Vrací: vlastníci, podíly, typ vlastnictví, nabývací tituly
+  // Cena: ~2 Kč/dotaz
+  // Endpoint: wsdp.cuzk.cz/sestavy_v29.wsdl → dejNahledLV
 
   /** Stav účtu */
   async getAccountStatus(): Promise<{ provedenoVolani: number; limitVolani: number; expiraceApiKey: string } | null> {
