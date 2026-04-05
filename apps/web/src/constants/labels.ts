@@ -1,36 +1,13 @@
-export const PROPERTY_TYPE_LABELS: Record<string, string> = {
-  SVJ: 'Bytový dům — SVJ',
-  BD: 'Bytový dům — Družstevní',
-  RENTAL_RESIDENTIAL: 'Bytový dům — Nájemní',
-  RENTAL_MUNICIPAL: 'Bytový dům — Obecní',
-  CONDO_NO_SVJ: 'Bytový dům — Bez SVJ',
-  MIXED_USE: 'Bytový dům — Smíšený',
-  SINGLE_FAMILY: 'Rodinný dům',
-  COMMERCIAL_OFFICE: 'Kancelářská budova',
-  COMMERCIAL_RETAIL: 'Obchodní prostory',
-  COMMERCIAL_WAREHOUSE: 'Sklad / logistika',
-  COMMERCIAL_INDUSTRIAL: 'Průmyslový objekt',
-  PARKING: 'Garáže / parkování',
-  LAND: 'Pozemek',
-  OTHER: 'Jiné',
-};
+// PROPERTY_TYPE_LABELS and COLORS derived from config (single source of truth)
+import { PROPERTY_TYPE_CONFIG } from '@ifmio/shared-types';
 
-export const PROPERTY_TYPE_COLORS: Record<string, string> = {
-  SVJ: '#0D9B8A',
-  BD: '#3B82F6',
-  RENTAL_RESIDENTIAL: '#8B5CF6',
-  RENTAL_MUNICIPAL: '#22C55E',
-  CONDO_NO_SVJ: '#F59E0B',
-  MIXED_USE: '#EC4899',
-  SINGLE_FAMILY: '#F97316',
-  COMMERCIAL_OFFICE: '#6B7280',
-  COMMERCIAL_RETAIL: '#6B7280',
-  COMMERCIAL_WAREHOUSE: '#6B7280',
-  COMMERCIAL_INDUSTRIAL: '#6B7280',
-  PARKING: '#6B7280',
-  LAND: '#92400E',
-  OTHER: '#9CA3AF',
-};
+export const PROPERTY_TYPE_LABELS: Record<string, string> = Object.fromEntries(
+  Object.values(PROPERTY_TYPE_CONFIG).map(c => [c.type, c.ui.label])
+);
+
+export const PROPERTY_TYPE_COLORS: Record<string, string> = Object.fromEntries(
+  Object.values(PROPERTY_TYPE_CONFIG).map(c => [c.type, c.ui.badgeColor])
+);
 
 export const WO_STATUS_LABELS: Record<string, string> = {
   nova: 'Nová',

@@ -26,7 +26,9 @@ import type { ApiUnit } from './properties-api';
 import PropertyForm, { LEGAL_MODE_LABEL } from './PropertyForm';
 import UnitForm, { SPACE_TYPES } from './UnitForm';
 import BulkUnitForm from './BulkUnitForm';
+import { getPropertyTypeConfig } from '@ifmio/shared-types';
 import OccupancyForm from './OccupancyForm';
+import InsuranceTab from '../insurance/InsuranceTab';
 import { usePropertyContracts, type ApiManagementContract } from './management-contracts-api';
 import { usePropertyFinancialContexts, type ApiFinancialContext } from './financial-contexts-api';
 import { usePropertyOwnerships, useUnitOwnershipsByProperty, type ApiOwnership } from './ownerships-api';
@@ -94,8 +96,12 @@ export default function PropertyDetailPage() {
     enabled: !!id,
   });
 
-  type DetailTab = 'overview' | 'units' | 'owners' | 'groups' | 'meters' | 'components' | 'representatives' | 'assemblies' | 'per-rollam' | 'floor-plans' | 'map' | 'profile' | 'building'
+  type DetailTab = 'overview' | 'units' | 'owners' | 'groups' | 'meters' | 'components' | 'representatives' | 'assemblies' | 'per-rollam' | 'floor-plans' | 'map' | 'profile' | 'building' | 'insurance'
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
+
+  // PropertyTypeConfig drives which tabs are visible
+  const ptConfig = getPropertyTypeConfig(property?.type ?? 'OTHER');
+  const configTabs = ptConfig.ui.detailTabs;
 
   const refetchOwnerships = () => queryClient.invalidateQueries({ queryKey: ['ownerships'] });
 
@@ -284,7 +290,12 @@ export default function PropertyDetailPage() {
       </div>
       <div className="page-header">
         <div>
-          <h1 className="page-title" data-testid="property-detail-name">{property.name}</h1>
+          <h1 className="page-title" data-testid="property-detail-name">
+            {property.name}
+            <span style={{ marginLeft: 8, display: 'inline-block', padding: '2px 8px', borderRadius: 12, fontSize: '0.72rem', fontWeight: 600, background: ptConfig.ui.badgeColor + '20', color: ptConfig.ui.badgeColor }}>
+              {ptConfig.ui.shortLabel}
+            </span>
+          </h1>
           <p className="page-subtitle" data-testid="property-detail-address">
             {[LEGAL_MODE_LABEL[property.legalMode ?? ''] ?? '', property.address, property.city].filter(Boolean).join(' · ')}
             {property.ico ? ` · IČ: ${property.ico}` : ''}
@@ -391,21 +402,23 @@ export default function PropertyDetailPage() {
 
       {/* ── Tab navigation ──────────────────────────────────────────── */}
       <div className="tabs" style={{ marginBottom: 16 }}>
+        {/* Tabs driven by PropertyTypeConfig — only show what's relevant for this property type */}
         {([
-          { key: 'overview' as DetailTab, label: 'Přehled' },
-          { key: 'units' as DetailTab, label: `Jednotky (${totalUnits})` },
-          { key: 'owners' as DetailTab, label: 'Vlastníci' },
-          { key: 'groups' as DetailTab, label: 'Uspořádání' },
-          { key: 'meters' as DetailTab, label: 'Měřidla' },
-          { key: 'components' as DetailTab, label: 'Složky předpisu' },
-          { key: 'representatives' as DetailTab, label: 'Zástupci' },
-          { key: 'assemblies' as DetailTab, label: 'Shromáždění' },
-          { key: 'per-rollam' as DetailTab, label: 'Per rollam' },
-          { key: 'floor-plans' as DetailTab, label: 'Půdorysy' },
-          { key: 'map' as DetailTab, label: 'Mapa' },
-          { key: 'building' as DetailTab, label: 'O budově' },
-          { key: 'profile' as DetailTab, label: 'Profil' },
-        ]).map(t => (
+          { key: 'overview' as DetailTab, label: 'Přehled', configKey: 'overview' },
+          { key: 'units' as DetailTab, label: `Jednotky (${totalUnits})`, configKey: 'units' },
+          { key: 'owners' as DetailTab, label: ptConfig.terminology.unitOwnerLabel + 'é', configKey: 'residents' },
+          { key: 'groups' as DetailTab, label: 'Uspořádání', configKey: 'units' },
+          { key: 'meters' as DetailTab, label: 'Měřidla', configKey: 'meters' },
+          { key: 'components' as DetailTab, label: 'Složky předpisu', configKey: 'finance' },
+          { key: 'representatives' as DetailTab, label: ptConfig.terminology.boardLabel !== '-' ? ptConfig.terminology.boardLabel : 'Zástupci', configKey: 'board' },
+          { key: 'assemblies' as DetailTab, label: ptConfig.terminology.assemblyLabel !== '-' ? ptConfig.terminology.assemblyLabel : 'Shromáždění', configKey: 'assembly' },
+          { key: 'per-rollam' as DetailTab, label: 'Per rollam', configKey: 'assembly' },
+          { key: 'floor-plans' as DetailTab, label: 'Půdorysy', configKey: 'units' },
+          { key: 'map' as DetailTab, label: 'Mapa', configKey: 'overview' },
+          { key: 'insurance' as DetailTab, label: 'Pojištění', configKey: 'insurance' },
+          { key: 'building' as DetailTab, label: 'O budově', configKey: 'building-info' },
+          { key: 'profile' as DetailTab, label: 'Profil', configKey: 'overview' },
+        ] as const).filter(t => configTabs.includes(t.configKey as any)).map(t => (
           <button key={t.key} className={`tab-btn${detailTab === t.key ? ' active' : ''}`} data-testid={`property-tab-${t.key}`} onClick={() => setDetailTab(t.key)}>
             {t.label}
           </button>
@@ -688,6 +701,9 @@ export default function PropertyDetailPage() {
           )}
         </div>
       )}
+
+      {/* ── POJIŠTĚNÍ TAB ──────────────────────────────────────── */}
+      {detailTab === 'insurance' && <InsuranceTab property={property} />}
 
       {/* ── O BUDOVĚ TAB ────────────────────────────────────────── */}
       {detailTab === 'building' && (

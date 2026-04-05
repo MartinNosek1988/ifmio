@@ -1,19 +1,5 @@
-export const PROPERTY_TYPES = [
-  { value: 'SVJ', label: 'Bytový dům — SVJ' },
-  { value: 'BD', label: 'Bytový dům — Družstevní' },
-  { value: 'RENTAL_RESIDENTIAL', label: 'Bytový dům — Nájemní' },
-  { value: 'RENTAL_MUNICIPAL', label: 'Bytový dům — Obecní' },
-  { value: 'CONDO_NO_SVJ', label: 'Bytový dům — Bez SVJ' },
-  { value: 'MIXED_USE', label: 'Bytový dům — Smíšený' },
-  { value: 'SINGLE_FAMILY', label: 'Rodinný dům' },
-  { value: 'COMMERCIAL_OFFICE', label: 'Kancelářská budova' },
-  { value: 'COMMERCIAL_RETAIL', label: 'Obchodní prostory' },
-  { value: 'COMMERCIAL_WAREHOUSE', label: 'Sklad / logistika' },
-  { value: 'COMMERCIAL_INDUSTRIAL', label: 'Průmyslový objekt' },
-  { value: 'PARKING', label: 'Garáže / parkování' },
-  { value: 'LAND', label: 'Pozemek' },
-  { value: 'OTHER', label: 'Jiné' },
-] as const;
+// PROPERTY_TYPES moved to @ifmio/shared-types/property-type-config (single source of truth)
+// Use: import { getPropertyTypeOptions } from '@ifmio/shared-types'
 
 export const UNIT_STATUSES = [
   { value: 'obsazeno', label: 'Obsazeno', color: 'green' as const },

@@ -104,6 +104,8 @@ model Tenant {
   emailInboundLogs           EmailInboundLog[]
   pvkCredentials             PvkCredential[]
   pvkSyncLogs                PvkSyncLog[]
+  insurances                 Insurance[]
+  insuranceClaims            InsuranceClaim[]
 
   @@map("tenants")
 }
@@ -481,6 +483,8 @@ model Property {
   sipoPayments               SipoPayment[]
   floorPlans                 FloorPlan[]
   evidenceFolders            EvidenceFolder[]
+
+  insurances             Insurance[]
 
   // Knowledge Base link
   buildingId             String?
@@ -4908,4 +4912,78 @@ model KbEvidenceTask {
   @@index([status])
   @@index([assigneeId])
   @@map("kb_evidence_tasks")
+}
+
+// ═══ Insurance ═══════════════════════════════════════════
+
+model Insurance {
+  id              String   @id @default(cuid())
+  tenantId        String
+  propertyId      String
+
+  type            String   // BUILDING, LIABILITY, MACHINERY, DIRECTORS, OTHER
+  provider        String
+  policyNumber    String?
+
+  validFrom       DateTime
+  validTo         DateTime?
+  isActive        Boolean  @default(true)
+
+  annualPremium   Decimal? @db.Decimal(12,2)
+  insuredAmount   Decimal? @db.Decimal(14,2)
+  deductible      Decimal? @db.Decimal(12,2)
+
+  contactPerson   String?
+  contactPhone    String?
+  contactEmail    String?
+
+  notes           String?  @db.Text
+  documentIds     String[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  createdBy       String?
+
+  property        Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  claims          InsuranceClaim[]
+
+  @@index([tenantId])
+  @@index([propertyId])
+  @@map("insurances")
+}
+
+model InsuranceClaim {
+  id              String   @id @default(cuid())
+  tenantId        String
+  insuranceId     String
+
+  claimNumber     String?
+  eventDate       DateTime
+  reportedDate    DateTime?
+  description     String   @db.Text
+
+  type            String   // WATER, FIRE, STORM, VANDALISM, LIABILITY, OTHER
+
+  claimedAmount   Decimal? @db.Decimal(12,2)
+  approvedAmount  Decimal? @db.Decimal(12,2)
+  paidAmount      Decimal? @db.Decimal(12,2)
+  paidDate        DateTime?
+
+  status          String   @default("REPORTED") // REPORTED, IN_PROGRESS, APPROVED, REJECTED, PAID, CLOSED
+
+  ticketId        String?
+  workOrderId     String?
+
+  notes           String?  @db.Text
+  documentIds     String[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  createdBy       String?
+
+  insurance       Insurance @relation(fields: [insuranceId], references: [id], onDelete: Cascade)
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([insuranceId])
+  @@map("insurance_claims")
 }

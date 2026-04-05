@@ -72,7 +72,7 @@ export default function CrmBuildingDetailPage() {
               {building.street || building.fullAddress?.split(',')[0]} {building.houseNumber || ''}, {building.city}
             </h1>
             <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: 4 }}>
-              {org?.orgType && <span style={{ padding: '2px 6px', borderRadius: 4, fontSize: '0.72rem', fontWeight: 600, background: '#dbeafe', color: '#1d4ed8', marginRight: 8 }}>{org.orgType}</span>}
+              {org?.orgType && <span style={{ padding: '2px 6px', borderRadius: 4, fontSize: '0.72rem', fontWeight: 600, background: org.orgType === 'SVJ' ? '#ccfbf1' : org.orgType === 'BD' ? '#dbeafe' : '#f3f4f6', color: org.orgType === 'SVJ' ? '#0d9488' : org.orgType === 'BD' ? '#1d4ed8' : '#6b7280', marginRight: 8 }}>{org.orgType}</span>}
               {building.district && <span>{building.district} &middot; </span>}
               {building.cadastralTerritoryName && <span>KÚ: {building.cadastralTerritoryName} &middot; </span>}
               {building.ruianBuildingId && <span>RÚIAN: {building.ruianBuildingId}</span>}
@@ -199,17 +199,22 @@ export default function CrmBuildingDetailPage() {
                 <span>🌊 Záplavy: <RiskBadge
                   source={enrichment.risks.flood?.source}
                   available={!enrichment.risks.flood?.source?.includes('N/A')}
-                  positive={!enrichment.risks.flood?.inFloodZone}
+                  positive={enrichment.risks.flood?.inFloodZone === false}
                   positiveLabel="Mimo zónu"
                   negativeLabel="V záplavovém území"
                 /></span>
-                <span>☢️ Radon: <RiskBadge
-                  source={enrichment.risks.radon?.source}
-                  available={!enrichment.risks.radon?.source?.includes('N/A')}
-                  positive={enrichment.risks.radon?.index === 'low'}
-                  positiveLabel={enrichment.risks.radon?.index === 'low' ? 'Nízký' : enrichment.risks.radon?.index === 'medium' ? 'Střední' : enrichment.risks.radon?.index === 'high' ? 'Vysoký' : 'Neznámý'}
-                  negativeLabel={enrichment.risks.radon?.index === 'high' ? 'Vysoký' : 'Střední'}
-                /></span>
+                <span>☢️ Radon: {(() => {
+                  const radonIndex = enrichment.risks.radon?.index
+                  const radonLabel = ({ low: 'Nízký', medium: 'Střední', high: 'Vysoký' } as Record<string, string>)[radonIndex || ''] ?? 'Neznámý'
+                  const radonAvailable = !enrichment.risks.radon?.source?.includes('N/A') && radonIndex != null
+                  return <RiskBadge
+                    source={enrichment.risks.radon?.source}
+                    available={radonAvailable}
+                    positive={radonIndex === 'low'}
+                    positiveLabel={radonLabel}
+                    negativeLabel={radonLabel}
+                  />
+                })()}</span>
                 {enrichment.risks.heritage && <span>🏛️ Památky: {enrichment.risks.heritage.isProtected ? `⚠️ ${enrichment.risks.heritage.protectionType?.join(', ')}` : '✅ Bez ochrany'}</span>}
                 {enrichment.risks.insolvency && <span>⚖️ Insolvence: {enrichment.risks.insolvency.hasInsolvency ? '⚠️ Nalezena' : '✅ Bez'}</span>}
               </div>

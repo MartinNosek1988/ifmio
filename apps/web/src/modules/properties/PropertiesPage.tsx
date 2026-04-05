@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Building2, Plus } from 'lucide-react';
 import { KpiCard, Table, Badge, SearchBar, Button, EmptyState, LoadingState, ErrorState } from '../../shared/components';
 import type { Column } from '../../shared/components';
-import { PROPERTY_TYPE_LABELS, label } from '../../constants/labels';
+import { getPropertyTypeConfig } from '@ifmio/shared-types';
 import { useProperties } from './use-properties';
 import type { ApiProperty } from './properties-api';
 import { LEGAL_MODE_LABEL } from './PropertyForm';
@@ -56,7 +56,10 @@ export default function PropertiesPage() {
     },
     {
       key: 'type', label: 'Typ',
-      render: (p) => <Badge variant="blue">{label(PROPERTY_TYPE_LABELS, p.type) || p.type}</Badge>,
+      render: (p) => {
+        const cfg = getPropertyTypeConfig(p.type);
+        return <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 12, fontSize: '0.72rem', fontWeight: 600, background: cfg.ui.badgeColor + '20', color: cfg.ui.badgeColor }}>{cfg.ui.shortLabel}</span>;
+      },
     },
     {
       key: 'ownership', label: 'Vlastnictví',

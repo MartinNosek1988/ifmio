@@ -260,7 +260,7 @@ export default function FinancePage() {
         <KpiCard label="Aktivní předpisy" value={String(summary?.activePrescriptions ?? 0)} color="var(--accent-orange)" />
       </div>
 
-      <div className="tabs">
+      <div className="tabs" data-testid="finance-tabs">
         {TABS.map(t => (
           <button key={t.key} className={`tab-btn${tab === t.key ? ' active' : ''}`}
             data-testid={`finance-tab-${t.key}`}
