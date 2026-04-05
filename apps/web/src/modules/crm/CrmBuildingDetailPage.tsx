@@ -147,8 +147,14 @@ export default function CrmBuildingDetailPage() {
             ]} />
             {building.lat && building.lng && (
               <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                <a href={`https://mapy.cz/zakladni?x=${building.lng}&y=${building.lat}&z=18`} target="_blank" rel="noopener noreferrer" style={linkBtn}>Otevřít mapu</a>
-                <a href={`https://mapy.cz/panorama?x=${building.lng}&y=${building.lat}&z=18`} target="_blank" rel="noopener noreferrer" style={linkBtn}>Street View</a>
+                <a href={building.street && building.houseNumber
+                  ? `https://maps.google.com/maps?q=${encodeURIComponent(`${building.street} ${building.houseNumber}, ${building.city}, Česko`)}`
+                  : `https://maps.google.com/maps?q=${building.lat},${building.lng}`
+                } target="_blank" rel="noopener noreferrer" style={linkBtn}>Otevřít mapu</a>
+                <a href={building.street && building.houseNumber
+                  ? `https://maps.google.com/maps?q=${encodeURIComponent(`${building.street} ${building.houseNumber}, ${building.city}, Česko`)}&layer=c`
+                  : `https://www.google.com/maps/@${building.lat},${building.lng},3a,75y,90t/data=!3m6!1e1!3m4!1s!2e0!7i16384!8i8192`
+                } target="_blank" rel="noopener noreferrer" style={linkBtn}>Street View</a>
               </div>
             )}
           </div>
