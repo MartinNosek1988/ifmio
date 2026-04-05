@@ -195,6 +195,15 @@ export default function CrmBuildingsPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['crm-buildings'] }); setSelected(new Set()) },
   })
 
+  const bulkEnrichMut = useMutation({
+    mutationFn: (ids: string[]) => apiClient.post('/knowledge-base/buildings/bulk-enrich', { buildingIds: ids.slice(0, 50) }).then(r => r.data),
+    onSuccess: (data: any) => {
+      alert(`Enrichment dokončen: ${data.enriched} obohaceno, ${data.errors} chyb`)
+      qc.invalidateQueries({ queryKey: ['crm-buildings'] })
+      setSelected(new Set())
+    },
+  })
+
   const totalPages = Math.ceil((result?.total || 0) / PAGE_SIZE)
 
   // Territory cascade keys in order
@@ -321,6 +330,11 @@ export default function CrmBuildingsPage() {
       {selected.size > 0 && (
         <div style={{ marginBottom: 8, padding: '8px 16px', background: '#fef3c7', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12, fontSize: '0.82rem' }}>
           <span style={{ fontWeight: 500 }}>{selected.size} vybráno</span>
+          <button onClick={() => bulkEnrichMut.mutate([...selected])}
+            style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #0d9488', background: '#ccfbf1', color: '#0d9488', fontSize: '0.78rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+            disabled={bulkEnrichMut.isPending}>
+            {bulkEnrichMut.isPending ? 'Enrichuji...' : 'Re-enrichovat'}
+          </button>
           <button onClick={() => { if (confirm(`Opravdu smazat ${selected.size} budov?`)) bulkDeleteMut.mutate([...selected]) }}
             style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #dc2626', background: '#fee2e2', color: '#dc2626', fontSize: '0.78rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
             disabled={bulkDeleteMut.isPending}>

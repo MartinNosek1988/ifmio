@@ -87,6 +87,15 @@ export class KnowledgeBaseController {
     return this.orchestrator.enrichFromAddress(body)
   }
 
+  @Post('buildings/bulk-enrich')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Re-enrich vybraných budov (max 50)' })
+  async bulkReEnrich(@Body() body: { buildingIds: string[] }) {
+    const ids = body.buildingIds?.slice(0, 50) ?? []
+    if (ids.length === 0) return { enriched: 0 }
+    return this.bulkImport.reEnrichBuildings(ids)
+  }
+
   @Get('stats')
   @ApiOperation({ summary: 'KB statistiky' })
   async getStats() {

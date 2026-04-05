@@ -865,6 +865,92 @@ export class BulkImportService {
     }
   }
 
+  // ── Re-enrich existing buildings ─────────────────────
+
+  async reEnrichBuildings(buildingIds: string[]): Promise<{ enriched: number; errors: number }> {
+    let enriched = 0
+    let errors = 0
+
+    for (const id of buildingIds) {
+      try {
+        const building = await this.prisma.building.findUnique({
+          where: { id },
+          select: { id: true, lat: true, lng: true, street: true, houseNumber: true, city: true, managingOrgId: true, dataQualityScore: true },
+        })
+        if (!building || !building.lat || !building.lng) { errors++; continue }
+
+        const enrichCache: Record<string, unknown> = {}
+        const sources: Array<{ name: string; fetchedAt: string; status: string }> = []
+        let qualityBonus = 0
+
+        // GeoRisk
+        try {
+          const risks = await this.geoRisk.getRiskProfile(building.lat, building.lng)
+          enrichCache.risks = risks; qualityBonus += 5
+          sources.push({ name: 'GeoRisk', fetchedAt: new Date().toISOString(), status: 'ok' })
+        } catch { sources.push({ name: 'GeoRisk', fetchedAt: new Date().toISOString(), status: 'error' }) }
+
+        // IPR Price
+        try {
+          const price = await this.iprPrice.getLandPrice(building.lat, building.lng)
+          if (price) { enrichCache.priceEstimate = price; qualityBonus += 10 }
+          sources.push({ name: 'IPR', fetchedAt: new Date().toISOString(), status: price ? 'ok' : 'no_data' })
+        } catch { sources.push({ name: 'IPR', fetchedAt: new Date().toISOString(), status: 'error' }) }
+
+        // POI
+        try {
+          const poi = await this.geoRisk.getNearbyPOI(building.lat, building.lng, 500)
+          const hasAny = Object.entries(poi).some(([k, v]) => k === 'details' ? Array.isArray(v) && v.length > 0 : typeof v === 'number' && v > 0)
+          if (hasAny) { enrichCache.poi = poi; qualityBonus += 5 }
+          sources.push({ name: 'Overpass', fetchedAt: new Date().toISOString(), status: hasAny ? 'ok' : 'no_data' })
+        } catch { sources.push({ name: 'Overpass', fetchedAt: new Date().toISOString(), status: 'error' }) }
+
+        // ARES (if has street)
+        if (building.street && building.city) {
+          try {
+            const streetName = building.street.replace(/\s+\d+[\w/\s-]*$/, '').trim()
+            if (streetName.length >= 3) {
+              const searchTerm = `Spolecenstvi vlastniku ${streetName} ${building.houseNumber || ''}`.trim()
+              const aresResults = await this.ares.searchByName(searchTerm, 5)
+              const svj = aresResults.ekonomickeSubjekty.find(s =>
+                s.pravniFormaKod === 145 || s.pravniFormaKod === 110 ||
+                (s.nazev || '').toLowerCase().includes('společenství vlastníků') ||
+                (s.nazev || '').toLowerCase().includes('družstvo'),
+              )
+              if (svj && !building.managingOrgId) {
+                const org = await this.kb.findOrCreateOrganization(svj.ico, {
+                  obchodniJmeno: svj.nazev, nazev: svj.nazev, dic: svj.dic, pravniForma: svj.pravniForma, pravniFormaKod: svj.pravniFormaKod,
+                })
+                await this.prisma.building.update({ where: { id }, data: { managingOrgId: org.id } }).catch(() => {})
+              }
+              sources.push({ name: 'ARES', fetchedAt: new Date().toISOString(), status: svj ? 'ok' : 'no_match' })
+            }
+          } catch { sources.push({ name: 'ARES', fetchedAt: new Date().toISOString(), status: 'error' }) }
+          await this.delay(500)
+        }
+
+        enrichCache.sources = sources
+
+        const finalScore = Math.min((building.dataQualityScore || 30) + qualityBonus, 100)
+        await this.prisma.building.update({
+          where: { id },
+          data: {
+            dataQualityScore: finalScore,
+            lastEnrichedAt: new Date(),
+            enrichmentData: JSON.parse(JSON.stringify(enrichCache)),
+            enrichedAt: new Date(),
+          },
+        })
+        enriched++
+      } catch {
+        errors++
+      }
+      await this.delay(500) // Rate limit between buildings
+    }
+
+    return { enriched, errors }
+  }
+
   // ── Helpers ─────────────────────────────────────────
 
   /**
