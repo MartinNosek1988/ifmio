@@ -35,6 +35,8 @@ services:
       SUPER_ADMIN_EMAILS: ${SUPER_ADMIN_EMAILS:-}
       # Mio AI
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # ČÚZK Katastr API
+      CUZK_API_KEY: ${CUZK_API_KEY:-}
     expose:
       - '3000'
     healthcheck:
