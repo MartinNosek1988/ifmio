@@ -486,6 +486,10 @@ model Property {
 
   insurances             Insurance[]
 
+  // Enrichment data (ARES)
+  aresData               Json?              // AresFullData
+  enrichedAt             DateTime?
+
   // Knowledge Base link
   buildingId             String?
   building               Building? @relation(fields: [buildingId], references: [id])
@@ -4745,8 +4749,25 @@ model KbOrganization {
   isVatPayer        Boolean      @default(false)
   czNace            String[]
   dataBoxId         String?
+  spisovaZnacka     String?
+  aresData          Json?        // cached AresFullData
   lastAresSync      DateTime?
   dataQualityScore  Float?       @default(0)
+  // Catalog / verification
+  isVerified        Boolean      @default(false)
+  verifiedAt        DateTime?
+  verifiedBy        String?
+  catalogTags       String[]
+  catalogRating     Float?
+  catalogWoCount    Int          @default(0)
+  // Financial health (from účetní závěrky)
+  lastRevenueYear   Int?
+  lastRevenue       BigInt?
+  lastProfit        BigInt?
+  insolvent         Boolean      @default(false)
+  insolventCheckedAt DateTime?
+  // RŽP — živnostenská oprávnění
+  rzpData           Json?
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
   managedBuildings  Building[]
@@ -4755,25 +4776,62 @@ model KbOrganization {
   ownerships        UnitOwnershipKb[]
   registryChanges   KbRegistryChange[]
   sbirkaListiny     KbSbirkaListina[]
+  engagements       KbPersonEngagement[]
 
   @@index([orgType])
   @@index([city])
+  @@index([legalFormCode])
+  @@index([name])
   @@map("kb_organizations")
 }
 
 model KbPerson {
   id                String       @id @default(uuid())
-  firstName         String?
-  lastName          String?
+  firstName         String?      // jmeno
+  lastName          String?      // prijmeni
+  titulPred         String?
+  titulZa           String?
+  datumNarozeni     String?      // "1937-05-10" — string for historical data
   city              String?
+  adresa            String?      // textovaAdresa
+  statniObcanstvi   String?
   nameNormalized    String?
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
   ownerships        UnitOwnershipKb[]
+  engagements       KbPersonEngagement[]
 
+  @@unique([lastName, datumNarozeni])
   @@index([lastName, firstName])
   @@index([nameNormalized])
   @@map("kb_persons")
+}
+
+model KbPersonEngagement {
+  id          String    @id @default(cuid())
+  personId    String?
+  ico         String    // IČO subjektu
+  nazevFirmy  String    // snapshot názvu v době zápisu
+  funkce      String    // "předseda výboru" | "jednatel" | "společník" atd.
+  od          DateTime?
+  do          DateTime?
+  aktivni     Boolean   @default(true)
+  datumZapisu DateTime?
+  datumVymazu DateTime?
+  zdrojDat    String    @default("dataor") // "dataor" | "ares_vr"
+  // Pro právnické osoby (firma jako společník/jednatel)
+  partnerIco  String?
+  partnerNazev String?
+
+  person       KbPerson?       @relation(fields: [personId], references: [id])
+  organization KbOrganization  @relation(fields: [ico], references: [ico])
+
+  @@index([ico])
+  @@index([personId])
+  @@index([partnerIco])
+  @@index([aktivni])
+  @@unique([personId, ico, funkce, datumZapisu])
+  @@map("kb_person_engagements")
 }
 
 model UnitOwnershipKb {
@@ -4990,4 +5048,20 @@ model InsuranceClaim {
   @@index([tenantId])
   @@index([insuranceId])
   @@map("insurance_claims")
+}
+
+// ─── JUSTICE.CZ DOCUMENTS ─────────────────────────────────────
+
+model JusticeDocument {
+  id          String    @id @default(cuid())
+  ico         String
+  typ         String    // "STANOVY" | "NOTARSKY_ZAPIS" | "UCETNI_ZAVERKA" | "ZAPIS_SHROMAZDENI" | "JINE"
+  nazev       String
+  datumPodani DateTime?
+  dokId       String?   // interní Justice.cz ID dokumentu
+  url         String?   // přímý URL ke stažení PDF
+  importedAt  DateTime  @default(now())
+
+  @@index([ico])
+  @@map("justice_documents")
 }

@@ -15,6 +15,7 @@ import { AiBatchService } from '../finance/ai-batch.service';
 import { RetentionService } from './retention.service';
 import { PvkService } from '../pvk/pvk.service';
 import { CuzkEnrichService } from '../knowledge-base/cuzk-enrich.service';
+import { DataorService } from '../integrations/dataor/dataor.service';
 
 const ONE_HOUR = 60 * 60 * 1000;
 const FIFTEEN_MIN = 15 * 60 * 1000;
@@ -54,6 +55,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     private readonly retention: RetentionService,
     private readonly pvk: PvkService,
     private readonly cuzkEnrich: CuzkEnrichService,
+    private readonly dataor: DataorService,
   ) {}
 
   onModuleInit() {
@@ -73,6 +75,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     this.initMioRetention();
     this.initPvkSync();
     this.initCuzkEnrich();
+    this.initDataorImport();
   }
 
   onModuleDestroy() {
@@ -588,6 +591,32 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
       await this.cuzkEnrich.runDailyEnrich();
     } catch (err) {
       this.logger.error('ČÚZK daily enrich FAILED', (err as Error).stack);
+    }
+  }
+
+  // ── Dataor nightly import (2:00 AM) ──────────────────
+
+  private dataorImportInterval: ReturnType<typeof setInterval> | null = null;
+  private lastDataorDate = '';
+
+  private initDataorImport() {
+    this.logger.log('Dataor nightly import — every 24h at ~2:00');
+    this.dataorImportInterval = setInterval(() => this.maybeRunDataorImport(), ONE_HOUR);
+  }
+
+  private async maybeRunDataorImport() {
+    const now = new Date();
+    if (now.getHours() !== 2) return;
+    const dateStr = now.toISOString().slice(0, 10);
+    if (dateStr === this.lastDataorDate) return;
+    this.lastDataorDate = dateStr;
+
+    try {
+      const rok = now.getFullYear();
+      const stats = await this.dataor.importAll(rok, 'actual');
+      this.logger.log(`Dataor import done: ${JSON.stringify(stats)}`);
+    } catch (err) {
+      this.logger.error('Dataor nightly import FAILED', (err as Error).stack);
     }
   }
 }

@@ -50,8 +50,8 @@ async function bootstrap() {
         defaultSrc: ["'self'"],
         scriptSrc: process.env.NODE_ENV === 'development' ? ["'self'", "'unsafe-inline'"] : ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'"],  // styles need unsafe-inline for CSS-in-JS
-        imgSrc: ["'self'", "data:", "blob:"],
-        connectSrc: ["'self'", "https://ags.cuzk.gov.cz", "https://ares.gov.cz"],
+        imgSrc: ["'self'", "data:", "blob:", "https://*.tile.openstreetmap.org", "https://ags.cuzk.gov.cz", "https://*.google.com", "https://*.googleapis.com"],
+        connectSrc: ["'self'", "https://ags.cuzk.gov.cz", "https://ares.gov.cz", "https://*.tile.openstreetmap.org", "https://api-kn.cuzk.gov.cz"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         objectSrc: ["'none'"],
         frameAncestors: ["'none'"],

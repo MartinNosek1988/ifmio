@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PropertyScopeService } from '../common/services/property-scope.service';
 import { BuildingEnrichmentService } from '../knowledge-base/building-enrichment.service';
+import { AresService } from '../integrations/ares/ares.service';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
 import type { PropertyType, OwnershipType, PropertyLegalMode, AccountingSystem } from '@prisma/client';
@@ -15,6 +16,7 @@ export class PropertiesService {
     private prisma: PrismaService,
     private scope: PropertyScopeService,
     private enrichment: BuildingEnrichmentService,
+    private aresService: AresService,
   ) {}
 
   async create(tenantId: string, dto: CreatePropertyDto) {
@@ -58,6 +60,13 @@ export class PropertiesService {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.warn('KB enrichment failed', { error: msg });
     });
+
+    // ARES + Justice enrichment (async, non-blocking)
+    if (property.ico) {
+      this.enrichProperty(property.id).catch(err =>
+        this.logger.warn(`Registry enrichment failed for property ${property.id}`, { error: String(err) }),
+      );
+    }
 
     return property;
   }
@@ -121,8 +130,8 @@ export class PropertiesService {
   }
 
   async update(user: AuthUser, id: string, dto: UpdatePropertyDto) {
-    await this.findOne(user, id);
-    return this.prisma.property.update({
+    const existing = await this.findOne(user, id);
+    const updated = await this.prisma.property.update({
       where: { id },
       data: {
         ...(dto.name !== undefined && { name: dto.name }),
@@ -150,6 +159,15 @@ export class PropertiesService {
       },
       include: { units: true },
     });
+
+    // Re-enrich if IČO changed
+    if (dto.ico !== undefined && dto.ico !== existing.ico && dto.ico) {
+      this.enrichProperty(id).catch(err =>
+        this.logger.warn(`Registry enrichment failed for property ${id}`, { error: String(err) }),
+      );
+    }
+
+    return updated;
   }
 
   async archive(user: AuthUser, id: string) {
@@ -175,5 +193,61 @@ export class PropertiesService {
       prevId: idx > 0 ? properties[idx - 1].id : null,
       nextId: idx < properties.length - 1 ? properties[idx + 1].id : null,
     }
+  }
+
+  /**
+   * Enrich property with ARES data (basic + VR statutory body).
+   * Called automatically on create/update with IČO, or manually via POST /properties/:id/enrich.
+   */
+  async enrichProperty(propertyId: string) {
+    const property = await this.prisma.property.findUnique({
+      where: { id: propertyId },
+      select: { id: true, ico: true },
+    });
+    if (!property?.ico) return { enriched: false, reason: 'no_ico' };
+
+    const aresData = await this.aresService.enrichByIco(property.ico);
+
+    // Link statutory members to KbPerson by lastName+datumNarozeni
+    if (aresData.statutarniOrgan?.clenove) {
+      for (const clen of aresData.statutarniOrgan.clenove) {
+        if (!clen.prijmeni || !clen.datumNarozeni) continue;
+        try {
+          const person = await this.prisma.kbPerson.findFirst({
+            where: { lastName: clen.prijmeni, datumNarozeni: clen.datumNarozeni },
+            select: { id: true },
+          });
+          if (person) clen.kbPersonId = person.id;
+        } catch { /* non-critical */ }
+      }
+    }
+
+    const updated = await this.prisma.property.update({
+      where: { id: propertyId },
+      data: {
+        aresData: aresData as any,
+        enrichedAt: new Date(),
+      },
+      select: { aresData: true, enrichedAt: true },
+    });
+
+    return { aresData: updated.aresData, enrichedAt: updated.enrichedAt };
+  }
+
+  async getKbOrganization(ico: string) {
+    const org = await this.prisma.kbOrganization.findUnique({
+      where: { ico },
+    });
+    if (!org) return null;
+
+    const engagements = await this.prisma.kbPersonEngagement.findMany({
+      where: { ico },
+      include: {
+        person: { select: { id: true, firstName: true, lastName: true, titulPred: true, datumNarozeni: true } },
+      },
+      orderBy: [{ aktivni: 'desc' }, { datumZapisu: 'desc' }],
+    });
+
+    return { ...org, engagements };
   }
 }

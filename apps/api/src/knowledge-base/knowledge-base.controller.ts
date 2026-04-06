@@ -3,6 +3,7 @@ import type { FastifyReply } from 'fastify'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { IsString, IsNotEmpty, IsOptional, IsNumber, IsIn } from 'class-validator'
 import { KnowledgeBaseService } from './knowledge-base.service'
+import { DataorService } from '../integrations/dataor/dataor.service'
 import { PropertyEnrichmentOrchestrator } from './property-enrichment.orchestrator'
 import { BuildingIntelligenceService } from './building-intelligence.service'
 import { BulkImportService, type BulkImportStep } from './bulk-import.service'
@@ -80,6 +81,7 @@ export class KnowledgeBaseController {
     private superAdmin: SuperAdminService,
     private cuzkApiKn: CuzkApiKnService,
     private territorySeed: TerritorySeedService,
+    private dataorService: DataorService,
   ) {}
 
   @Post('enrich')
@@ -831,5 +833,22 @@ export class KnowledgeBaseController {
       currentLevel = childIds
     }
     return ids
+  }
+
+  // ── Dataor Import ──────────────────────────────────────
+
+  @Post('dataor/import')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Spustit dataor.justice.cz import (admin)' })
+  async dataorImport(
+    @CurrentUser() user: AuthUser,
+    @Body() body: { rok?: number; typ?: 'full' | 'actual'; pravniForma?: string; soud?: string },
+  ) {
+    const isSuperAdmin = await this.superAdmin.isSuperAdmin(user.id)
+    if (!isSuperAdmin) throw new BadRequestException('Super admin required')
+
+    const rok = body.rok ?? new Date().getFullYear()
+    const typ = body.typ ?? 'actual'
+    return this.dataorService.importAll(rok, typ, body.pravniForma, body.soud)
   }
 }
