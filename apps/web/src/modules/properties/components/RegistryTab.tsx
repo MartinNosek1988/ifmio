@@ -138,7 +138,7 @@ export default function RegistryTab({ propertyId, aresData, enrichedAt, onRefres
           <tbody>
             <InfoRow label="IČO" value={aresData.ico} />
             {aresData.dic && <InfoRow label="DIČ" value={aresData.dic} />}
-            <DataBoxRow datovaSChrana={aresData.datovaSChrana} />
+            <DataBoxRow datovaSchranka={aresData.datovaSchranka} />
             <InfoRow label="Právní forma" value={t.legalForms[aresData.pravniForma] ?? aresData.pravniForma} />
             {aresData.datumVzniku && <InfoRow label="Datum vzniku" value={new Date(aresData.datumVzniku).toLocaleDateString('cs-CZ')} />}
             {aresData.datumAktualizace && <InfoRow label="Datum aktualizace v registru" value={new Date(aresData.datumAktualizace).toLocaleDateString('cs-CZ')} />}
@@ -259,12 +259,12 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   )
 }
 
-function DataBoxRow({ datovaSChrana }: { datovaSChrana?: string }) {
+function DataBoxRow({ datovaSchranka }: { datovaSchranka?: string }) {
   const toast = useToast()
 
   const handleCopy = () => {
-    if (!datovaSChrana) return
-    navigator.clipboard.writeText(datovaSChrana).then(() => {
+    if (!datovaSchranka) return
+    navigator.clipboard.writeText(datovaSchranka).then(() => {
       toast.success(t.dataBoxCopied)
     })
   }
@@ -275,10 +275,10 @@ function DataBoxRow({ datovaSChrana }: { datovaSChrana?: string }) {
         {t.dataBox}
       </td>
       <td style={{ padding: '6px 12px' }}>
-        {datovaSChrana ? (
+        {datovaSchranka ? (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <code style={{ fontFamily: 'monospace', fontSize: '.85rem', background: 'var(--gray-100)', padding: '1px 6px', borderRadius: 4 }}>
-              {datovaSChrana}
+              {datovaSchranka}
             </code>
             <button
               onClick={handleCopy}

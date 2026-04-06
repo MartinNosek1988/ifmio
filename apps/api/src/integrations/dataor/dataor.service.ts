@@ -1,7 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
 import { XMLParser } from 'fast-xml-parser'
-import { gunzipSync } from 'zlib'
+import { gunzip } from 'node:zlib'
+import { promisify } from 'node:util'
+
+const gunzipAsync = promisify(gunzip)
 
 export interface ImportStats {
   startedAt: string
@@ -10,6 +13,7 @@ export interface ImportStats {
   totalOsob: number
   totalEngagements: number
   errors: string[]
+  skipped?: boolean
 }
 
 interface ParsedSubjekt {
@@ -69,6 +73,8 @@ export class DataorService {
     isArray: (name) => name === 'Subjekt' || name === 'Udaj',
   })
 
+  private importRunning = false
+
   constructor(private readonly prisma: PrismaService) {}
 
   async importAll(
@@ -77,6 +83,12 @@ export class DataorService {
     filterPravniForma?: string,
     filterSoud?: string,
   ): Promise<ImportStats> {
+    if (this.importRunning) {
+      this.logger.warn('Dataor import already running — skipping')
+      return { startedAt: new Date().toISOString(), totalSubjektu: 0, totalOsob: 0, totalEngagements: 0, errors: [], skipped: true }
+    }
+    this.importRunning = true
+
     const stats: ImportStats = {
       startedAt: new Date().toISOString(),
       totalSubjektu: 0,
@@ -84,6 +96,8 @@ export class DataorService {
       totalEngagements: 0,
       errors: [],
     }
+
+    try {
 
     const formy = filterPravniForma
       ? PRAVNI_FORMY.filter(f => f.kod === filterPravniForma)
@@ -108,6 +122,10 @@ export class DataorService {
     stats.finishedAt = new Date().toISOString()
     this.logger.log(`Dataor import done: ${stats.totalSubjektu} subjects, ${stats.totalOsob} persons, ${stats.totalEngagements} engagements, ${stats.errors.length} errors`)
     return stats
+
+    } finally {
+      this.importRunning = false
+    }
   }
 
   async importDataset(
@@ -162,7 +180,7 @@ export class DataorService {
 
     // Check for gzip magic bytes (1f 8b)
     if (buffer.length > 2 && buffer[0] === 0x1f && buffer[1] === 0x8b) {
-      xmlText = gunzipSync(buffer).toString('utf-8')
+      xmlText = (await gunzipAsync(buffer)).toString('utf-8')
     } else {
       xmlText = buffer.toString('utf-8')
     }

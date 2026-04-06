@@ -127,6 +127,10 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
       clearInterval(this.cuzkEnrichInterval);
       this.cuzkEnrichInterval = null;
     }
+    if (this.dataorImportInterval) {
+      clearInterval(this.dataorImportInterval);
+      this.dataorImportInterval = null;
+    }
     this.logger.log('Cron intervals cleared');
   }
 
