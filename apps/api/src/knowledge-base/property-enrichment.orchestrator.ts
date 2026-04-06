@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { KnowledgeBaseService } from './knowledge-base.service'
 import { AresService } from '../integrations/ares/ares.service'
-import { JusticeService, type RegistryChange, type SbirkaDocument } from '../integrations/justice/justice.service'
+// JusticeService — planned for dataor.justice.cz import (future sprint)
 import { IprPriceService, type PriceEstimate } from './ipr-price.service'
 import { GeoRiskService, type NearbyPOI, type GeoRiskProfile } from './geo-risk.service'
 import { BuildingIntelligenceService, type ConditionPrediction, type ChecklistItem, type DuplicateResult } from './building-intelligence.service'
@@ -37,8 +37,8 @@ export interface EnrichmentResult {
   duplicate?: DuplicateResult
   justice?: {
     subject?: { subjektId: string; spisovaZnacka?: string; rejstrik?: string; soud?: string }
-    registryChanges: RegistryChange[]
-    sbirkaListin: SbirkaDocument[]
+    registryChanges: Array<{ changeDate?: string; changeType: string; description?: string }>
+    sbirkaListin: Array<{ documentId?: string; documentName: string; documentType: string; filingDate?: string }>
   }
 }
 
@@ -49,7 +49,6 @@ export class PropertyEnrichmentOrchestrator {
   constructor(
     private kb: KnowledgeBaseService,
     private ares: AresService,
-    private justice: JusticeService,
     private iprPrice: IprPriceService,
     private geoRisk: GeoRiskService,
     private intelligence: BuildingIntelligenceService,
@@ -264,86 +263,8 @@ export class PropertyEnrichmentOrchestrator {
       },
     ]
 
-    // === KROK 9: Justice.cz — OR history + Sbírka listin ===
-    if (result.freeData.organization?.ico) {
-      try {
-        const subject = await this.justice.getSubjectByIco(result.freeData.organization.ico)
-        if (subject) {
-          const [registryChanges, sbirkaListin] = await Promise.all([
-            this.justice.getRegistryHistory(subject.subjektId),
-            this.justice.getDocumentList(subject.subjektId),
-          ])
-          result.justice = {
-            subject: {
-              subjektId: subject.subjektId,
-              spisovaZnacka: subject.spisovaZnacka,
-              rejstrik: subject.rejstrik,
-              soud: subject.soud,
-            },
-            registryChanges,
-            sbirkaListin,
-          }
-          result.sources.push('JUSTICE_OR')
-          result.qualityScore += 10
-
-          // Persist to KB — upsert to preserve history
-          const org = await this.prisma.kbOrganization.findUnique({
-            where: { ico: result.freeData.organization.ico },
-          })
-          if (org) {
-            for (const change of registryChanges.slice(0, 20)) {
-              const changeDate = change.changeDate ? new Date(change.changeDate) : null
-              if (!changeDate) continue // null changeDate breaks unique constraint
-              await this.prisma.kbRegistryChange.upsert({
-                where: {
-                  organizationId_changeDate_changeType: {
-                    organizationId: org.id,
-                    changeDate: changeDate!,
-                    changeType: change.changeType,
-                  },
-                },
-                create: {
-                  organizationId: org.id,
-                  changeDate,
-                  changeType: change.changeType,
-                  description: change.description,
-                },
-                update: {
-                  description: change.description,
-                },
-              }).catch(() => {})
-            }
-            for (const doc of sbirkaListin.slice(0, 30)) {
-              if (!doc.documentId) continue // skip docs without justiceDocId
-              await this.prisma.kbSbirkaListina.upsert({
-                where: {
-                  organizationId_justiceDocId: {
-                    organizationId: org.id,
-                    justiceDocId: doc.documentId,
-                  },
-                },
-                create: {
-                  organizationId: org.id,
-                  documentType: doc.documentType,
-                  documentName: doc.documentName,
-                  filingDate: doc.filingDate ? new Date(doc.filingDate) : null,
-                  periodFrom: doc.periodFrom ? new Date(doc.periodFrom) : null,
-                  periodTo: doc.periodTo ? new Date(doc.periodTo) : null,
-                  justiceDocId: doc.documentId,
-                  downloadUrl: doc.downloadUrl,
-                },
-                update: {
-                  documentName: doc.documentName,
-                  downloadUrl: doc.downloadUrl,
-                },
-              }).catch(() => {})
-            }
-          }
-        }
-      } catch (err) {
-        this.logger.debug(`Justice.cz enrichment failed: ${err}`)
-      }
-    }
+    // === KROK 9: Justice.cz — stub (dataor.justice.cz import planned) ===
+    // Justice.cz document import will use JusticeService.importFromDataor() in a future sprint
 
     result.qualityScore = Math.min(result.qualityScore, 100)
 

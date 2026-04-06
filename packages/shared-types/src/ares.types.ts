@@ -30,5 +30,9 @@ export interface AresFullData {
     clenove: AresStatutarniClen[];
   };
 
+  // Ze /ekonomicke-subjekty-ros endpointu
+  datovaSChrana?: string;  // ID datové schránky ze zdroje ROS
+  stavRos?: string;        // "AKTIVNI" / "ZANIKLÝ" / atd.
+
   fetchedAt: string; // ISO
 }

@@ -175,7 +175,7 @@ export class AresService {
   // ─── Full enrichment ──────────────────────────────────────
 
   /**
-   * Full enrichment: parallel fetch of basic subject + VR (statutory body).
+   * Full enrichment: parallel fetch of basic + VR (statutory body) + ROS (datová schránka).
    * Rate limited to 2 req/s. 8s timeout. 1x retry after 1s.
    */
   async enrichByIco(ico: string): Promise<AresFullData> {
@@ -183,10 +183,11 @@ export class AresService {
       throw new BadRequestException('Neplatné IČO');
     }
 
-    // Parallel fetch: basic subject + VR statutory body
-    const [basicResult, vrResult] = await Promise.allSettled([
+    // Parallel fetch: basic subject + VR statutory body + ROS datová schránka
+    const [basicResult, vrResult, rosResult] = await Promise.allSettled([
       this.fetchWithRetry(`${ARES_BASE}/ekonomicke-subjekty/${ico}`),
       this.fetchWithRetry(`${ARES_BASE}/ekonomicke-subjekty-vr/${ico}`),
+      this.fetchWithRetry(`${ARES_BASE}/ekonomicke-subjekty-ros/${ico}`),
     ]);
 
     if (basicResult.status === 'rejected') {
@@ -288,6 +289,35 @@ export class AresService {
       }
     } else {
       this.logger.warn(`ARES VR endpoint failed for ICO ${ico}: ${vrResult.reason}`);
+    }
+
+    // ROS datová schránka + stav subjektu
+    if (rosResult.status === 'fulfilled') {
+      try {
+        const rosData = rosResult.value;
+        const rosZaznamy = rosData.zaznamy as Array<Record<string, unknown>> | undefined;
+        const rosZaznam = rosZaznamy?.[0];
+        if (rosZaznam) {
+          // datoveSchranky[0].identifikatorDs
+          const datoveSchranky = rosZaznam.datoveSchranky as Array<Record<string, unknown>> | undefined;
+          if (datoveSchranky?.[0]?.identifikatorDs) {
+            result.datovaSChrana = String(datoveSchranky[0].identifikatorDs);
+          }
+          // stavSubjektu[0].stavSubjektu
+          const stavSubjektu = rosZaznam.stavSubjektu as Array<Record<string, unknown>> | undefined;
+          if (stavSubjektu?.[0]?.stavSubjektu) {
+            result.stavRos = String(stavSubjektu[0].stavSubjektu);
+          }
+          // datumVzniku fallback
+          if (!result.datumVzniku && rosZaznam.datumVzniku) {
+            result.datumVzniku = String(rosZaznam.datumVzniku);
+          }
+        }
+      } catch (err) {
+        this.logger.warn(`ARES ROS parsing failed for ICO ${ico}: ${err}`);
+      }
+    } else {
+      this.logger.warn(`ARES ROS endpoint failed for ICO ${ico}: ${rosResult.reason}`);
     }
 
     return result;

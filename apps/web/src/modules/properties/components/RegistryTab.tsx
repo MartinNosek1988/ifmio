@@ -1,7 +1,8 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { RefreshCw } from 'lucide-react'
+import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { RefreshCw, Copy, ExternalLink } from 'lucide-react'
 import { apiClient } from '../../../core/api/client'
-import { Badge, Button } from '../../../shared/components'
+import { Badge, Button, EmptyState } from '../../../shared/components'
 import { useToast } from '../../../shared/components/toast/Toast'
 import { cs } from '../../../i18n/locales/cs'
 import type { AresFullData, AresStatutarniClen } from '@ifmio/shared-types'
@@ -15,6 +16,17 @@ interface RegistryTabProps {
   onRefresh: () => void
 }
 
+interface JusticeDocumentRow {
+  id: string
+  ico: string
+  typ: string
+  nazev: string
+  datumPodani: string | null
+  dokId: string | null
+  url: string | null
+  importedAt: string
+}
+
 const FUNKCE_COLORS: Record<string, string> = {
   'předseda výboru': '#0d9488',
   'předseda': '#0d9488',
@@ -23,12 +35,20 @@ const FUNKCE_COLORS: Record<string, string> = {
   'místopředseda': '#3b82f6',
 }
 
+const DOC_TYPE_COLORS: Record<string, string> = {
+  STANOVY: '#0d9488',
+  UCETNI_ZAVERKA: '#3b82f6',
+  NOTARSKY_ZAPIS: '#9333ea',
+  ZAPIS_SHROMAZDENI: '#f97316',
+  JINE: '#6b7280',
+}
+
 function getFunkceColor(funkce: string): string {
   const lower = funkce.toLowerCase()
   for (const [key, color] of Object.entries(FUNKCE_COLORS)) {
     if (lower.includes(key)) return color
   }
-  return '#6b7280' // gray for "člen" and others
+  return '#6b7280'
 }
 
 export default function RegistryTab({ propertyId, aresData, enrichedAt, onRefresh }: RegistryTabProps) {
@@ -43,6 +63,11 @@ export default function RegistryTab({ propertyId, aresData, enrichedAt, onRefres
       onRefresh()
     },
     onError: () => toast.error('Enrichment selhal'),
+  })
+
+  const { data: documents = [], isLoading: docsLoading } = useQuery({
+    queryKey: ['property', propertyId, 'justice-documents'],
+    queryFn: () => apiClient.get<JusticeDocumentRow[]>(`/properties/${propertyId}/justice-documents`).then(r => r.data),
   })
 
   const sectionStyle: React.CSSProperties = {
@@ -113,6 +138,7 @@ export default function RegistryTab({ propertyId, aresData, enrichedAt, onRefres
           <tbody>
             <InfoRow label="IČO" value={aresData.ico} />
             {aresData.dic && <InfoRow label="DIČ" value={aresData.dic} />}
+            <DataBoxRow datovaSChrana={aresData.datovaSChrana} />
             <InfoRow label="Právní forma" value={t.legalForms[aresData.pravniForma] ?? aresData.pravniForma} />
             {aresData.datumVzniku && <InfoRow label="Datum vzniku" value={new Date(aresData.datumVzniku).toLocaleDateString('cs-CZ')} />}
             {aresData.datumAktualizace && <InfoRow label="Datum aktualizace v registru" value={new Date(aresData.datumAktualizace).toLocaleDateString('cs-CZ')} />}
@@ -147,7 +173,6 @@ export default function RegistryTab({ propertyId, aresData, enrichedAt, onRefres
         <div style={sectionStyle}>
           <div style={headerStyle}>{aresData.statutarniOrgan.nazev}</div>
 
-          {/* Active members */}
           {activeClenove.length > 0 && (
             <>
               <div style={{ fontSize: '.78rem', color: 'var(--text-muted)', fontWeight: 500, marginBottom: 6 }}>{t.active}</div>
@@ -155,7 +180,6 @@ export default function RegistryTab({ propertyId, aresData, enrichedAt, onRefres
             </>
           )}
 
-          {/* Historical members */}
           {historicalClenove.length > 0 && (
             <>
               <div style={{ fontSize: '.78rem', color: 'var(--text-muted)', fontWeight: 500, marginTop: 16, marginBottom: 6 }}>{t.historical}</div>
@@ -168,6 +192,60 @@ export default function RegistryTab({ propertyId, aresData, enrichedAt, onRefres
           )}
         </div>
       )}
+
+      {/* Sekce 3: Sbírka listin */}
+      <div style={sectionStyle}>
+        <div style={headerStyle}>{t.documents}</div>
+        {docsLoading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {[1, 2, 3].map(i => (
+              <div key={i} style={{ height: 32, background: 'var(--gray-100)', borderRadius: 6, animation: 'pulse 1.5s infinite' }} />
+            ))}
+          </div>
+        ) : documents.length > 0 ? (
+          <table style={{ width: '100%', fontSize: '.82rem', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                <th style={{ textAlign: 'left', padding: '4px 8px', color: 'var(--text-muted)', fontWeight: 500 }}>Datum podání</th>
+                <th style={{ textAlign: 'left', padding: '4px 8px', color: 'var(--text-muted)', fontWeight: 500 }}>Typ</th>
+                <th style={{ textAlign: 'left', padding: '4px 8px', color: 'var(--text-muted)', fontWeight: 500 }}>Název</th>
+                <th style={{ textAlign: 'left', padding: '4px 8px', color: 'var(--text-muted)', fontWeight: 500 }}>Akce</th>
+              </tr>
+            </thead>
+            <tbody>
+              {documents.map(doc => (
+                <tr key={doc.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '6px 8px' }}>
+                    {doc.datumPodani ? new Date(doc.datumPodani).toLocaleDateString('cs-CZ') : '—'}
+                  </td>
+                  <td style={{ padding: '6px 8px' }}><DocTypeBadge typ={doc.typ} /></td>
+                  <td style={{ padding: '6px 8px' }}>
+                    {doc.nazev.length > 60 ? doc.nazev.slice(0, 60) + '…' : doc.nazev}
+                  </td>
+                  <td style={{ padding: '6px 8px' }}>
+                    {doc.url && (
+                      <a
+                        href={doc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={t.documentDownload}
+                        style={{ color: 'var(--primary)', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                      >
+                        <ExternalLink size={14} />
+                      </a>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <EmptyState
+            title={t.documentsEmpty}
+            description={t.documentsEmptyDesc}
+          />
+        )}
+      </div>
     </div>
   )
 }
@@ -177,6 +255,46 @@ function InfoRow({ label, value }: { label: string; value: string }) {
     <tr style={{ borderBottom: '1px solid var(--border)' }}>
       <td style={{ padding: '6px 12px', color: 'var(--text-muted)', width: '40%' }}>{label}</td>
       <td style={{ padding: '6px 12px' }}>{value}</td>
+    </tr>
+  )
+}
+
+function DataBoxRow({ datovaSChrana }: { datovaSChrana?: string }) {
+  const toast = useToast()
+
+  const handleCopy = () => {
+    if (!datovaSChrana) return
+    navigator.clipboard.writeText(datovaSChrana).then(() => {
+      toast.success(t.dataBoxCopied)
+    })
+  }
+
+  return (
+    <tr style={{ borderBottom: '1px solid var(--border)' }}>
+      <td style={{ padding: '6px 12px', color: 'var(--text-muted)', width: '40%' }} title={t.dataBoxTooltip}>
+        {t.dataBox}
+      </td>
+      <td style={{ padding: '6px 12px' }}>
+        {datovaSChrana ? (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <code style={{ fontFamily: 'monospace', fontSize: '.85rem', background: 'var(--gray-100)', padding: '1px 6px', borderRadius: 4 }}>
+              {datovaSChrana}
+            </code>
+            <button
+              onClick={handleCopy}
+              title={t.dataBoxCopy}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer', padding: 2,
+                color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center',
+              }}
+            >
+              <Copy size={14} />
+            </button>
+          </span>
+        ) : (
+          <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>{t.dataBoxNotFound}</span>
+        )}
+      </td>
     </tr>
   )
 }
@@ -197,6 +315,20 @@ function FunkceBadge({ funkce }: { funkce: string }) {
       background: `${color}18`, color,
     }}>
       {funkce}
+    </span>
+  )
+}
+
+function DocTypeBadge({ typ }: { typ: string }) {
+  const color = DOC_TYPE_COLORS[typ] ?? DOC_TYPE_COLORS.JINE
+  const label = t.docTypes[typ] ?? typ
+  return (
+    <span style={{
+      display: 'inline-block', padding: '2px 8px', borderRadius: 4,
+      fontSize: '.75rem', fontWeight: 500,
+      background: `${color}18`, color,
+    }}>
+      {label}
     </span>
   )
 }

@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PropertiesService } from './properties.service';
+import { JusticeService } from '../integrations/justice/justice.service';
 import { CuzkImportService, type CuzkImportConfirmDto } from './cuzk-import.service';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
@@ -27,6 +28,7 @@ export class PropertiesController {
   constructor(
     private service: PropertiesService,
     private cuzkImport: CuzkImportService,
+    private justiceService: JusticeService,
   ) {}
 
   @Post()
@@ -83,6 +85,14 @@ export class PropertiesController {
   async enrich(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     await this.service.findOne(user, id);
     return this.service.enrichProperty(id);
+  }
+
+  @Get(':id/justice-documents')
+  @ApiOperation({ summary: 'Sbírka listin z Justice.cz' })
+  async justiceDocuments(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    const property = await this.service.findOne(user, id);
+    if (!property.ico) return [];
+    return this.justiceService.getDocumentsByIco(property.ico);
   }
 
   // ─── ČÚZK Import ─────────────────────────────────────────

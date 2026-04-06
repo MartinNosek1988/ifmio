@@ -4995,3 +4995,19 @@ model InsuranceClaim {
   @@index([insuranceId])
   @@map("insurance_claims")
 }
+
+// ─── JUSTICE.CZ DOCUMENTS ─────────────────────────────────────
+
+model JusticeDocument {
+  id          String    @id @default(cuid())
+  ico         String
+  typ         String    // "STANOVY" | "NOTARSKY_ZAPIS" | "UCETNI_ZAVERKA" | "ZAPIS_SHROMAZDENI" | "JINE"
+  nazev       String
+  datumPodani DateTime?
+  dokId       String?   // interní Justice.cz ID dokumentu
+  url         String?   // přímý URL ke stažení PDF
+  importedAt  DateTime  @default(now())
+
+  @@index([ico])
+  @@map("justice_documents")
+}
