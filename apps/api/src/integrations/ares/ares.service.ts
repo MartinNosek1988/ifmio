@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
-import type { AresEnrichmentData, AresStatutarniOrgan, AresStatutarniClen } from '@ifmio/shared-types';
+import type { AresFullData, AresStatutarniClen } from '@ifmio/shared-types';
 
 export interface AresSubject {
   ico: string;
@@ -54,6 +54,8 @@ export interface AresSearchResult {
 }
 
 const ARES_BASE = 'https://ares.gov.cz/ekonomicke-subjekty-v-be/rest';
+const ENRICH_TIMEOUT_MS = 8000;
+const RATE_LIMIT_INTERVAL_MS = 500; // 2 req/s
 
 /** Strip Czech diacritics — ARES POST has UTF-8 encoding issues from some clients */
 function stripDiacritics(str: string): string {
@@ -68,6 +70,7 @@ const CACHE_MAX_SIZE = 500;
 export class AresService {
   private readonly logger = new Logger(AresService.name);
   private readonly cache = new Map<string, { data: AresSubject | null; ts: number }>();
+  private lastRequestTime = 0;
 
   /** Validate IČO: must be 8 digits and pass checksum (weights [8,7,6,5,4,3,2], mod 11). */
   validateIco(ico: string): boolean {
@@ -134,7 +137,6 @@ export class AresService {
     }
 
     try {
-      // ARES v2 GET /vyhledat is broken (requires IČO). Use POST with JSON body instead.
       const res = await fetch(`${ARES_BASE}/ekonomicke-subjekty/vyhledat`, {
         method: 'POST',
         headers: {
@@ -170,159 +172,162 @@ export class AresService {
     }
   }
 
+  // ─── Full enrichment ──────────────────────────────────────
+
   /**
-   * Full enrichment: basic subject + statutory body endpoint → AresEnrichmentData
+   * Full enrichment: parallel fetch of basic subject + VR (statutory body).
+   * Rate limited to 2 req/s. 8s timeout. 1x retry after 1s.
    */
-  async enrichByIco(ico: string): Promise<AresEnrichmentData | null> {
-    if (!this.validateIco(ico)) return null;
-
-    try {
-      // Fetch basic subject data
-      const res = await fetch(`${ARES_BASE}/ekonomicke-subjekty/${ico}`, {
-        headers: { Accept: 'application/json' },
-        signal: AbortSignal.timeout(10000),
-      });
-      if (!res.ok) {
-        this.logger.warn(`ARES enrichment: subject ${res.status} for ICO ${ico}`);
-        return null;
-      }
-      const data = await res.json();
-
-      // Fetch statutory body data (separate endpoint)
-      let statutarniOrgan: AresStatutarniOrgan[] = [];
-      try {
-        const soRes = await fetch(`${ARES_BASE}/ekonomicke-subjekty/${ico}/statutarni-organ`, {
-          headers: { Accept: 'application/json' },
-          signal: AbortSignal.timeout(10000),
-        });
-        if (soRes.ok) {
-          const soData = await soRes.json();
-          statutarniOrgan = this.mapStatutarniOrgan(soData);
-        }
-      } catch (err) {
-        this.logger.debug(`ARES statutory body fetch failed for ICO ${ico}: ${err}`);
-      }
-
-      return this.mapEnrichmentData(data, statutarniOrgan);
-    } catch (err) {
-      this.logger.error(`ARES enrichment failed for ICO ${ico}`, (err as Error).stack);
-      return null;
-    }
-  }
-
-  private mapEnrichmentData(data: Record<string, unknown>, statutarniOrgan: AresStatutarniOrgan[]): AresEnrichmentData {
-    const sidlo = (data.sidlo ?? {}) as Record<string, unknown>;
-    const pravniFormaObj = data.pravniForma as Record<string, unknown> | string | undefined;
-    const datoveSchranky = data.datoveSchranky as Array<Record<string, unknown>> | undefined;
-    const czNace = data.czNace as Array<Record<string, unknown>> | string[] | undefined;
-
-    // Extract spisovaZnacka from registrace
-    const seznamRegistraci = data.seznamRegistraci as Record<string, unknown> | undefined;
-    let spisovaZnacka: string | undefined;
-    if (seznamRegistraci) {
-      // Try various known locations for spisová značka
-      const stavVr = seznamRegistraci.stavZdrojeVr as Record<string, unknown> | undefined;
-      if (stavVr?.spisovaZnacka) {
-        spisovaZnacka = String(stavVr.spisovaZnacka);
-      }
-    }
-    // Also check top-level
-    if (!spisovaZnacka && data.spisovaZnacka) {
-      spisovaZnacka = String(data.spisovaZnacka);
+  async enrichByIco(ico: string): Promise<AresFullData> {
+    if (!this.validateIco(ico)) {
+      throw new BadRequestException('Neplatné IČO');
     }
 
-    const result: AresEnrichmentData = {
-      ico: String(data.ico ?? ''),
-      nazev: String(data.obchodniJmeno ?? ''),
-      pravniForma: {
-        kod: String(typeof pravniFormaObj === 'object' ? pravniFormaObj?.kod ?? '' : ''),
-        nazev: String(typeof pravniFormaObj === 'object' ? pravniFormaObj?.nazev ?? '' : pravniFormaObj ?? ''),
-      },
-      sidlo: {
-        ulice: [sidlo.nazevUlice, sidlo.cisloDomovni, sidlo.cisloOrientacni ? `/${sidlo.cisloOrientacni}` : ''].filter(Boolean).join(' ').trim(),
-        obec: String(sidlo.nazevObce ?? ''),
-        psc: String(sidlo.psc ?? ''),
-        stat: String(sidlo.nazevStatu ?? 'Česká republika'),
-      },
-      stavSubjektu: String(data.stavSubjektu ?? 'NEZNAMY'),
+    // Parallel fetch: basic subject + VR statutory body
+    const [basicResult, vrResult] = await Promise.allSettled([
+      this.fetchWithRetry(`${ARES_BASE}/ekonomicke-subjekty/${ico}`),
+      this.fetchWithRetry(`${ARES_BASE}/ekonomicke-subjekty-vr/${ico}`),
+    ]);
+
+    if (basicResult.status === 'rejected') {
+      throw new Error(`ARES basic lookup failed for ICO ${ico}: ${basicResult.reason}`);
+    }
+
+    const d = basicResult.value;
+
+    // Extract seznamRegistraci.stavZdrojeVr
+    const seznamRegistraci = d.seznamRegistraci as Record<string, unknown> | undefined;
+    const stavVr = seznamRegistraci?.stavZdrojeVr
+      ? String(seznamRegistraci.stavZdrojeVr)
+      : 'NEEXISTUJICI';
+
+    // Extract spisovaZnacka from dalsiUdaje
+    const dalsiUdaje = d.dalsiUdaje as Array<Record<string, unknown>> | undefined;
+    const vrUdaj = dalsiUdaje?.find((u) => u.datovyZdroj === 'vr');
+    const spisovaZnacka = vrUdaj?.spisovaZnacka ? String(vrUdaj.spisovaZnacka) : undefined;
+
+    // Extract sidlo.textovaAdresa
+    const sidlo = d.sidlo as Record<string, unknown> | undefined;
+    let sidloText = '';
+    if (sidlo?.textovaAdresa) {
+      sidloText = String(sidlo.textovaAdresa);
+    } else if (sidlo) {
+      const parts: string[] = [];
+      if (sidlo.nazevUlice) {
+        let street = String(sidlo.nazevUlice);
+        if (sidlo.cisloDomovni) street += ` ${sidlo.cisloDomovni}`;
+        if (sidlo.cisloOrientacni) street += `/${sidlo.cisloOrientacni}`;
+        parts.push(street);
+      }
+      if (sidlo.nazevObce) parts.push(`${sidlo.psc ?? ''} ${sidlo.nazevObce}`.trim());
+      sidloText = parts.join(', ');
+    }
+
+    // Extract pravniForma code
+    const pravniFormaObj = d.pravniForma as Record<string, unknown> | string | undefined;
+    const pravniForma = typeof pravniFormaObj === 'object'
+      ? String(pravniFormaObj?.kod ?? '')
+      : String(pravniFormaObj ?? '');
+
+    const result: AresFullData = {
+      ico: String(d.ico ?? ''),
+      nazev: String(d.obchodniJmeno ?? ''),
+      pravniForma,
+      sidlo: sidloText,
+      stavVr,
       fetchedAt: new Date().toISOString(),
     };
 
-    if (data.dic) result.dic = String(data.dic);
-    if (data.datumVzniku) result.datumVzniku = String(data.datumVzniku);
-    if (data.datumZaniku) result.datumZaniku = String(data.datumZaniku);
+    if (d.dic) result.dic = String(d.dic);
+    if (d.datumVzniku) result.datumVzniku = String(d.datumVzniku);
+    if (d.datumAktualizace) result.datumAktualizace = String(d.datumAktualizace);
     if (spisovaZnacka) result.spisovaZnacka = spisovaZnacka;
 
-    // Datová schránka
-    if (datoveSchranky?.length) {
-      const dsId = datoveSchranky.map(ds => String(ds.idDs ?? ds.id ?? '')).filter(Boolean);
-      if (dsId.length > 0) result.datovaSChrana = dsId[0];
-    }
+    // CZ-NACE
+    const czNace = d.czNace as string[] | undefined;
+    if (czNace?.length) result.czNace = czNace;
 
-    // CZ-NACE codes
-    if (czNace?.length) {
-      result.nace = czNace.map(n => {
-        if (typeof n === 'string') return { kod: n, nazev: '' };
-        return { kod: String(n.kod ?? n), nazev: String(n.nazev ?? '') };
-      });
-    }
+    // VR statutory body
+    if (vrResult.status === 'fulfilled') {
+      try {
+        const vrData = vrResult.value;
+        const zaznamy = vrData.zaznamy as Array<Record<string, unknown>> | undefined;
+        const zaznam = zaznamy?.[0];
+        const statutarniOrgany = zaznam?.statutarniOrgany as Array<Record<string, unknown>> | undefined;
+        const organ = statutarniOrgany?.[0];
 
-    // pocetZamestnancu
-    if (data.pocetZamestnancu != null) {
-      result.pocetZamestnancu = String(data.pocetZamestnancu);
-    }
+        if (organ) {
+          const clenoveRaw = organ.clenoveOrganu as Array<Record<string, unknown>> | undefined;
+          const clenove: AresStatutarniClen[] = (clenoveRaw ?? []).map((c) => {
+            const fo = (c.fyzickaOsoba ?? {}) as Record<string, unknown>;
+            const clenstvi = c.clenstvi as Record<string, unknown> | undefined;
+            const funkce = clenstvi?.funkce as Record<string, unknown> | undefined;
+            const adresaObj = fo.adresa as Record<string, unknown> | undefined;
 
-    if (statutarniOrgan.length > 0) {
-      result.statutarniOrgan = statutarniOrgan;
+            return {
+              jmeno: String(fo.jmeno ?? ''),
+              prijmeni: String(fo.prijmeni ?? ''),
+              ...(fo.titulPredJmenem ? { titulPred: String(fo.titulPredJmenem) } : {}),
+              funkce: funkce?.nazev ? String(funkce.nazev) : 'člen',
+              ...(c.datumZapisu ? { datumZapisu: String(c.datumZapisu) } : {}),
+              ...(c.datumVymazu ? { datumVymazu: String(c.datumVymazu) } : {}),
+              ...(funkce?.vznikFunkce ? { vznikFunkce: String(funkce.vznikFunkce) } : {}),
+              ...(funkce?.zanikFunkce ? { zanikFunkce: String(funkce.zanikFunkce) } : {}),
+              ...(adresaObj?.textovaAdresa ? { adresa: String(adresaObj.textovaAdresa) } : {}),
+              ...(fo.datumNarozeni ? { datumNarozeni: String(fo.datumNarozeni) } : {}),
+            };
+          });
+
+          result.statutarniOrgan = {
+            nazev: String(organ.nazevOrganu ?? 'Statutární orgán'),
+            clenove,
+          };
+        }
+      } catch (err) {
+        this.logger.warn(`ARES VR statutory body parsing failed for ICO ${ico}: ${err}`);
+      }
+    } else {
+      this.logger.warn(`ARES VR endpoint failed for ICO ${ico}: ${vrResult.reason}`);
     }
 
     return result;
   }
 
-  private mapStatutarniOrgan(data: unknown): AresStatutarniOrgan[] {
-    const organs: AresStatutarniOrgan[] = [];
-
-    // ARES v2 /statutarni-organ returns either an array or object with organs
-    const items = Array.isArray(data) ? data : (data as Record<string, unknown>)?.organy ?? (data as Record<string, unknown>)?.statutarniOrgan;
-    const orgList = Array.isArray(items) ? items : items ? [items] : [];
-
-    for (const org of orgList) {
-      const o = org as Record<string, unknown>;
-      const typOrganu = String(o.typOrganu ?? o.nazevOrganu ?? o.typ ?? 'NEZNAMY');
-      const clenove: AresStatutarniClen[] = [];
-
-      const members = (o.clenove ?? o.osoby ?? o.clenstvi) as Array<Record<string, unknown>> | undefined;
-      if (Array.isArray(members)) {
-        for (const m of members) {
-          const osoba = (m.osoba ?? m) as Record<string, unknown>;
-          const jmeno = String(osoba.jmeno ?? '');
-          const prijmeni = String(osoba.prijmeni ?? '');
-          if (!jmeno && !prijmeni) continue;
-
-          const clen: AresStatutarniClen = {
-            jmeno,
-            prijmeni,
-            funkce: String(m.funkce ?? m.clenstvi ?? osoba.funkce ?? 'CLEN'),
-          };
-          if (m.datumVzniku ?? osoba.datumVzniku) clen.datumVzniku = String(m.datumVzniku ?? osoba.datumVzniku);
-          if (m.datumZaniku ?? osoba.datumZaniku) clen.datumZaniku = String(m.datumZaniku ?? osoba.datumZaniku);
-
-          // Address
-          const adresa = (m.adresa ?? osoba.adresa) as Record<string, unknown> | undefined;
-          if (adresa) {
-            const parts = [adresa.nazevUlice, adresa.cisloDomovni, adresa.nazevObce, adresa.psc].filter(Boolean);
-            if (parts.length > 0) clen.adresa = parts.map(String).join(', ');
-          }
-
-          clenove.push(clen);
-        }
+  /**
+   * Fetch with rate limiting (2 req/s) + 1x retry after 1s.
+   */
+  private async fetchWithRetry(url: string): Promise<Record<string, unknown>> {
+    const attempt = async (): Promise<Record<string, unknown>> => {
+      await this.rateLimit();
+      const res = await fetch(url, {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(ENRICH_TIMEOUT_MS),
+      });
+      if (!res.ok) {
+        throw new Error(`ARES ${res.status}: ${url}`);
       }
+      return res.json();
+    };
 
-      organs.push({ typOrganu, clenove });
+    try {
+      return await attempt();
+    } catch (err) {
+      this.logger.debug(`ARES fetch failed, retrying in 1s: ${url} — ${err}`);
+      await new Promise((r) => setTimeout(r, 1000));
+      return attempt();
     }
-
-    return organs;
   }
+
+  private async rateLimit(): Promise<void> {
+    const now = Date.now();
+    const elapsed = now - this.lastRequestTime;
+    if (elapsed < RATE_LIMIT_INTERVAL_MS) {
+      await new Promise((r) => setTimeout(r, RATE_LIMIT_INTERVAL_MS - elapsed));
+    }
+    this.lastRequestTime = Date.now();
+  }
+
+  // ─── Legacy mapSubject (used by findByIco / searchByName) ─
 
   private mapSubject(data: Record<string, unknown>): AresSubject {
     const sidlo = (data.sidlo ?? {}) as Record<string, unknown>;
@@ -353,7 +358,6 @@ export class AresService {
     if (sidlo.textovaAdresa) {
       result.textovaAdresa = String(sidlo.textovaAdresa);
     } else {
-      // Build from parts
       const parts: string[] = [];
       if (sidlo.nazevUlice) {
         let street = String(sidlo.nazevUlice);

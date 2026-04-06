@@ -3,7 +3,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PropertyScopeService } from '../common/services/property-scope.service';
 import { BuildingEnrichmentService } from '../knowledge-base/building-enrichment.service';
 import { AresService } from '../integrations/ares/ares.service';
-import { JusticeService } from '../integrations/justice/justice.service';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
 import type { PropertyType, OwnershipType, PropertyLegalMode, AccountingSystem } from '@prisma/client';
@@ -18,7 +17,6 @@ export class PropertiesService {
     private scope: PropertyScopeService,
     private enrichment: BuildingEnrichmentService,
     private aresService: AresService,
-    private justiceService: JusticeService,
   ) {}
 
   async create(tenantId: string, dto: CreatePropertyDto) {
@@ -198,7 +196,7 @@ export class PropertiesService {
   }
 
   /**
-   * Enrich property with ARES + Justice.cz data (parallel).
+   * Enrich property with ARES data (basic + VR statutory body).
    * Called automatically on create/update with IČO, or manually via POST /properties/:id/enrich.
    */
   async enrichProperty(propertyId: string) {
@@ -208,34 +206,17 @@ export class PropertiesService {
     });
     if (!property?.ico) return { enriched: false, reason: 'no_ico' };
 
-    const [aresResult, justiceResult] = await Promise.allSettled([
-      this.aresService.enrichByIco(property.ico),
-      this.justiceService.enrichByIco(property.ico),
-    ]);
+    const aresData = await this.aresService.enrichByIco(property.ico);
 
-    const aresData = aresResult.status === 'fulfilled' ? aresResult.value : undefined;
-    const justiceData = justiceResult.status === 'fulfilled' ? justiceResult.value : undefined;
-
-    if (aresResult.status === 'rejected') {
-      this.logger.warn(`ARES enrichment failed for ${propertyId}: ${aresResult.reason}`);
-    }
-    if (justiceResult.status === 'rejected') {
-      this.logger.warn(`Justice enrichment failed for ${propertyId}: ${justiceResult.reason}`);
-    }
-
-    await this.prisma.property.update({
+    const updated = await this.prisma.property.update({
       where: { id: propertyId },
       data: {
-        ...(aresData !== undefined && { aresData: aresData as any }),
-        ...(justiceData !== undefined && { justiceData: justiceData as any }),
+        aresData: aresData as any,
         enrichedAt: new Date(),
       },
+      select: { aresData: true, enrichedAt: true },
     });
 
-    return {
-      enriched: true,
-      aresOk: aresResult.status === 'fulfilled' && !!aresData,
-      justiceOk: justiceResult.status === 'fulfilled' && !!justiceData,
-    };
+    return { aresData: updated.aresData, enrichedAt: updated.enrichedAt };
   }
 }

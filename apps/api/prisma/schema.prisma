@@ -486,9 +486,8 @@ model Property {
 
   insurances             Insurance[]
 
-  // Enrichment data (ARES + Justice.cz)
-  aresData               Json?              // AresEnrichmentData
-  justiceData            Json?              // JusticeEnrichmentData
+  // Enrichment data (ARES)
+  aresData               Json?              // AresFullData
   enrichedAt             DateTime?
 
   // Knowledge Base link

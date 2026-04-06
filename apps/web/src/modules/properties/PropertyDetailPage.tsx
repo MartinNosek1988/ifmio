@@ -709,7 +709,6 @@ export default function PropertyDetailPage() {
         <RegistryTab
           propertyId={property.id}
           aresData={property.aresData as any}
-          justiceData={property.justiceData as any}
           enrichedAt={property.enrichedAt ?? null}
           onRefresh={refetch}
         />

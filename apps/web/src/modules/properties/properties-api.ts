@@ -34,7 +34,6 @@ export interface ApiProperty {
   longitude?: number | null;
   buildingId?: string | null;
   aresData?: Record<string, unknown> | null;
-  justiceData?: Record<string, unknown> | null;
   enrichedAt?: string | null;
   createdAt: string;
   updatedAt: string;
