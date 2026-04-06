@@ -1,87 +1,46 @@
 import { Controller, Get, Param, Query, NotFoundException } from '@nestjs/common'
-import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
-import { PrismaService } from '../prisma/prisma.service'
+import { ApiTags, ApiOperation } from '@nestjs/swagger'
+import { Public } from '../common/decorators/public.decorator'
+import { RegistryService } from './registry.service'
 
 @ApiTags('Registry')
-@ApiBearerAuth()
 @Controller('registry')
 export class RegistryController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly service: RegistryService) {}
 
   @Get('persons/search')
-  @ApiOperation({ summary: 'Hledat osoby v KB' })
+  @Public()
+  @ApiOperation({ summary: 'Hledat osoby v KB (veřejné)' })
   async searchPersons(
     @Query('q') q?: string,
-    @Query('datumNarozeni') datumNarozeni?: string,
+    @Query('rok') rok?: string,
   ) {
     if (!q || q.length < 2) return []
-
-    const where: any = {
-      lastName: { contains: q, mode: 'insensitive' },
-    }
-    if (datumNarozeni) {
-      where.datumNarozeni = datumNarozeni
-    }
-
-    return this.prisma.kbPerson.findMany({
-      where,
-      include: {
-        engagements: {
-          orderBy: [{ aktivni: 'desc' }, { datumZapisu: 'desc' }],
-          take: 5,
-        },
-      },
-      take: 20,
-      orderBy: { lastName: 'asc' },
-    })
+    return this.service.searchPersons(q, rok ? parseInt(rok, 10) : undefined)
   }
 
   @Get('persons/:id')
-  @ApiOperation({ summary: 'Profil osoby z KB' })
+  @Public()
+  @ApiOperation({ summary: 'Profil osoby z KB (veřejný)' })
   async getPersonProfile(@Param('id') id: string) {
-    const person = await this.prisma.kbPerson.findUnique({
-      where: { id },
-      include: {
-        engagements: {
-          orderBy: [{ aktivni: 'desc' }, { datumZapisu: 'desc' }],
-        },
-      },
-    })
-    if (!person) throw new NotFoundException('Osoba nenalezena')
-
-    // Enrich engagements with org data
-    const icos = [...new Set(person.engagements.map(e => e.ico))]
-    const orgs = await this.prisma.kbOrganization.findMany({
-      where: { ico: { in: icos } },
-      select: { ico: true, name: true, legalFormCode: true, isActive: true },
-    })
-    const orgMap = new Map(orgs.map(o => [o.ico, o]))
-
-    return {
-      ...person,
-      engagements: person.engagements.map(e => ({
-        ...e,
-        organization: orgMap.get(e.ico) ?? null,
-      })),
-    }
+    const result = await this.service.getPersonProfile(id)
+    if (!result) throw new NotFoundException('Osoba nenalezena')
+    return result
   }
 
   @Get('organizations/:ico')
-  @ApiOperation({ summary: 'Profil organizace z KB' })
+  @Public()
+  @ApiOperation({ summary: 'Profil organizace z KB (veřejný)' })
   async getOrganizationProfile(@Param('ico') ico: string) {
-    const org = await this.prisma.kbOrganization.findUnique({
-      where: { ico },
-    })
-    if (!org) throw new NotFoundException('Organizace nenalezena')
+    const result = await this.service.getOrganizationProfile(ico)
+    if (!result) throw new NotFoundException('Organizace nenalezena')
+    return result
+  }
 
-    const engagements = await this.prisma.kbPersonEngagement.findMany({
-      where: { ico },
-      include: {
-        person: { select: { id: true, firstName: true, lastName: true, titulPred: true, datumNarozeni: true } },
-      },
-      orderBy: [{ aktivni: 'desc' }, { datumZapisu: 'desc' }],
-    })
-
-    return { ...org, engagements }
+  @Get('organizations/:ico/persons')
+  @Public()
+  @ApiOperation({ summary: 'Osoby angažované v organizaci (veřejné)' })
+  async getOrganizationPersons(@Param('ico') ico: string) {
+    return this.service.getOrganizationPersons(ico)
   }
 }

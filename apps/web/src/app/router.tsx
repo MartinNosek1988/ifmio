@@ -161,6 +161,9 @@ export const router = createBrowserRouter([
   { path: '/q/:token', element: withBoundary('QR Scan', QrResolvePage) },
   { path: '/hlasovani/:accessToken', element: withBoundary('Hlasování', PublicBallotPage) },
   { path: '/auth/callback', element: withBoundary('OAuth Callback', OAuthCallbackPage) },
+  // Public registry pages (SEO, no auth)
+  { path: '/registry/organizations/:ico', element: withBoundary('Výpis z rejstříku', OrganizationProfilePage) },
+  { path: '/registry/persons/:id', element: withBoundary('Profil osoby', PersonProfilePage) },
   { path: '/terms', element: withBoundary('Terms', TermsPage) },
   { path: '/privacy', element: withBoundary('Privacy', PrivacyPage) },
   { path: '/gdpr', element: withBoundary('GDPR', GdprPage) },

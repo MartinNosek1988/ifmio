@@ -1,15 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
 import { XMLParser } from 'fast-xml-parser'
+import { gunzipSync } from 'zlib'
 
 export interface ImportStats {
-  processed: number
-  created: number
-  updated: number
-  personsCreated: number
-  engagementsCreated: number
-  errors: number
-  skipped: number
+  startedAt: string
+  finishedAt?: string
+  totalSubjektu: number
+  totalOsob: number
+  totalEngagements: number
+  errors: string[]
 }
 
 interface ParsedSubjekt {
@@ -23,16 +23,14 @@ interface ParsedSubjekt {
 }
 
 interface ParsedClen {
-  type: 'F' | 'P' // FyzickaOsoba | PravnickaOsoba
+  type: 'F' | 'P'
   jmeno?: string
   prijmeni?: string
   titulPred?: string
   datumNarozeni?: string
-  adresa?: string
-  // PO fields
+  adresaObec?: string    // GDPR: pouze obec z adresy
   icoOsoby?: string
   nazevOsoby?: string
-  // Engagement fields
   funkce: string
   clenstviOd?: string
   clenstviDo?: string
@@ -47,11 +45,21 @@ const SOUDY = [
   'hradec-kralove', 'usti-nad-labem', 'olomouc', 'ceske-budejovice',
 ]
 
-const PRAVNI_FORMY = ['svj', 'sro', 'as', 'druzstvo']
+const PRAVNI_FORMY = [
+  { kod: 'svj', label: '145' },
+  { kod: 'sro', label: '112' },
+  { kod: 'as', label: '121' },
+  { kod: 'druzstvo', label: '110' },
+  { kod: 'spolek', label: '706' },
+  { kod: 'komanditni', label: '113' },
+  { kod: 'vos', label: '111' },
+  { kod: 'statni', label: '312' },
+  { kod: 'obecni', label: '801' },
+]
 
 const DATAOR_BASE = 'https://dataor.justice.cz/api/file'
-const DOWNLOAD_TIMEOUT_MS = 120_000 // 2 min for large files
-const BATCH_SIZE = 100 // upsert batch size
+const DOWNLOAD_TIMEOUT_MS = 120_000
+const BATCH_SIZE = 100
 
 @Injectable()
 export class DataorService {
@@ -63,71 +71,103 @@ export class DataorService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  /**
-   * Import all available data for given year and type.
-   */
   async importAll(
     rok: number,
     typ: 'full' | 'actual',
     filterPravniForma?: string,
     filterSoud?: string,
   ): Promise<ImportStats> {
-    const total: ImportStats = {
-      processed: 0, created: 0, updated: 0,
-      personsCreated: 0, engagementsCreated: 0,
-      errors: 0, skipped: 0,
+    const stats: ImportStats = {
+      startedAt: new Date().toISOString(),
+      totalSubjektu: 0,
+      totalOsob: 0,
+      totalEngagements: 0,
+      errors: [],
     }
 
-    const formy = filterPravniForma ? [filterPravniForma] : PRAVNI_FORMY
+    const formy = filterPravniForma
+      ? PRAVNI_FORMY.filter(f => f.kod === filterPravniForma)
+      : PRAVNI_FORMY
     const soudy = filterSoud ? [filterSoud] : SOUDY
 
     for (const forma of formy) {
       for (const soud of soudy) {
-        const url = `${DATAOR_BASE}/${forma}-${typ}-${soud}-${rok}.xml`
-        this.logger.log(`Importing ${url}...`)
         try {
-          const subjekty = await this.downloadAndParse(url)
-          this.logger.log(`Parsed ${subjekty.length} subjects from ${forma}-${typ}-${soud}-${rok}`)
-
-          for (const subjekt of subjekty) {
-            try {
-              const result = await this.upsertSubjekt(subjekt)
-              total.processed++
-              if (result === 'created') total.created++
-              else if (result === 'updated') total.updated++
-              total.personsCreated += result === 'created' ? subjekt.clenove.filter(c => c.type === 'F').length : 0
-            } catch (err) {
-              total.errors++
-              if (total.errors <= 10) {
-                this.logger.warn(`Failed to upsert ${subjekt.ico}: ${err}`)
-              }
-            }
-          }
+          const result = await this.importDataset(forma.kod, soud, rok, typ)
+          stats.totalSubjektu += result.processed
+          stats.totalOsob += result.persons
+          stats.totalEngagements += result.engagements
         } catch (err) {
-          this.logger.warn(`Failed to download/parse ${url}: ${(err as Error).message}`)
-          total.errors++
+          const msg = `${forma.kod}-${typ}-${soud}-${rok}: ${(err as Error).message}`
+          stats.errors.push(msg)
+          if (stats.errors.length <= 20) this.logger.warn(`Dataor import error: ${msg}`)
         }
       }
     }
 
-    this.logger.log(`Import done: ${JSON.stringify(total)}`)
-    return total
+    stats.finishedAt = new Date().toISOString()
+    this.logger.log(`Dataor import done: ${stats.totalSubjektu} subjects, ${stats.totalOsob} persons, ${stats.totalEngagements} engagements, ${stats.errors.length} errors`)
+    return stats
   }
 
-  /**
-   * Download XML from dataor.justice.cz and parse into structured data.
-   */
-  async downloadAndParse(url: string): Promise<ParsedSubjekt[]> {
+  async importDataset(
+    pravniForma: string,
+    soud: string,
+    rok: number,
+    typ: 'full' | 'actual',
+  ): Promise<{ processed: number; persons: number; engagements: number }> {
+    const url = `${DATAOR_BASE}/${pravniForma}-${typ}-${soud}-${rok}.xml`
+    this.logger.log(`Importing ${pravniForma}-${typ}-${soud}-${rok}...`)
+
+    const subjekty = await this.fetchAndParse(url)
+    if (subjekty.length === 0) return { processed: 0, persons: 0, engagements: 0 }
+
+    this.logger.log(`Parsed ${subjekty.length} subjects from ${pravniForma}-${typ}-${soud}-${rok}`)
+
+    let totalPersons = 0
+    let totalEngagements = 0
+
+    // Process in batches
+    for (let i = 0; i < subjekty.length; i += BATCH_SIZE) {
+      const batch = subjekty.slice(i, i + BATCH_SIZE)
+      for (const subjekt of batch) {
+        try {
+          const result = await this.upsertSubjekt(subjekt)
+          totalPersons += result.persons
+          totalEngagements += result.engagements
+        } catch (err) {
+          this.logger.debug(`Failed to upsert ${subjekt.ico}: ${err}`)
+        }
+      }
+    }
+
+    return { processed: subjekty.length, persons: totalPersons, engagements: totalEngagements }
+  }
+
+  async fetchAndParse(url: string): Promise<ParsedSubjekt[]> {
     const res = await fetch(url, {
       signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS),
     })
+
+    if (res.status === 404) {
+      this.logger.debug(`Dataset not found: ${url}`)
+      return []
+    }
     if (!res.ok) {
       throw new Error(`HTTP ${res.status} for ${url}`)
     }
 
-    const xmlText = await res.text()
-    const parsed = this.xmlParser.parse(xmlText)
+    let xmlText: string
+    const buffer = Buffer.from(await res.arrayBuffer())
 
+    // Check for gzip magic bytes (1f 8b)
+    if (buffer.length > 2 && buffer[0] === 0x1f && buffer[1] === 0x8b) {
+      xmlText = gunzipSync(buffer).toString('utf-8')
+    } else {
+      xmlText = buffer.toString('utf-8')
+    }
+
+    const parsed = this.xmlParser.parse(xmlText)
     const subjekty = parsed?.xml?.Subjekt
     if (!Array.isArray(subjekty)) {
       this.logger.debug(`No Subjekt array found in ${url}`)
@@ -148,7 +188,7 @@ export class DataorService {
 
     let pravniForma: string | undefined
     let sidlo: string | undefined
-    let datumVzniku = raw.zapisDatum ? String(raw.zapisDatum) : undefined
+    const datumVzniku = raw.zapisDatum ? String(raw.zapisDatum) : undefined
     let spisovaZnacka: ParsedSubjekt['spisovaZnacka']
     const clenove: ParsedClen[] = []
 
@@ -156,10 +196,20 @@ export class DataorService {
       const kod = udaj.udajTyp?.kod
       switch (kod) {
         case 'PRAVNI_FORMA':
-          pravniForma = udaj.pravniForma?.kod ? String(udaj.pravniForma.kod) : udaj.hodnotaText
+          // Normalize to numeric code
+          pravniForma = udaj.pravniForma?.kod ? String(udaj.pravniForma.kod) : undefined
+          if (!pravniForma) {
+            // Try to map text to code
+            const text = String(udaj.hodnotaText ?? '').toLowerCase()
+            if (text.includes('svj') || text.includes('společenství')) pravniForma = 'svj'
+            else if (text.includes('družstvo')) pravniForma = 'druzstvo'
+            else if (text.includes('s.r.o')) pravniForma = 'sro'
+            else if (text.includes('a.s')) pravniForma = 'as'
+            else pravniForma = text
+          }
           break
         case 'SIDLO':
-          sidlo = this.buildAdresa(udaj.adresa)
+          sidlo = this.buildSidlo(udaj.adresa)
           break
         case 'SPIS_ZN':
           if (udaj.spisZn) {
@@ -192,32 +242,7 @@ export class DataorService {
     const isPO = raw.hodnotaText === 'AngazmaPravnicke' || raw.hodnotaUdaje?.T === 'P'
     const funkce = String(raw.funkce ?? raw.hlavicka ?? 'člen')
 
-    if (isPO) {
-      return {
-        type: 'P',
-        icoOsoby: osoba.ico ? String(osoba.ico) : undefined,
-        nazevOsoby: osoba.nazev ? String(osoba.nazev) : undefined,
-        funkce,
-        clenstviOd: raw.clenstviOd ? String(raw.clenstviOd) : undefined,
-        clenstviDo: raw.clenstviDo ? String(raw.clenstviDo) : undefined,
-        funkceOd: raw.funkceOd ? String(raw.funkceOd) : undefined,
-        funkceDo: raw.funkceDo ? String(raw.funkceDo) : undefined,
-        zapisDatum: raw.zapisDatum ? String(raw.zapisDatum) : undefined,
-        vymazDatum: raw.vymazDatum ? String(raw.vymazDatum) : undefined,
-      }
-    }
-
-    const jmeno = osoba.jmeno ? String(osoba.jmeno) : undefined
-    const prijmeni = osoba.prijmeni ? String(osoba.prijmeni) : undefined
-    if (!prijmeni) return null
-
-    return {
-      type: 'F',
-      jmeno,
-      prijmeni,
-      titulPred: osoba.titulPredJmenem ? String(osoba.titulPredJmenem) : undefined,
-      datumNarozeni: osoba.narozDatum ? String(osoba.narozDatum) : undefined,
-      adresa: this.buildAdresa(raw.adresa),
+    const base = {
       funkce,
       clenstviOd: raw.clenstviOd ? String(raw.clenstviOd) : undefined,
       clenstviDo: raw.clenstviDo ? String(raw.clenstviDo) : undefined,
@@ -226,19 +251,34 @@ export class DataorService {
       zapisDatum: raw.zapisDatum ? String(raw.zapisDatum) : undefined,
       vymazDatum: raw.vymazDatum ? String(raw.vymazDatum) : undefined,
     }
+
+    if (isPO) {
+      return {
+        type: 'P',
+        icoOsoby: osoba.ico ? String(osoba.ico) : undefined,
+        nazevOsoby: osoba.nazev ? String(osoba.nazev) : undefined,
+        ...base,
+      }
+    }
+
+    const prijmeni = osoba.prijmeni ? String(osoba.prijmeni) : undefined
+    if (!prijmeni) return null
+
+    return {
+      type: 'F',
+      jmeno: osoba.jmeno ? String(osoba.jmeno) : undefined,
+      prijmeni,
+      titulPred: osoba.titulPredJmenem ? String(osoba.titulPredJmenem) : undefined,
+      datumNarozeni: osoba.narozDatum ? String(osoba.narozDatum) : undefined,
+      adresaObec: this.extractObec(raw.adresa),
+      ...base,
+    }
   }
 
-  /**
-   * Upsert a single subject + its statutory members into KB.
-   */
-  async upsertSubjekt(data: ParsedSubjekt): Promise<'created' | 'updated'> {
+  async upsertSubjekt(data: ParsedSubjekt): Promise<{ persons: number; engagements: number }> {
     const spiszn = data.spisovaZnacka
       ? `${data.spisovaZnacka.oddil} ${data.spisovaZnacka.vlozka}`.trim()
       : undefined
-
-    const existing = await this.prisma.kbOrganization.findUnique({
-      where: { ico: data.ico },
-    })
 
     await this.prisma.kbOrganization.upsert({
       where: { ico: data.ico },
@@ -259,55 +299,80 @@ export class DataorService {
       },
     })
 
-    // Process statutory members
+    let persons = 0
+    let engagements = 0
+
     for (const clen of data.clenove) {
       try {
         if (clen.type === 'F') {
-          await this.upsertFyzickaOsoba(data.ico, data.nazev, clen)
+          const r = await this.upsertFyzickaOsoba(data.ico, data.nazev, clen)
+          persons += r.personCreated ? 1 : 0
+          engagements += 1
         } else if (clen.type === 'P' && clen.icoOsoby) {
           await this.upsertPravnickaOsoba(data.ico, data.nazev, clen)
+          engagements += 1
         }
       } catch (err) {
         this.logger.debug(`Failed to upsert member for ${data.ico}: ${err}`)
       }
     }
 
-    return existing ? 'updated' : 'created'
+    return { persons, engagements }
   }
 
-  private async upsertFyzickaOsoba(ico: string, nazevFirmy: string, clen: ParsedClen): Promise<void> {
-    if (!clen.prijmeni) return
+  private async upsertFyzickaOsoba(ico: string, nazevFirmy: string, clen: ParsedClen): Promise<{ personCreated: boolean }> {
+    if (!clen.prijmeni) return { personCreated: false }
 
-    // Upsert person — deduplicate by lastName + datumNarozeni
-    const person = await this.prisma.kbPerson.upsert({
-      where: {
-        lastName_datumNarozeni: {
-          lastName: clen.prijmeni!,
-          datumNarozeni: clen.datumNarozeni ?? '',
+    let person: { id: string }
+    let personCreated = false
+
+    if (clen.datumNarozeni) {
+      // Dedup by lastName + datumNarozeni
+      const existing = await this.prisma.kbPerson.findFirst({
+        where: { lastName: clen.prijmeni, datumNarozeni: clen.datumNarozeni },
+        select: { id: true },
+      })
+      if (existing) {
+        person = existing
+        await this.prisma.kbPerson.update({
+          where: { id: person.id },
+          data: {
+            ...(clen.adresaObec && { city: clen.adresaObec }),
+            ...(clen.titulPred && { titulPred: clen.titulPred }),
+            ...(clen.jmeno && { firstName: clen.jmeno }),
+          },
+        })
+      } else {
+        person = await this.prisma.kbPerson.create({
+          data: {
+            firstName: clen.jmeno,
+            lastName: clen.prijmeni,
+            titulPred: clen.titulPred,
+            datumNarozeni: clen.datumNarozeni,
+            city: clen.adresaObec,
+            nameNormalized: [clen.jmeno, clen.prijmeni].filter(Boolean).join(' ').toLowerCase(),
+          },
+        })
+        personCreated = true
+      }
+    } else {
+      // No datumNarozeni — create without unique check (accept duplicates)
+      person = await this.prisma.kbPerson.create({
+        data: {
+          firstName: clen.jmeno,
+          lastName: clen.prijmeni,
+          titulPred: clen.titulPred,
+          city: clen.adresaObec,
+          nameNormalized: [clen.jmeno, clen.prijmeni].filter(Boolean).join(' ').toLowerCase(),
         },
-      },
-      create: {
-        firstName: clen.jmeno,
-        lastName: clen.prijmeni,
-        titulPred: clen.titulPred,
-        datumNarozeni: clen.datumNarozeni,
-        adresa: clen.adresa,
-        nameNormalized: [clen.jmeno, clen.prijmeni].filter(Boolean).join(' ').toLowerCase(),
-      },
-      update: {
-        // Update address (may have moved) and title
-        ...(clen.adresa && { adresa: clen.adresa }),
-        ...(clen.titulPred && { titulPred: clen.titulPred }),
-        ...(clen.jmeno && { firstName: clen.jmeno }),
-      },
-    })
+      })
+      personCreated = true
+    }
 
     // Upsert engagement
     const datumZapisu = clen.zapisDatum ? new Date(clen.zapisDatum) : undefined
     const datumVymazu = clen.vymazDatum ? new Date(clen.vymazDatum) : undefined
-    const aktivni = !clen.vymazDatum
 
-    // Find existing or create — unique constraint includes nullable fields
     const existing = await this.prisma.kbPersonEngagement.findFirst({
       where: { personId: person.id, ico, funkce: clen.funkce, datumZapisu: datumZapisu ?? null },
     })
@@ -316,7 +381,7 @@ export class DataorService {
       await this.prisma.kbPersonEngagement.update({
         where: { id: existing.id },
         data: {
-          aktivni,
+          aktivni: !clen.vymazDatum,
           datumVymazu,
           do: clen.funkceDo ? new Date(clen.funkceDo) : (clen.clenstviDo ? new Date(clen.clenstviDo) : undefined),
           nazevFirmy,
@@ -331,32 +396,26 @@ export class DataorService {
           funkce: clen.funkce,
           od: clen.funkceOd ? new Date(clen.funkceOd) : (clen.clenstviOd ? new Date(clen.clenstviOd) : undefined),
           do: clen.funkceDo ? new Date(clen.funkceDo) : (clen.clenstviDo ? new Date(clen.clenstviDo) : undefined),
-          aktivni,
+          aktivni: !clen.vymazDatum,
           datumZapisu,
           datumVymazu,
           zdrojDat: 'dataor',
         },
       })
     }
+
+    return { personCreated }
   }
 
   private async upsertPravnickaOsoba(ico: string, nazevFirmy: string, clen: ParsedClen): Promise<void> {
     if (!clen.icoOsoby) return
 
-    // Ensure the partner org exists in KB
     await this.prisma.kbOrganization.upsert({
       where: { ico: clen.icoOsoby },
-      create: {
-        ico: clen.icoOsoby,
-        name: clen.nazevOsoby ?? `IČO ${clen.icoOsoby}`,
-        isActive: true,
-      },
-      update: {
-        ...(clen.nazevOsoby && { name: clen.nazevOsoby }),
-      },
+      create: { ico: clen.icoOsoby, name: clen.nazevOsoby ?? `IČO ${clen.icoOsoby}`, isActive: true },
+      update: { ...(clen.nazevOsoby && { name: clen.nazevOsoby }) },
     })
 
-    // Create engagement with null personId, partnerIco set
     const datumZapisu = clen.zapisDatum ? new Date(clen.zapisDatum) : undefined
     const datumVymazu = clen.vymazDatum ? new Date(clen.vymazDatum) : undefined
 
@@ -372,23 +431,18 @@ export class DataorService {
     } else {
       await this.prisma.kbPersonEngagement.create({
         data: {
-          ico,
-          nazevFirmy,
-          funkce: clen.funkce,
+          ico, nazevFirmy, funkce: clen.funkce,
           od: clen.funkceOd ? new Date(clen.funkceOd) : undefined,
           do: clen.funkceDo ? new Date(clen.funkceDo) : undefined,
-          aktivni: !clen.vymazDatum,
-          datumZapisu,
-          datumVymazu,
-          zdrojDat: 'dataor',
-          partnerIco: clen.icoOsoby,
-          partnerNazev: clen.nazevOsoby,
+          aktivni: !clen.vymazDatum, datumZapisu, datumVymazu,
+          zdrojDat: 'dataor', partnerIco: clen.icoOsoby, partnerNazev: clen.nazevOsoby,
         },
       })
     }
   }
 
-  private buildAdresa(adresa: any): string | undefined {
+  /** Build full sídlo address from XML <adresa> element. */
+  private buildSidlo(adresa: any): string | undefined {
     if (!adresa) return undefined
     const parts: string[] = []
     if (adresa.ulice) {
@@ -403,6 +457,12 @@ export class DataorService {
       parts.push(`${psc}${adresa.obec}`)
     }
     return parts.length ? parts.join(', ') : undefined
+  }
+
+  /** GDPR: extract only obec (city name) from member address. */
+  private extractObec(adresa: any): string | undefined {
+    if (!adresa) return undefined
+    return adresa.obec ? String(adresa.obec) : undefined
   }
 
   private ensureArray(val: any): any[] {

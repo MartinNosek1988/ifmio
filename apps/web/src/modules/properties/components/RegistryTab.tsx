@@ -358,7 +358,7 @@ function MemberTable({ members, isActive }: { members: AresStatutarniClen[]; isA
             <tr key={i} style={rowStyle}>
               <td style={{ padding: '6px 8px', fontWeight: isActive ? 500 : 400 }}>
                 {clen.kbPersonId ? (
-                  <Link to={`/crm/registry/persons/${clen.kbPersonId}`} style={{ color: 'var(--primary)', textDecoration: 'none' }}>{fullName}</Link>
+                  <Link to={`/registry/persons/${clen.kbPersonId}`} target="_blank" style={{ color: 'var(--primary)', textDecoration: 'none' }}>{fullName}</Link>
                 ) : fullName}
               </td>
               <td style={{ padding: '6px 8px' }}><FunkceBadge funkce={clen.funkce} /></td>

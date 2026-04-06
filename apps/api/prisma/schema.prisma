@@ -4753,6 +4753,21 @@ model KbOrganization {
   aresData          Json?        // cached AresFullData
   lastAresSync      DateTime?
   dataQualityScore  Float?       @default(0)
+  // Catalog / verification
+  isVerified        Boolean      @default(false)
+  verifiedAt        DateTime?
+  verifiedBy        String?
+  catalogTags       String[]
+  catalogRating     Float?
+  catalogWoCount    Int          @default(0)
+  // Financial health (from účetní závěrky)
+  lastRevenueYear   Int?
+  lastRevenue       BigInt?
+  lastProfit        BigInt?
+  insolvent         Boolean      @default(false)
+  insolventCheckedAt DateTime?
+  // RŽP — živnostenská oprávnění
+  rzpData           Json?
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
   managedBuildings  Building[]
@@ -4761,9 +4776,12 @@ model KbOrganization {
   ownerships        UnitOwnershipKb[]
   registryChanges   KbRegistryChange[]
   sbirkaListiny     KbSbirkaListina[]
+  engagements       KbPersonEngagement[]
 
   @@index([orgType])
   @@index([city])
+  @@index([legalFormCode])
+  @@index([name])
   @@map("kb_organizations")
 }
 
@@ -4805,10 +4823,12 @@ model KbPersonEngagement {
   partnerIco  String?
   partnerNazev String?
 
-  person      KbPerson? @relation(fields: [personId], references: [id])
+  person       KbPerson?       @relation(fields: [personId], references: [id])
+  organization KbOrganization  @relation(fields: [ico], references: [ico])
 
   @@index([ico])
   @@index([personId])
+  @@index([partnerIco])
   @@index([aktivni])
   @@unique([personId, ico, funkce, datumZapisu])
   @@map("kb_person_engagements")
