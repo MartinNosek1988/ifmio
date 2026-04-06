@@ -38,6 +38,7 @@ import TenancyFormModal from './TenancyFormModal';
 import TenancyTerminateModal from './TenancyTerminateModal';
 import { UnitGroupsTab } from './UnitGroupsTab';
 import { FloorPlansTab } from './components/FloorPlansTab';
+import RegistryTab from './components/RegistryTab';
 import TransferModal from './TransferModal';
 import ManagementContractFormModal from './ManagementContractFormModal';
 import FinancialContextFormModal from './FinancialContextFormModal';
@@ -96,7 +97,7 @@ export default function PropertyDetailPage() {
     enabled: !!id,
   });
 
-  type DetailTab = 'overview' | 'units' | 'owners' | 'groups' | 'meters' | 'components' | 'representatives' | 'assemblies' | 'per-rollam' | 'floor-plans' | 'map' | 'profile' | 'building' | 'insurance'
+  type DetailTab = 'overview' | 'units' | 'owners' | 'groups' | 'meters' | 'components' | 'representatives' | 'assemblies' | 'per-rollam' | 'floor-plans' | 'map' | 'profile' | 'building' | 'insurance' | 'registry'
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
 
   // PropertyTypeConfig drives which tabs are visible
@@ -416,6 +417,7 @@ export default function PropertyDetailPage() {
           { key: 'floor-plans' as DetailTab, label: 'Půdorysy', configKey: 'units' },
           { key: 'map' as DetailTab, label: 'Mapa', configKey: 'overview' },
           { key: 'insurance' as DetailTab, label: 'Pojištění', configKey: 'insurance' },
+          { key: 'registry' as DetailTab, label: 'Rejstřík', configKey: 'registry' },
           { key: 'building' as DetailTab, label: 'O budově', configKey: 'building-info' },
           { key: 'profile' as DetailTab, label: 'Profil', configKey: 'overview' },
         ] as const).filter(t => configTabs.includes(t.configKey as any)).map(t => (
@@ -700,6 +702,16 @@ export default function PropertyDetailPage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* ── REJSTŘÍK TAB ──────────────────────────────────────── */}
+      {detailTab === 'registry' && property.ico && (
+        <RegistryTab
+          propertyId={property.id}
+          aresData={property.aresData as any}
+          enrichedAt={property.enrichedAt ?? null}
+          onRefresh={refetch}
+        />
       )}
 
       {/* ── POJIŠTĚNÍ TAB ──────────────────────────────────────── */}

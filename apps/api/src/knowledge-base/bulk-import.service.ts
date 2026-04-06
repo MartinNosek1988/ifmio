@@ -5,7 +5,7 @@ import { KnowledgeBaseService } from './knowledge-base.service'
 import { GeoRiskService } from './geo-risk.service'
 import { IprPriceService } from './ipr-price.service'
 import { AresService } from '../integrations/ares/ares.service'
-import { JusticeService } from '../integrations/justice/justice.service'
+// JusticeService — planned for dataor.justice.cz import (future sprint)
 import { CuzkApiKnService } from '../integrations/cuzk/cuzk-api-kn.service'
 
 // ── Types ───────────────────────────────────────────────
@@ -79,7 +79,6 @@ export class BulkImportService {
     private geoRisk: GeoRiskService,
     private iprPrice: IprPriceService,
     private ares: AresService,
-    private justice: JusticeService,
     private cuzkApiKn: CuzkApiKnService,
   ) {}
 
@@ -822,9 +821,8 @@ export class BulkImportService {
                   select: { ico: true },
                 })
                 if (org) {
-                  const subject = await this.justice.getSubjectByIco(org.ico)
-                  if (subject) qualityBonus += 10
-                  sources.push({ name: 'Justice.cz', fetchedAt: new Date().toISOString(), status: subject ? 'ok' : 'no_data' })
+                  // Justice.cz integration planned via JusticeService.importFromDataor()
+                  sources.push({ name: 'Justice.cz', fetchedAt: new Date().toISOString(), status: 'pending' })
                 }
               } catch (err) {
                 this.logger.warn(`Justice.cz failed for ${building.id}: ${err instanceof Error ? err.message : err}`)
@@ -987,7 +985,7 @@ export class BulkImportService {
     if (org?.managingOrgId) {
       try {
         const orgData = await this.prisma.kbOrganization.findUnique({ where: { id: org.managingOrgId }, select: { ico: true } })
-        if (orgData) { const subj = await this.justice.getSubjectByIco(orgData.ico); sources.push({ name: 'Justice.cz', fetchedAt: new Date().toISOString(), status: subj ? 'ok' : 'no_data' }) }
+        if (orgData) { sources.push({ name: 'Justice.cz', fetchedAt: new Date().toISOString(), status: 'pending' }) }
       } catch { sources.push({ name: 'Justice.cz', fetchedAt: new Date().toISOString(), status: 'error' }) }
       await this.delay(1000)
     }

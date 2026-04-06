@@ -56,6 +56,7 @@ jobs:
           command_timeout: 10m
           script: |
             set -e
+            git config --global --add safe.directory /opt/ifmio
             cd /opt/ifmio
             echo "Pull latest code"
             git fetch origin main

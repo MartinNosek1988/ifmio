@@ -60,3 +60,27 @@ export type UpdateUnitDto = Partial<CreateUnitDto>;
 export type CreateOccupancyDto = Pick<
   Occupancy, 'unitId' | 'residentId' | 'role' | 'startDate' | 'endDate' | 'note'
 >;
+
+// ── Justice.cz Enrichment ──
+
+export interface JusticeEnrichmentData {
+  ico: string;
+  spisovaZnacka?: string;
+  rejstrik: 'SVJ' | 'OR' | 'NEZNAMY';
+  sbirkaListin: JusticeDocument[];
+  historieCas: JusticeHistoryEvent[];
+  fetchedAt: string;
+}
+
+export interface JusticeDocument {
+  typ: 'STANOVY' | 'NOTARSKY_ZAPIS' | 'UCETNI_ZAVERKA' | 'VYROCNI_ZPRAVA' | 'ZAPIS_SHROMAZDENI' | 'JINE';
+  datumPodani: string;
+  nazev: string;
+  url?: string;
+}
+
+export interface JusticeHistoryEvent {
+  datum: string;
+  typZmeny: string;
+  popis: string;
+}

@@ -81,6 +81,7 @@ export type PropertyDetailTab =
   | 'leases' | 'service-charges' | 'settlement' | 'helpdesk'
   | 'work-orders' | 'assets' | 'revisions' | 'meters' | 'documents'
   | 'assembly' | 'board' | 'insurance' | 'building-info' | 'kpi' | 'occupancy'
+  | 'registry'
 
 export type UnitColumnId =
   | 'name' | 'floor' | 'area' | 'type' | 'disposition'
@@ -186,7 +187,7 @@ export const PROPERTY_TYPE_CONFIG: Readonly<Record<PropertyType, PropertyTypeDef
     ui: {
       badgeColor: '#0D9B8A', icon: 'Building2', shortLabel: 'SVJ',
       label: 'SVJ (Společenství vlastníků)', description: 'Bytový dům s vlastníky jednotek, fond oprav, shromáždění.',
-      detailTabs: ['overview', 'units', 'residents', 'finance', 'fund', 'settlement', 'helpdesk', 'work-orders', 'assets', 'revisions', 'meters', 'documents', 'assembly', 'board', 'insurance', 'building-info'],
+      detailTabs: ['overview', 'units', 'residents', 'finance', 'fund', 'settlement', 'helpdesk', 'work-orders', 'assets', 'revisions', 'meters', 'documents', 'assembly', 'board', 'insurance', 'registry', 'building-info'],
       unitColumns: ['name', 'floor', 'area', 'type', 'disposition', 'ownershipShare', 'owner', 'tenant', 'prescription'],
       personColumns: ['name', 'unit', 'role', 'ownershipShare', 'email', 'phone', 'debt'],
     },
@@ -217,7 +218,7 @@ export const PROPERTY_TYPE_CONFIG: Readonly<Record<PropertyType, PropertyTypeDef
     ui: {
       badgeColor: '#3B82F6', icon: 'Building2', shortLabel: 'BD',
       label: 'Bytové družstvo', description: 'Družstvo vlastní dům, členové mají právo užívání.',
-      detailTabs: ['overview', 'units', 'residents', 'finance', 'fund', 'settlement', 'helpdesk', 'work-orders', 'assets', 'revisions', 'meters', 'documents', 'assembly', 'board', 'insurance', 'building-info'],
+      detailTabs: ['overview', 'units', 'residents', 'finance', 'fund', 'settlement', 'helpdesk', 'work-orders', 'assets', 'revisions', 'meters', 'documents', 'assembly', 'board', 'insurance', 'registry', 'building-info'],
       unitColumns: ['name', 'floor', 'area', 'type', 'disposition', 'cooperativeShare', 'member', 'tenant', 'prescription'],
       personColumns: ['name', 'unit', 'role', 'cooperativeShare', 'email', 'phone', 'debt'],
     },
@@ -311,7 +312,7 @@ export const PROPERTY_TYPE_CONFIG: Readonly<Record<PropertyType, PropertyTypeDef
     ui: {
       badgeColor: '#F59E0B', icon: 'Building', shortLabel: 'MIX',
       label: 'Smíšený dům', description: 'Byty + komerční prostory pod jednou střechou.',
-      detailTabs: ['overview', 'units', 'residents', 'finance', 'fund', 'leases', 'service-charges', 'settlement', 'helpdesk', 'work-orders', 'assets', 'revisions', 'meters', 'documents', 'assembly', 'board', 'insurance', 'building-info', 'occupancy'],
+      detailTabs: ['overview', 'units', 'residents', 'finance', 'fund', 'leases', 'service-charges', 'settlement', 'helpdesk', 'work-orders', 'assets', 'revisions', 'meters', 'documents', 'assembly', 'board', 'insurance', 'registry', 'building-info', 'occupancy'],
       unitColumns: ['name', 'floor', 'area', 'type', 'disposition', 'ownershipShare', 'owner', 'tenant', 'commercialTenant', 'prescription'],
       personColumns: ['name', 'unit', 'role', 'ownershipShare', 'email', 'phone', 'debt'],
     },
