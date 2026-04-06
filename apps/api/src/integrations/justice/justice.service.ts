@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import * as cheerio from 'cheerio'
+import type { JusticeEnrichmentData, JusticeDocument, JusticeHistoryEvent } from '@ifmio/shared-types'
 
 export interface JusticeSubject {
   subjektId: string
@@ -30,16 +31,94 @@ export interface SbirkaDocument {
 
 const JUSTICE_BASE = 'https://or.justice.cz/ias/ui'
 const TIMEOUT_MS = 10000
+const RATE_LIMIT_DELAY = 1000 // 1 req/s
 
 @Injectable()
 export class JusticeService {
   private readonly logger = new Logger(JusticeService.name)
+  private lastRequestTime = 0
+
+  /**
+   * Full enrichment: subject lookup + sbírka listin + registry history → JusticeEnrichmentData
+   */
+  async enrichByIco(ico: string): Promise<JusticeEnrichmentData | null> {
+    const subject = await this.getSubjectByIco(ico)
+
+    const result: JusticeEnrichmentData = {
+      ico,
+      rejstrik: 'NEZNAMY',
+      sbirkaListin: [],
+      historieCas: [],
+      fetchedAt: new Date().toISOString(),
+    }
+
+    if (!subject) {
+      this.logger.debug(`Justice.cz: no subject found for IČO ${ico}`)
+      return result
+    }
+
+    result.spisovaZnacka = subject.spisovaZnacka
+    result.rejstrik = this.mapRejstrik(subject.rejstrik)
+
+    // Fetch sbírka listin + registry history in parallel
+    const [docs, changes] = await Promise.allSettled([
+      this.getDocumentList(subject.subjektId),
+      this.getRegistryHistory(subject.subjektId),
+    ])
+
+    if (docs.status === 'fulfilled') {
+      result.sbirkaListin = docs.value.map(d => this.mapToJusticeDocument(d))
+    }
+
+    if (changes.status === 'fulfilled') {
+      result.historieCas = changes.value.map(c => ({
+        datum: c.changeDate ?? '',
+        typZmeny: c.changeType,
+        popis: c.description ?? '',
+      }))
+    }
+
+    return result
+  }
+
+  private mapRejstrik(rejstrik?: string): 'SVJ' | 'OR' | 'NEZNAMY' {
+    if (!rejstrik) return 'NEZNAMY'
+    if (rejstrik === 'S') return 'SVJ'
+    if (['C', 'B', 'P', 'Dr'].includes(rejstrik)) return 'OR'
+    return 'NEZNAMY'
+  }
+
+  private mapToJusticeDocument(doc: SbirkaDocument): JusticeDocument {
+    const typMap: Record<string, JusticeDocument['typ']> = {
+      stanovy: 'STANOVY',
+      notarsky_zapis: 'NOTARSKY_ZAPIS',
+      ucetni_zaverka: 'UCETNI_ZAVERKA',
+      vyrocni_zprava: 'VYROCNI_ZPRAVA',
+      zapis_shromazdeni: 'ZAPIS_SHROMAZDENI',
+    }
+    return {
+      typ: typMap[doc.documentType] ?? 'JINE',
+      datumPodani: doc.filingDate ?? '',
+      nazev: doc.documentName,
+      url: doc.downloadUrl,
+    }
+  }
+
+  private async rateLimit(): Promise<void> {
+    const now = Date.now()
+    const elapsed = now - this.lastRequestTime
+    if (elapsed < RATE_LIMIT_DELAY) {
+      await new Promise(r => setTimeout(r, RATE_LIMIT_DELAY - elapsed))
+    }
+    this.lastRequestTime = Date.now()
+  }
 
   /**
    * Find subject ID in Justice.cz OR by IČO
    */
   async getSubjectByIco(ico: string): Promise<JusticeSubject | null> {
     try {
+      await this.rateLimit()
       const url = `${JUSTICE_BASE}/rejstrik-$firma?ico=${ico}&jenPlatne=PLATNE`
       const res = await fetch(url, {
         signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -94,6 +173,7 @@ export class JusticeService {
   async getRegistryHistory(subjektId: string): Promise<RegistryChange[]> {
     const changes: RegistryChange[] = []
     try {
+      await this.rateLimit()
       const url = `${JUSTICE_BASE}/vypis-sl-detail?dokument=subjekt&subjektId=${subjektId}`
       const res = await fetch(url, {
         signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -132,6 +212,7 @@ export class JusticeService {
 
       // Also try the "Výpis platných" page for structured data
       if (changes.length === 0) {
+        await this.rateLimit()
         const vpUrl = `${JUSTICE_BASE}/vypis-sl-firma?subjektId=${subjektId}`
         const vpRes = await fetch(vpUrl, {
           signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -165,6 +246,7 @@ export class JusticeService {
   async getDocumentList(subjektId: string): Promise<SbirkaDocument[]> {
     const docs: SbirkaDocument[] = []
     try {
+      await this.rateLimit()
       const url = `${JUSTICE_BASE}/vypis-sl-detail?dokument=sbirkaListin&subjektId=${subjektId}`
       const res = await fetch(url, {
         signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -236,6 +318,7 @@ export class JusticeService {
     if (/zakladatels/i.test(lower)) return 'zakladatelska_listina'
     if (/notářsk/i.test(lower)) return 'notarsky_zapis'
     if (/výročn/i.test(lower)) return 'vyrocni_zprava'
+    if (/zápis.*shromážděn|shromáždění.*zápis/i.test(lower)) return 'zapis_shromazdeni'
     if (/zněn.*společens|prohlášen.*vlastník/i.test(lower)) return 'prohlaseni_vlastniku'
     return 'other'
   }

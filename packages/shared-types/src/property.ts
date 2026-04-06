@@ -60,3 +60,60 @@ export type UpdateUnitDto = Partial<CreateUnitDto>;
 export type CreateOccupancyDto = Pick<
   Occupancy, 'unitId' | 'residentId' | 'role' | 'startDate' | 'endDate' | 'note'
 >;
+
+// ── ARES Enrichment ──
+
+export interface AresEnrichmentData {
+  ico: string;
+  nazev: string;
+  pravniForma: { kod: string; nazev: string };
+  sidlo: { ulice: string; obec: string; psc: string; stat: string };
+  dic?: string;
+  datovaSChrana?: string;
+  stavSubjektu: string;
+  datumVzniku?: string;
+  datumZaniku?: string;
+  nace?: { kod: string; nazev: string }[];
+  pocetZamestnancu?: string;
+  spisovaZnacka?: string;
+  statutarniOrgan?: AresStatutarniOrgan[];
+  fetchedAt: string;
+}
+
+export interface AresStatutarniOrgan {
+  typOrganu: string;
+  clenove: AresStatutarniClen[];
+}
+
+export interface AresStatutarniClen {
+  jmeno: string;
+  prijmeni: string;
+  funkce: string;
+  datumVzniku?: string;
+  datumZaniku?: string;
+  adresa?: string;
+}
+
+// ── Justice.cz Enrichment ──
+
+export interface JusticeEnrichmentData {
+  ico: string;
+  spisovaZnacka?: string;
+  rejstrik: 'SVJ' | 'OR' | 'NEZNAMY';
+  sbirkaListin: JusticeDocument[];
+  historieCas: JusticeHistoryEvent[];
+  fetchedAt: string;
+}
+
+export interface JusticeDocument {
+  typ: 'STANOVY' | 'NOTARSKY_ZAPIS' | 'UCETNI_ZAVERKA' | 'VYROCNI_ZPRAVA' | 'ZAPIS_SHROMAZDENI' | 'JINE';
+  datumPodani: string;
+  nazev: string;
+  url?: string;
+}
+
+export interface JusticeHistoryEvent {
+  datum: string;
+  typZmeny: string;
+  popis: string;
+}

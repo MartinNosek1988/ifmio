@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import type { AresEnrichmentData, AresStatutarniOrgan, AresStatutarniClen } from '@ifmio/shared-types';
 
 export interface AresSubject {
   ico: string;
@@ -169,12 +170,165 @@ export class AresService {
     }
   }
 
+  /**
+   * Full enrichment: basic subject + statutory body endpoint → AresEnrichmentData
+   */
+  async enrichByIco(ico: string): Promise<AresEnrichmentData | null> {
+    if (!this.validateIco(ico)) return null;
+
+    try {
+      // Fetch basic subject data
+      const res = await fetch(`${ARES_BASE}/ekonomicke-subjekty/${ico}`, {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!res.ok) {
+        this.logger.warn(`ARES enrichment: subject ${res.status} for ICO ${ico}`);
+        return null;
+      }
+      const data = await res.json();
+
+      // Fetch statutory body data (separate endpoint)
+      let statutarniOrgan: AresStatutarniOrgan[] = [];
+      try {
+        const soRes = await fetch(`${ARES_BASE}/ekonomicke-subjekty/${ico}/statutarni-organ`, {
+          headers: { Accept: 'application/json' },
+          signal: AbortSignal.timeout(10000),
+        });
+        if (soRes.ok) {
+          const soData = await soRes.json();
+          statutarniOrgan = this.mapStatutarniOrgan(soData);
+        }
+      } catch (err) {
+        this.logger.debug(`ARES statutory body fetch failed for ICO ${ico}: ${err}`);
+      }
+
+      return this.mapEnrichmentData(data, statutarniOrgan);
+    } catch (err) {
+      this.logger.error(`ARES enrichment failed for ICO ${ico}`, (err as Error).stack);
+      return null;
+    }
+  }
+
+  private mapEnrichmentData(data: Record<string, unknown>, statutarniOrgan: AresStatutarniOrgan[]): AresEnrichmentData {
+    const sidlo = (data.sidlo ?? {}) as Record<string, unknown>;
+    const pravniFormaObj = data.pravniForma as Record<string, unknown> | string | undefined;
+    const datoveSchranky = data.datoveSchranky as Array<Record<string, unknown>> | undefined;
+    const czNace = data.czNace as Array<Record<string, unknown>> | string[] | undefined;
+
+    // Extract spisovaZnacka from registrace
+    const seznamRegistraci = data.seznamRegistraci as Record<string, unknown> | undefined;
+    let spisovaZnacka: string | undefined;
+    if (seznamRegistraci) {
+      // Try various known locations for spisová značka
+      const stavVr = seznamRegistraci.stavZdrojeVr as Record<string, unknown> | undefined;
+      if (stavVr?.spisovaZnacka) {
+        spisovaZnacka = String(stavVr.spisovaZnacka);
+      }
+    }
+    // Also check top-level
+    if (!spisovaZnacka && data.spisovaZnacka) {
+      spisovaZnacka = String(data.spisovaZnacka);
+    }
+
+    const result: AresEnrichmentData = {
+      ico: String(data.ico ?? ''),
+      nazev: String(data.obchodniJmeno ?? ''),
+      pravniForma: {
+        kod: String(typeof pravniFormaObj === 'object' ? pravniFormaObj?.kod ?? '' : ''),
+        nazev: String(typeof pravniFormaObj === 'object' ? pravniFormaObj?.nazev ?? '' : pravniFormaObj ?? ''),
+      },
+      sidlo: {
+        ulice: [sidlo.nazevUlice, sidlo.cisloDomovni, sidlo.cisloOrientacni ? `/${sidlo.cisloOrientacni}` : ''].filter(Boolean).join(' ').trim(),
+        obec: String(sidlo.nazevObce ?? ''),
+        psc: String(sidlo.psc ?? ''),
+        stat: String(sidlo.nazevStatu ?? 'Česká republika'),
+      },
+      stavSubjektu: String(data.stavSubjektu ?? 'NEZNAMY'),
+      fetchedAt: new Date().toISOString(),
+    };
+
+    if (data.dic) result.dic = String(data.dic);
+    if (data.datumVzniku) result.datumVzniku = String(data.datumVzniku);
+    if (data.datumZaniku) result.datumZaniku = String(data.datumZaniku);
+    if (spisovaZnacka) result.spisovaZnacka = spisovaZnacka;
+
+    // Datová schránka
+    if (datoveSchranky?.length) {
+      const dsId = datoveSchranky.map(ds => String(ds.idDs ?? ds.id ?? '')).filter(Boolean);
+      if (dsId.length > 0) result.datovaSChrana = dsId[0];
+    }
+
+    // CZ-NACE codes
+    if (czNace?.length) {
+      result.nace = czNace.map(n => {
+        if (typeof n === 'string') return { kod: n, nazev: '' };
+        return { kod: String(n.kod ?? n), nazev: String(n.nazev ?? '') };
+      });
+    }
+
+    // pocetZamestnancu
+    if (data.pocetZamestnancu != null) {
+      result.pocetZamestnancu = String(data.pocetZamestnancu);
+    }
+
+    if (statutarniOrgan.length > 0) {
+      result.statutarniOrgan = statutarniOrgan;
+    }
+
+    return result;
+  }
+
+  private mapStatutarniOrgan(data: unknown): AresStatutarniOrgan[] {
+    const organs: AresStatutarniOrgan[] = [];
+
+    // ARES v2 /statutarni-organ returns either an array or object with organs
+    const items = Array.isArray(data) ? data : (data as Record<string, unknown>)?.organy ?? (data as Record<string, unknown>)?.statutarniOrgan;
+    const orgList = Array.isArray(items) ? items : items ? [items] : [];
+
+    for (const org of orgList) {
+      const o = org as Record<string, unknown>;
+      const typOrganu = String(o.typOrganu ?? o.nazevOrganu ?? o.typ ?? 'NEZNAMY');
+      const clenove: AresStatutarniClen[] = [];
+
+      const members = (o.clenove ?? o.osoby ?? o.clenstvi) as Array<Record<string, unknown>> | undefined;
+      if (Array.isArray(members)) {
+        for (const m of members) {
+          const osoba = (m.osoba ?? m) as Record<string, unknown>;
+          const jmeno = String(osoba.jmeno ?? '');
+          const prijmeni = String(osoba.prijmeni ?? '');
+          if (!jmeno && !prijmeni) continue;
+
+          const clen: AresStatutarniClen = {
+            jmeno,
+            prijmeni,
+            funkce: String(m.funkce ?? m.clenstvi ?? osoba.funkce ?? 'CLEN'),
+          };
+          if (m.datumVzniku ?? osoba.datumVzniku) clen.datumVzniku = String(m.datumVzniku ?? osoba.datumVzniku);
+          if (m.datumZaniku ?? osoba.datumZaniku) clen.datumZaniku = String(m.datumZaniku ?? osoba.datumZaniku);
+
+          // Address
+          const adresa = (m.adresa ?? osoba.adresa) as Record<string, unknown> | undefined;
+          if (adresa) {
+            const parts = [adresa.nazevUlice, adresa.cisloDomovni, adresa.nazevObce, adresa.psc].filter(Boolean);
+            if (parts.length > 0) clen.adresa = parts.map(String).join(', ');
+          }
+
+          clenove.push(clen);
+        }
+      }
+
+      organs.push({ typOrganu, clenove });
+    }
+
+    return organs;
+  }
+
   private mapSubject(data: Record<string, unknown>): AresSubject {
     const sidlo = (data.sidlo ?? {}) as Record<string, unknown>;
     const czNace = data.czNace as string[] | undefined;
     const pravniFormaObj = data.pravniForma as Record<string, unknown> | string | undefined;
     const datoveSchranky = data.datoveSchranky as Array<Record<string, unknown>> | undefined;
-    const zastupci = data.seznamRegistraci as Record<string, unknown> | undefined;
     const statutarniOrgan = data.statutarniOrgan as Array<Record<string, unknown>> | undefined;
     const registrace = data.registrace as Record<string, unknown> | undefined;
 

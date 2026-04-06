@@ -2,6 +2,8 @@ import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PropertyScopeService } from '../common/services/property-scope.service';
 import { BuildingEnrichmentService } from '../knowledge-base/building-enrichment.service';
+import { AresService } from '../integrations/ares/ares.service';
+import { JusticeService } from '../integrations/justice/justice.service';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
 import type { PropertyType, OwnershipType, PropertyLegalMode, AccountingSystem } from '@prisma/client';
@@ -15,6 +17,8 @@ export class PropertiesService {
     private prisma: PrismaService,
     private scope: PropertyScopeService,
     private enrichment: BuildingEnrichmentService,
+    private aresService: AresService,
+    private justiceService: JusticeService,
   ) {}
 
   async create(tenantId: string, dto: CreatePropertyDto) {
@@ -58,6 +62,13 @@ export class PropertiesService {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.warn('KB enrichment failed', { error: msg });
     });
+
+    // ARES + Justice enrichment (async, non-blocking)
+    if (property.ico) {
+      this.enrichProperty(property.id).catch(err =>
+        this.logger.warn(`Registry enrichment failed for property ${property.id}`, { error: String(err) }),
+      );
+    }
 
     return property;
   }
@@ -121,8 +132,8 @@ export class PropertiesService {
   }
 
   async update(user: AuthUser, id: string, dto: UpdatePropertyDto) {
-    await this.findOne(user, id);
-    return this.prisma.property.update({
+    const existing = await this.findOne(user, id);
+    const updated = await this.prisma.property.update({
       where: { id },
       data: {
         ...(dto.name !== undefined && { name: dto.name }),
@@ -150,6 +161,15 @@ export class PropertiesService {
       },
       include: { units: true },
     });
+
+    // Re-enrich if IČO changed
+    if (dto.ico !== undefined && dto.ico !== existing.ico && dto.ico) {
+      this.enrichProperty(id).catch(err =>
+        this.logger.warn(`Registry enrichment failed for property ${id}`, { error: String(err) }),
+      );
+    }
+
+    return updated;
   }
 
   async archive(user: AuthUser, id: string) {
@@ -175,5 +195,47 @@ export class PropertiesService {
       prevId: idx > 0 ? properties[idx - 1].id : null,
       nextId: idx < properties.length - 1 ? properties[idx + 1].id : null,
     }
+  }
+
+  /**
+   * Enrich property with ARES + Justice.cz data (parallel).
+   * Called automatically on create/update with IČO, or manually via POST /properties/:id/enrich.
+   */
+  async enrichProperty(propertyId: string) {
+    const property = await this.prisma.property.findUnique({
+      where: { id: propertyId },
+      select: { id: true, ico: true },
+    });
+    if (!property?.ico) return { enriched: false, reason: 'no_ico' };
+
+    const [aresResult, justiceResult] = await Promise.allSettled([
+      this.aresService.enrichByIco(property.ico),
+      this.justiceService.enrichByIco(property.ico),
+    ]);
+
+    const aresData = aresResult.status === 'fulfilled' ? aresResult.value : undefined;
+    const justiceData = justiceResult.status === 'fulfilled' ? justiceResult.value : undefined;
+
+    if (aresResult.status === 'rejected') {
+      this.logger.warn(`ARES enrichment failed for ${propertyId}: ${aresResult.reason}`);
+    }
+    if (justiceResult.status === 'rejected') {
+      this.logger.warn(`Justice enrichment failed for ${propertyId}: ${justiceResult.reason}`);
+    }
+
+    await this.prisma.property.update({
+      where: { id: propertyId },
+      data: {
+        ...(aresData !== undefined && { aresData: aresData as any }),
+        ...(justiceData !== undefined && { justiceData: justiceData as any }),
+        enrichedAt: new Date(),
+      },
+    });
+
+    return {
+      enriched: true,
+      aresOk: aresResult.status === 'fulfilled' && !!aresData,
+      justiceOk: justiceResult.status === 'fulfilled' && !!justiceData,
+    };
   }
 }

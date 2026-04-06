@@ -33,6 +33,9 @@ export interface ApiProperty {
   latitude?: number | null;
   longitude?: number | null;
   buildingId?: string | null;
+  aresData?: Record<string, unknown> | null;
+  justiceData?: Record<string, unknown> | null;
+  enrichedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   units?: ApiUnit[];
@@ -209,6 +212,9 @@ export const propertiesApi = {
 
   getPropertyNav: (id: string) =>
     apiClient.get<{ total: number; current: number; prevId: string | null; nextId: string | null }>(`/properties/${id}/nav`).then(r => r.data),
+
+  triggerEnrich: (id: string) =>
+    apiClient.post(`/properties/${id}/enrich`).then(r => r.data),
 
   // ── Units ──
   createUnit: (propertyId: string, data: CreateUnitPayload) =>

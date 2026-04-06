@@ -486,6 +486,11 @@ model Property {
 
   insurances             Insurance[]
 
+  // Enrichment data (ARES + Justice.cz)
+  aresData               Json?              // AresEnrichmentData
+  justiceData            Json?              // JusticeEnrichmentData
+  enrichedAt             DateTime?
+
   // Knowledge Base link
   buildingId             String?
   building               Building? @relation(fields: [buildingId], references: [id])

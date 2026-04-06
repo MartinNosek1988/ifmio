@@ -76,6 +76,15 @@ export class PropertiesController {
     await this.service.archive(user, id);
   }
 
+  @Post(':id/enrich')
+  @Roles('tenant_owner', 'tenant_admin', 'property_manager')
+  @AuditAction('property', 'enrich')
+  @ApiOperation({ summary: 'Spustit ARES + Justice.cz enrichment' })
+  async enrich(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    await this.service.findOne(user, id);
+    return this.service.enrichProperty(id);
+  }
+
   // ─── ČÚZK Import ─────────────────────────────────────────
 
   @Post('import/cuzk')
