@@ -889,13 +889,19 @@ export class BulkImportService {
         const res = await fetch(url, { signal: AbortSignal.timeout(10000) })
         if (res.ok) {
           const data = await res.json()
-          if (data.features?.[0]?.attributes?.kod) {
-            await this.prisma.building.update({ where: { id: buildingId }, data: { ruianAddressId: String(data.features[0].attributes.kod) } })
-            building.ruianAddressId = String(data.features[0].attributes.kod)
+          const kod = data.features?.[0]?.attributes?.kod
+          this.logger.log(`RÚIAN backfill for ${buildingId}: features=${data.features?.length ?? 0}, kod=${kod ?? 'none'}`)
+          if (kod) {
+            await this.prisma.building.update({ where: { id: buildingId }, data: { ruianAddressId: String(kod) } })
+            building.ruianAddressId = String(kod)
             sources.push({ name: 'RÚIAN backfill', fetchedAt: new Date().toISOString(), status: 'ok' })
+          } else {
+            sources.push({ name: 'RÚIAN backfill', fetchedAt: new Date().toISOString(), status: 'no_data' })
           }
         }
       } catch (err) { this.logger.warn(`RÚIAN backfill failed: ${(err as Error).message}`); sources.push({ name: 'RÚIAN backfill', fetchedAt: new Date().toISOString(), status: 'error' }) }
+    } else {
+      sources.push({ name: 'RÚIAN backfill', fetchedAt: new Date().toISOString(), status: building.ruianAddressId ? 'already_set' : 'skipped_no_gps' })
     }
 
     // 2. ARES — SVJ/BD search
@@ -914,6 +920,8 @@ export class BulkImportService {
         }
       } catch (err) { this.logger.warn(`ARES failed: ${(err as Error).message}`); sources.push({ name: 'ARES', fetchedAt: new Date().toISOString(), status: 'error' }) }
       await this.delay(500)
+    } else {
+      sources.push({ name: 'ARES', fetchedAt: new Date().toISOString(), status: !building.street ? 'skipped_no_street' : !building.city ? 'skipped_no_city' : 'already_has_org' })
     }
 
     // 3-5. GeoRisk + POI + IPR
@@ -934,9 +942,11 @@ export class BulkImportService {
 
     // 6. ČÚZK API KN
     if (this.cuzkApiKn.isConfigured && (building.ruianAddressId || building.ruianBuildingId)) {
+      this.logger.log(`ČÚZK for ${buildingId}: addressId=${building.ruianAddressId}, buildingId=${building.ruianBuildingId}`)
       try {
         let stavba = building.ruianAddressId ? await this.cuzkApiKn.getStavbaByAdresniMisto(Number(building.ruianAddressId)) : null
         if (!stavba && building.ruianBuildingId) stavba = await this.cuzkApiKn.getStavbaDetail(Number(building.ruianBuildingId))
+        this.logger.log(`ČÚZK result for ${buildingId}: stavba=${stavba ? `id=${stavba.id}, units=${stavba.jednotky?.length}` : 'not_found'}`)
         if (stavba) {
           const cuzkData: Record<string, unknown> = {
             stavbaId: stavba.id, typStavby: stavba.typStavby?.nazev, zpusobVyuziti: stavba.zpusobVyuziti?.nazev,
@@ -968,6 +978,8 @@ export class BulkImportService {
           sources.push({ name: 'ČÚZK API', fetchedAt: new Date().toISOString(), status: 'ok' })
         } else { sources.push({ name: 'ČÚZK API', fetchedAt: new Date().toISOString(), status: 'no_data' }) }
       } catch (err) { this.logger.warn(`ČÚZK failed: ${(err as Error).message}`); sources.push({ name: 'ČÚZK API', fetchedAt: new Date().toISOString(), status: 'error' }) }
+    } else {
+      sources.push({ name: 'ČÚZK API', fetchedAt: new Date().toISOString(), status: !this.cuzkApiKn.isConfigured ? 'not_configured' : 'no_ruian_ids' })
     }
 
     // 7. Justice.cz
