@@ -138,13 +138,13 @@ export default function CrmBuildingDetailPage() {
             ]} />
             {building.lat && building.lng && (
               <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                <a href={building.street && building.houseNumber
-                  ? `https://maps.google.com/maps?q=${encodeURIComponent(`${building.street} ${building.houseNumber}, ${building.city}, Česko`)}`
-                  : `https://maps.google.com/maps?q=${building.lat},${building.lng}`
+                <a href={building.lat && building.lng
+                  ? `https://maps.google.com/maps?q=${building.lat},${building.lng}&z=18`
+                  : `https://maps.google.com/maps?q=${encodeURIComponent(`${building.street} ${building.houseNumber}, ${building.city}`)}`
                 } target="_blank" rel="noopener noreferrer" style={linkBtn}>Otevřít mapu</a>
-                <a href={building.street && building.houseNumber
-                  ? `https://maps.google.com/maps?q=${encodeURIComponent(`${building.street} ${building.houseNumber}, ${building.city}, Česko`)}&layer=c`
-                  : `https://www.google.com/maps/@${building.lat},${building.lng},3a,75y,90t/data=!3m6!1e1!3m4!1s!2e0!7i16384!8i8192`
+                <a href={building.lat && building.lng
+                  ? `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${building.lat},${building.lng}`
+                  : `https://maps.google.com/maps?q=${encodeURIComponent(`${building.street} ${building.houseNumber}, ${building.city}`)}&layer=c`
                 } target="_blank" rel="noopener noreferrer" style={linkBtn}>Street View</a>
               </div>
             )}
