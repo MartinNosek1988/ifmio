@@ -110,7 +110,7 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     title: 'CRM',
-    roles: ['fm', 'owner'],
+    roles: ['fm'],
     items: [
       { to: '/crm', label: 'Přehled', icon: <LayoutDashboard size={17} /> },
       { to: '/crm/buildings', label: 'Budovy', icon: <Building2 size={17} /> },
