@@ -223,16 +223,40 @@ export class KnowledgeBaseController {
       },
     })
 
-    // TODO: N+1 query — optimize with recursive CTE for large datasets (OK for now, max 77 okresů)
     return Promise.all(territories.map(async t => {
       const descendantIds = await this.getDescendantTerritoryIds(t.id)
-      const stats = await this.prisma.building.aggregate({
+
+      // Primary: count buildings linked via territoryId
+      const linkedStats = await this.prisma.building.aggregate({
         where: { territoryId: { in: descendantIds } },
         _count: { _all: true },
         _avg: { dataQualityScore: true },
       })
 
-      // Sum totalBuildings from this territory + descendants
+      let inKb = linkedStats._count._all
+      let avgQuality = linkedStats._avg.dataQualityScore || 0
+
+      // Fallback: when territoryId not populated, match by city name
+      if (inKb === 0) {
+        const descendantNames = await this.prisma.territory.findMany({
+          where: { id: { in: descendantIds } },
+          select: { name: true },
+        })
+        const cityNames = this.buildCityMatchPatterns(t.name, descendantNames.map(d => d.name))
+        if (cityNames.length > 0) {
+          const cityStats = await this.prisma.building.aggregate({
+            where: {
+              OR: cityNames.map(c => ({ city: { equals: c, mode: 'insensitive' as const } })),
+            },
+            _count: { _all: true },
+            _avg: { dataQualityScore: true },
+          })
+          inKb = cityStats._count._all
+          avgQuality = cityStats._avg.dataQualityScore || 0
+        }
+      }
+
+      // totalBuildings from territory or sum of descendants
       let totalBuildings: number | null = null
       if (t.totalBuildings != null) {
         totalBuildings = t.totalBuildings
@@ -246,7 +270,6 @@ export class KnowledgeBaseController {
         }
       }
 
-      const inKb = stats._count._all
       return {
         id: t.id,
         code: t.code,
@@ -254,11 +277,36 @@ export class KnowledgeBaseController {
         level: t.level,
         totalBuildings,
         inKb,
-        coveragePercent: totalBuildings && totalBuildings > 0 ? Math.round((inKb / totalBuildings) * 1000) / 10 : null,
-        avgQuality: Math.round(stats._avg.dataQualityScore || 0),
+        coveragePercent: totalBuildings && totalBuildings > 0
+          ? Math.round((inKb / totalBuildings) * 1000) / 10
+          : null,
+        avgQuality: Math.round(avgQuality),
         hasChildren: t._count.children > 0,
       }
     }))
+  }
+
+  /**
+   * Build city name patterns from territory name and descendant names.
+   * Strips "kraj", "okres", "Hlavní město" suffixes and returns
+   * exact city names for building.city matching.
+   */
+  private buildCityMatchPatterns(territoryName: string, descendantNames: string[]): string[] {
+    const patterns = new Set<string>()
+
+    for (const name of [territoryName, ...descendantNames]) {
+      // "Hlavní město Praha" → "Praha"
+      if (name.startsWith('Hlavní město ')) {
+        patterns.add(name.replace('Hlavní město ', ''))
+        continue
+      }
+      // Skip abstract names like "Středočeský kraj", "Okres Praha-západ"
+      if (/\s*kraj$/i.test(name) || /^Okres\s/i.test(name)) continue
+      // Use city/municipality names directly
+      patterns.add(name)
+    }
+
+    return [...patterns]
   }
 
   // ── Territory endpoints ─────────────────────────────
