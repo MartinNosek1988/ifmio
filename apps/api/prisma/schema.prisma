@@ -4749,6 +4749,8 @@ model KbOrganization {
   isVatPayer        Boolean      @default(false)
   czNace            String[]
   dataBoxId         String?
+  spisovaZnacka     String?
+  aresData          Json?        // cached AresFullData
   lastAresSync      DateTime?
   dataQualityScore  Float?       @default(0)
   createdAt         DateTime     @default(now())
@@ -4767,17 +4769,49 @@ model KbOrganization {
 
 model KbPerson {
   id                String       @id @default(uuid())
-  firstName         String?
-  lastName          String?
+  firstName         String?      // jmeno
+  lastName          String?      // prijmeni
+  titulPred         String?
+  titulZa           String?
+  datumNarozeni     String?      // "1937-05-10" — string for historical data
   city              String?
+  adresa            String?      // textovaAdresa
+  statniObcanstvi   String?
   nameNormalized    String?
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
   ownerships        UnitOwnershipKb[]
+  engagements       KbPersonEngagement[]
 
+  @@unique([lastName, datumNarozeni])
   @@index([lastName, firstName])
   @@index([nameNormalized])
   @@map("kb_persons")
+}
+
+model KbPersonEngagement {
+  id          String    @id @default(cuid())
+  personId    String?
+  ico         String    // IČO subjektu
+  nazevFirmy  String    // snapshot názvu v době zápisu
+  funkce      String    // "předseda výboru" | "jednatel" | "společník" atd.
+  od          DateTime?
+  do          DateTime?
+  aktivni     Boolean   @default(true)
+  datumZapisu DateTime?
+  datumVymazu DateTime?
+  zdrojDat    String    @default("dataor") // "dataor" | "ares_vr"
+  // Pro právnické osoby (firma jako společník/jednatel)
+  partnerIco  String?
+  partnerNazev String?
+
+  person      KbPerson? @relation(fields: [personId], references: [id])
+
+  @@index([ico])
+  @@index([personId])
+  @@index([aktivni])
+  @@unique([personId, ico, funkce, datumZapisu])
+  @@map("kb_person_engagements")
 }
 
 model UnitOwnershipKb {

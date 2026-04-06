@@ -11,9 +11,10 @@ import { WhatsAppModule } from '../whatsapp/whatsapp.module';
 import { FinanceModule } from '../finance/finance.module';
 import { PvkModule } from '../pvk/pvk.module';
 import { KnowledgeBaseModule } from '../knowledge-base/knowledge-base.module';
+import { DataorModule } from '../integrations/dataor/dataor.module';
 
 @Module({
-  imports: [HelpdeskModule, RevisionsModule, ReportsModule, RecurringPlansModule, MioModule, BankingModule, WhatsAppModule, FinanceModule, PvkModule, KnowledgeBaseModule],
+  imports: [HelpdeskModule, RevisionsModule, ReportsModule, RecurringPlansModule, MioModule, BankingModule, WhatsAppModule, FinanceModule, PvkModule, KnowledgeBaseModule, DataorModule],
   providers: [CronService, RetentionService],
   exports: [CronService],
 })

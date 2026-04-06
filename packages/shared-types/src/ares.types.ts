@@ -9,6 +9,7 @@ export interface AresStatutarniClen {
   zanikFunkce?: string;
   adresa?: string;          // textovaAdresa
   datumNarozeni?: string;
+  kbPersonId?: string;      // link to KbPerson if matched
 }
 
 export interface AresFullData {

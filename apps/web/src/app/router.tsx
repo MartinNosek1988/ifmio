@@ -72,6 +72,8 @@ const CrmBuildingDetailPage = lazy(() => import('../modules/crm/CrmBuildingDetai
 const CrmOrganizationsPage = lazy(() => import('../modules/crm/CrmOrganizationsPage'));
 const CrmMapPage = lazy(() => import('../modules/crm/CrmMapPage'));
 const CrmImportPage = lazy(() => import('../modules/crm/CrmImportPage'));
+const PersonProfilePage = lazy(() => import('../modules/registry/PersonProfilePage'));
+const OrganizationProfilePage = lazy(() => import('../modules/registry/OrganizationProfilePage'));
 const QrResolvePage = lazy(() => import('../modules/asset-qr/QrResolvePage'));
 const PrincipalsPage = lazy(() => import('../modules/principals/PrincipalsPage'));
 const PrincipalDetailPage = lazy(() => import('../modules/principals/PrincipalDetailPage'));
@@ -236,6 +238,8 @@ export const router = createBrowserRouter([
       { path: 'crm/organizations', element: withBoundary('CRM Organizace', CrmOrganizationsPage) },
       { path: 'crm/import', element: withBoundary('CRM Import', CrmImportPage) },
       { path: 'crm/map', element: withBoundary('CRM Mapa', CrmMapPage) },
+      { path: 'crm/registry/persons/:id', element: withBoundary('Profil osoby', PersonProfilePage) },
+      { path: 'crm/registry/organizations/:ico', element: withBoundary('Profil organizace', OrganizationProfilePage) },
     ],
   },
 ]);

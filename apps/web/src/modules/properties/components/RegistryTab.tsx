@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { RefreshCw, Copy, ExternalLink } from 'lucide-react'
 import { apiClient } from '../../../core/api/client'
@@ -355,7 +356,11 @@ function MemberTable({ members, isActive }: { members: AresStatutarniClen[]; isA
           }
           return (
             <tr key={i} style={rowStyle}>
-              <td style={{ padding: '6px 8px', fontWeight: isActive ? 500 : 400 }}>{fullName}</td>
+              <td style={{ padding: '6px 8px', fontWeight: isActive ? 500 : 400 }}>
+                {clen.kbPersonId ? (
+                  <Link to={`/crm/registry/persons/${clen.kbPersonId}`} style={{ color: 'var(--primary)', textDecoration: 'none' }}>{fullName}</Link>
+                ) : fullName}
+              </td>
               <td style={{ padding: '6px 8px' }}><FunkceBadge funkce={clen.funkce} /></td>
               <td style={{ padding: '6px 8px' }}>{dateFrom ? new Date(dateFrom).toLocaleDateString('cs-CZ') : '—'}</td>
               <td style={{ padding: '6px 8px', ...(!isActive && dateTo ? { textDecoration: 'line-through' } : {}) }}>

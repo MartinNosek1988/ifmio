@@ -213,6 +213,21 @@ export const cs = {
       ZAPIS_SHROMAZDENI: 'Zápis ze shromáždění',
       JINE: 'Jiné',
     } as Record<string, string>,
+    person: {
+      title: 'Profil osoby',
+      born: 'Narozen/a',
+      engagements: 'Angažmá',
+      noEngagements: 'Žádné záznamy v rejstříku',
+    },
+    organization: {
+      title: 'Profil subjektu',
+      ico: 'IČO',
+      founded: 'Datum vzniku',
+      dissolved: 'Datum zániku',
+      address: 'Sídlo',
+      statutoryBody: 'Statutární orgán',
+      history: 'Historie zápisů',
+    },
   },
   seo: {
     landing: { title: 'Správa nemovitostí a FM', description: 'ifmio je AI-native platforma pro správu nemovitostí, SVJ, bytových domů a facility management. Vše na jednom místě.' },

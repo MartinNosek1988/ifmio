@@ -87,6 +87,14 @@ export class PropertiesController {
     return this.service.enrichProperty(id);
   }
 
+  @Get(':id/kb-organization')
+  @ApiOperation({ summary: 'KB organizace propojená přes IČO' })
+  async kbOrganization(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    const property = await this.service.findOne(user, id);
+    if (!property.ico) return null;
+    return this.service.getKbOrganization(property.ico);
+  }
+
   @Get(':id/justice-documents')
   @ApiOperation({ summary: 'Sbírka listin z Justice.cz' })
   async justiceDocuments(@CurrentUser() user: AuthUser, @Param('id') id: string) {

@@ -208,6 +208,20 @@ export class PropertiesService {
 
     const aresData = await this.aresService.enrichByIco(property.ico);
 
+    // Link statutory members to KbPerson by lastName+datumNarozeni
+    if (aresData.statutarniOrgan?.clenove) {
+      for (const clen of aresData.statutarniOrgan.clenove) {
+        if (!clen.prijmeni || !clen.datumNarozeni) continue;
+        try {
+          const person = await this.prisma.kbPerson.findFirst({
+            where: { lastName: clen.prijmeni, datumNarozeni: clen.datumNarozeni },
+            select: { id: true },
+          });
+          if (person) clen.kbPersonId = person.id;
+        } catch { /* non-critical */ }
+      }
+    }
+
     const updated = await this.prisma.property.update({
       where: { id: propertyId },
       data: {
@@ -218,5 +232,22 @@ export class PropertiesService {
     });
 
     return { aresData: updated.aresData, enrichedAt: updated.enrichedAt };
+  }
+
+  async getKbOrganization(ico: string) {
+    const org = await this.prisma.kbOrganization.findUnique({
+      where: { ico },
+    });
+    if (!org) return null;
+
+    const engagements = await this.prisma.kbPersonEngagement.findMany({
+      where: { ico },
+      include: {
+        person: { select: { id: true, firstName: true, lastName: true, titulPred: true, datumNarozeni: true } },
+      },
+      orderBy: [{ aktivni: 'desc' }, { datumZapisu: 'desc' }],
+    });
+
+    return { ...org, engagements };
   }
 }
