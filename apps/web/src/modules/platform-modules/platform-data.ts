@@ -1,5 +1,3 @@
-import type { ReactNode } from 'react'
-
 export interface PlatformModuleData {
   slug: string
   icon: string      // Lucide icon name or emoji for Mio AI
