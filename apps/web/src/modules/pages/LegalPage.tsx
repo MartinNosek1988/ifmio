@@ -1,3 +1,4 @@
+import { Helmet } from 'react-helmet-async'
 import { PageLayout } from './PageLayout'
 import { SeoHead } from '../../i18n/SeoHead'
 import { useI18n } from '../../i18n/i18n'
@@ -10,6 +11,7 @@ export default function LegalPage() {
   const seo = t.seo.legal
   return (
     <PageLayout>
+      <Helmet><meta name="robots" content="noindex, follow" /></Helmet>
       <SeoHead title={seo.title} description={seo.description} canonicalPath={`/${lp.canonical}/${getSlug(ROUTE_SLUGS.legal, lp.canonical)}/`} alternatePath={`/${lp.alternate}/${getSlug(ROUTE_SLUGS.legal, lp.alternate)}/`} />
       <div className="page-hero"><h1 className="page-hero__title" style={{ color: 'var(--dark)' }}>Právní dokumenty</h1></div>
       <div className="page-content page-content--narrow">
