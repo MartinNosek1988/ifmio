@@ -1,5 +1,6 @@
 import { Suspense, useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { CanonicalLink } from '../shared/components/seo/CanonicalLink';
 import { useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard, Building2, Users, FolderOpen, Calendar,
@@ -292,6 +293,7 @@ export default function AppShell() {
 
   return (
     <div>
+      <CanonicalLink />
       {/* Mobile sidebar overlay */}
       <div className={`sidebar-overlay${sidebarOpen ? ' open' : ''}`} onClick={() => setSidebarOpen(false)} />
 
