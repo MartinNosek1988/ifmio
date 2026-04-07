@@ -10,7 +10,7 @@ export interface SolutionData {
 export const SOLUTIONS: SolutionData[] = [
   {
     slug: 'svj',
-    icon: '🏢',
+    icon: 'Home',
     title: 'ifmio pro společenství vlastníků',
     subtitle: 'Kompletní správa SVJ — od předpisů a vyúčtování po shromáždění a portál vlastníků.',
     benefits: [
@@ -23,20 +23,20 @@ export const SOLUTIONS: SolutionData[] = [
   },
   {
     slug: 'spravce',
-    icon: '🔑',
+    icon: 'KeyRound',
     title: 'ifmio pro správce nemovitostí',
-    subtitle: 'Spravujte desítky domů z jednoho dashboardu. Hromadné operace, multi-property reporting.',
+    subtitle: 'Spravujte desítky domů z jednoho dashboardu. Hromadné operace, reporting přes více nemovitostí.',
     benefits: [
-      { title: 'Multi-property správa', desc: 'Jeden dashboard pro všechny nemovitosti. Přepínání kontextu jedním klikem.' },
+      { title: 'Správa více nemovitostí', desc: 'Jeden dashboard pro všechny nemovitosti. Přepínání kontextu jedním klikem.' },
       { title: 'Hromadné operace', desc: 'Generování předpisů, odesílání upomínek a reportů pro celé portfolio.' },
       { title: 'Pohoda & Money S3', desc: 'Export účetních dat do Pohoda XML a Money S3. Párování plateb dle VS.' },
       { title: 'Mio AI Asistent', desc: 'Delegujte rutinu na AI — odpovědi nájemníkům, generování dokumentů.' },
     ],
-    features: ['Evidence nemovitostí & klientů', 'Multi-property dashboard', 'Automatické předpisy', 'Vyúčtování & rozúčtování', 'SIPO & bankovní API', 'Hromadné operace', 'Pracovní příkazy', 'Revize & TZB', 'Portál vlastníků', 'Pohoda & Money S3 export', 'Reporting & KPI', 'Mio AI asistent'],
+    features: ['Evidence nemovitostí & klientů', 'Dashboard pro více nemovitostí', 'Automatické předpisy', 'Vyúčtování & rozúčtování', 'SIPO & bankovní API', 'Hromadné operace', 'Pracovní příkazy', 'Revize & TZB', 'Portál vlastníků', 'Pohoda & Money S3 export', 'Reporting & KPI', 'Mio AI asistent'],
   },
   {
     slug: 'facility-management',
-    icon: '⚙️',
+    icon: 'Settings2',
     title: 'ifmio pro facility management',
     subtitle: 'Helpdesk, pracovní příkazy, revize a SLA monitoring v jedné platformě.',
     benefits: [
@@ -49,28 +49,28 @@ export const SOLUTIONS: SolutionData[] = [
   },
   {
     slug: 'udrzba',
-    icon: '🔧',
+    icon: 'HardHat',
     title: 'ifmio pro údržbu a techniky',
     subtitle: 'Mobilní appka pro techniky v terénu. Pracovní příkazy, QR kódy, foto a push notifikace.',
     benefits: [
-      { title: 'Mobilní aplikace', desc: 'iOS a Android. Příjem příkazů, foto dokumentace, QR sken měřidel.' },
+      { title: 'Mobilní aplikace', desc: 'Příjem příkazů, foto dokumentace, QR sken měřidel. Spuštění plánováno Q3 2026.' },
       { title: 'QR kódy', desc: 'Naskenujte QR kód na měřidle nebo zařízení — zobrazí historii a stav.' },
       { title: 'Push notifikace', desc: 'Okamžité upozornění na nové příkazy, změny priorit a termíny.' },
       { title: 'Offline režim', desc: 'Pracujte i bez internetu. Data se synchronizují po připojení.' },
     ],
-    features: ['Mobilní aplikace (iOS/Android)', 'Pracovní příkazy', 'QR sken měřidel', 'Foto dokumentace', 'Push notifikace', 'Offline režim', 'Kalendář zakázek', 'Historie oprav'],
+    features: ['Mobilní aplikace (plánováno Q3 2026)', 'Pracovní příkazy', 'QR sken měřidel', 'Foto dokumentace', 'Push notifikace', 'Offline režim', 'Kalendář zakázek', 'Historie oprav'],
   },
   {
     slug: 'investori',
-    icon: '📈',
+    icon: 'TrendingUp',
     title: 'ifmio pro investory do nemovitostí',
     subtitle: 'Cash flow přehled, výnosnost a obsazenost vašeho portfolia v reálném čase.',
     benefits: [
-      { title: 'Portfolio dashboard', desc: 'Přehled všech nemovitostí na jednom místě. Výnosnost, obsazenost, cash flow.' },
-      { title: 'KPI & reporting', desc: 'Automatické výpočty výnosnosti, průměrného nájmu, doby neobsazenosti.' },
+      { title: 'Přehled portfolia', desc: 'Přehled všech nemovitostí na jednom místě. Výnosnost, obsazenost, cash flow.' },
+      { title: 'KPI a reporty', desc: 'Automatické výpočty výnosnosti, průměrného nájmu, doby neobsazenosti.' },
       { title: 'Cash flow analýza', desc: 'Příjmy vs. náklady per nemovitost. Prognózy a trendy.' },
       { title: 'Delegace správy', desc: 'Přidělte správce nebo FM firmu. Sledujte jejich výkon.' },
     ],
-    features: ['Portfolio dashboard', 'Cash flow v reálném čase', 'Výnosnost & obsazenost KPI', 'Multi-property reporting', 'Delegace správy', 'Bankovní napojení', 'Dokumenty', 'Mio AI asistent'],
+    features: ['Přehled portfolia', 'Cash flow v reálném čase', 'KPI výnosnosti & obsazenosti', 'Reporting přes více nemovitostí', 'Delegace správy', 'Bankovní napojení', 'Dokumenty', 'Mio AI asistent'],
   },
 ]
