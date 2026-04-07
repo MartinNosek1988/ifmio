@@ -8,7 +8,7 @@ import '../landing/landing.css'
 import './pages.css'
 
 export default function DemoPage() {
-  const { t, locale, localePath } = useI18n()
+  const { t, locale } = useI18n()
   const lp = getLocalePair(locale)
   const seo = t.seo.demo
   const [form, setForm] = useState({ name: '', email: '', phonePrefix: '+420', phone: '', company: '', gdpr: false })
