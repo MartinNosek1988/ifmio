@@ -19,7 +19,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
 }
 
 function ModuleIcon({ name }: { name: string }) {
-  if (name.length <= 2 || /\p{Emoji}/u.test(name)) {
+  if (name.length <= 2 || /[\u{1F000}-\u{1FFFF}]/u.test(name)) {
     return <div className="page-hero__icon">{name}</div>
   }
   const Icon = ICON_MAP[name]
@@ -35,11 +35,13 @@ export default function PlatformModulePage() {
   const { slug } = useParams()
   const { t, locale, localePath } = useI18n()
   const lp = getLocalePair(locale)
-  const mod = PLATFORM_MODULES.find(m => m.slug === slug)
+  const SLUG_ALIASES: Record<string, string> = { 'mobile-app': 'mobilni-aplikace' }
+  const normalizedSlug = SLUG_ALIASES[slug ?? ''] ?? slug
+  const mod = PLATFORM_MODULES.find(m => m.slug === normalizedSlug)
 
   if (!mod) return <PageLayout><div className="page-content" style={{ textAlign: 'center', padding: 120 }}><h1>Modul nenalezen</h1></div></PageLayout>
 
-  const isMobileApp = slug === 'mobilni-aplikace' || slug === 'mobile-app'
+  const isMobileApp = normalizedSlug === 'mobilni-aplikace'
   const demoUrl = localePath('/demo/')
 
   return (
