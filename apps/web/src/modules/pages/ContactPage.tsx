@@ -21,7 +21,6 @@ export default function ContactPage() {
       <div className="page-content page-content--narrow">
         <div className="contact-cards">
           <div className="contact-card"><div className="contact-card__icon">✉</div><div className="contact-card__label">E-mail</div><div className="contact-card__value"><a href="mailto:info@ifmio.com">info@ifmio.com</a></div></div>
-          <div className="contact-card"><div className="contact-card__icon">☎</div><div className="contact-card__label">Telefon</div><div className="contact-card__value">+420 XXX XXX XXX</div></div>
           <div className="contact-card"><div className="contact-card__icon">◎</div><div className="contact-card__label">Adresa</div><div className="contact-card__value">Praha, Česká republika</div></div>
         </div>
         {submitted ? (
