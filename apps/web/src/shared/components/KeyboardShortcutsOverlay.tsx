@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 interface ShortcutGroup {
   label: string
@@ -15,6 +15,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: ['g', 'h'], description: 'Helpdesk' },
       { keys: ['g', 'w'], description: 'Pracovní úkoly' },
       { keys: ['g', 'r'], description: 'Osoby' },
+      { keys: ['g', 'x'], description: 'Reports' },
       { keys: ['g', 'a'], description: 'Audit log' },
     ],
   },
@@ -33,8 +34,11 @@ interface Props {
 }
 
 export function KeyboardShortcutsOverlay({ open, onClose }: Props) {
+  const dialogRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     if (!open) return
+    dialogRef.current?.focus()
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
@@ -47,6 +51,9 @@ export function KeyboardShortcutsOverlay({ open, onClose }: Props) {
   return (
     <div
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="shortcuts-overlay-title"
       style={{
         position: 'fixed', inset: 0, zIndex: 9999,
         background: 'rgba(0,0,0,0.5)', display: 'flex',
@@ -54,15 +61,18 @@ export function KeyboardShortcutsOverlay({ open, onClose }: Props) {
       }}
     >
       <div
+        ref={dialogRef}
+        tabIndex={-1}
         onClick={e => e.stopPropagation()}
         style={{
           background: 'var(--surface, #fff)', borderRadius: 12,
-          padding: 24, width: 420, maxHeight: '80vh', overflow: 'auto',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+          padding: 24, width: 'min(420px, calc(100vw - 32px))',
+          maxHeight: '80vh', overflow: 'auto',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.2)', outline: 'none',
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.1rem', margin: 0 }}>Klávesové zkratky</h2>
+          <h2 id="shortcuts-overlay-title" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.1rem', margin: 0 }}>Klávesové zkratky</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1.2rem' }} aria-label="Zavřít">×</button>
         </div>
         {SHORTCUT_GROUPS.map(group => (

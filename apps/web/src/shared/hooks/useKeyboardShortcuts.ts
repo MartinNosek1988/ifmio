@@ -32,6 +32,8 @@ export function useKeyboardShortcuts() {
         return
       }
 
+      if (showHelp) return // don't navigate while overlay is open
+
       buffer += e.key === ' ' ? ' ' : e.key
       clearTimeout(timer)
       timer = setTimeout(() => { buffer = '' }, 500)
@@ -46,8 +48,11 @@ export function useKeyboardShortcuts() {
     }
 
     window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [navigate])
+    return () => {
+      window.removeEventListener('keydown', handler)
+      clearTimeout(timer)
+    }
+  }, [navigate, showHelp])
 
   return { showHelp, closeHelp }
 }

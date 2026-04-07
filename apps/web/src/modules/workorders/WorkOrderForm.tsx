@@ -86,7 +86,7 @@ export default function WorkOrderForm({ onClose }: Props) {
 
       <FormSection title="Základní informace" defaultExpanded collapsible={false}>
         <FormField label="Název úkolu" name="title" error={errors.title}>
-          <input data-testid="wo-form-title" id="title" value={form.title} onChange={e => set('title', e.target.value)} style={inputStyle('title')} placeholder="Stručný popis práce" onBlur={() => { if (!form.title.trim()) setErrors(e => ({ ...e, title: 'Název je povinný' })); else setErrors(e => { const { title: _, ...rest } = e; return rest; }); }} />
+          <input data-testid="wo-form-title" id="title" value={form.title} onChange={e => set('title', e.target.value)} style={inputStyle('title')} placeholder="Stručný popis práce" onBlur={(ev) => { const val = ev.currentTarget.value.trim(); if (!val) setErrors(e => ({ ...e, title: 'Název je povinný' })); else setErrors(e => { const next = { ...e }; delete next.title; return next; }); }} />
         </FormField>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <FormField label="Priorita" name="priority" required={false}>
