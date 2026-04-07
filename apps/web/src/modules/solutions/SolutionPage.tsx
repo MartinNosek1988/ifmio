@@ -4,22 +4,27 @@ import { SeoHead } from '../../i18n/SeoHead'
 import { useI18n } from '../../i18n/i18n'
 import { ROUTE_SLUGS, getSlug, getLocalePair } from '../../i18n/routes'
 import { SOLUTIONS } from './solutions-data'
-import * as icons from 'lucide-react'
+import { Home, KeyRound, Settings2, HardHat, TrendingUp } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import '../pages/pages.css'
 
+const ICON_MAP: Record<string, LucideIcon> = {
+  Home, KeyRound, Settings2, HardHat, TrendingUp,
+}
+
 function SolutionIcon({ name }: { name: string }) {
-  const Icon = (icons as any)[name]
+  const Icon = ICON_MAP[name]
   if (!Icon) return <div className="page-hero__icon">{name}</div>
   return (
-    <div style={{ width: 64, height: 64, borderRadius: '50%', backgroundColor: '#E6F5F3', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
-      <Icon size={28} color="#0D9B8A" strokeWidth={1.5} />
+    <div className="page-hero__icon-wrap">
+      <Icon size={28} strokeWidth={1.5} />
     </div>
   )
 }
 
 export default function SolutionPage() {
   const { slug } = useParams()
-  const { t, locale } = useI18n()
+  const { t, locale, localePath } = useI18n()
   const lp = getLocalePair(locale)
   const solution = SOLUTIONS.find(s => s.slug === slug)
 
@@ -47,7 +52,7 @@ export default function SolutionPage() {
           {solution.features.map(f => <li key={f}>{f}</li>)}
         </ul>
         <div style={{ textAlign: 'center', marginTop: 48 }}>
-          <a href="/cs/demo/" className="btn btn--primary btn--lg">Vyzkoušet demo zdarma →</a>
+          <a href={localePath('/demo/')} className="btn btn--primary btn--lg">Vyzkoušet demo zdarma →</a>
         </div>
       </div>
     </PageLayout>
