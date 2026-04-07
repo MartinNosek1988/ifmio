@@ -95,7 +95,7 @@ export default function MeterForm({ onClose }: Props) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div>
           <label className="form-label">Výrobní číslo *</label>
-          <input data-testid="meter-form-serialNumber" value={form.serialNumber} onChange={e => set('serialNumber', e.target.value)} style={inputStyle('serialNumber')} placeholder="SN-12345" />
+          <input data-testid="meter-form-serialNumber" value={form.serialNumber} onChange={e => set('serialNumber', e.target.value)} style={{ ...inputStyle('serialNumber'), fontFamily: 'var(--font-mono)' }} placeholder="SN-12345" />
           {errors.serialNumber && <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.serialNumber}</div>}
         </div>
         <div>
@@ -109,7 +109,7 @@ export default function MeterForm({ onClose }: Props) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div>
           <label className="form-label">Jednotka</label>
-          <input value={form.unit} onChange={e => set('unit', e.target.value)} style={inputStyle()} />
+          <input value={form.unit} onChange={e => set('unit', e.target.value)} style={{ ...inputStyle(), fontFamily: 'var(--font-mono)' }} />
         </div>
         <div>
           <label className="form-label">Výrobce</label>

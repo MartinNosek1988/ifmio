@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 const SHORTCUTS: Record<string, string> = {
@@ -14,6 +14,9 @@ const SHORTCUTS: Record<string, string> = {
 
 export function useKeyboardShortcuts() {
   const navigate = useNavigate()
+  const [showHelp, setShowHelp] = useState(false)
+
+  const closeHelp = useCallback(() => setShowHelp(false), [])
 
   useEffect(() => {
     let buffer = ''
@@ -23,6 +26,11 @@ export function useKeyboardShortcuts() {
       const tag = (e.target as HTMLElement)?.tagName
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) return
       if (e.metaKey || e.ctrlKey || e.altKey) return
+
+      if (e.key === '?') {
+        setShowHelp(v => !v)
+        return
+      }
 
       buffer += e.key === ' ' ? ' ' : e.key
       clearTimeout(timer)
@@ -40,4 +48,6 @@ export function useKeyboardShortcuts() {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [navigate])
+
+  return { showHelp, closeHelp }
 }
