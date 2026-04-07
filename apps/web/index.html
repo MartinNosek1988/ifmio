@@ -8,13 +8,71 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="theme-color" content="#0D9488" />
     <meta name="description" content="ifmio — AI-native platforma pro správu nemovitostí, SVJ a facility management." />
+
+    <!-- Global social metadata only; route-specific tags rendered via SeoHead + CanonicalLink -->
+    <meta property="og:site_name" content="ifmio" />
+    <meta property="og:locale" content="cs_CZ" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta name="twitter:site" content="@ifmio" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
-    <title>ifmio — Správa nemovitostí a FM</title>
+    <title>ifmio — Software pro správu SVJ, bytových družstev a facility management</title>
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://ifmio.com/#organization",
+          "name": "ifmio",
+          "url": "https://ifmio.com",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://ifmio.com/icons/icon-192.svg"
+          },
+          "description": "AI-native platforma pro správu nemovitostí, SVJ, bytových družstev a facility management.",
+          "foundingLocation": {
+            "@type": "Place",
+            "addressCountry": "CZ"
+          },
+          "areaServed": ["CZ", "SK"],
+          "sameAs": []
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://ifmio.com/#software",
+          "name": "ifmio",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "Web",
+          "url": "https://ifmio.com",
+          "publisher": {
+            "@id": "https://ifmio.com/#organization"
+          },
+          "description": "Software pro správu SVJ, bytových družstev a facility management. Vyúčtování, helpdesk, správa dokumentů, AI asistent.",
+          "featureList": [
+            "Správa SVJ a bytových družstev",
+            "Vyúčtování energií a služeb",
+            "Helpdesk a správa požadavků",
+            "Facility management",
+            "AI asistent Mio",
+            "Správa dokumentů"
+          ],
+          "inLanguage": ["cs", "en"],
+          "offers": {
+            "@type": "Offer",
+            "url": "https://ifmio.com/cs/cenik/"
+          }
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

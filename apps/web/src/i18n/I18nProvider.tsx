@@ -4,6 +4,7 @@ import { I18nContext, isValidLocale, getTranslations } from './i18n'
 import type { Locale } from './i18n'
 import { detectPreferredLocale, saveLocaleChoice } from './detectLocale'
 import type { SupportedLocale } from './detectLocale'
+import { CanonicalLink } from '../shared/components/seo/CanonicalLink'
 
 export function I18nProvider() {
   const { locale: localeParam } = useParams()
@@ -36,5 +37,5 @@ export function I18nProvider() {
     return <Navigate to={`/${preferred}/`} replace />
   }
 
-  return <I18nContext.Provider value={value}><Outlet /></I18nContext.Provider>
+  return <I18nContext.Provider value={value}><CanonicalLink /><Outlet /></I18nContext.Provider>
 }
