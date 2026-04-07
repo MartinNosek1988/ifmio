@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Modal, Button } from '../../shared/components';
+import { Modal } from '../../shared/components';
+import { FormSection, FormFooter } from '../../shared/components/FormSection';
+import { FormField } from '../../shared/components/FormField';
 import { apiClient } from '../../core/api/client';
 import type { ApiAssetType } from '../asset-types/api/asset-types.api';
 
@@ -53,24 +55,23 @@ export default function AssetForm({ onClose }: Props) {
     return Object.keys(errs).length === 0;
   };
 
+  const blurValidate = (field: string) => {
+    if (field === 'name' && !form.name.trim()) setErrors(e => ({ ...e, name: 'Název je povinný' }));
+    else setErrors(e => { const { [field]: _, ...rest } = e; return rest; });
+  };
+
   const handleSubmit = () => {
     if (!validate()) return;
     createMut.mutate({
-      name: form.name,
-      category: form.category,
-      manufacturer: form.manufacturer || undefined,
-      model: form.model || undefined,
-      serialNumber: form.serialNumber || undefined,
-      location: form.location || undefined,
-      propertyId: form.propertyId || undefined,
-      unitId: form.unitId || undefined,
-      assetTypeId: form.assetTypeId || undefined,
-      purchaseDate: form.purchaseDate || undefined,
+      name: form.name, category: form.category,
+      manufacturer: form.manufacturer || undefined, model: form.model || undefined,
+      serialNumber: form.serialNumber || undefined, location: form.location || undefined,
+      propertyId: form.propertyId || undefined, unitId: form.unitId || undefined,
+      assetTypeId: form.assetTypeId || undefined, purchaseDate: form.purchaseDate || undefined,
       purchaseValue: form.purchaseValue ? Number(form.purchaseValue) : undefined,
       warrantyUntil: form.warrantyUntil || undefined,
       serviceInterval: form.serviceInterval ? Number(form.serviceInterval) : undefined,
-      nextServiceDate: form.nextServiceDate || undefined,
-      notes: form.notes || undefined,
+      nextServiceDate: form.nextServiceDate || undefined, notes: form.notes || undefined,
     });
   };
 
@@ -82,14 +83,7 @@ export default function AssetForm({ onClose }: Props) {
 
   return (
     <Modal open onClose={onClose} title="Nové zařízení"
-      footer={
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <Button onClick={onClose} data-testid="asset-form-cancel">Zrušit</Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={createMut.isPending} data-testid="asset-form-save">
-            {createMut.isPending ? 'Ukládám...' : 'Vytvořit'}
-          </Button>
-        </div>
-      }>
+      footer={<FormFooter onCancel={onClose} onSubmit={handleSubmit} isSubmitting={createMut.isPending} submitLabel="Vytvořit" data-testid-save="asset-form-save" data-testid-cancel="asset-form-cancel" />}>
 
       {createMut.isError && (
         <div style={{ background: '#2d1b1b', border: '1px solid #ef4444', borderRadius: 8, padding: '8px 12px', color: '#ef4444', fontSize: '.85rem', marginBottom: 12 }}>
@@ -97,98 +91,77 @@ export default function AssetForm({ onClose }: Props) {
         </div>
       )}
 
-      <div style={{ marginBottom: 14 }}>
-        <label className="form-label">Název zařízení *</label>
-        <input data-testid="asset-form-name" value={form.name} onChange={(e) => set('name', e.target.value)} style={inputStyle('name')} placeholder="např. Hlavní kotel" />
-        {errors.name && <div data-testid="asset-form-error-name" style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.name}</div>}
-      </div>
+      <FormSection title="Základní informace" defaultExpanded collapsible={false}>
+        <FormField label="Název zařízení" name="name" error={errors.name}>
+          <input data-testid="asset-form-name" id="name" value={form.name} onChange={(e) => set('name', e.target.value)} onBlur={() => blurValidate('name')} style={inputStyle('name')} placeholder="např. Hlavní kotel" />
+        </FormField>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <FormField label="Kategorie" name="category" required={false}>
+            <select data-testid="asset-form-category" id="category" value={form.category} onChange={(e) => set('category', e.target.value)} style={inputStyle()}>
+              {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Typ zařízení" name="assetTypeId" required={false}>
+            <select id="assetTypeId" value={form.assetTypeId} onChange={(e) => set('assetTypeId', e.target.value)} style={inputStyle()}>
+              <option value="">— Bez typu —</option>
+              {assetTypes.filter((t) => t.isActive).map((t) => <option key={t.id} value={t.id}>{t.name} ({t.code})</option>)}
+            </select>
+          </FormField>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <FormField label="Výrobce" name="manufacturer" required={false}>
+            <input id="manufacturer" value={form.manufacturer} onChange={(e) => set('manufacturer', e.target.value)} style={inputStyle()} />
+          </FormField>
+          <FormField label="Model" name="model" required={false}>
+            <input id="model" value={form.model} onChange={(e) => set('model', e.target.value)} style={inputStyle()} />
+          </FormField>
+        </div>
+      </FormSection>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-        <div>
-          <label className="form-label">Kategorie</label>
-          <select data-testid="asset-form-category" value={form.category} onChange={(e) => set('category', e.target.value)} style={inputStyle()}>
-            {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-          </select>
+      <FormSection title="Umístění" defaultExpanded>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <FormField label="Nemovitost" name="propertyId" required={false}>
+            <select id="propertyId" value={form.propertyId} onChange={(e) => set('propertyId', e.target.value)} style={inputStyle()}>
+              <option value="">— Žádná —</option>
+              {properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Umístění" name="location" required={false}>
+            <input id="location" value={form.location} onChange={(e) => set('location', e.target.value)} style={inputStyle()} placeholder="např. Suterén, 2.NP" />
+          </FormField>
         </div>
-        <div>
-          <label className="form-label">Typ zařízení</label>
-          <select value={form.assetTypeId} onChange={(e) => set('assetTypeId', e.target.value)} style={inputStyle()}>
-            <option value="">— Bez typu —</option>
-            {assetTypes.filter((t) => t.isActive).map((t) => (
-              <option key={t.id} value={t.id}>{t.name} ({t.code})</option>
-            ))}
-          </select>
-          {form.assetTypeId && (() => {
-            const sel = assetTypes.find((t) => t.id === form.assetTypeId)
-            return sel?._count?.activityAssignments ? (
-              <div style={{ fontSize: '0.78rem', color: 'var(--accent-blue)', marginTop: 3 }}>
-                Tento typ má definováno {sel._count.activityAssignments} činností
-              </div>
-            ) : null
-          })()}
-        </div>
-      </div>
+      </FormSection>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-        <div>
-          <label className="form-label">Výrobce</label>
-          <input value={form.manufacturer} onChange={(e) => set('manufacturer', e.target.value)} style={inputStyle()} />
+      <FormSection title="Technické údaje" defaultExpanded={false}>
+        <FormField label="Sériové číslo" name="serialNumber" required={false}>
+          <input id="serialNumber" value={form.serialNumber} onChange={(e) => set('serialNumber', e.target.value)} style={{ ...inputStyle(), fontFamily: 'var(--font-mono)' }} />
+        </FormField>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <FormField label="Datum pořízení" name="purchaseDate" required={false}>
+            <input id="purchaseDate" type="date" value={form.purchaseDate} onChange={(e) => set('purchaseDate', e.target.value)} style={inputStyle()} />
+          </FormField>
+          <FormField label="Pořizovací hodnota (Kč)" name="purchaseValue" required={false}>
+            <input id="purchaseValue" type="number" value={form.purchaseValue} onChange={(e) => set('purchaseValue', e.target.value)} style={{ ...inputStyle(), fontFamily: 'var(--font-mono)' }} placeholder="0" />
+          </FormField>
         </div>
-        <div>
-          <label className="form-label">Model</label>
-          <input value={form.model} onChange={(e) => set('model', e.target.value)} style={inputStyle()} />
-        </div>
-      </div>
+        <FormField label="Záruka do" name="warrantyUntil" required={false}>
+          <input id="warrantyUntil" type="date" value={form.warrantyUntil} onChange={(e) => set('warrantyUntil', e.target.value)} style={inputStyle()} />
+        </FormField>
+      </FormSection>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-        <div>
-          <label className="form-label">Sériové číslo</label>
-          <input value={form.serialNumber} onChange={(e) => set('serialNumber', e.target.value)} style={inputStyle()} />
+      <FormSection title="Revize a servis" defaultExpanded={false}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <FormField label="Interval servisu (měsíce)" name="serviceInterval" required={false}>
+            <input id="serviceInterval" type="number" value={form.serviceInterval} onChange={(e) => set('serviceInterval', e.target.value)} style={inputStyle()} placeholder="12" />
+          </FormField>
+          <FormField label="Příští servis" name="nextServiceDate" required={false}>
+            <input id="nextServiceDate" type="date" value={form.nextServiceDate} onChange={(e) => set('nextServiceDate', e.target.value)} style={inputStyle()} />
+          </FormField>
         </div>
-        <div>
-          <label className="form-label">Umístění</label>
-          <input value={form.location} onChange={(e) => set('location', e.target.value)} style={inputStyle()} placeholder="např. Suterén, 2.NP" />
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-        <div>
-          <label className="form-label">Nemovitost</label>
-          <select value={form.propertyId} onChange={(e) => set('propertyId', e.target.value)} style={inputStyle()}>
-            <option value="">— Žádná —</option>
-            {properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="form-label">Datum pořízení</label>
-          <input type="date" value={form.purchaseDate} onChange={(e) => set('purchaseDate', e.target.value)} style={inputStyle()} />
-        </div>
-        <div>
-          <label className="form-label">Pořizovací hodnota (Kč)</label>
-          <input type="number" value={form.purchaseValue} onChange={(e) => set('purchaseValue', e.target.value)} style={inputStyle()} placeholder="0" />
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-        <div>
-          <label className="form-label">Záruka do</label>
-          <input type="date" value={form.warrantyUntil} onChange={(e) => set('warrantyUntil', e.target.value)} style={inputStyle()} />
-        </div>
-        <div>
-          <label className="form-label">Interval servisu (měsíce)</label>
-          <input type="number" value={form.serviceInterval} onChange={(e) => set('serviceInterval', e.target.value)} style={inputStyle()} placeholder="12" />
-        </div>
-      </div>
-
-      <div style={{ marginBottom: 14 }}>
-        <label className="form-label">Příští servis</label>
-        <input type="date" value={form.nextServiceDate} onChange={(e) => set('nextServiceDate', e.target.value)} style={inputStyle()} />
-      </div>
-
-      <div>
-        <label className="form-label">Poznámka</label>
-        <textarea value={form.notes} onChange={(e) => set('notes', e.target.value)} style={{ ...inputStyle(), minHeight: 60 }} />
-      </div>
+        <FormField label="Poznámka" name="notes" required={false}>
+          <textarea id="notes" value={form.notes} onChange={(e) => set('notes', e.target.value)} style={{ ...inputStyle(), minHeight: 60 }} />
+        </FormField>
+      </FormSection>
     </Modal>
   );
 }

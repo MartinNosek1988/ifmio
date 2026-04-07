@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Modal, Button } from '../../shared/components';
+import { Modal } from '../../shared/components';
+import { FormSection, FormFooter } from '../../shared/components/FormSection';
+import { FormField } from '../../shared/components/FormField';
 import { useCreateWorkOrder } from './api/workorders.queries';
 import { propertiesApi } from '../properties/properties-api';
 import { apiClient } from '../../core/api/client';
@@ -34,18 +36,10 @@ export default function WorkOrderForm({ onClose }: Props) {
   const activeUsers = users.filter((u: TenantUser) => u.isActive);
 
   const [form, setForm] = useState({
-    title: '',
-    description: '',
-    priority: 'normalni',
-    propertyId: '',
-    unitId: '',
-    assetId: '',
-    assigneeUserId: '',
-    dispatcherUserId: '',
-    deadline: '',
-    estimatedHours: '',
-    laborCost: '',
-    materialCost: '',
+    title: '', description: '', priority: 'normalni',
+    propertyId: '', unitId: '', assetId: '',
+    assigneeUserId: '', dispatcherUserId: '',
+    deadline: '', estimatedHours: '', laborCost: '', materialCost: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -88,98 +82,79 @@ export default function WorkOrderForm({ onClose }: Props) {
 
   return (
     <Modal open onClose={onClose} title="Nový pracovní úkol" wide
-      footer={
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <Button onClick={onClose} data-testid="wo-form-cancel">Zrušit</Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={createMutation.isPending} data-testid="wo-form-save">
-            {createMutation.isPending ? 'Vytvářím...' : 'Vytvořit'}
-          </Button>
-        </div>
-      }>
+      footer={<FormFooter onCancel={onClose} onSubmit={handleSubmit} isSubmitting={createMutation.isPending} submitLabel="Vytvořit" data-testid-save="wo-form-save" data-testid-cancel="wo-form-cancel" />}>
 
-      <div style={{ marginBottom: 14 }}>
-        <label className="form-label">Název úkolu *</label>
-        <input data-testid="wo-form-title" value={form.title} onChange={e => set('title', e.target.value)} style={inputStyle('title')} placeholder="Stručný popis práce" />
-        {errors.title && <div data-testid="wo-form-error-title" style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 2 }}>{errors.title}</div>}
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-        <div>
-          <label className="form-label">Priorita</label>
-          <select data-testid="wo-form-priority" value={form.priority} onChange={e => set('priority', e.target.value)} style={inputStyle()}>
-            {Object.entries(WO_PRIORITY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="form-label">Termín realizace</label>
-          <input data-testid="wo-form-deadline" type="date" value={form.deadline} onChange={e => set('deadline', e.target.value)} style={inputStyle()} />
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-        <div>
-          <label className="form-label">Nemovitost</label>
-          <select data-testid="wo-form-property" value={form.propertyId} onChange={e => { set('propertyId', e.target.value); set('unitId', ''); }} style={inputStyle()}>
-            <option value="">— vyberte —</option>
-            {(properties ?? []).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-        </div>
-        {form.propertyId && availableUnits.length > 0 && (
-          <div>
-            <label className="form-label">Jednotka</label>
-            <select value={form.unitId} onChange={e => set('unitId', e.target.value)} style={inputStyle()}>
-              <option value="">— bez jednotky —</option>
-              {availableUnits.map(u => <option key={u.id} value={u.id}>{u.name}{u.area ? ` · ${u.area} m²` : ''}</option>)}
+      <FormSection title="Základní informace" defaultExpanded collapsible={false}>
+        <FormField label="Název úkolu" name="title" error={errors.title}>
+          <input data-testid="wo-form-title" id="title" value={form.title} onChange={e => set('title', e.target.value)} style={inputStyle('title')} placeholder="Stručný popis práce" onBlur={(ev) => { const val = ev.currentTarget.value.trim(); if (!val) setErrors(e => ({ ...e, title: 'Název je povinný' })); else setErrors(e => { const next = { ...e }; delete next.title; return next; }); }} />
+        </FormField>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <FormField label="Priorita" name="priority" required={false}>
+            <select data-testid="wo-form-priority" id="priority" value={form.priority} onChange={e => set('priority', e.target.value)} style={inputStyle()}>
+              {Object.entries(WO_PRIORITY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
-          </div>
-        )}
-      </div>
+          </FormField>
+          <FormField label="Termín realizace" name="deadline" required={false}>
+            <input data-testid="wo-form-deadline" id="deadline" type="date" value={form.deadline} onChange={e => set('deadline', e.target.value)} style={inputStyle()} />
+          </FormField>
+        </div>
+        <FormField label="Popis" name="description" required={false}>
+          <textarea data-testid="wo-form-description" id="description" value={form.description} onChange={e => set('description', e.target.value)} rows={3} style={{ ...inputStyle(), resize: 'vertical' as const }} placeholder="Podrobný popis práce..." />
+        </FormField>
+      </FormSection>
 
-      <div style={{ marginBottom: 14 }}>
-        <label className="form-label">Zařízení</label>
-        <select data-testid="wo-form-asset" value={form.assetId} onChange={e => set('assetId', e.target.value)} style={inputStyle()}>
-          <option value="">— bez zařízení —</option>
-          {assets.map(a => <option key={a.id} value={a.id}>{a.name}{a.location ? ` (${a.location})` : ''}</option>)}
-        </select>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-        <div>
-          <label className="form-label">Řešitel úkolu</label>
-          <select data-testid="wo-form-assignee" value={form.assigneeUserId} onChange={e => set('assigneeUserId', e.target.value)} style={inputStyle()}>
-            <option value="">— bez řešitele —</option>
-            {activeUsers.map((u: TenantUser) => <option key={u.id} value={u.id}>{u.name}</option>)}
+      <FormSection title="Přiřazení" defaultExpanded>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <FormField label="Nemovitost" name="propertyId" required={false}>
+            <select data-testid="wo-form-property" id="propertyId" value={form.propertyId} onChange={e => { set('propertyId', e.target.value); set('unitId', ''); }} style={inputStyle()}>
+              <option value="">— vyberte —</option>
+              {(properties ?? []).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </FormField>
+          {form.propertyId && availableUnits.length > 0 && (
+            <FormField label="Jednotka" name="unitId" required={false}>
+              <select id="unitId" value={form.unitId} onChange={e => set('unitId', e.target.value)} style={inputStyle()}>
+                <option value="">— bez jednotky —</option>
+                {availableUnits.map(u => <option key={u.id} value={u.id}>{u.name}{u.area ? ` · ${u.area} m²` : ''}</option>)}
+              </select>
+            </FormField>
+          )}
+        </div>
+        <FormField label="Zařízení" name="assetId" required={false}>
+          <select data-testid="wo-form-asset" id="assetId" value={form.assetId} onChange={e => set('assetId', e.target.value)} style={inputStyle()}>
+            <option value="">— bez zařízení —</option>
+            {assets.map(a => <option key={a.id} value={a.id}>{a.name}{a.location ? ` (${a.location})` : ''}</option>)}
           </select>
+        </FormField>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <FormField label="Řešitel úkolu" name="assigneeUserId" required={false}>
+            <select data-testid="wo-form-assignee" id="assigneeUserId" value={form.assigneeUserId} onChange={e => set('assigneeUserId', e.target.value)} style={inputStyle()}>
+              <option value="">— bez řešitele —</option>
+              {activeUsers.map((u: TenantUser) => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Dispečer úkolu" name="dispatcherUserId" required={false}>
+            <select id="dispatcherUserId" value={form.dispatcherUserId} onChange={e => set('dispatcherUserId', e.target.value)} style={inputStyle()}>
+              <option value="">— bez dispečera —</option>
+              {activeUsers.map((u: TenantUser) => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+          </FormField>
         </div>
-        <div>
-          <label className="form-label">Dispečer úkolu</label>
-          <select value={form.dispatcherUserId} onChange={e => set('dispatcherUserId', e.target.value)} style={inputStyle()}>
-            <option value="">— bez dispečera —</option>
-            {activeUsers.map((u: TenantUser) => <option key={u.id} value={u.id}>{u.name}</option>)}
-          </select>
-        </div>
-      </div>
+      </FormSection>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
-        <div>
-          <label className="form-label">Odhad (hodiny)</label>
-          <input type="number" min="0" value={form.estimatedHours} onChange={e => set('estimatedHours', e.target.value)} style={inputStyle()} placeholder="0" />
+      <FormSection title="Náklady a odhad" defaultExpanded={false}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+          <FormField label="Odhad (hodiny)" name="estimatedHours" required={false}>
+            <input id="estimatedHours" type="number" min="0" value={form.estimatedHours} onChange={e => set('estimatedHours', e.target.value)} style={inputStyle()} placeholder="0" />
+          </FormField>
+          <FormField label="Náklady práce (Kč)" name="laborCost" required={false}>
+            <input id="laborCost" type="number" min="0" value={form.laborCost} onChange={e => set('laborCost', e.target.value)} style={{ ...inputStyle(), fontFamily: 'var(--font-mono)' }} placeholder="0" />
+          </FormField>
+          <FormField label="Materiál (Kč)" name="materialCost" required={false}>
+            <input id="materialCost" type="number" min="0" value={form.materialCost} onChange={e => set('materialCost', e.target.value)} style={{ ...inputStyle(), fontFamily: 'var(--font-mono)' }} placeholder="0" />
+          </FormField>
         </div>
-        <div>
-          <label className="form-label">Náklady práce (Kč)</label>
-          <input type="number" min="0" value={form.laborCost} onChange={e => set('laborCost', e.target.value)} style={inputStyle()} placeholder="0" />
-        </div>
-        <div>
-          <label className="form-label">Materiál (Kč)</label>
-          <input type="number" min="0" value={form.materialCost} onChange={e => set('materialCost', e.target.value)} style={inputStyle()} placeholder="0" />
-        </div>
-      </div>
-
-      <div>
-        <label className="form-label">Popis</label>
-        <textarea data-testid="wo-form-description" value={form.description} onChange={e => set('description', e.target.value)}
-          rows={3} style={{ ...inputStyle(), resize: 'vertical' as const }} placeholder="Podrobný popis práce..." />
-      </div>
+      </FormSection>
     </Modal>
   );
 }
