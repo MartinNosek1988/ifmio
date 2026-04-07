@@ -1,20 +1,17 @@
-import { useEffect } from 'react'
+import { Helmet } from 'react-helmet-async'
 import { useLocation } from 'react-router-dom'
 
 export function CanonicalLink() {
   const { pathname } = useLocation()
 
-  useEffect(() => {
-    const canonical = `https://ifmio.com${pathname}`
+  const configuredBaseUrl = import.meta.env.VITE_PUBLIC_BASE_URL?.trim()
+  const baseUrl = (configuredBaseUrl || window.location.origin).replace(/\/+$/, '')
+  const normalizedPathname = pathname.startsWith('/') ? pathname : `/${pathname}`
+  const canonical = `${baseUrl}${normalizedPathname}`
 
-    let el = document.querySelector<HTMLLinkElement>('link[rel="canonical"]')
-    if (!el) {
-      el = document.createElement('link')
-      el.rel = 'canonical'
-      document.head.appendChild(el)
-    }
-    el.href = canonical
-  }, [pathname])
-
-  return null
+  return (
+    <Helmet>
+      <link rel="canonical" href={canonical} />
+    </Helmet>
+  )
 }
