@@ -52,6 +52,11 @@ describe('AssetForm', () => {
     expect(screen.getByTestId('asset-form-name')).toBeTruthy()
   })
 
+  it('renders Typ zařízení field', () => {
+    renderForm()
+    expect(screen.getByTestId('asset-form-category')).toBeTruthy()
+  })
+
   it('renders Kategorie field', () => {
     renderForm()
     expect(screen.getByText('Kategorie')).toBeTruthy()
