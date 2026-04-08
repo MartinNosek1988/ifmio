@@ -43,8 +43,8 @@ ALTER TABLE "work_order_materials" ADD CONSTRAINT "work_order_materials_workOrde
 -- RLS for work_order_materials
 ALTER TABLE "work_order_materials" ENABLE ROW LEVEL SECURITY;
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'tenant_isolation' AND tablename = 'work_order_materials') THEN
-    CREATE POLICY "tenant_isolation" ON "work_order_materials"
-      USING ("tenantId" = current_setting('app.tenant_id', true));
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'tenant_isolation_work_order_materials' AND tablename = 'work_order_materials') THEN
+    CREATE POLICY "tenant_isolation_work_order_materials" ON "work_order_materials"
+      USING ("tenantId" = current_setting('app.current_tenant_id', true));
   END IF;
 END $$;

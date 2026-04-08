@@ -750,7 +750,7 @@ export class WorkOrdersService {
     const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate())
     const dayEnd = new Date(dayStart.getTime() + 86_400_000)
 
-    return this.prisma.workOrder.findMany({
+    const items = await this.prisma.workOrder.findMany({
       where: {
         tenantId: user.tenantId,
         assigneeUserId: user.id,
@@ -764,6 +764,10 @@ export class WorkOrdersService {
       },
       orderBy: { scheduledTimeFrom: 'asc' },
     })
+    return items.map(wo => ({
+      ...serialize(wo),
+      materials: wo.materials?.map(m => ({ ...m, quantity: Number(m.quantity), unitPrice: Number(m.unitPrice), totalPrice: Number(m.totalPrice) })),
+    }))
   }
 
   async getDispatchView(user: AuthUser, date?: string) {
@@ -793,7 +797,7 @@ export class WorkOrdersService {
           workOrders: [],
         })
       }
-      grouped.get(uid)!.workOrders.push(wo)
+      grouped.get(uid)!.workOrders.push(serialize(wo) as any)
     }
 
     return [...grouped.values()]
@@ -831,6 +835,9 @@ export class WorkOrdersService {
 
   async completeWork(user: AuthUser, id: string, dto: CompleteWorkFieldDto) {
     const wo = await this.getById(user, id)
+    if (wo.assigneeUserId && wo.assigneeUserId !== user.id) {
+      throw new BadRequestException('Pouze přiřazený technik nebo manažer může dokončit práci')
+    }
     const departedAt = new Date()
     const travelTimeMinutes = wo.arrivedAt
       ? Math.round((departedAt.getTime() - wo.arrivedAt.getTime()) / 60_000)
@@ -863,7 +870,11 @@ export class WorkOrdersService {
   async addSignature(user: AuthUser, id: string, dto: AddSignatureDto) {
     await this.getById(user, id)
 
-    // Validate base64 size (max 50KB)
+    // Pre-check before Buffer.from()
+    if (!dto.signatureBase64 || dto.signatureBase64.length > 70000) {
+      throw new BadRequestException('Neplatný nebo příliš velký podpis')
+    }
+    // Validate base64 size (max 50KB decoded)
     const base64Data = dto.signatureBase64.replace(/^data:image\/\w+;base64,/, '')
     if (Buffer.from(base64Data, 'base64').length > 51200) {
       throw new BadRequestException('Podpis je příliš velký (max 50KB)')
@@ -910,17 +921,18 @@ export class WorkOrdersService {
 
   async updateMaterial(user: AuthUser, id: string, materialId: string, dto: AddMaterialDto) {
     const wo = await this.getById(user, id)
-    const totalPrice = dto.quantity * dto.unitPrice
 
+    const existing = await this.prisma.workOrderMaterial.findFirst({
+      where: { id: materialId, workOrderId: id, tenantId: user.tenantId },
+    })
+    if (!existing) throw new NotFoundException('Materiál nebyl nalezen')
+
+    const totalPrice = dto.quantity * dto.unitPrice
     const material = await this.prisma.workOrderMaterial.update({
       where: { id: materialId },
       data: {
-        name: dto.name,
-        unit: dto.unit,
-        quantity: dto.quantity,
-        unitPrice: dto.unitPrice,
-        totalPrice,
-        catalogCode: dto.catalogCode,
+        name: dto.name, unit: dto.unit, quantity: dto.quantity,
+        unitPrice: dto.unitPrice, totalPrice, catalogCode: dto.catalogCode,
       },
     })
 
@@ -930,7 +942,10 @@ export class WorkOrdersService {
 
   async removeMaterial(user: AuthUser, id: string, materialId: string) {
     const wo = await this.getById(user, id)
-    await this.prisma.workOrderMaterial.delete({ where: { id: materialId } })
+    const deleted = await this.prisma.workOrderMaterial.deleteMany({
+      where: { id: materialId, workOrderId: id, tenantId: user.tenantId },
+    })
+    if (deleted.count === 0) throw new NotFoundException('Materiál nebyl nalezen')
     await this.recalcMaterialCost(id, wo)
   }
 

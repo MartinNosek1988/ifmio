@@ -11,8 +11,13 @@ const STATUS_LABELS: Record<string, string> = {
   nova: 'Nový', v_reseni: 'V řešení', vyresena: 'Vyřešený', uzavrena: 'Uzavřený',
 }
 
+function getLocalDate() {
+  const n = new Date()
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`
+}
+
 export default function DispatchBoard() {
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(getLocalDate)
 
   const { data: schedule = [], isLoading } = useQuery<WorkOrderSchedule[]>({
     queryKey: ['workorders', 'dispatch', date],

@@ -133,6 +133,7 @@ export class WorkOrdersController {
   }
 
   @Post(':id/start')
+  @Roles(...ROLES_OPS)
   @AuditAction('workOrder', 'start')
   @ApiOperation({ summary: 'Technik přijel na místo' })
   startWork(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: StartWorkDto) {
@@ -140,6 +141,7 @@ export class WorkOrdersController {
   }
 
   @Post(':id/complete')
+  @Roles(...ROLES_OPS)
   @AuditAction('workOrder', 'complete')
   @ApiOperation({ summary: 'Technik dokončil práci' })
   completeWork(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: CompleteWorkDto) {
@@ -147,6 +149,7 @@ export class WorkOrdersController {
   }
 
   @Post(':id/signature')
+  @Roles(...ROLES_OPS)
   @AuditAction('workOrder', 'signature')
   @ApiOperation({ summary: 'Přidat podpis zákazníka' })
   addSignature(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: AddSignatureDto) {
@@ -160,6 +163,7 @@ export class WorkOrdersController {
   }
 
   @Post(':id/materials')
+  @Roles(...ROLES_OPS)
   @AuditAction('workOrder', 'addMaterial')
   @ApiOperation({ summary: 'Přidat materiál' })
   addMaterial(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: AddMaterialDto) {
@@ -167,6 +171,7 @@ export class WorkOrdersController {
   }
 
   @Put(':id/materials/:materialId')
+  @Roles(...ROLES_OPS)
   @AuditAction('workOrder', 'updateMaterial')
   @ApiOperation({ summary: 'Upravit materiál' })
   updateMaterial(@CurrentUser() user: AuthUser, @Param('id') id: string, @Param('materialId') materialId: string, @Body() dto: AddMaterialDto) {
@@ -174,6 +179,7 @@ export class WorkOrdersController {
   }
 
   @Delete(':id/materials/:materialId')
+  @Roles(...ROLES_OPS)
   @AuditAction('workOrder', 'removeMaterial')
   @ApiOperation({ summary: 'Odebrat materiál' })
   removeMaterial(@CurrentUser() user: AuthUser, @Param('id') id: string, @Param('materialId') materialId: string) {

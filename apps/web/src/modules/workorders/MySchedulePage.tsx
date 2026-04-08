@@ -10,10 +10,15 @@ const STATUS_LABELS: Record<string, string> = {
   nova: 'Nový', v_reseni: 'V řešení', vyresena: 'Vyřešený', uzavrena: 'Uzavřený',
 }
 
+function getLocalDate() {
+  const n = new Date()
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`
+}
+
 export default function MySchedulePage() {
   const toast = useToast()
   const queryClient = useQueryClient()
-  const [date] = useState(new Date().toISOString().slice(0, 10))
+  const [date] = useState(getLocalDate)
   const [signatureWoId, setSignatureWoId] = useState<string | null>(null)
 
   const { data: workOrders = [], isLoading } = useQuery({
@@ -22,21 +27,16 @@ export default function MySchedulePage() {
   })
 
   const startMutation = useMutation({
-    mutationFn: (id: string) => {
-      return new Promise<void>((resolve) => {
-        navigator.geolocation?.getCurrentPosition(
-          (pos) => {
-            apiClient.post(`/work-orders/${id}/start`, {
-              gpsStartLat: pos.coords.latitude,
-              gpsStartLng: pos.coords.longitude,
-            }).then(() => resolve())
-          },
-          () => {
-            apiClient.post(`/work-orders/${id}/start`, {}).then(() => resolve())
-          },
+    mutationFn: async (id: string) => {
+      const payload = await new Promise<{ gpsStartLat?: number; gpsStartLng?: number }>((resolve) => {
+        if (!navigator.geolocation) { resolve({}); return }
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve({ gpsStartLat: pos.coords.latitude, gpsStartLng: pos.coords.longitude }),
+          () => resolve({}),
           { timeout: 5000 },
         )
       })
+      return apiClient.post(`/work-orders/${id}/start`, payload)
     },
     onSuccess: () => {
       toast.success('Příjezd zaznamenán')
