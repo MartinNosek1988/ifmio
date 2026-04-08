@@ -68,6 +68,7 @@ import { EmailInboundModule } from './email-inbound/email-inbound.module';
 import { PvkModule } from './pvk/pvk.module';
 import { InsuranceModule } from './insurance/insurance.module';
 import { KnowledgeBaseModule } from './knowledge-base/knowledge-base.module';
+import { ESignModule } from './esign/esign.module';
 import { RegistryModule } from './registry/registry.module';
 import { E2eSeedModule } from './e2e-seed/e2e-seed.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -170,6 +171,7 @@ import { FieldEncryptionService } from './common/crypto/field-encryption.service
     InsuranceModule,
     KnowledgeBaseModule,
     RegistryModule,
+    ESignModule,
     ...(process.env.NODE_ENV === 'test' || process.env.E2E_SEED_ENABLED === 'true' ? [E2eSeedModule] : []),
   ],
   providers: [

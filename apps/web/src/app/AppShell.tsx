@@ -61,6 +61,7 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/revisions', label: 'Plán činností', icon: <ClipboardCheck size={17} />, roles: ['fm', 'tech', 'owner'] },
       { to: '/protocols', label: 'Protokoly', icon: <FileCheck2 size={17} />, roles: ['fm', 'tech'] },
       { to: '/documents', label: 'Dokumenty', icon: <FolderOpen size={17} />, roles: ['fm', 'tech', 'owner'] },
+      { to: '/esign', label: 'eSign', icon: <FileCheck2 size={17} />, roles: ['fm'] },
     ],
   },
   {

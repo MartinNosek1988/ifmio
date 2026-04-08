@@ -73,6 +73,8 @@ const CrmOrganizationsPage = lazy(() => import('../modules/crm/CrmOrganizationsP
 const CrmMapPage = lazy(() => import('../modules/crm/CrmMapPage'));
 const CrmImportPage = lazy(() => import('../modules/crm/CrmImportPage'));
 const PersonProfilePage = lazy(() => import('../modules/registry/PersonProfilePage'));
+const ESignListPage = lazy(() => import('../modules/esign/ESignListPage'));
+const SignPage = lazy(() => import('../modules/esign/SignPage'));
 const OrganizationProfilePage = lazy(() => import('../modules/registry/OrganizationProfilePage'));
 const QrResolvePage = lazy(() => import('../modules/asset-qr/QrResolvePage'));
 const PrincipalsPage = lazy(() => import('../modules/principals/PrincipalsPage'));
@@ -164,6 +166,7 @@ export const router = createBrowserRouter([
   // Public registry pages (SEO, no auth)
   { path: '/registry/organizations/:ico', element: withBoundary('Výpis z rejstříku', OrganizationProfilePage) },
   { path: '/registry/persons/:id', element: withBoundary('Profil osoby', PersonProfilePage) },
+  { path: '/sign/:token', element: withBoundary('Elektronický podpis', SignPage) },
   { path: '/terms', element: withBoundary('Terms', TermsPage) },
   { path: '/privacy', element: withBoundary('Privacy', PrivacyPage) },
   { path: '/gdpr', element: withBoundary('GDPR', GdprPage) },
@@ -210,6 +213,7 @@ export const router = createBrowserRouter([
       { path: 'contracts', element: withBoundary('Smlouvy', ContractsPage) },
       { path: 'residents', element: withBoundary('Bydlící', ResidentsPage) },
       { path: 'documents', element: withBoundary('Dokumenty', DocumentsPage) },
+      { path: 'esign', element: withBoundary('Elektronické podpisy', ESignListPage) },
       { path: 'parties', element: withBoundary('Adresář', PartiesPage) },
       { path: 'parties/:id', element: withBoundary('Detail subjektu', PartyDetailPage) },
       { path: 'calendar', element: withBoundary('Kalendář', CalendarPage) },
