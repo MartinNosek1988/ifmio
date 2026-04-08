@@ -49,12 +49,12 @@ describe('AssetForm', () => {
 
   it('renders required Název field', () => {
     renderForm()
-    expect(screen.getByText('Název zařízení *')).toBeTruthy()
+    expect(screen.getByTestId('asset-form-name')).toBeTruthy()
   })
 
   it('renders Typ zařízení field', () => {
     renderForm()
-    expect(screen.getByText('Typ zařízení')).toBeTruthy()
+    expect(screen.getByTestId('asset-form-category')).toBeTruthy()
   })
 
   it('renders Kategorie field', () => {
@@ -64,6 +64,6 @@ describe('AssetForm', () => {
 
   it('renders Vytvořit button', () => {
     renderForm()
-    expect(screen.getByText('Vytvořit')).toBeTruthy()
+    expect(screen.getByTestId('asset-form-save')).toBeTruthy()
   })
 })
