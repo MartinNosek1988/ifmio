@@ -111,12 +111,12 @@ export default function ESignCreateModal({ onClose, onSuccess }: Props) {
               <FormField label={i === 0 ? 'Role' : ''} name={`sig-role-${i}`} required={false}>
                 <input value={sig.role} onChange={e => updateSignatory(i, 'role', e.target.value)} style={inputStyle} placeholder="Předseda SVJ" />
               </FormField>
-              <Button variant="ghost" size="sm" onClick={() => removeSignatory(i)} disabled={signatories.length <= 1} aria-label="Odebrat">
+              <Button variant="default" size="sm" onClick={() => removeSignatory(i)} disabled={signatories.length <= 1} aria-label="Odebrat">
                 <Trash2 size={14} />
               </Button>
             </div>
           ))}
-          <Button variant="ghost" onClick={addSignatory} disabled={signatories.length >= 5} icon={<Plus size={14} />}>
+          <Button variant="default" onClick={addSignatory} disabled={signatories.length >= 5} icon={<Plus size={14} />}>
             Přidat podepisujícího
           </Button>
         </FormSection>

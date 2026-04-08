@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Send, X, Eye, FileSignature } from 'lucide-react'
+import { Send, Eye, FileSignature } from 'lucide-react'
 import { apiClient } from '../../core/api/client'
 import { Badge, Button, Table, LoadingState } from '../../shared/components'
 import { useToast } from '../../shared/components/toast/Toast'
@@ -48,11 +48,11 @@ export default function ESignListPage() {
     { key: 'actions', label: '', render: (r: any) => (
       <div style={{ display: 'flex', gap: 4 }}>
         {r.status === 'draft' && (
-          <Button variant="ghost" size="sm" onClick={() => sendMutation.mutate(r.id)} aria-label="Odeslat">
+          <Button variant="default" size="sm" onClick={() => sendMutation.mutate(r.id)} aria-label="Odeslat">
             <Send size={14} />
           </Button>
         )}
-        <Button variant="ghost" size="sm" onClick={() => window.open(`/esign/${r.id}`, '_self')} aria-label="Detail">
+        <Button variant="default" size="sm" onClick={() => window.open(`/esign/${r.id}`, '_self')} aria-label="Detail">
           <Eye size={14} />
         </Button>
       </div>
@@ -77,7 +77,7 @@ export default function ESignListPage() {
         </div>
       </div>
 
-      <Table columns={columns} data={requests} emptyMessage="Žádné žádosti o podpis" />
+      <Table columns={columns} data={requests} rowKey={(r: any) => r.id} emptyText="Žádné žádosti o podpis" />
 
       {showCreate && (
         <ESignCreateModal

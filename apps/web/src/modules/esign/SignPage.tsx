@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { CheckCircle2, XCircle } from 'lucide-react'
+import { CheckCircle2 } from 'lucide-react'
 import { apiClient } from '../../core/api/client'
 import { Button, LoadingState, ErrorState } from '../../shared/components'
 
