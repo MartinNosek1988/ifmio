@@ -153,7 +153,6 @@ describe('Finance Extended (e2e)', () => {
           amountTotal: 15000,
           issueDate: '2026-03-01',
           dueDate: '2026-04-15',
-          propertyId,
         })
         .expect(200)
       expect(res.body.supplierName).toContain('Updated')
