@@ -5102,3 +5102,76 @@ model JusticeDocument {
   @@index([ico])
   @@map("justice_documents")
 }
+
+// ─── ESIGN ────────────────────────────────────────────────
+
+enum ESignDocumentType {
+  management_contract
+  tenancy
+  protocol
+  custom
+}
+
+enum ESignStatus {
+  draft
+  sent
+  in_progress
+  completed
+  expired
+  cancelled
+}
+
+enum ESignSignatoryStatus {
+  pending
+  viewed
+  signed
+  declined
+}
+
+model ESignRequest {
+  id              String            @id @default(uuid())
+  tenantId        String
+  documentType    ESignDocumentType
+  documentId      String
+  documentTitle   String
+  documentUrl     String?
+  status          ESignStatus       @default(draft)
+  expiresAt       DateTime
+  message         String?           @db.Text
+  createdAt       DateTime          @default(now())
+  createdBy       String
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+  cancelReason    String?
+
+  signatories     ESignSignatory[]
+
+  @@index([tenantId])
+  @@index([documentType, documentId])
+  @@map("esign_requests")
+}
+
+model ESignSignatory {
+  id              String                @id @default(uuid())
+  requestId       String
+  request         ESignRequest          @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  email           String
+  name            String
+  role            String
+  order           Int
+  token           String                @unique @default(uuid())
+  tokenExpiresAt  DateTime
+  status          ESignSignatoryStatus  @default(pending)
+  viewedAt        DateTime?
+  signedAt        DateTime?
+  signatureBase64 String?
+  signedIp        String?
+  signedUserAgent String?
+  declinedAt      DateTime?
+  declineReason   String?
+  gdprErasedAt    DateTime?
+
+  @@index([requestId])
+  @@index([token])
+  @@map("esign_signatories")
+}
