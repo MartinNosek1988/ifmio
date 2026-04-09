@@ -6,6 +6,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { WorkOrdersService } from './work-orders.service'
 import { CreateWorkOrderDto, UpdateWorkOrderDto, ChangeStatusDto, AddCommentDto } from './dto/work-order.dto'
 import { DispatchWorkOrderDto, ConfirmWorkOrderDto, DeclineWorkOrderDto, CompleteWorkOrderDto, CsatDto } from './dto/dispatch.dto'
+import { ScheduleWorkOrderDto, StartWorkDto, CompleteWorkDto, AddSignatureDto, AddMaterialDto } from './dto/field-service.dto'
 import { Roles } from '../common/decorators/roles.decorator'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
 import { AuditAction } from '../common/decorators/audit.decorator'
@@ -106,6 +107,77 @@ export class WorkOrdersController {
   @ApiOperation({ summary: 'Smazat WO' })
   remove(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.service.remove(user, id)
+  }
+
+  // ─── Field Service ────────────────────────────────────
+
+  @Get('my-schedule')
+  @ApiOperation({ summary: 'Denní plán technika' })
+  mySchedule(@CurrentUser() user: AuthUser, @Query('date') date?: string) {
+    return this.service.getMySchedule(user, date)
+  }
+
+  @Get('dispatch')
+  @Roles(...ROLES_OPS)
+  @ApiOperation({ summary: 'Dispečerský přehled na den' })
+  dispatch(@CurrentUser() user: AuthUser, @Query('date') date?: string) {
+    return this.service.getDispatchView(user, date)
+  }
+
+  @Post(':id/schedule')
+  @Roles(...ROLES_OPS)
+  @AuditAction('workOrder', 'schedule')
+  @ApiOperation({ summary: 'Naplánovat výjezd' })
+  schedule(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: ScheduleWorkOrderDto) {
+    return this.service.scheduleWork(user, id, dto)
+  }
+
+  @Post(':id/start')
+  @AuditAction('workOrder', 'start')
+  @ApiOperation({ summary: 'Technik přijel na místo' })
+  startWork(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: StartWorkDto) {
+    return this.service.startWork(user, id, dto)
+  }
+
+  @Post(':id/complete')
+  @AuditAction('workOrder', 'complete')
+  @ApiOperation({ summary: 'Technik dokončil práci' })
+  completeWork(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: CompleteWorkDto) {
+    return this.service.completeWork(user, id, dto)
+  }
+
+  @Post(':id/signature')
+  @AuditAction('workOrder', 'signature')
+  @ApiOperation({ summary: 'Přidat podpis zákazníka' })
+  addSignature(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: AddSignatureDto) {
+    return this.service.addSignature(user, id, dto)
+  }
+
+  @Get(':id/materials')
+  @ApiOperation({ summary: 'Seznam materiálu' })
+  listMaterials(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.service.listMaterials(user, id)
+  }
+
+  @Post(':id/materials')
+  @AuditAction('workOrder', 'addMaterial')
+  @ApiOperation({ summary: 'Přidat materiál' })
+  addMaterial(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: AddMaterialDto) {
+    return this.service.addMaterial(user, id, dto)
+  }
+
+  @Put(':id/materials/:materialId')
+  @AuditAction('workOrder', 'updateMaterial')
+  @ApiOperation({ summary: 'Upravit materiál' })
+  updateMaterial(@CurrentUser() user: AuthUser, @Param('id') id: string, @Param('materialId') materialId: string, @Body() dto: AddMaterialDto) {
+    return this.service.updateMaterial(user, id, materialId, dto)
+  }
+
+  @Delete(':id/materials/:materialId')
+  @AuditAction('workOrder', 'removeMaterial')
+  @ApiOperation({ summary: 'Odebrat materiál' })
+  removeMaterial(@CurrentUser() user: AuthUser, @Param('id') id: string, @Param('materialId') materialId: string) {
+    return this.service.removeMaterial(user, id, materialId)
   }
 }
 

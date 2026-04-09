@@ -708,7 +708,7 @@ export default function PropertyDetailPage() {
       {detailTab === 'registry' && property.ico && (
         <RegistryTab
           propertyId={property.id}
-          aresData={property.aresData ?? null}
+          aresData={property.aresData as any}
           enrichedAt={property.enrichedAt ?? null}
           onRefresh={refetch}
         />

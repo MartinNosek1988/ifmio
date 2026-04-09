@@ -107,8 +107,8 @@ describe('Helpdesk Extended (e2e)', () => {
       if (!ticketId) return
       const res = await api
         .post(`/api/v1/helpdesk/${ticketId}/protocol`, {
-          workerName: 'Jan Technik',
-          note: 'Opraveno, vyměněno potrubí',
+          technicianName: 'Jan Technik',
+          workDescription: 'Opraveno, vyměněno potrubí',
         })
       expect([200, 201]).toContain(res.status)
     })

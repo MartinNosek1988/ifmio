@@ -204,12 +204,14 @@ export class KnowledgeBaseController {
   }
 
   @Get('stats')
+  @Roles(...ROLES_MANAGE)
   @ApiOperation({ summary: 'KB statistiky' })
   async getStats() {
     return this.kb.getStats()
   }
 
   @Get('stats/territory-coverage')
+  @Roles(...ROLES_MANAGE)
   @ApiOperation({ summary: 'Coverage tree — počet budov a avg quality per territory' })
   async getTerritoryCoverage(@Query('parentId') parentId?: string) {
     const where = parentId ? { parentId } : { level: 'REGION' as const }
@@ -312,6 +314,7 @@ export class KnowledgeBaseController {
   // ── Territory endpoints ─────────────────────────────
 
   @Get('territories')
+  @Roles(...ROLES_MANAGE)
   @ApiOperation({ summary: 'Kaskádový seznam území (level + parentId/parentCode)' })
   async getTerritories(
     @Query('level') level?: string,
@@ -340,6 +343,7 @@ export class KnowledgeBaseController {
   }
 
   @Get('territories/:code/tree')
+  @Roles(...ROLES_MANAGE)
   @ApiOperation({ summary: 'Strom území od daného uzlu (depth=1-3)' })
   async getTerritoryTree(@Param('code') code: string, @Query('depth') depth?: string) {
     const maxDepth = Math.min(Number(depth) || 2, 3)
@@ -359,6 +363,7 @@ export class KnowledgeBaseController {
   }
 
   @Get('territories/:code/breadcrumb')
+  @Roles(...ROLES_MANAGE)
   @ApiOperation({ summary: 'Cesta od území ke státu' })
   async getTerritoryBreadcrumb(@Param('code') code: string) {
     const parts: Array<{ code: string; name: string; level: string }> = []
@@ -395,6 +400,7 @@ export class KnowledgeBaseController {
   // ── Building endpoints ─────────────────────────────
 
   @Get('buildings/map-points')
+  @Roles(...ROLES_MANAGE)
   @ApiOperation({ summary: 'Lightweight body data pro mapu' })
   async getBuildingMapPoints(
     @Query('city') city?: string,
@@ -429,6 +435,7 @@ export class KnowledgeBaseController {
   }
 
   @Get('buildings/filter-options')
+  @Roles(...ROLES_MANAGE)
   @ApiOperation({ summary: 'Kaskádové filtrační hodnoty pro budovy' })
   async getBuildingFilterOptions(
     @Query('city') city?: string,
@@ -465,6 +472,7 @@ export class KnowledgeBaseController {
   }
 
   @Get('buildings')
+  @Roles(...ROLES_MANAGE)
   @ApiOperation({ summary: 'Hledat budovy v KB' })
   async searchBuildings(
     @Query('q') q?: string,
@@ -536,6 +544,7 @@ export class KnowledgeBaseController {
   }
 
   @Get('buildings/:id')
+  @Roles(...ROLES_MANAGE)
   @ApiOperation({ summary: 'Detail budovy z KB' })
   async getBuilding(@Param('id') id: string) {
     return this.prisma.building.findUniqueOrThrow({
@@ -586,6 +595,7 @@ export class KnowledgeBaseController {
   }
 
   @Get('ortofoto')
+  @Roles(...ROLES_MANAGE)
   @Public()
   @ApiOperation({ summary: 'Proxy ČÚZK ortofoto (bypasses CORS)' })
   async getOrtofoto(@Query('lat') lat: string, @Query('lng') lng: string, @Res() res: FastifyReply) {
@@ -609,6 +619,7 @@ export class KnowledgeBaseController {
   }
 
   @Get('organizations')
+  @Roles(...ROLES_MANAGE)
   @ApiOperation({ summary: 'Hledat organizace v KB' })
   async searchOrganizations(
     @Query('q') q?: string,
@@ -635,6 +646,7 @@ export class KnowledgeBaseController {
   }
 
   @Get('organizations/:id')
+  @Roles(...ROLES_MANAGE)
   @ApiOperation({ summary: 'Detail organizace z KB' })
   async getOrganization(@Param('id') id: string) {
     return this.prisma.kbOrganization.findUniqueOrThrow({

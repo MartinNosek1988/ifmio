@@ -91,41 +91,8 @@
     <priority>0.6</priority>
   </url>
 
-  <!-- Careers -->
-  <url>
-    <loc>https://ifmio.com/cs/kariera/</loc>
-    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/kariera/" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/careers/" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/en/careers/" />
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://ifmio.com/en/careers/</loc>
-    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/kariera/" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/careers/" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/en/careers/" />
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-
-  <!-- Blog -->
-  <url>
-    <loc>https://ifmio.com/cs/blog/</loc>
-    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/blog/" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/blog/" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/en/blog/" />
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://ifmio.com/en/blog/</loc>
-    <xhtml:link rel="alternate" hreflang="cs" href="https://ifmio.com/cs/blog/" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://ifmio.com/en/blog/" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://ifmio.com/en/blog/" />
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>
+  <!-- Careers: stub page, re-add when content available -->
+  <!-- Blog: stub page, re-add when articles published -->
 
   <!-- Legal -->
   <url>

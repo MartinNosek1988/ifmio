@@ -36,6 +36,8 @@ const InvoiceReviewPage = lazy(() => import('../modules/finance/components/Invoi
 const WorkOrdersPage = lazy(() => import('../modules/workorders/WorkOrdersPage'));
 const TechnicianAgendaPage = lazy(() => import('../modules/workorders/TechnicianAgendaPage'));
 const WorkOrderExecutionPage = lazy(() => import('../modules/workorders/WorkOrderExecutionPage'));
+const DispatchBoard = lazy(() => import('../modules/workorders/DispatchBoard'));
+const MySchedulePage = lazy(() => import('../modules/workorders/MySchedulePage'));
 const HelpdeskPage = lazy(() => import('../modules/helpdesk/HelpdeskPage'));
 const HelpdeskDashboardPage = lazy(() => import('../modules/helpdesk/HelpdeskDashboardPage'));
 const SlaConfigPage = lazy(() => import('../modules/helpdesk/SlaConfigPage'));
@@ -73,6 +75,8 @@ const CrmOrganizationsPage = lazy(() => import('../modules/crm/CrmOrganizationsP
 const CrmMapPage = lazy(() => import('../modules/crm/CrmMapPage'));
 const CrmImportPage = lazy(() => import('../modules/crm/CrmImportPage'));
 const PersonProfilePage = lazy(() => import('../modules/registry/PersonProfilePage'));
+const ESignListPage = lazy(() => import('../modules/esign/ESignListPage'));
+const SignPage = lazy(() => import('../modules/esign/SignPage'));
 const OrganizationProfilePage = lazy(() => import('../modules/registry/OrganizationProfilePage'));
 const QrResolvePage = lazy(() => import('../modules/asset-qr/QrResolvePage'));
 const PrincipalsPage = lazy(() => import('../modules/principals/PrincipalsPage'));
@@ -166,6 +170,7 @@ export const router = createBrowserRouter([
   // Public registry pages (SEO, no auth)
   { path: '/registry/organizations/:ico', element: withBoundary('Výpis z rejstříku', OrganizationProfilePage) },
   { path: '/registry/persons/:id', element: withBoundary('Profil osoby', PersonProfilePage) },
+  { path: '/sign/:token', element: withBoundary('Elektronický podpis', SignPage) },
   { path: '/terms', element: withBoundary('Terms', TermsPage) },
   { path: '/privacy', element: withBoundary('Privacy', PrivacyPage) },
   { path: '/gdpr', element: withBoundary('GDPR', GdprPage) },
@@ -205,6 +210,8 @@ export const router = createBrowserRouter([
       { path: 'workorders', element: withBoundary('Pracovní úkoly', WorkOrdersPage) },
       { path: 'my-agenda', element: withBoundary('Moje agenda', TechnicianAgendaPage) },
       { path: 'workorders/:id/execute', element: withBoundary('Provádění úkolu', WorkOrderExecutionPage) },
+      { path: 'workorders/dispatch', element: withBoundary('Dispečink', DispatchBoard) },
+      { path: 'workorders/my-schedule', element: withBoundary('Můj plán', MySchedulePage) },
       { path: 'helpdesk', element: withBoundary('Helpdesk', HelpdeskPage) },
       { path: 'helpdesk/dashboard', element: withBoundary('HelpDesk Dashboard', HelpdeskDashboardPage) },
       { path: 'helpdesk/sla-config', element: withBoundary('SLA konfigurace', SlaConfigPage) },
@@ -214,6 +221,7 @@ export const router = createBrowserRouter([
       { path: 'contracts', element: withBoundary('Smlouvy', ContractsPage) },
       { path: 'residents', element: withBoundary('Bydlící', ResidentsPage) },
       { path: 'documents', element: withBoundary('Dokumenty', DocumentsPage) },
+      { path: 'esign', element: withBoundary('Elektronické podpisy', ESignListPage) },
       { path: 'parties', element: withBoundary('Adresář', PartiesPage) },
       { path: 'parties/:id', element: withBoundary('Detail subjektu', PartyDetailPage) },
       { path: 'calendar', element: withBoundary('Kalendář', CalendarPage) },

@@ -1,0 +1,46 @@
+
+IFMIO LANDING PAGE AUDIT — 2026-04-07T09:47:38.648Z
+======================================================================
+
+SOUHRN:
+  OK (obsah):      29
+  STUB (málo):     0
+  PRÁZDNÁ:         0
+  NOINDEX:         0
+  CHYBA:           0
+  Celkem:          29
+
+DETAIL:
+──────────────────────────────────────────────────────────────────────
+OK         |   5129 znaků | /cs/                                          | h1: "Správa nemovitostí bez papírování díky AI"
+OK         |   2689 znaků | /cs/cenik/                                    | h1: "Ceník ifmio"
+OK         |    995 znaků | /cs/demo/                                     | h1: "Podívejte se na ifmio v akci"
+OK         |    753 znaků | /cs/kontakt/                                  | h1: "Kontaktujte nás"
+OK         |    899 znaků | /cs/o-nas/                                    | h1: "O ifmio"
+OK         |    611 znaků | /cs/kariera/                                  | h1: "Kariéra v ifmio"
+OK         |    546 znaků | /cs/blog/                                     | h1: "Blog"
+OK         |    757 znaků | /cs/pravni-dokumenty/                         | h1: "Právní dokumenty"
+OK         |   4744 znaků | /cs/bezpecnost/                               | h1: "Bezpečnost & soukromí jsou součástí produktu"
+OK         |   1173 znaků | /cs/reseni/svj/                               | h1: "ifmio pro společenství vlastníků"
+OK         |   1215 znaků | /cs/reseni/spravce/                           | h1: "ifmio pro správce nemovitostí"
+OK         |   1104 znaků | /cs/reseni/facility-management/               | h1: "ifmio pro facility management"
+OK         |   1071 znaků | /cs/reseni/udrzba/                            | h1: "ifmio pro údržbu a techniky"
+OK         |   1090 znaků | /cs/reseni/investori/                         | h1: "ifmio pro investory do nemovitostí"
+OK         |    736 znaků | /cs/platforma/evidence/                       | h1: "Evidence nemovitostí"
+OK         |    695 znaků | /cs/platforma/finance/                        | h1: "Finance & doklady"
+OK         |    676 znaků | /cs/platforma/predpisy/                       | h1: "Předpisy plateb"
+OK         |    674 znaků | /cs/platforma/konto/                          | h1: "Konto vlastníků"
+OK         |    674 znaků | /cs/platforma/revize/                         | h1: "Revize & TZB"
+OK         |    686 znaků | /cs/platforma/pracovni-prikazy/               | h1: "Pracovní příkazy"
+OK         |    682 znaků | /cs/platforma/komunikace/                     | h1: "Komunikace"
+OK         |    645 znaků | /cs/platforma/meridla/                        | h1: "Měřidla & odečty"
+OK         |    639 znaků | /cs/platforma/vyuctovani/                     | h1: "Vyúčtování"
+OK         |    697 znaků | /cs/platforma/mio-ai/                         | h1: "Mio AI Asistent"
+OK         |    674 znaků | /cs/platforma/portal/                         | h1: "Portál vlastníků"
+OK         |    670 znaků | /cs/platforma/reporting/                      | h1: "Reporting"
+OK         |    655 znaků | /cs/platforma/shromazdeni/                    | h1: "Shromáždění SVJ"
+OK         |    667 znaků | /cs/platforma/mobilni-aplikace/               | h1: "Mobilní aplikace"
+OK         |    688 znaků | /cs/platforma/banka/                          | h1: "Bankovní napojení"
+
+STRÁNKY DOPORUČENÉ K ODEBRÁNÍ ZE SITEMAPA:
+  (žádné)

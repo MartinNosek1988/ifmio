@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service'
 import { PropertyScopeService } from '../common/services/property-scope.service'
 import { EmailService } from '../email/email.service'
 import type { AuthUser } from '@ifmio/shared-types'
+import type { ScheduleWorkOrderDto, StartWorkDto, CompleteWorkDto as CompleteWorkFieldDto, AddSignatureDto, AddMaterialDto } from './dto/field-service.dto'
 import { escHtml } from '../common/helpers/html-escape.helper'
 
 const USER_SELECT = { id: true, name: true, email: true } as const
@@ -740,5 +741,209 @@ export class WorkOrdersService {
     });
 
     return updated;
+  }
+
+  // ─── Field Service ────────────────────────────────────
+
+  async getMySchedule(user: AuthUser, date?: string) {
+    const d = date ? new Date(date) : new Date()
+    const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+    const dayEnd = new Date(dayStart.getTime() + 86_400_000)
+
+    return this.prisma.workOrder.findMany({
+      where: {
+        tenantId: user.tenantId,
+        assigneeUserId: user.id,
+        scheduledDate: { gte: dayStart, lt: dayEnd },
+      },
+      include: {
+        property: { select: { name: true, address: true, city: true } },
+        unit: { select: { name: true } },
+        asset: { select: { name: true } },
+        materials: true,
+      },
+      orderBy: { scheduledTimeFrom: 'asc' },
+    })
+  }
+
+  async getDispatchView(user: AuthUser, date?: string) {
+    const d = date ? new Date(date) : new Date()
+    const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+    const dayEnd = new Date(dayStart.getTime() + 86_400_000)
+
+    const wos = await this.prisma.workOrder.findMany({
+      where: {
+        tenantId: user.tenantId,
+        scheduledDate: { gte: dayStart, lt: dayEnd },
+      },
+      include: {
+        property: { select: { name: true, address: true } },
+        assigneeUser: { select: USER_SELECT },
+      },
+      orderBy: { scheduledTimeFrom: 'asc' },
+    })
+
+    const grouped = new Map<string, { userId: string; userName: string; workOrders: typeof wos }>()
+    for (const wo of wos) {
+      const uid = wo.assigneeUserId ?? 'unassigned'
+      if (!grouped.has(uid)) {
+        grouped.set(uid, {
+          userId: uid,
+          userName: wo.assigneeUser?.name ?? 'Nepřiřazeno',
+          workOrders: [],
+        })
+      }
+      grouped.get(uid)!.workOrders.push(wo)
+    }
+
+    return [...grouped.values()]
+  }
+
+  async scheduleWork(user: AuthUser, id: string, dto: ScheduleWorkOrderDto) {
+    await this.getById(user, id)
+    return this.prisma.workOrder.update({
+      where: { id },
+      data: {
+        scheduledDate: new Date(dto.scheduledDate),
+        scheduledTimeFrom: dto.scheduledTimeFrom,
+        scheduledTimeTo: dto.scheduledTimeTo,
+        ...(dto.assigneeUserId && { assigneeUserId: dto.assigneeUserId }),
+      },
+    })
+  }
+
+  async startWork(user: AuthUser, id: string, dto: StartWorkDto) {
+    const wo = await this.getById(user, id)
+    if (wo.assigneeUserId && wo.assigneeUserId !== user.id) {
+      throw new BadRequestException('Pouze přiřazený technik může zahájit práci')
+    }
+    return this.prisma.workOrder.update({
+      where: { id },
+      data: {
+        arrivedAt: new Date(),
+        status: 'v_reseni',
+        gpsStartLat: dto.gpsStartLat,
+        gpsStartLng: dto.gpsStartLng,
+        assigneeUserId: wo.assigneeUserId ?? user.id,
+      },
+    })
+  }
+
+  async completeWork(user: AuthUser, id: string, dto: CompleteWorkFieldDto) {
+    const wo = await this.getById(user, id)
+    const departedAt = new Date()
+    const travelTimeMinutes = wo.arrivedAt
+      ? Math.round((departedAt.getTime() - wo.arrivedAt.getTime()) / 60_000)
+      : undefined
+
+    // Recalculate total cost
+    const materials = await this.prisma.workOrderMaterial.findMany({
+      where: { workOrderId: id },
+    })
+    const materialCost = materials.reduce((s, m) => s + Number(m.totalPrice), 0)
+    const totalCost = Number(wo.laborCost ?? 0) + materialCost
+
+    return this.prisma.workOrder.update({
+      where: { id },
+      data: {
+        departedAt,
+        travelTimeMinutes,
+        gpsEndLat: dto.gpsEndLat,
+        gpsEndLng: dto.gpsEndLng,
+        technicianNote: dto.technicianNote,
+        checklistJson: dto.checklist as any,
+        status: 'vyresena',
+        completedAt: departedAt,
+        materialCost,
+        totalCost,
+      },
+    })
+  }
+
+  async addSignature(user: AuthUser, id: string, dto: AddSignatureDto) {
+    await this.getById(user, id)
+
+    // Validate base64 size (max 50KB)
+    const base64Data = dto.signatureBase64.replace(/^data:image\/\w+;base64,/, '')
+    if (Buffer.from(base64Data, 'base64').length > 51200) {
+      throw new BadRequestException('Podpis je příliš velký (max 50KB)')
+    }
+
+    return this.prisma.workOrder.update({
+      where: { id },
+      data: {
+        signatureBase64: dto.signatureBase64,
+        signedAt: new Date(),
+        signedByName: dto.signedByName,
+      },
+    })
+  }
+
+  async listMaterials(user: AuthUser, id: string) {
+    await this.getById(user, id)
+    return this.prisma.workOrderMaterial.findMany({
+      where: { workOrderId: id },
+      orderBy: { createdAt: 'asc' },
+    })
+  }
+
+  async addMaterial(user: AuthUser, id: string, dto: AddMaterialDto) {
+    const wo = await this.getById(user, id)
+    const totalPrice = dto.quantity * dto.unitPrice
+
+    const material = await this.prisma.workOrderMaterial.create({
+      data: {
+        tenantId: user.tenantId,
+        workOrderId: id,
+        name: dto.name,
+        unit: dto.unit,
+        quantity: dto.quantity,
+        unitPrice: dto.unitPrice,
+        totalPrice,
+        catalogCode: dto.catalogCode,
+      },
+    })
+
+    await this.recalcMaterialCost(id, wo)
+    return material
+  }
+
+  async updateMaterial(user: AuthUser, id: string, materialId: string, dto: AddMaterialDto) {
+    const wo = await this.getById(user, id)
+    const totalPrice = dto.quantity * dto.unitPrice
+
+    const material = await this.prisma.workOrderMaterial.update({
+      where: { id: materialId },
+      data: {
+        name: dto.name,
+        unit: dto.unit,
+        quantity: dto.quantity,
+        unitPrice: dto.unitPrice,
+        totalPrice,
+        catalogCode: dto.catalogCode,
+      },
+    })
+
+    await this.recalcMaterialCost(id, wo)
+    return material
+  }
+
+  async removeMaterial(user: AuthUser, id: string, materialId: string) {
+    const wo = await this.getById(user, id)
+    await this.prisma.workOrderMaterial.delete({ where: { id: materialId } })
+    await this.recalcMaterialCost(id, wo)
+  }
+
+  private async recalcMaterialCost(workOrderId: string, wo: any) {
+    const materials = await this.prisma.workOrderMaterial.findMany({
+      where: { workOrderId },
+    })
+    const materialCost = materials.reduce((s, m) => s + Number(m.totalPrice), 0)
+    const totalCost = Number(wo.laborCost ?? 0) + materialCost
+
+    await this.prisma.workOrder.update({
+      where: { id: workOrderId },
+      data: { materialCost, totalCost },
+    })
   }
 }

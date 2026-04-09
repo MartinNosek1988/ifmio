@@ -1,5 +1,7 @@
 import { Suspense, useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { CanonicalLink } from '../shared/components/seo/CanonicalLink';
+import { KeyboardShortcutsOverlay } from '../shared/components/KeyboardShortcutsOverlay';
 import { useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard, Building2, Users, FolderOpen, Calendar,
@@ -55,10 +57,13 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/kanban', label: 'Pipeline', icon: <Columns3 size={17} />, roles: ['fm', 'tech'] },
       { to: '/my-agenda', label: 'Moje agenda', icon: <ClipboardCheck size={17} />, roles: ['tech'] },
       { to: '/workorders', label: 'Pracovní úkoly', icon: <Wrench size={17} />, roles: ['fm', 'tech', 'owner'] },
+      { to: '/workorders/dispatch', label: 'Dispečink', icon: <Columns3 size={17} />, roles: ['fm'] },
+      { to: '/workorders/my-schedule', label: 'Můj plán', icon: <ClipboardCheck size={17} />, roles: ['tech'] },
       { to: '/assets', label: 'Pasportizace', icon: <Box size={17} />, roles: ['fm', 'tech', 'owner'] },
       { to: '/revisions', label: 'Plán činností', icon: <ClipboardCheck size={17} />, roles: ['fm', 'tech', 'owner'] },
       { to: '/protocols', label: 'Protokoly', icon: <FileCheck2 size={17} />, roles: ['fm', 'tech'] },
       { to: '/documents', label: 'Dokumenty', icon: <FolderOpen size={17} />, roles: ['fm', 'tech', 'owner'] },
+      { to: '/esign', label: 'eSign', icon: <FileCheck2 size={17} />, roles: ['fm'] },
     ],
   },
   {
@@ -111,7 +116,7 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     title: 'CRM',
-    roles: ['fm', 'owner'],
+    roles: ['fm'],
     items: [
       { to: '/crm', label: 'Přehled', icon: <LayoutDashboard size={17} /> },
       { to: '/crm/buildings', label: 'Budovy', icon: <Building2 size={17} /> },
@@ -221,7 +226,7 @@ export default function AppShell() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  useKeyboardShortcuts();
+  const { showHelp, closeHelp } = useKeyboardShortcuts();
 
   const { data: onboardingData } = useQuery({
     queryKey: ['admin', 'onboarding'],
@@ -294,10 +299,13 @@ export default function AppShell() {
 
   return (
     <div>
+      <a href="#main-content" className="sr-only" style={{ position: 'absolute', top: -9999 }} onFocus={e => { e.currentTarget.style.position = 'fixed'; e.currentTarget.style.top = '8px'; e.currentTarget.style.left = '8px'; e.currentTarget.style.zIndex = '10000'; e.currentTarget.style.background = '#fff'; e.currentTarget.style.padding = '8px 16px'; e.currentTarget.style.borderRadius = '6px'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)'; }} onBlur={e => { e.currentTarget.style.position = 'absolute'; e.currentTarget.style.top = '-9999px'; }}>Přeskočit na hlavní obsah</a>
+      <CanonicalLink />
+      <KeyboardShortcutsOverlay open={showHelp} onClose={closeHelp} />
       {/* Mobile sidebar overlay */}
       <div className={`sidebar-overlay${sidebarOpen ? ' open' : ''}`} onClick={() => setSidebarOpen(false)} />
 
-      <nav className={`sidebar${sidebarOpen ? ' open' : ''}`}>
+      <nav className={`sidebar${sidebarOpen ? ' open' : ''}`} aria-label="Hlavní navigace">
         <div className="sidebar__logo">ifmio</div>
         {visibleSections.map((sec) => (
           <div key={sec.title} className="sidebar__section">
@@ -452,7 +460,7 @@ export default function AppShell() {
         </div>
       </div>
 
-      <main className="main-content">
+      <main id="main-content" className="main-content">
         {showOnboardingBanner && (
           <div
             data-testid="onboarding-banner"

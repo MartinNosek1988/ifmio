@@ -166,7 +166,7 @@ export const cs = {
       'Chci demo': 'Skvělé! Můžete si objednat demo na stránce /demo. Ukážeme vám ifmio na míru — trvá to 15 minut a je to zcela nezávazné.',
       'Kolik to stojí?': 'ifmio je zdarma do 50 jednotek. Od 50 jednotek stojí 15 Kč/jednotka/měsíc včetně všech modulů a Mio AI. Podrobnosti najdete v ceníku.',
       'Jaké moduly máte?': 'ifmio obsahuje: Evidence nemovitostí, Finance & doklady, Předpisy plateb, Konto vlastníků, Pracovní příkazy, Revize & TZB, Měřidla, Komunikaci, Vyúčtování, Portál vlastníků, Reporting, Shromáždění SVJ a Mio AI asistenta.',
-      'Mluvit s člověkem': 'Rozumím! Napište nám na info@ifmio.com nebo zavolejte na +420 XXX XXX XXX. Rádi vám pomůžeme osobně.',
+      'Mluvit s člověkem': 'Rozumím! Napište nám na info@ifmio.com. Rádi vám pomůžeme osobně.',
       fallback: 'Děkuji za dotaz! Momentálně odpovídám přednastavenými odpověďmi. Pro podrobnou odpověď nás kontaktujte na info@ifmio.com nebo si objednejte demo.',
     },
     ariaOpen: 'Otevřít Mio AI chat',

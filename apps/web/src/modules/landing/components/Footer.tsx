@@ -57,7 +57,6 @@ export function Footer() {
             <h4 className="landing-footer__column-title">{f.contactTitle}</h4>
             <ul className="landing-footer__list">
               <li><a href={`mailto:${f.contact.email}`}>✉ {f.contact.email}</a></li>
-              <li>☎ {f.contact.phone}</li>
               <li>◎ {f.contact.city}</li>
             </ul>
           </div>

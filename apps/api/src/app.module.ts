@@ -68,6 +68,7 @@ import { EmailInboundModule } from './email-inbound/email-inbound.module';
 import { PvkModule } from './pvk/pvk.module';
 import { InsuranceModule } from './insurance/insurance.module';
 import { KnowledgeBaseModule } from './knowledge-base/knowledge-base.module';
+import { ESignModule } from './esign/esign.module';
 import { RegistryModule } from './registry/registry.module';
 import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module';
 import { E2eSeedModule } from './e2e-seed/e2e-seed.module';
@@ -172,6 +173,7 @@ import { FieldEncryptionService } from './common/crypto/field-encryption.service
     KnowledgeBaseModule,
     RegistryModule,
     PurchaseOrdersModule,
+    ESignModule,
     ...(process.env.NODE_ENV === 'test' || process.env.E2E_SEED_ENABLED === 'true' ? [E2eSeedModule] : []),
   ],
   providers: [

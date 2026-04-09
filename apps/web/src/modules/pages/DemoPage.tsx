@@ -8,7 +8,7 @@ import '../landing/landing.css'
 import './pages.css'
 
 export default function DemoPage() {
-  const { t, locale, localePath } = useI18n()
+  const { t, locale } = useI18n()
   const lp = getLocalePair(locale)
   const seo = t.seo.demo
   const [form, setForm] = useState({ name: '', email: '', phonePrefix: '+420', phone: '', company: '', gdpr: false })
@@ -102,7 +102,7 @@ export default function DemoPage() {
                 </div>
                 <label className="page-form__gdpr">
                   <input type="checkbox" required checked={form.gdpr} onChange={e => set('gdpr', e.target.checked)} />
-                  <span>Souhlasím se <a href={localePath(`/${ROUTE_SLUGS.privacy[locale] ?? 'zasady-ochrany-soukromi'}`)} style={{ color: 'var(--teal, #00B896)', textDecoration: 'underline' }}>zpracováním osobních údajů</a> a <a href={localePath(`/${ROUTE_SLUGS.terms[locale] ?? 'obchodni-podminky'}`)} style={{ color: 'var(--teal, #00B896)', textDecoration: 'underline' }}>obchodními podmínkami</a></span>
+                  <span>Souhlasím se zpracováním osobních údajů pro účely demonstrace produktu (<a href="mailto:info@ifmio.com" style={{ color: 'var(--teal, #00B896)' }}>info@ifmio.com</a>)</span>
                 </label>
                 <button type="submit" className="btn btn--primary" style={{ width: '100%' }}>Vyzkoušet demo</button>
                 <p className="page-form__reassurance">Bez závazků · Odpovíme do 24 hodin</p>
