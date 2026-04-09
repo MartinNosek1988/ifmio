@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Building2, Users, FolderOpen, Calendar,
   Wrench, Headphones, Box, Gauge, FileText, UserCheck,
   Wallet, AlertTriangle, TrendingUp, ShoppingCart,
-  MessageSquare, Mail, Settings, BarChart3, Database, Download, Landmark, MapPinned,
+  MessageSquare, Mail, Send, Settings, BarChart3, Database, Download, Landmark, MapPinned,
   ClipboardList, ClipboardCheck, ScrollText, UsersRound, FileCheck2, Columns3, Vote, PenLine,
   User as UserIcon, LogOut, Shield, Menu, X, ChevronDown, Sparkles,
 } from 'lucide-react';
@@ -97,6 +97,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { to: '/communication', label: 'Komunikace', icon: <MessageSquare size={17} /> },
       { to: '/communication?tab=mail', label: 'Pošta', icon: <Mail size={17} /> },
+      { to: '/mass-mailing', label: 'Hromadna posta', icon: <Send size={17} />, roles: ['fm'] },
     ],
   },
   {
@@ -185,6 +186,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/portal/voting': 'Hlasování',
   '/portal/esign': 'Podpisy',
   '/kanban': 'Pipeline',
+  '/mass-mailing': 'Hromadna posta',
 };
 
 function getPageTitle(pathname: string): string {

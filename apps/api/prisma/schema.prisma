@@ -107,6 +107,7 @@ model Tenant {
   insurances                 Insurance[]
   insuranceClaims            InsuranceClaim[]
   purchaseOrders             PurchaseOrder[]
+  massMailingCampaigns       MassMailingCampaign[]
 
   @@map("tenants")
 }
@@ -487,6 +488,7 @@ model Property {
   evidenceFolders            EvidenceFolder[]
 
   insurances             Insurance[]
+  massMailingCampaigns   MassMailingCampaign[]
 
   // Enrichment data (ARES)
   aresData               Json?              // AresFullData
@@ -5279,4 +5281,89 @@ model ESignSignatory {
   @@index([requestId])
   @@index([token])
   @@map("esign_signatories")
+}
+
+// ─── MASS MAILING ────────────────────────────────────────────────
+
+enum CampaignChannel {
+  email
+  sms
+  both
+}
+
+enum CampaignRecipientType {
+  all_owners
+  all_tenants
+  all_residents
+  debtors
+  custom
+}
+
+enum CampaignStatus {
+  draft
+  scheduled
+  sending
+  sent
+  cancelled
+}
+
+enum RecipientStatus {
+  pending
+  sent
+  failed
+  opened
+}
+
+model MassMailingCampaign {
+  id              String                 @id @default(uuid())
+  tenantId        String
+  propertyId      String?
+  name            String
+  subject         String
+  body            String                 @db.Text
+  channel         CampaignChannel
+  recipientType   CampaignRecipientType
+  recipientIds    String[]
+  propertyIds     String[]
+  status          CampaignStatus         @default(draft)
+  scheduledAt     DateTime?
+  sentAt          DateTime?
+  cancelledAt     DateTime?
+  totalRecipients Int                    @default(0)
+  sentCount       Int                    @default(0)
+  failedCount     Int                    @default(0)
+  openedCount     Int                    @default(0)
+  createdAt       DateTime               @default(now())
+  createdBy       String
+  updatedAt       DateTime               @updatedAt
+  deletedAt       DateTime?
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property   Property?  @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  recipients CampaignRecipient[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([propertyId])
+  @@map("mass_mailing_campaigns")
+}
+
+model CampaignRecipient {
+  id           String          @id @default(uuid())
+  campaignId   String
+  residentId   String?
+  email        String?
+  phone        String?
+  name         String?
+  status       RecipientStatus @default(pending)
+  sentAt       DateTime?
+  openedAt     DateTime?
+  errorMessage String?
+  outboxLogId  String?
+
+  campaign MassMailingCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([status])
+  @@map("campaign_recipients")
 }

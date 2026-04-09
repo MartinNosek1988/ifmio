@@ -16,6 +16,7 @@ const NO_TENANT_MODELS = new Set([
   'MioWebhookOutbox', 'WorkOrderComment', 'MeterReading', 'PurchaseOrderItem',
   'AssetFieldCheckSignal', 'SettlementCost', 'SettlementItem', 'UserFeature',
   'RevokedToken', 'LoginRiskLog', 'UnitGroupMembership', 'InvoiceCostAllocation',
+  'CampaignRecipient',
 ]);
 
 const SLOW_QUERY_THRESHOLD_MS = 200;

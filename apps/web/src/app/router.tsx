@@ -75,6 +75,8 @@ const CrmOrganizationsPage = lazy(() => import('../modules/crm/CrmOrganizationsP
 const CrmMapPage = lazy(() => import('../modules/crm/CrmMapPage'));
 const CrmImportPage = lazy(() => import('../modules/crm/CrmImportPage'));
 const PersonProfilePage = lazy(() => import('../modules/registry/PersonProfilePage'));
+const MassMailingPage = lazy(() => import('../modules/mass-mailing/MassMailingPage'));
+const MassMailingDetailPage = lazy(() => import('../modules/mass-mailing/MassMailingDetailPage'));
 const ESignListPage = lazy(() => import('../modules/esign/ESignListPage'));
 const SignPage = lazy(() => import('../modules/esign/SignPage'));
 const OrganizationProfilePage = lazy(() => import('../modules/registry/OrganizationProfilePage'));
@@ -230,6 +232,8 @@ export const router = createBrowserRouter([
       { path: 'parties/:id', element: withBoundary('Detail subjektu', PartyDetailPage) },
       { path: 'calendar', element: withBoundary('Kalendář', CalendarPage) },
       { path: 'communication', element: withBoundary('Komunikace', CommunicationPage) },
+      { path: 'mass-mailing', element: withBoundary('Hromadna posta', MassMailingPage) },
+      { path: 'mass-mailing/:id', element: withBoundary('Detail kampane', MassMailingDetailPage) },
       { path: 'reporting', element: withBoundary('Reporting', ReportingPage) },
       { path: 'reporting/operations', element: withBoundary('Provozní reporty', OperationalReportsPage) },
       { path: 'mio/insights', element: withBoundary('Mio Insights', MioInsightsPage) },
