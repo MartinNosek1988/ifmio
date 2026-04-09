@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Send, CheckCircle, XCircle, Edit, Trash2, Link2, Package } from 'lucide-react';
+import { ArrowLeft, Send, CheckCircle, XCircle, Edit, Trash2, Link2 } from 'lucide-react';
 import { Badge, Button, Modal, LoadingSpinner, ErrorState } from '../../shared/components';
 import { formatKc, formatCzDate } from '../../shared/utils/format';
 import { purchaseOrdersApi } from './api/purchase-orders.api';
@@ -10,7 +10,6 @@ import { PurchaseOrderForm } from './PurchaseOrderForm';
 import { apiClient } from '../../core/api/client';
 
 type POStatus = ApiPurchaseOrder['status'];
-type MatchStatus = ApiPurchaseOrder['matchStatus'];
 
 const STATUS_LABELS: Record<POStatus, string> = {
   draft: 'Koncept',

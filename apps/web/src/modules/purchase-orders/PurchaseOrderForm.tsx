@@ -163,12 +163,12 @@ export function PurchaseOrderForm({ open, onClose, onSuccess, editData }: Props)
       title={isEdit ? `Upravit ${editData!.number}` : 'Nová objednávka'}
       wide
       footer={
-        <FormFooter>
-          <Button onClick={onClose}>Zrušit</Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={isSaving}>
-            {isSaving ? 'Ukládám...' : isEdit ? 'Uložit' : 'Vytvořit'}
-          </Button>
-        </FormFooter>
+        <FormFooter
+          onCancel={onClose}
+          onSubmit={handleSubmit}
+          isSubmitting={isSaving}
+          submitLabel={isEdit ? 'Uložit' : 'Vytvořit'}
+        />
       }
     >
       {errors._form && (
@@ -178,7 +178,7 @@ export function PurchaseOrderForm({ open, onClose, onSuccess, editData }: Props)
       {/* Header section */}
       <FormSection title="Základní údaje">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <FormField label="Nemovitost">
+          <FormField label="Nemovitost" name="propertyId" required={false}>
             <select className="input" value={form.propertyId} onChange={e => set('propertyId', e.target.value)}>
               <option value="">— Vyberte —</option>
               {properties.map((p: any) => (
@@ -186,7 +186,7 @@ export function PurchaseOrderForm({ open, onClose, onSuccess, editData }: Props)
               ))}
             </select>
           </FormField>
-          <FormField label="Typ zdroje">
+          <FormField label="Typ zdroje" name="sourceType" required={false}>
             <select className="input" value={form.sourceType} onChange={e => set('sourceType', e.target.value)}>
               <option value="manual">Ruční</option>
               <option value="work_order">Pracovní příkaz</option>
@@ -194,7 +194,7 @@ export function PurchaseOrderForm({ open, onClose, onSuccess, editData }: Props)
             </select>
           </FormField>
         </div>
-        <FormField label="Popis">
+        <FormField label="Popis" name="description" required={false}>
           <textarea
             className="input"
             rows={2}
@@ -204,20 +204,20 @@ export function PurchaseOrderForm({ open, onClose, onSuccess, editData }: Props)
           />
         </FormField>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-          <FormField label="Datum dodání">
+          <FormField label="Datum dodání" name="deliveryDate" required={false}>
             <input className="input" type="date" value={form.deliveryDate} onChange={e => set('deliveryDate', e.target.value)} />
           </FormField>
-          <FormField label="Platnost do">
+          <FormField label="Platnost do" name="validUntil" required={false}>
             <input className="input" type="date" value={form.validUntil} onChange={e => set('validUntil', e.target.value)} />
           </FormField>
-          <FormField label="Měna">
+          <FormField label="Měna" name="currency" required={false}>
             <select className="input" value={form.currency} onChange={e => set('currency', e.target.value)}>
               <option value="CZK">CZK</option>
               <option value="EUR">EUR</option>
             </select>
           </FormField>
         </div>
-        <FormField label="Doručovací adresa">
+        <FormField label="Doručovací adresa" name="deliveryAddress" required={false}>
           <input className="input" value={form.deliveryAddress} onChange={e => set('deliveryAddress', e.target.value)} />
         </FormField>
       </FormSection>
@@ -225,7 +225,7 @@ export function PurchaseOrderForm({ open, onClose, onSuccess, editData }: Props)
       {/* Supplier section */}
       <FormSection title="Dodavatel">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'end' }}>
-          <FormField label="IČ dodavatele" error={aresError || undefined}>
+          <FormField label="IČ dodavatele" name="supplierIco" required={false} error={aresError || undefined}>
             <input
               className="input"
               value={form.supplierIco}
@@ -254,14 +254,14 @@ export function PurchaseOrderForm({ open, onClose, onSuccess, editData }: Props)
         {aresSuccess && <div style={{ color: 'var(--success, #22c55e)', fontSize: '0.78rem', marginTop: -4, marginBottom: 8 }}>{aresSuccess}</div>}
         {aresDefunct && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid var(--danger)', borderRadius: 4, padding: '4px 8px', color: 'var(--danger)', fontSize: '0.78rem', marginTop: -4, marginBottom: 8 }}>Subjekt je zaniklý dle ARES ({aresDefunct})</div>}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <FormField label="Název dodavatele" error={errors.supplierName}>
+          <FormField label="Název dodavatele" name="supplierName" error={errors.supplierName}>
             <input className="input" value={form.supplierName} onChange={e => set('supplierName', e.target.value)} placeholder="Automaticky z ARES nebo zadejte ručně" />
           </FormField>
-          <FormField label="DIČ">
+          <FormField label="DIČ" name="supplierDic" required={false}>
             <input className="input" value={form.supplierDic} onChange={e => set('supplierDic', e.target.value)} placeholder="CZ12345678" style={{ fontFamily: 'var(--font-mono, monospace)' }} />
           </FormField>
         </div>
-        <FormField label="E-mail dodavatele">
+        <FormField label="E-mail dodavatele" name="supplierEmail" required={false}>
           <input className="input" type="email" value={form.supplierEmail} onChange={e => set('supplierEmail', e.target.value)} placeholder="objednavky@dodavatel.cz" />
         </FormField>
       </FormSection>
@@ -352,7 +352,7 @@ export function PurchaseOrderForm({ open, onClose, onSuccess, editData }: Props)
       {/* Summary */}
       <FormSection title="Souhrn">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, maxWidth: 400 }}>
-          <FormField label="Sazba DPH (%)">
+          <FormField label="Sazba DPH (%)" name="vatRate" required={false}>
             <input
               className="input"
               type="number"
