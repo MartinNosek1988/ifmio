@@ -1,9 +1,10 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, BarChart3, Settings } from 'lucide-react';
+import { Plus, BarChart3, Settings, LayoutGrid, List } from 'lucide-react';
 import { KpiCard, Table, Badge, SearchBar, Button, EmptyState, Modal, LoadingSkeleton, ErrorState } from '../../shared/components';
+import { KanbanBoard } from '../../shared/components/KanbanBoard';
 import type { Column, BadgeVariant } from '../../shared/components';
-import { useTickets, useDeleteTicket, useSlaStats, useClaimTicket } from './api/helpdesk.queries';
+import { useTickets, useDeleteTicket, useUpdateTicket, useSlaStats, useClaimTicket } from './api/helpdesk.queries';
 import type { ApiTicket } from './api/helpdesk.api';
 import { useAuthStore } from '../../core/auth/auth.store';
 import { useUrlFilters } from '../../shared/hooks/useUrlFilters';
@@ -77,6 +78,7 @@ export default function HelpdeskPage() {
   const [selectedTicket, setSelectedTicket] = useState<ApiTicket | null>(null);
   const [deleteTicket, setDeleteTicket] = useState<ApiTicket | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [view, setView] = useState<'table' | 'kanban'>('table');
   const PAGE_SIZE = 25;
   const page = filters.page ?? 1;
 
@@ -103,6 +105,7 @@ export default function HelpdeskPage() {
   const { data: slaStats } = useSlaStats();
 
   const deleteMutation = useDeleteTicket();
+  const updateMutation = useUpdateTicket();
   const claimMutation = useClaimTicket();
   const currentUser = useAuthStore((s) => s.user);
 
@@ -116,6 +119,19 @@ export default function HelpdeskPage() {
     const today = tickets.filter(t => t.createdAt.slice(0, 10) === new Date().toISOString().slice(0, 10)).length;
     return { total, open, today, urgent };
   }, [tickets, total]);
+
+  const kanbanColumns = useMemo(() => {
+    const statuses = [
+      { id: 'open', title: 'Otevřené', color: '#3b82f6' },
+      { id: 'in_progress', title: 'Probíhá', color: '#f59e0b' },
+      { id: 'resolved', title: 'Vyřešené', color: '#22c55e' },
+      { id: 'closed', title: 'Uzavřené', color: '#6b7280' },
+    ]
+    return statuses.map(s => ({
+      ...s,
+      items: (tickets ?? []).filter((t: ApiTicket) => t.status === s.id),
+    }))
+  }, [tickets])
 
   const columns: Column<ApiTicket>[] = [
     {
@@ -213,6 +229,32 @@ export default function HelpdeskPage() {
           <p className="page-subtitle">{stats.open} otevřených požadavků</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border)' }}>
+            <button
+              onClick={() => setView('table')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4, padding: '6px 10px',
+                background: view === 'table' ? 'var(--primary)' : 'var(--surface)',
+                color: view === 'table' ? '#fff' : 'var(--text)',
+                border: 'none', cursor: 'pointer', fontSize: '0.82rem',
+              }}
+              title="Tabulka"
+            >
+              <List size={15} />
+            </button>
+            <button
+              onClick={() => setView('kanban')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4, padding: '6px 10px',
+                background: view === 'kanban' ? 'var(--primary)' : 'var(--surface)',
+                color: view === 'kanban' ? '#fff' : 'var(--text)',
+                border: 'none', cursor: 'pointer', fontSize: '0.82rem',
+              }}
+              title="Kanban"
+            >
+              <LayoutGrid size={15} />
+            </button>
+          </div>
           <Button icon={<BarChart3 size={15} />} onClick={() => navigate('/helpdesk/dashboard')}>Dashboard</Button>
           <Button icon={<Settings size={15} />} onClick={() => navigate('/helpdesk/sla-config')}>SLA</Button>
           <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)} data-testid="ticket-add-btn">Nový požadavek</Button>
@@ -262,7 +304,32 @@ export default function HelpdeskPage() {
         </select>
       </div>
 
-      {tickets.length === 0 ? (
+      {view === 'kanban' ? (
+        <KanbanBoard
+          columns={kanbanColumns}
+          renderCard={(ticket: ApiTicket) => (
+            <div style={{ padding: 8, cursor: 'pointer', fontSize: 13 }}
+                 onClick={() => setSelectedTicket(ticket)}>
+              <div style={{ fontWeight: 500, marginBottom: 4 }}>
+                #{ticket.number} {ticket.title}
+              </div>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 }}>
+                <Badge variant={PRIO_COLOR[ticket.priority] || 'muted'}>{PRIORITY_LABELS[ticket.priority] || ticket.priority}</Badge>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                {ticket.assignee?.name ?? 'Nepřiřazeno'}
+              </div>
+            </div>
+          )}
+          getItemId={(t: ApiTicket) => t.id}
+          onMove={(itemId, _from, to) => {
+            const t = tickets.find(t => t.id === itemId);
+            if (t) {
+              updateMutation.mutate({ id: t.id, dto: { status: to } });
+            }
+          }}
+        />
+      ) : tickets.length === 0 ? (
         <EmptyState title="Žádné požadavky" description="Zatím tu nejsou žádné požadavky." />
       ) : (
         <Table data={tickets} columns={columns} rowKey={(t) => t.id} onRowClick={(t) => setSelectedTicket(t)} />
