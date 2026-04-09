@@ -74,6 +74,8 @@ const CrmBuildingDetailPage = lazy(() => import('../modules/crm/CrmBuildingDetai
 const CrmOrganizationsPage = lazy(() => import('../modules/crm/CrmOrganizationsPage'));
 const CrmMapPage = lazy(() => import('../modules/crm/CrmMapPage'));
 const CrmImportPage = lazy(() => import('../modules/crm/CrmImportPage'));
+const CrmPipelinePage = lazy(() => import('../modules/crm/CrmPipelinePage'));
+const CrmKbCandidatesPage = lazy(() => import('../modules/crm/CrmKbCandidatesPage'));
 const PersonProfilePage = lazy(() => import('../modules/registry/PersonProfilePage'));
 const MassMailingPage = lazy(() => import('../modules/mass-mailing/MassMailingPage'));
 const MassMailingDetailPage = lazy(() => import('../modules/mass-mailing/MassMailingDetailPage'));
@@ -261,6 +263,8 @@ export const router = createBrowserRouter([
       { path: 'crm/organizations', element: withBoundary('CRM Organizace', CrmOrganizationsPage) },
       { path: 'crm/import', element: withBoundary('CRM Import', CrmImportPage) },
       { path: 'crm/map', element: withBoundary('CRM Mapa', CrmMapPage) },
+      { path: 'crm/pipeline', element: withBoundary('CRM Pipeline', CrmPipelinePage) },
+      { path: 'crm/kb-candidates', element: withBoundary('KB Kandidati', CrmKbCandidatesPage) },
       { path: 'crm/registry/persons/:id', element: withBoundary('Profil osoby', PersonProfilePage) },
       { path: 'crm/registry/organizations/:ico', element: withBoundary('Profil organizace', OrganizationProfilePage) },
     ],

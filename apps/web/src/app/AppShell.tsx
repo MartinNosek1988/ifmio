@@ -124,6 +124,8 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/crm/organizations', label: 'Organizace', icon: <Landmark size={17} /> },
       { to: '/crm/map', label: 'Mapa', icon: <MapPinned size={17} /> },
       { to: '/crm/import', label: 'Import dat', icon: <Download size={17} /> },
+      { to: '/crm/pipeline', label: 'Pipeline', icon: <TrendingUp size={17} /> },
+      { to: '/crm/kb-candidates', label: 'KB kandidati', icon: <Database size={17} /> },
     ],
   },
   {
@@ -185,6 +187,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/portal/konto': 'Konto',
   '/portal/voting': 'Hlasování',
   '/portal/esign': 'Podpisy',
+  '/crm/pipeline': 'CRM Pipeline',
+  '/crm/kb-candidates': 'KB Kandidati',
   '/kanban': 'Pipeline',
   '/mass-mailing': 'Hromadna posta',
 };

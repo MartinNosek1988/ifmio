@@ -17,6 +17,8 @@ const NO_TENANT_MODELS = new Set([
   'AssetFieldCheckSignal', 'SettlementCost', 'SettlementItem', 'UserFeature',
   'RevokedToken', 'LoginRiskLog', 'UnitGroupMembership', 'InvoiceCostAllocation',
   'CampaignRecipient',
+  'CrmLead',
+  'CrmActivity',
 ]);
 
 const SLOW_QUERY_THRESHOLD_MS = 200;
