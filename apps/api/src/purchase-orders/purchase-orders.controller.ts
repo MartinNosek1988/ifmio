@@ -12,7 +12,7 @@ import {
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuditAction } from '../common/decorators/audit.decorator';
-import { ROLES_FINANCE } from '../common/constants/roles.constants';
+import { ROLES_FINANCE, ROLES_FINANCE_DRAFT } from '../common/constants/roles.constants';
 import type { AuthUser } from '@ifmio/shared-types';
 
 @ApiTags('Purchase Orders')
@@ -22,6 +22,7 @@ export class PurchaseOrdersController {
   constructor(private service: PurchaseOrdersService) {}
 
   @Get()
+  @Roles(...ROLES_FINANCE_DRAFT)
   @ApiOperation({ summary: 'Seznam objednavek' })
   list(
     @CurrentUser() user: AuthUser,
@@ -42,12 +43,14 @@ export class PurchaseOrdersController {
   }
 
   @Get('stats')
+  @Roles(...ROLES_FINANCE_DRAFT)
   @ApiOperation({ summary: 'Statistiky objednavek' })
   stats(@CurrentUser() user: AuthUser) {
     return this.service.stats(user);
   }
 
   @Get(':id')
+  @Roles(...ROLES_FINANCE_DRAFT)
   @ApiOperation({ summary: 'Detail objednavky' })
   getById(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.service.getById(user, id);

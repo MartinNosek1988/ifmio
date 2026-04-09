@@ -34,14 +34,27 @@ export class PurchaseOrdersService {
     private email: EmailService,
   ) {}
 
-  // ─── Number generation ───────────────────────────────────────────
+  // ─── Number generation (FIX-01: retry loop for race conditions) ──
 
   private async generateNumber(tenantId: string): Promise<string> {
     const year = new Date().getFullYear();
-    const count = await this.prisma.purchaseOrder.count({
-      where: { tenantId, number: { startsWith: `PO-${year}-` } },
-    });
-    return `PO-${year}-${String(count + 1).padStart(4, '0')}`;
+    const prefix = `PO-${year}-`;
+
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      const count = await this.prisma.purchaseOrder.count({
+        where: { tenantId, number: { startsWith: prefix } },
+      });
+      const candidate = `${prefix}${String(count + attempt).padStart(4, '0')}`;
+
+      const exists = await this.prisma.purchaseOrder.findFirst({
+        where: { tenantId, number: candidate },
+        select: { id: true },
+      });
+      if (!exists) return candidate;
+    }
+
+    // Fallback: timestamp suffix
+    return `${prefix}${Date.now().toString().slice(-6)}`;
   }
 
   // ─── List ────────────────────────────────────────────────────────
@@ -107,10 +120,11 @@ export class PurchaseOrdersService {
     };
   }
 
-  // ─── Stats ───────────────────────────────────────────────────────
+  // ─── Stats (FIX-03: property scope) ─────────────────────────────
 
   async stats(user: AuthUser) {
-    const base = { tenantId: user.tenantId, deletedAt: null };
+    const scopeWhere = await this.scope.scopeByPropertyId(user);
+    const base = { tenantId: user.tenantId, deletedAt: null, ...scopeWhere } as any;
 
     const [totalOpen, pendingApproval, awaitingInvoice, matched, totalAmountResult] = await Promise.all([
       this.prisma.purchaseOrder.count({
@@ -157,9 +171,13 @@ export class PurchaseOrdersService {
     return serialize(po);
   }
 
-  // ─── Create ──────────────────────────────────────────────────────
+  // ─── Create (FIX-02: property scope check) ──────────────────────
 
   async create(user: AuthUser, dto: CreatePurchaseOrderDto) {
+    if (dto.propertyId) {
+      await this.scope.verifyPropertyAccess(user, dto.propertyId);
+    }
+
     const number = await this.generateNumber(user.tenantId);
     const vatRate = dto.vatRate ?? 0;
     const currency = dto.currency ?? 'CZK';
@@ -308,13 +326,14 @@ export class PurchaseOrdersService {
     return { success: true };
   }
 
-  // ─── Workflow transitions ────────────────────────────────────────
+  // ─── Workflow transitions (FIX-04: scope checks) ────────────────
 
   async submit(user: AuthUser, id: string) {
     const po = await this.prisma.purchaseOrder.findFirst({
       where: { id, tenantId: user.tenantId, deletedAt: null },
     });
     if (!po) throw new NotFoundException('Objednavka nenalezena');
+    await this.scope.verifyEntityAccess(user, po.propertyId);
     if (po.status !== 'draft') {
       throw new BadRequestException('Odeslat ke schvaleni lze pouze navrh');
     }
@@ -336,6 +355,7 @@ export class PurchaseOrdersService {
       where: { id, tenantId: user.tenantId, deletedAt: null },
     });
     if (!po) throw new NotFoundException('Objednavka nenalezena');
+    await this.scope.verifyEntityAccess(user, po.propertyId);
     if (po.status !== 'pending_approval') {
       throw new BadRequestException('Schvalit lze pouze objednavku cekajici na schvaleni');
     }
@@ -358,6 +378,7 @@ export class PurchaseOrdersService {
       include: { property: true, items: { orderBy: { position: 'asc' } } },
     });
     if (!po) throw new NotFoundException('Objednavka nenalezena');
+    await this.scope.verifyEntityAccess(user, po.propertyId);
     if (po.status !== 'approved') {
       throw new BadRequestException('Odeslat dodavateli lze pouze schvalenou objednavku');
     }
@@ -377,7 +398,7 @@ export class PurchaseOrdersService {
 
       const itemsRows = po.items
         .map(
-          (item, idx) =>
+          (item: any, idx: number) =>
             `<tr>
               <td style="padding:4px 8px;border:1px solid #ddd">${idx + 1}</td>
               <td style="padding:4px 8px;border:1px solid #ddd">${item.description}</td>
@@ -432,6 +453,7 @@ export class PurchaseOrdersService {
       where: { id, tenantId: user.tenantId, deletedAt: null },
     });
     if (!po) throw new NotFoundException('Objednavka nenalezena');
+    await this.scope.verifyEntityAccess(user, po.propertyId);
     if (po.status === 'cancelled') {
       throw new BadRequestException('Objednavka je jiz zrusena');
     }
@@ -448,18 +470,24 @@ export class PurchaseOrdersService {
     return this.getById(user, id);
   }
 
-  // ─── Invoice matching ───────────────────────────────────────────
+  // ─── Invoice matching (FIX-05: scope + propertyId consistency) ──
 
   async matchInvoice(user: AuthUser, poId: string, invoiceId: string) {
     const po = await this.prisma.purchaseOrder.findFirst({
       where: { id: poId, tenantId: user.tenantId, deletedAt: null },
     });
     if (!po) throw new NotFoundException('Objednavka nenalezena');
+    await this.scope.verifyEntityAccess(user, po.propertyId);
 
     const invoice = await this.prisma.invoice.findFirst({
       where: { id: invoiceId, tenantId: user.tenantId, deletedAt: null },
     });
     if (!invoice) throw new NotFoundException('Faktura nenalezena');
+    await this.scope.verifyEntityAccess(user, invoice.propertyId);
+
+    if (po.propertyId && invoice.propertyId && po.propertyId !== invoice.propertyId) {
+      throw new BadRequestException('Faktura patri jine nemovitosti nez objednavka');
+    }
 
     // Link invoice to PO
     await this.prisma.invoice.update({
@@ -499,6 +527,7 @@ export class PurchaseOrdersService {
       where: { id: poId, tenantId: user.tenantId, deletedAt: null },
     });
     if (!po) throw new NotFoundException('Objednavka nenalezena');
+    await this.scope.verifyEntityAccess(user, po.propertyId);
 
     const invoice = await this.prisma.invoice.findFirst({
       where: { id: invoiceId, tenantId: user.tenantId, purchaseOrderId: poId },

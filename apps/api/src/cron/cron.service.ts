@@ -617,8 +617,11 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
 
     try {
       const rok = now.getFullYear();
-      const stats = await this.dataor.importAll(rok, 'actual');
-      this.logger.log(`Dataor import done: ${JSON.stringify(stats)}`);
+      // Only import SVJ + druzstvo — relevant for ifmio property management
+      for (const forma of ['svj', 'druzstvo']) {
+        const stats = await this.dataor.importAll(rok, 'actual', forma);
+        this.logger.log(`Dataor import (${forma}) done: ${JSON.stringify(stats)}`);
+      }
     } catch (err) {
       this.logger.error('Dataor nightly import FAILED', (err as Error).stack);
     }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, FileText, Clock, CheckCircle, Link2 } from 'lucide-react';
 import { KpiCard, Badge, Button, LoadingSpinner } from '../../shared/components';
 import { formatKc, formatCzDate } from '../../shared/utils/format';
@@ -49,6 +49,7 @@ const SOURCE_LABELS: Record<string, string> = {
 
 export default function PurchaseOrdersPage() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState('');
   const [matchFilter, setMatchFilter] = useState('');
   const [search, setSearch] = useState('');
@@ -197,7 +198,7 @@ export default function PurchaseOrdersPage() {
         <PurchaseOrderForm
           open={showForm}
           onClose={() => setShowForm(false)}
-          onSuccess={() => { setShowForm(false); refetch(); }}
+          onSuccess={() => { setShowForm(false); qc.invalidateQueries({ queryKey: ['purchase-orders'] }); }}
         />
       )}
     </div>

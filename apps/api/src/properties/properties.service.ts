@@ -208,16 +208,35 @@ export class PropertiesService {
 
     const aresData = await this.aresService.enrichByIco(property.ico);
 
-    // Link statutory members to KbPerson by lastName+datumNarozeni
+    // Link statutory members to KbPerson by lastName+datumNarozeni (batch)
     if (aresData.statutarniOrgan?.clenove) {
-      for (const clen of aresData.statutarniOrgan.clenove) {
-        if (!clen.prijmeni || !clen.datumNarozeni) continue;
+      const matchable = aresData.statutarniOrgan.clenove.filter(
+        (c: any) => Boolean(c.prijmeni && c.datumNarozeni),
+      );
+
+      if (matchable.length > 0) {
         try {
-          const person = await this.prisma.kbPerson.findFirst({
-            where: { lastName: clen.prijmeni, datumNarozeni: clen.datumNarozeni },
-            select: { id: true },
+          const persons = await this.prisma.kbPerson.findMany({
+            where: {
+              OR: matchable.map((c: any) => ({
+                lastName: c.prijmeni,
+                datumNarozeni: c.datumNarozeni,
+              })),
+            },
+            select: { id: true, lastName: true, datumNarozeni: true },
           });
-          if (person) clen.kbPersonId = person.id;
+
+          const personByKey = new Map<string, string>();
+          for (const p of persons) {
+            const key = `${p.lastName}::${p.datumNarozeni ? new Date(p.datumNarozeni).toISOString() : ''}`;
+            if (!personByKey.has(key)) personByKey.set(key, p.id);
+          }
+
+          for (const clen of matchable) {
+            const key = `${clen.prijmeni}::${clen.datumNarozeni ? new Date(clen.datumNarozeni).toISOString() : ''}`;
+            const kbPersonId = personByKey.get(key);
+            if (kbPersonId) clen.kbPersonId = kbPersonId;
+          }
         } catch { /* non-critical */ }
       }
     }

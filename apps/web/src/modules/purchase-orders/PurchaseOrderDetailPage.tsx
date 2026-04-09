@@ -53,7 +53,10 @@ export default function PurchaseOrderDetailPage() {
     enabled: !!id,
   });
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['purchase-orders', id] });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['purchase-orders', id] });
+    qc.invalidateQueries({ queryKey: ['purchase-orders'] });
+  };
 
   const submitMut = useMutation({ mutationFn: () => purchaseOrdersApi.submit(id!), onSuccess: invalidate });
   const approveMut = useMutation({ mutationFn: () => purchaseOrdersApi.approve(id!), onSuccess: invalidate });
@@ -377,7 +380,10 @@ function InvoiceMatchModal({ poId, onClose, onSuccess }: { poId: string; onClose
 
   const { data: invoices = [] } = useQuery({
     queryKey: ['invoices-for-match', search],
-    queryFn: () => apiClient.get<any[]>('/invoices', { params: { search, limit: 20, approvalStatus: 'approved' } }).then(r => r.data),
+    queryFn: () => apiClient.get('/finance/invoices', { params: { search, limit: 20, approvalStatus: 'approved' } }).then(r => {
+      const res = r.data;
+      return Array.isArray(res) ? res : (res.data ?? res.items ?? []);
+    }),
     enabled: search.length >= 2,
   });
 

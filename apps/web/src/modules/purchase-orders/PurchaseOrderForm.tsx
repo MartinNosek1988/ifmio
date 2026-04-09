@@ -132,7 +132,9 @@ export function PurchaseOrderForm({ open, onClose, onSuccess, editData }: Props)
       currency: form.currency,
       items: items.map((it, i) => ({
         description: it.description,
-        quantity: parseFloat(it.quantity) || 1,
+        quantity: Number.isFinite(parseFloat(it.quantity)) && parseFloat(it.quantity) > 0
+          ? parseFloat(it.quantity)
+          : 1,
         unit: it.unit,
         unitPrice: parseFloat(it.unitPrice) || 0,
         totalPrice: calcItemTotal(it),
@@ -296,7 +298,7 @@ export function PurchaseOrderForm({ open, onClose, onSuccess, editData }: Props)
                   <input
                     className="input"
                     type="number"
-                    min="0"
+                    min="0.001"
                     step="0.01"
                     value={item.quantity}
                     onChange={e => setItem(idx, 'quantity', e.target.value)}

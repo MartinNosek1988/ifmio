@@ -83,3 +83,23 @@ ALTER TABLE "invoices" ADD CONSTRAINT "invoices_purchaseOrderId_fkey" FOREIGN KE
 -- RLS: tenant isolation
 ALTER TABLE "purchase_orders" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "purchase_order_items" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "tenant_isolation_purchase_orders" ON "purchase_orders"
+    USING ("tenantId" = current_setting('app.current_tenant_id', true))
+    WITH CHECK ("tenantId" = current_setting('app.current_tenant_id', true));
+
+CREATE POLICY "tenant_isolation_purchase_order_items" ON "purchase_order_items"
+    USING (
+        EXISTS (
+            SELECT 1 FROM "purchase_orders" po
+            WHERE po."id" = "purchase_order_items"."purchaseOrderId"
+              AND po."tenantId" = current_setting('app.current_tenant_id', true)
+        )
+    )
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM "purchase_orders" po
+            WHERE po."id" = "purchase_order_items"."purchaseOrderId"
+              AND po."tenantId" = current_setting('app.current_tenant_id', true)
+        )
+    );
