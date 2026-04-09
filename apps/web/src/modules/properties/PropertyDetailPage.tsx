@@ -6,6 +6,8 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { apiClient } from '../../core/api/client';
 import { ArrowLeft, Plus, Pencil, Layers, Trash2, UserPlus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { RequestESignButton } from '../esign/components/RequestESignButton';
+import { ESignRequestsSection } from '../esign/components/ESignRequestsSection';
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 
@@ -322,15 +324,24 @@ export default function PropertyDetailPage() {
               return (
                 <span
                   key={c.id}
-                  onClick={() => c.principal?.displayName && navigate(`/principals`)}
-                  style={{ cursor: 'pointer' }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}
                   data-testid={`property-contract-badge-${c.id}`}
                   title={c.contractNo ? `Smlouva: ${c.contractNo}` : undefined}
                 >
-                  <Badge variant={c.isActive ? (badge.variant as any) : 'muted'}>
-                    {badge.label} · {c.principal?.displayName ?? '—'}
-                    {c.validFrom && <span style={{ marginLeft: 4, opacity: 0.7 }}>({new Date(c.validFrom).getFullYear()}–{c.validTo ? new Date(c.validTo).getFullYear() : '…'})</span>}
-                  </Badge>
+                  <span onClick={() => c.principal?.displayName && navigate(`/principals`)}>
+                    <Badge variant={c.isActive ? (badge.variant as any) : 'muted'}>
+                      {badge.label} · {c.principal?.displayName ?? '—'}
+                      {c.validFrom && <span style={{ marginLeft: 4, opacity: 0.7 }}>({new Date(c.validFrom).getFullYear()}–{c.validTo ? new Date(c.validTo).getFullYear() : '…'})</span>}
+                    </Badge>
+                  </span>
+                  {c.isActive && (
+                    <RequestESignButton
+                      documentType="management_contract"
+                      documentId={c.id}
+                      documentTitle={`Smlouva o správě — ${property.name}`}
+                      variant="inline"
+                    />
+                  )}
                 </span>
               );
             })}
@@ -341,6 +352,11 @@ export default function PropertyDetailPage() {
               </span>
             )}
           </div>
+          {/* eSign requests for management contracts */}
+          {contracts.map(c => (
+            <ESignRequestsSection key={`esign-${c.id}`} documentType="management_contract" documentId={c.id} />
+          ))}
+
           {/* Financial context switcher */}
           {financialContexts.length > 1 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: '.82rem' }}>

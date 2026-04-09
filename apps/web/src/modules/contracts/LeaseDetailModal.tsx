@@ -5,6 +5,8 @@ import { useTerminateContract } from './api/contracts.queries';
 import type { ApiLeaseAgreement } from './api/contracts.api';
 import { formatCzDate, formatKc } from '../../shared/utils/format';
 import LeaseForm from './LeaseForm';
+import { RequestESignButton } from '../esign/components/RequestESignButton';
+import { ESignRequestsSection } from '../esign/components/ESignRequestsSection';
 
 interface Props {
   lease: ApiLeaseAgreement;
@@ -92,6 +94,13 @@ export default function LeaseDetailModal({ lease, onClose, onUpdated }: Props) {
         }
         footer={
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            {lease.status === 'aktivni' && (
+              <RequestESignButton
+                documentType="tenancy"
+                documentId={lease.id}
+                documentTitle={`Nájemní smlouva — ${lease.contractNumber || lease.id.slice(0, 8)}`}
+              />
+            )}
             {lease.status === 'aktivni' && <Button onClick={() => setShowEdit(true)}>Upravit</Button>}
             <Button onClick={onClose}>Zavrit</Button>
           </div>
@@ -190,6 +199,9 @@ export default function LeaseDetailModal({ lease, onClose, onUpdated }: Props) {
                 {lease.terminationNote && <div style={{ fontSize: '0.875rem', marginTop: 4 }}>{lease.terminationNote}</div>}
               </div>
             )}
+
+            {/* eSign requests */}
+            <ESignRequestsSection documentType="tenancy" documentId={lease.id} />
 
             {/* Terminate */}
             {lease.status === 'aktivni' && !showTerminate && (
