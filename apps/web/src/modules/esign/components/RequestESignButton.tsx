@@ -8,7 +8,7 @@ interface Props {
   documentId: string
   documentTitle: string
   variant?: 'button' | 'inline'
-  size?: 'sm' | 'md'
+  size?: 'sm' | 'default'
 }
 
 export function RequestESignButton({
