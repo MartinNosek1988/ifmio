@@ -436,7 +436,7 @@
   "crm": {
     "title": "CRM",
     "lead": {
-      "create": "Nový lead",
+      "createTitle": "Nový lead",
       "loading": "Načítání...",
       "stages": {
         "new_lead": "Nový",
@@ -496,8 +496,16 @@
       "deleteConfirm": "Opravdu smazat tento lead?",
       "cancel": "Zrušit",
       "save": "Uložit",
-      "create": "Vytvořit",
+      "createCta": "Vytvořit",
       "saving": "Ukládám..."
+    }
+  },
+  "invoice": {
+    "lifecycle": {
+      "created": "Vytvořeno",
+      "submitted": "Odesláno",
+      "approved": "Schváleno",
+      "paid": "Uhrazeno"
     }
   },
   "finance": {

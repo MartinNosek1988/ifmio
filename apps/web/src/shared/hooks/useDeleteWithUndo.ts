@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient, type QueryKey } from '@tanstack/react-query'
 import { useToast } from '../components/toast/Toast'
 
 export function useDeleteWithUndo({
@@ -9,7 +9,7 @@ export function useDeleteWithUndo({
 }: {
   deleteFn: (id: string) => Promise<unknown>
   undoFn?: (id: string) => Promise<unknown>
-  invalidateKey: string[]
+  invalidateKey: QueryKey
   entityName: string
 }) {
   const qc = useQueryClient()

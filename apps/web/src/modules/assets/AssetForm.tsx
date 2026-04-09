@@ -144,7 +144,7 @@ export default function AssetForm({ onClose }: Props) {
           <CurrencyInput
             name="purchaseValue"
             label="Pořizovací hodnota"
-            value={form.purchaseValue ? Number(form.purchaseValue) : null}
+            value={form.purchaseValue != null && form.purchaseValue !== '' ? Number(form.purchaseValue) : null}
             onChange={val => set('purchaseValue', val !== null ? String(val) : '')}
             required={false}
             min={0}

@@ -151,7 +151,7 @@ export default function WorkOrderForm({ onClose }: Props) {
           <CurrencyInput
             name="laborCost"
             label="Náklady práce"
-            value={form.laborCost ? Number(form.laborCost) : null}
+            value={form.laborCost != null && form.laborCost !== '' ? Number(form.laborCost) : null}
             onChange={val => set('laborCost', val !== null ? String(val) : '')}
             required={false}
             min={0}
@@ -159,7 +159,7 @@ export default function WorkOrderForm({ onClose }: Props) {
           <CurrencyInput
             name="materialCost"
             label="Materiál"
-            value={form.materialCost ? Number(form.materialCost) : null}
+            value={form.materialCost != null && form.materialCost !== '' ? Number(form.materialCost) : null}
             onChange={val => set('materialCost', val !== null ? String(val) : '')}
             required={false}
             min={0}

@@ -274,7 +274,7 @@
   "crm": {
     "title": "CRM",
     "lead": {
-      "create": "New lead",
+      "createTitle": "New lead",
       "loading": "Loading...",
       "stages": {
         "new_lead": "New",
@@ -334,8 +334,16 @@
       "deleteConfirm": "Really delete this lead?",
       "cancel": "Cancel",
       "save": "Save",
-      "create": "Create",
+      "createCta": "Create",
       "saving": "Saving..."
+    }
+  },
+  "invoice": {
+    "lifecycle": {
+      "created": "Created",
+      "submitted": "Submitted",
+      "approved": "Approved",
+      "paid": "Paid"
     }
   },
   "language": {

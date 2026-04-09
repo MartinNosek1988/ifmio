@@ -424,6 +424,7 @@ export default function AppShell() {
           <NotificationCenter />
           <div className="user-menu-wrap" ref={userMenuRef}>
             <button
+              type="button"
               className="topbar__avatar"
               data-testid="user-menu"
               title={meData?.name ?? 'Uzivatel'}

@@ -144,7 +144,7 @@ export default function LeaseForm({ lease, onClose }: Props) {
           <CurrencyInput
             name="monthlyRent"
             label="Měsíční nájem"
-            value={form.monthlyRent ? Number(form.monthlyRent) : null}
+            value={form.monthlyRent != null && form.monthlyRent !== '' ? Number(form.monthlyRent) : null}
             onChange={val => set('monthlyRent', val !== null ? String(val) : '')}
             error={errors.monthlyRent}
             min={0}
@@ -153,7 +153,7 @@ export default function LeaseForm({ lease, onClose }: Props) {
             <CurrencyInput
               name="deposit"
               label="Kauce"
-              value={form.deposit ? Number(form.deposit) : null}
+              value={form.deposit != null && form.deposit !== '' ? Number(form.deposit) : null}
               onChange={val => set('deposit', val !== null ? String(val) : '')}
               required={false}
               min={0}

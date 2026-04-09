@@ -141,7 +141,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               <span style={{ flex: 1 }}>{toast.message}</span>
               {toast.action && (
                 <button
-                  onClick={() => { toast.action!.onClick(); remove(toast.id); }}
+                  onClick={async () => { try { await toast.action!.onClick(); } catch (err) { console.error('Toast action failed:', err); } finally { remove(toast.id); } }}
                   style={{
                     background: 'none', border: `1px solid ${color.border}`,
                     color: color.text, padding: '2px 8px', borderRadius: 4,

@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, Suspense, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save, ArrowDownLeft, Trash2 } from 'lucide-react'
 import { Badge, Button } from '../../../shared/components'
@@ -247,6 +248,7 @@ function LineItemsEditor({ lines, onChange, rounding = 0 }: {
 // ─── MAIN PAGE ──────────────────────────────────────────────────
 
 export default function InvoiceReviewPage() {
+  const { t, i18n } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const toast = useToast()
@@ -512,11 +514,11 @@ export default function InvoiceReviewPage() {
       {/* Invoice lifecycle stepper */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 0, margin: '0', padding: '12px 20px', background: 'var(--surface)', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
         {([
-          { label: 'Vytvořeno', done: true, date: invoice.createdAt },
-          { label: 'Odesláno', done: !!invoice.submittedAt, date: invoice.submittedAt },
-          { label: 'Schváleno', done: invoice.approvalStatus === 'approved', date: invoice.approvedAt },
-          { label: 'Uhrazeno', done: invoice.isPaid, date: invoice.paymentDate },
-        ] as const).map((stage, i, arr) => (
+          { label: t('invoice.lifecycle.created'), done: true, date: invoice.createdAt },
+          { label: t('invoice.lifecycle.submitted'), done: !!invoice.submittedAt, date: invoice.submittedAt },
+          { label: t('invoice.lifecycle.approved'), done: invoice.approvalStatus === 'approved', date: invoice.approvedAt },
+          { label: t('invoice.lifecycle.paid'), done: invoice.isPaid, date: invoice.paymentDate },
+        ]).map((stage, i, arr) => (
           <React.Fragment key={stage.label}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 80 }}>
               <div style={{
@@ -533,7 +535,7 @@ export default function InvoiceReviewPage() {
               </div>
               {stage.date && (
                 <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                  {new Date(stage.date).toLocaleDateString('cs-CZ')}
+                  {new Date(stage.date).toLocaleDateString(i18n.language)}
                 </div>
               )}
             </div>
