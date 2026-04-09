@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Modal, Button, FormSection, FormFooter, FormField } from '../../shared/components'
+import { Modal, FormSection, FormFooter, FormField } from '../../shared/components'
 import { massMailingApi, type ApiCampaign } from './api/mass-mailing.api'
 
 interface Props {
@@ -79,7 +79,7 @@ export function MassMailingForm({ open, onClose, onSuccess, editData }: Props) {
   }
 
   const payload = { name, channel, subject, body, recipientType, allProperties }
-  const canProceedStep1 = name.trim() && subject.trim() && body.trim()
+  const canProceedStep1 = !!(name.trim() && subject.trim() && body.trim())
   const canProceedStep2 = !!recipientType
 
   return (
