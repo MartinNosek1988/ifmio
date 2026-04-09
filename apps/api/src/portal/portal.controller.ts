@@ -80,6 +80,18 @@ export class PortalController {
     return this.portalService.getMyKonto(user)
   }
 
+  @Get('my-votings')
+  @ApiOperation({ summary: 'Per rollam hlasování klienta' })
+  getMyVotings(@CurrentUser() user: AuthUser) {
+    return this.portalService.getMyVotings(user)
+  }
+
+  @Get('my-esign')
+  @ApiOperation({ summary: 'Elektronické podpisy klienta' })
+  getMyESignRequests(@CurrentUser() user: AuthUser) {
+    return this.portalService.getMyESignRequests(user)
+  }
+
   // ─── ADMIN: Portal Access Management ────────────────────────
 
   @Post('admin/generate-access')

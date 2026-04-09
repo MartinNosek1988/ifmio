@@ -14,15 +14,22 @@ const DOC_TYPES = [
   { value: 'custom', label: 'Vlastní dokument' },
 ]
 
-interface Props { onClose: () => void; onSuccess: () => void }
+interface Props {
+  onClose: () => void
+  onSuccess: () => void
+  initialDocumentType?: string
+  initialDocumentId?: string
+  initialDocumentTitle?: string
+}
 
-export default function ESignCreateModal({ onClose, onSuccess }: Props) {
+export default function ESignCreateModal({ onClose, onSuccess, initialDocumentType, initialDocumentId, initialDocumentTitle }: Props) {
   const toast = useToast()
-  const [step, setStep] = useState(1)
+  const hasInitial = !!(initialDocumentType && initialDocumentId)
+  const [step, setStep] = useState(hasInitial ? 2 : 1)
   const [form, setForm] = useState({
-    documentType: 'management_contract',
-    documentId: '',
-    documentTitle: '',
+    documentType: initialDocumentType ?? 'management_contract',
+    documentId: initialDocumentId ?? '',
+    documentTitle: initialDocumentTitle ?? '',
     message: '',
     expiresAt: new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10),
   })
@@ -96,6 +103,17 @@ export default function ESignCreateModal({ onClose, onSuccess }: Props) {
             <input id="expiresAt" type="date" value={form.expiresAt} onChange={e => set('expiresAt', e.target.value)} style={inputStyle} />
           </FormField>
         </FormSection>
+      )}
+
+      {step === 2 && hasInitial && (
+        <div style={{ background: 'var(--surface-2, var(--surface))', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: '0.88rem' }}>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>{form.documentTitle}</div>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+            {DOC_TYPES.find(t => t.value === form.documentType)?.label ?? form.documentType}
+            {' · '}
+            Platnost do {form.expiresAt}
+          </div>
+        </div>
       )}
 
       {step === 2 && (

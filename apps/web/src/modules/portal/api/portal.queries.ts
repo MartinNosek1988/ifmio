@@ -45,3 +45,11 @@ export function useMyDocuments() {
 export function useMyKonto() {
   return useQuery({ queryKey: ['portal', 'konto'], queryFn: portalApi.getMyKonto })
 }
+
+export function useMyVotings() {
+  return useQuery({ queryKey: ['portal', 'votings'], queryFn: portalApi.getMyVotings })
+}
+
+export function useMyESignRequests() {
+  return useQuery({ queryKey: ['portal', 'esign'], queryFn: portalApi.getMyESignRequests })
+}

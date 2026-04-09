@@ -2,6 +2,8 @@ import { useRef, useState } from 'react'
 import { Plus, Trash2, FileText, CheckCircle, ShieldCheck, Download, Upload } from 'lucide-react'
 import { Badge, Button } from '../../shared/components'
 import type { BadgeVariant } from '../../shared/components'
+import { RequestESignButton } from '../esign/components/RequestESignButton'
+import { ESignRequestsSection } from '../esign/components/ESignRequestsSection'
 import {
   useProtocolsBySource, useGenerateProtocol,
   useCompleteProtocol, useConfirmProtocol,
@@ -145,6 +147,14 @@ export default function ProtocolPanel({ sourceType, sourceId, protocolType }: Pr
             >
               {confirmMutation.isPending ? 'Potvrzuji...' : 'Potvrdit'}
             </Button>
+          )}
+          {(protocol.status === 'completed' || protocol.status === 'confirmed') && (
+            <RequestESignButton
+              documentType="protocol"
+              documentId={protocol.id}
+              documentTitle={`${PROTOCOL_TYPE_LABEL[protocol.protocolType] ?? 'Protokol'} č. ${protocol.number}`}
+              size="sm"
+            />
           )}
         </div>
       </div>
@@ -317,6 +327,9 @@ export default function ProtocolPanel({ sourceType, sourceId, protocolType }: Pr
           )}
         </div>
       )}
+
+      {/* eSign requests */}
+      <ESignRequestsSection documentType="protocol" documentId={protocol.id} />
 
       {/* PDF & Documents */}
       <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 14, marginBottom: 16 }}>

@@ -309,4 +309,76 @@ export class PortalService {
       totalBalance,
     }
   }
+
+  async getMyVotings(user: AuthUser) {
+    // Find user's partyId
+    const dbUser = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      select: { partyId: true },
+    })
+    if (!dbUser?.partyId) return []
+
+    const ballots = await this.prisma.perRollamBallot.findMany({
+      where: {
+        partyId: dbUser.partyId,
+        voting: { status: 'PUBLISHED' },
+      },
+      include: {
+        voting: {
+          include: {
+            items: { select: { id: true, title: true, description: true } },
+          },
+        },
+        responses: { select: { id: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    return ballots.map(b => ({
+      ballotId: b.id,
+      votingId: b.voting.id,
+      title: b.voting.title,
+      description: b.voting.description,
+      deadline: b.voting.deadline,
+      status: b.voting.status,
+      items: b.voting.items,
+      hasResponded: b.responses.length > 0,
+      accessToken: b.accessToken,
+      createdAt: b.voting.createdAt,
+    }))
+  }
+
+  async getMyESignRequests(user: AuthUser) {
+    const dbUser = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      select: { email: true },
+    })
+    if (!dbUser?.email) return []
+
+    const signatories = await this.prisma.eSignSignatory.findMany({
+      where: {
+        email: dbUser.email,
+        tokenExpiresAt: { gt: new Date() },
+      },
+      include: {
+        request: {
+          select: { id: true, documentTitle: true, documentType: true, status: true, expiresAt: true, createdAt: true },
+        },
+      },
+      orderBy: { tokenExpiresAt: 'desc' },
+    })
+
+    return signatories.map(s => ({
+      signatoryId: s.id,
+      requestId: s.request.id,
+      documentTitle: s.request.documentTitle,
+      documentType: s.request.documentType,
+      requestStatus: s.request.status,
+      signatoryStatus: s.status,
+      expiresAt: s.request.expiresAt,
+      signedAt: s.signedAt,
+      accessToken: s.token,
+      createdAt: s.request.createdAt,
+    }))
+  }
 }

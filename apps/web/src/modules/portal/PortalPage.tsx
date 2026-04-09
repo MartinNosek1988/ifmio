@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../core/auth/auth.store'
-import { useMyUnits, useMyPrescriptions, useMyTickets, useMyKonto } from './api/portal.queries'
-import { Building2, FileText, Headphones, Wallet, Plus, Gauge, FolderOpen } from 'lucide-react'
+import { useMyUnits, useMyPrescriptions, useMyTickets, useMyKonto, useMyVotings, useMyESignRequests } from './api/portal.queries'
+import { Building2, FileText, Headphones, Wallet, Plus, Gauge, FolderOpen, Vote, FileSignature } from 'lucide-react'
 import { LoadingSpinner } from '../../shared/components'
 
 export default function PortalPage() {
@@ -11,6 +11,10 @@ export default function PortalPage() {
   const { data: prescriptions } = useMyPrescriptions()
   const { data: tickets } = useMyTickets()
   const { data: konto } = useMyKonto()
+  const { data: votings } = useMyVotings()
+  const { data: esignReqs } = useMyESignRequests()
+  const pendingVotings = (votings ?? []).filter((v: any) => !v.hasResponded)
+  const pendingESign = (esignReqs ?? []).filter((r: any) => r.signatoryStatus === 'pending' || r.signatoryStatus === 'viewed')
 
   const totalMonthly = (prescriptions ?? []).reduce((s: number, p: any) => s + Number(p.amount ?? 0), 0)
   const openTickets = (tickets ?? []).filter((t: any) => t.status === 'open' || t.status === 'in_progress').length
@@ -83,6 +87,40 @@ export default function PortalPage() {
           <FolderOpen size={15} /> Dokumenty
         </button>
       </div>
+
+      {(pendingVotings.length > 0 || pendingESign.length > 0) && (
+        <div style={{ marginTop: 32 }}>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: 12 }}>Čekající akce</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {pendingVotings.map((v: any) => (
+              <a key={v.ballotId} href={`/portal/voting`} style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px',
+                background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8,
+                textDecoration: 'none', color: 'var(--text)',
+              }}>
+                <Vote size={18} style={{ color: 'var(--primary)' }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 500, fontSize: '0.9rem' }}>{v.title}</div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Hlasování · do {new Date(v.deadline).toLocaleDateString('cs-CZ')}</div>
+                </div>
+              </a>
+            ))}
+            {pendingESign.map((r: any) => (
+              <a key={r.signatoryId} href={r.accessToken ? `/sign/${r.accessToken}` : '/portal/esign'} style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px',
+                background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8,
+                textDecoration: 'none', color: 'var(--text)',
+              }}>
+                <FileSignature size={18} style={{ color: 'var(--primary)' }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 500, fontSize: '0.9rem' }}>{r.documentTitle}</div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Čeká na podpis · do {new Date(r.expiresAt).toLocaleDateString('cs-CZ')}</div>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

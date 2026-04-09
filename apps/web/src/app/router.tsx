@@ -74,7 +74,11 @@ const CrmBuildingDetailPage = lazy(() => import('../modules/crm/CrmBuildingDetai
 const CrmOrganizationsPage = lazy(() => import('../modules/crm/CrmOrganizationsPage'));
 const CrmMapPage = lazy(() => import('../modules/crm/CrmMapPage'));
 const CrmImportPage = lazy(() => import('../modules/crm/CrmImportPage'));
+const CrmPipelinePage = lazy(() => import('../modules/crm/CrmPipelinePage'));
+const CrmKbCandidatesPage = lazy(() => import('../modules/crm/CrmKbCandidatesPage'));
 const PersonProfilePage = lazy(() => import('../modules/registry/PersonProfilePage'));
+const MassMailingPage = lazy(() => import('../modules/mass-mailing/MassMailingPage'));
+const MassMailingDetailPage = lazy(() => import('../modules/mass-mailing/MassMailingDetailPage'));
 const ESignListPage = lazy(() => import('../modules/esign/ESignListPage'));
 const SignPage = lazy(() => import('../modules/esign/SignPage'));
 const OrganizationProfilePage = lazy(() => import('../modules/registry/OrganizationProfilePage'));
@@ -105,6 +109,8 @@ const MyTicketsPage = lazy(() => import('../modules/portal/MyTicketsPage'));
 const MyMetersPage = lazy(() => import('../modules/portal/MyMetersPage'));
 const MyDocumentsPage = lazy(() => import('../modules/portal/MyDocumentsPage'));
 const MyKontoPage = lazy(() => import('../modules/portal/MyKontoPage'));
+const PortalVotingPage = lazy(() => import('../modules/portal/PortalVotingPage'));
+const PortalESignPage = lazy(() => import('../modules/portal/PortalESignPage'));
 
 function withBoundary(name: string, Component: React.ComponentType) {
   return (
@@ -189,6 +195,8 @@ export const router = createBrowserRouter([
       { path: 'portal/meters', element: withBoundary('Měřiče', MyMetersPage) },
       { path: 'portal/documents', element: withBoundary('Dokumenty', MyDocumentsPage) },
       { path: 'portal/konto', element: withBoundary('Konto', MyKontoPage) },
+      { path: 'portal/voting', element: withBoundary('Hlasování', PortalVotingPage) },
+      { path: 'portal/esign', element: withBoundary('Podpisy', PortalESignPage) },
       { path: 'properties', element: withBoundary('Nemovitosti', PropertiesPage) },
       { path: 'properties/new', element: withBoundary('Nová nemovitost', PropertyFormPage) },
       { path: 'properties/:id/edit', element: withBoundary('Upravit nemovitost', PropertyFormPage) },
@@ -226,6 +234,8 @@ export const router = createBrowserRouter([
       { path: 'parties/:id', element: withBoundary('Detail subjektu', PartyDetailPage) },
       { path: 'calendar', element: withBoundary('Kalendář', CalendarPage) },
       { path: 'communication', element: withBoundary('Komunikace', CommunicationPage) },
+      { path: 'mass-mailing', element: withBoundary('Hromadna posta', MassMailingPage) },
+      { path: 'mass-mailing/:id', element: withBoundary('Detail kampane', MassMailingDetailPage) },
       { path: 'reporting', element: withBoundary('Reporting', ReportingPage) },
       { path: 'reporting/operations', element: withBoundary('Provozní reporty', OperationalReportsPage) },
       { path: 'mio/insights', element: withBoundary('Mio Insights', MioInsightsPage) },
@@ -253,6 +263,8 @@ export const router = createBrowserRouter([
       { path: 'crm/organizations', element: withBoundary('CRM Organizace', CrmOrganizationsPage) },
       { path: 'crm/import', element: withBoundary('CRM Import', CrmImportPage) },
       { path: 'crm/map', element: withBoundary('CRM Mapa', CrmMapPage) },
+      { path: 'crm/pipeline', element: withBoundary('CRM Pipeline', CrmPipelinePage) },
+      { path: 'crm/kb-candidates', element: withBoundary('KB Kandidati', CrmKbCandidatesPage) },
       { path: 'crm/registry/persons/:id', element: withBoundary('Profil osoby', PersonProfilePage) },
       { path: 'crm/registry/organizations/:ico', element: withBoundary('Profil organizace', OrganizationProfilePage) },
     ],

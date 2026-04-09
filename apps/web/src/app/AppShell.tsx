@@ -7,8 +7,8 @@ import {
   LayoutDashboard, Building2, Users, FolderOpen, Calendar,
   Wrench, Headphones, Box, Gauge, FileText, UserCheck,
   Wallet, AlertTriangle, TrendingUp, ShoppingCart,
-  MessageSquare, Mail, Settings, BarChart3, Database, Download, Landmark, MapPinned,
-  ClipboardList, ClipboardCheck, ScrollText, UsersRound, FileCheck2, Columns3,
+  MessageSquare, Mail, Send, Settings, BarChart3, Database, Download, Landmark, MapPinned,
+  ClipboardList, ClipboardCheck, ScrollText, UsersRound, FileCheck2, Columns3, Vote, PenLine,
   User as UserIcon, LogOut, Shield, Menu, X, ChevronDown, Sparkles,
 } from 'lucide-react';
 import { LoadingSpinner } from '../shared/components';
@@ -97,6 +97,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { to: '/communication', label: 'Komunikace', icon: <MessageSquare size={17} /> },
       { to: '/communication?tab=mail', label: 'Pošta', icon: <Mail size={17} /> },
+      { to: '/mass-mailing', label: 'Hromadna posta', icon: <Send size={17} />, roles: ['fm'] },
     ],
   },
   {
@@ -123,6 +124,8 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/crm/organizations', label: 'Organizace', icon: <Landmark size={17} /> },
       { to: '/crm/map', label: 'Mapa', icon: <MapPinned size={17} /> },
       { to: '/crm/import', label: 'Import dat', icon: <Download size={17} /> },
+      { to: '/crm/pipeline', label: 'Pipeline', icon: <TrendingUp size={17} /> },
+      { to: '/crm/kb-candidates', label: 'KB kandidati', icon: <Database size={17} /> },
     ],
   },
   {
@@ -137,6 +140,8 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/portal/meters', label: 'Měřiče', icon: <Gauge size={17} /> },
       { to: '/portal/documents', label: 'Dokumenty', icon: <FolderOpen size={17} /> },
       { to: '/portal/konto', label: 'Konto', icon: <Wallet size={17} /> },
+      { to: '/portal/voting', label: 'Hlasování', icon: <Vote size={17} /> },
+      { to: '/portal/esign', label: 'Podpisy', icon: <PenLine size={17} /> },
     ],
   },
 ];
@@ -180,7 +185,12 @@ const PAGE_TITLES: Record<string, string> = {
   '/portal/meters': 'Měřiče',
   '/portal/documents': 'Dokumenty',
   '/portal/konto': 'Konto',
+  '/portal/voting': 'Hlasování',
+  '/portal/esign': 'Podpisy',
+  '/crm/pipeline': 'CRM Pipeline',
+  '/crm/kb-candidates': 'KB Kandidati',
   '/kanban': 'Pipeline',
+  '/mass-mailing': 'Hromadna posta',
 };
 
 function getPageTitle(pathname: string): string {

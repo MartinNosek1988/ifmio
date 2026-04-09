@@ -19,4 +19,8 @@ export const portalApi = {
     apiClient.get('/portal/my-documents').then(r => r.data),
   getMyKonto: () =>
     apiClient.get('/portal/my-konto').then(r => r.data),
+  getMyVotings: () =>
+    apiClient.get('/portal/my-votings').then(r => r.data),
+  getMyESignRequests: () =>
+    apiClient.get('/portal/my-esign').then(r => r.data),
 }
