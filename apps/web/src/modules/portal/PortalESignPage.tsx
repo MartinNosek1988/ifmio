@@ -6,7 +6,7 @@ const STATUS_CONFIG: Record<string, { label: string; variant: string }> = {
   pending: { label: 'Čeká na podpis', variant: 'yellow' },
   viewed: { label: 'Zobrazeno', variant: 'blue' },
   signed: { label: 'Podepsáno', variant: 'green' },
-  rejected: { label: 'Odmítnuto', variant: 'red' },
+  declined: { label: 'Odmítnuto', variant: 'red' },
   cancelled: { label: 'Zrušeno', variant: 'muted' },
 }
 
@@ -16,7 +16,7 @@ export default function PortalESignPage() {
   if (isLoading) return <LoadingSpinner />
 
   const pending = requests.filter((r: any) => r.signatoryStatus === 'pending' || r.signatoryStatus === 'viewed')
-  const completed = requests.filter((r: any) => r.signatoryStatus === 'signed' || r.signatoryStatus === 'rejected')
+  const completed = requests.filter((r: any) => r.signatoryStatus === 'signed' || r.signatoryStatus === 'declined')
 
   return (
     <div data-testid="portal-esign-page">

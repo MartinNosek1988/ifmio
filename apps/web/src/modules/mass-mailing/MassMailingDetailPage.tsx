@@ -36,11 +36,12 @@ export default function MassMailingDetailPage() {
   const recipientParams: Record<string, any> = {}
   if (recipientStatusFilter) recipientParams.status = recipientStatusFilter
 
-  const { data: recipients = [] } = useQuery<ApiCampaignRecipient[]>({
+  const { data: recipientsResponse } = useQuery({
     queryKey: ['mass-mailing', id, 'recipients', recipientParams],
     queryFn: () => massMailingApi.recipients(id!, recipientParams),
     enabled: !!id,
   })
+  const recipients: ApiCampaignRecipient[] = recipientsResponse?.items ?? recipientsResponse ?? []
 
   const sendMutation = useMutation({
     mutationFn: () => massMailingApi.send(id!),

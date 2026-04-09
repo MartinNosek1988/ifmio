@@ -39,10 +39,13 @@ export default function MassMailingPage() {
   if (statusFilter) params.status = statusFilter
   if (channelFilter) params.channel = channelFilter
 
-  const { data: campaigns = [], isLoading, refetch } = useQuery({
+  const { data: listResponse, isLoading } = useQuery({
     queryKey: ['mass-mailing', 'list', params],
     queryFn: () => massMailingApi.list(params),
   })
+  const campaigns = (listResponse?.items ?? listResponse ?? []).filter((c: any) =>
+    channelFilter ? c.channel === channelFilter : true
+  )
 
   const { data: stats } = useQuery({
     queryKey: ['mass-mailing', 'stats'],
@@ -111,7 +114,7 @@ export default function MassMailingPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
         <KpiCard
           label="Kampani celkem"
-          value={String(stats?.totalCampaigns ?? 0)}
+          value={String(stats?.total ?? 0)}
           color="var(--accent-blue)"
         />
         <KpiCard
@@ -181,7 +184,7 @@ export default function MassMailingPage() {
       <MassMailingForm
         open={showForm}
         onClose={() => setShowForm(false)}
-        onSuccess={() => { setShowForm(false); refetch() }}
+        onSuccess={() => setShowForm(false)}
       />
     </div>
   )

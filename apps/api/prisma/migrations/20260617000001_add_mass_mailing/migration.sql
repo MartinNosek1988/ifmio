@@ -64,3 +64,23 @@ ALTER TABLE "campaign_recipients" ADD CONSTRAINT "campaign_recipients_campaignId
 -- RLS Policies
 ALTER TABLE "mass_mailing_campaigns" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "campaign_recipients" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "tenant_isolation_mass_mailing_campaigns" ON "mass_mailing_campaigns"
+    USING ("tenantId" = current_setting('app.current_tenant_id', true))
+    WITH CHECK ("tenantId" = current_setting('app.current_tenant_id', true));
+
+CREATE POLICY "tenant_isolation_campaign_recipients" ON "campaign_recipients"
+    USING (
+        EXISTS (
+            SELECT 1 FROM "mass_mailing_campaigns" mmc
+            WHERE mmc."id" = "campaign_recipients"."campaignId"
+              AND mmc."tenantId" = current_setting('app.current_tenant_id', true)
+        )
+    )
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM "mass_mailing_campaigns" mmc
+            WHERE mmc."id" = "campaign_recipients"."campaignId"
+              AND mmc."tenantId" = current_setting('app.current_tenant_id', true)
+        )
+    );

@@ -40,16 +40,16 @@ export default function CrmKbCandidatesPage() {
   const [filterCity, setFilterCity] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
 
-  const params: Record<string, string> = {}
-  if (filterOrgType) params.orgType = filterOrgType
-  if (filterCity) params.city = filterCity
-
   const { data, isLoading } = useQuery({
-    queryKey: ['crm-pipeline', 'kb-candidates', params],
-    queryFn: () => crmPipelineApi.kbCandidates(params),
+    queryKey: ['crm-pipeline', 'kb-candidates'],
+    queryFn: () => crmPipelineApi.kbCandidates(),
   })
 
-  const candidates: KbCandidate[] = data?.data ?? []
+  const candidates: KbCandidate[] = (data?.items ?? data?.data ?? data ?? []).filter((c: any) => {
+    if (filterOrgType && c.orgType !== filterOrgType) return false
+    if (filterCity && !c.city?.toLowerCase().includes(filterCity.toLowerCase())) return false
+    return true
+  })
 
   const importMut = useMutation({
     mutationFn: () => crmPipelineApi.importFromKb(Array.from(selected)),

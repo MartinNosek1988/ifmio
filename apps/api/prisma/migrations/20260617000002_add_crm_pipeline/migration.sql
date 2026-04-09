@@ -64,5 +64,6 @@ ALTER TABLE "crm_activities" ADD CONSTRAINT "crm_activities_leadId_fkey" FOREIGN
 ALTER TABLE "crm_leads" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "crm_activities" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "crm_leads_all" ON "crm_leads" USING (true) WITH CHECK (true);
-CREATE POLICY "crm_activities_all" ON "crm_activities" USING (true) WITH CHECK (true);
+-- Deny-all for non-service roles; service_role bypasses RLS automatically
+CREATE POLICY "crm_leads_all" ON "crm_leads" USING (false) WITH CHECK (false);
+CREATE POLICY "crm_activities_all" ON "crm_activities" USING (false) WITH CHECK (false);

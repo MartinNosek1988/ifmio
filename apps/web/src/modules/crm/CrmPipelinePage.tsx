@@ -174,17 +174,24 @@ function KanbanView({ onCardClick }: { onCardClick: (id: string) => void }) {
 
   if (statsLoading || kanbanLoading) return <LoadingSpinner />
 
-  const columns: KanbanColumn[] = kanbanData?.columns ?? []
+  // Transform kanban response (array of { stage, leads, count, totalMrr }) to KanbanColumn[]
+  const columns: KanbanColumn[] = Array.isArray(kanbanData)
+    ? kanbanData.map((g: any) => ({ stage: g.stage, leads: g.leads ?? [], count: g.count ?? 0, totalMrr: g.totalMrr ?? 0 }))
+    : kanbanData?.columns ?? []
+
+  // Extract stats from byStage array
+  const getStageCount = (stage: string) => (stats?.byStage ?? []).find((s: any) => s.stage === stage)?.count ?? 0
+  const totalLeads = (stats?.byStage ?? []).reduce((sum: number, s: any) => sum + (s.count ?? 0), 0)
 
   return (
     <>
       {/* KPI row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-        <KpiCard label="Celkem leadu" value={String(stats?.total ?? 0)} color="var(--accent-blue)" />
-        <KpiCard label="Demo naplanovane" value={String(stats?.demoScheduled ?? 0)} color="#a855f7" />
-        <KpiCard label="V trialu" value={String(stats?.inTrial ?? 0)} color="#eab308" />
-        <KpiCard label="Zakaznici" value={String(stats?.won ?? 0)} color="#22c55e" />
-        <KpiCard label="Pipeline MRR" value={formatKc(stats?.pipelineMrr ?? 0)} color="#f97316" />
+        <KpiCard label="Celkem leadu" value={String(totalLeads)} color="var(--accent-blue)" />
+        <KpiCard label="Demo naplanovane" value={String(getStageCount('demo_scheduled'))} color="#a855f7" />
+        <KpiCard label="V trialu" value={String(getStageCount('trial'))} color="#eab308" />
+        <KpiCard label="Zakaznici" value={String(stats?.wonCount ?? 0)} color="#22c55e" />
+        <KpiCard label="Pipeline MRR" value={formatKc(stats?.totalPipelineMrr ?? 0)} color="#f97316" />
       </div>
 
       {/* Kanban columns */}
