@@ -1,4 +1,5 @@
 import { apiClient } from '../../core/api/client';
+import type { AresFullData } from '@ifmio/shared-types';
 
 export type PropertyLegalMode = 'SVJ' | 'BD' | 'RENTAL' | 'OWNERSHIP' | 'OTHER';
 export type AccountingSystemType = 'POHODA' | 'MONEY_S3' | 'PREMIER' | 'VARIO' | 'NONE';
@@ -33,7 +34,7 @@ export interface ApiProperty {
   latitude?: number | null;
   longitude?: number | null;
   buildingId?: string | null;
-  aresData?: Record<string, unknown> | null;
+  aresData?: AresFullData | null;
   enrichedAt?: string | null;
   createdAt: string;
   updatedAt: string;

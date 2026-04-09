@@ -13,7 +13,7 @@ const NO_TENANT_MODELS = new Set([
   'UserPropertyAssignment', 'Unit', 'PrescriptionItem',
   'LedgerEntry', 'HelpdeskItem', 'HelpdeskProtocol', 'ProtocolLine',
   'DocumentTag', 'DocumentLink', 'MioJobRunLog', 'MioWebhookDeliveryLog',
-  'MioWebhookOutbox', 'WorkOrderComment', 'MeterReading',
+  'MioWebhookOutbox', 'WorkOrderComment', 'MeterReading', 'PurchaseOrderItem',
   'AssetFieldCheckSignal', 'SettlementCost', 'SettlementItem', 'UserFeature',
   'RevokedToken', 'LoginRiskLog', 'UnitGroupMembership', 'InvoiceCostAllocation',
 ]);

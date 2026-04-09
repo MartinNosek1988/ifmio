@@ -70,7 +70,7 @@ const CACHE_MAX_SIZE = 500;
 export class AresService {
   private readonly logger = new Logger(AresService.name);
   private readonly cache = new Map<string, { data: AresSubject | null; ts: number }>();
-  private lastRequestTime = 0;
+  private rateLimitQueue: Promise<void> = Promise.resolve();
 
   /** Validate IČO: must be 8 digits and pass checksum (weights [8,7,6,5,4,3,2], mod 11). */
   validateIco(ico: string): boolean {
@@ -301,7 +301,7 @@ export class AresService {
           // datoveSchranky[0].identifikatorDs
           const datoveSchranky = rosZaznam.datoveSchranky as Array<Record<string, unknown>> | undefined;
           if (datoveSchranky?.[0]?.identifikatorDs) {
-            result.datovaSChrana = String(datoveSchranky[0].identifikatorDs);
+            result.datovaSchranka = String(datoveSchranky[0].identifikatorDs);
           }
           // stavSubjektu[0].stavSubjektu
           const stavSubjektu = rosZaznam.stavSubjektu as Array<Record<string, unknown>> | undefined;
@@ -348,13 +348,11 @@ export class AresService {
     }
   }
 
-  private async rateLimit(): Promise<void> {
-    const now = Date.now();
-    const elapsed = now - this.lastRequestTime;
-    if (elapsed < RATE_LIMIT_INTERVAL_MS) {
-      await new Promise((r) => setTimeout(r, RATE_LIMIT_INTERVAL_MS - elapsed));
-    }
-    this.lastRequestTime = Date.now();
+  private rateLimit(): Promise<void> {
+    this.rateLimitQueue = this.rateLimitQueue.then(
+      () => new Promise((r) => setTimeout(r, RATE_LIMIT_INTERVAL_MS)),
+    );
+    return this.rateLimitQueue;
   }
 
   // ─── Legacy mapSubject (used by findByIco / searchByName) ─

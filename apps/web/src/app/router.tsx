@@ -90,6 +90,8 @@ const PublicBallotPage = lazy(() => import('../modules/assemblies/per-rollam/Pub
 const LiveDashboardPage = lazy(() => import('../modules/assemblies/live/LiveDashboardPage'));
 const PartiesPage = lazy(() => import('../modules/parties/PartiesPage'));
 const PartyDetailPage = lazy(() => import('../modules/parties/PartyDetailPage'));
+const PurchaseOrdersPage = lazy(() => import('../modules/purchase-orders/PurchaseOrdersPage'));
+const PurchaseOrderDetailPage = lazy(() => import('../modules/purchase-orders/PurchaseOrderDetailPage'));
 const SettlementPage = lazy(() => import('../modules/settlement/SettlementPage'));
 const KanbanPage = lazy(() => import('../modules/kanban/KanbanPage'));
 const TermsPage = lazy(() => import('../modules/legal/TermsPage'));
@@ -201,6 +203,8 @@ export const router = createBrowserRouter([
       { path: 'principals/:principalId', element: withBoundary('Detail klienta', PrincipalDetailPage) },
       { path: 'finance', element: withBoundary('Finance', FinancePage) },
       { path: 'finance/invoices/:id/review', element: withBoundary('Detail dokladu', InvoiceReviewPage) },
+      { path: 'purchase-orders', element: withBoundary('Objednávky', PurchaseOrdersPage) },
+      { path: 'purchase-orders/:id', element: withBoundary('Detail objednávky', PurchaseOrderDetailPage) },
       { path: 'settlements', element: withBoundary('Vyúčtování', SettlementPage) },
       { path: 'kanban', element: withBoundary('Pipeline', KanbanPage) },
       { path: 'workorders', element: withBoundary('Pracovní úkoly', WorkOrdersPage) },

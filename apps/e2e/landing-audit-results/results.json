@@ -1,0 +1,292 @@
+[
+  {
+    "url": "/cs/",
+    "title": "Správa nemovitostí a FM | ifmio",
+    "h1": "Správa nemovitostí bez papírování díky AI",
+    "textLength": 5129,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/cenik/",
+    "title": "Ceník | ifmio",
+    "h1": "Ceník ifmio",
+    "textLength": 2689,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_cenik.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/demo/",
+    "title": "Vyzkoušet demo | ifmio",
+    "h1": "Podívejte se na ifmio v akci",
+    "textLength": 995,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_demo.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/kontakt/",
+    "title": "Kontakt | ifmio",
+    "h1": "Kontaktujte nás",
+    "textLength": 753,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_kontakt.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/o-nas/",
+    "title": "O nás | ifmio",
+    "h1": "O ifmio",
+    "textLength": 899,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_o-nas.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/kariera/",
+    "title": "Kariéra | ifmio",
+    "h1": "Kariéra v ifmio",
+    "textLength": 611,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_kariera.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/blog/",
+    "title": "Blog | ifmio",
+    "h1": "Blog",
+    "textLength": 546,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_blog.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/pravni-dokumenty/",
+    "title": "Právní dokumenty | ifmio",
+    "h1": "Právní dokumenty",
+    "textLength": 757,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_pravni-dokumenty.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/bezpecnost/",
+    "title": "Bezpečnost & Soukromí | ifmio",
+    "h1": "Bezpečnost & soukromí jsou součástí produktu",
+    "textLength": 4744,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_bezpecnost.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/reseni/svj/",
+    "title": "ifmio pro společenství vlastníků — Řešení | ifmio",
+    "h1": "ifmio pro společenství vlastníků",
+    "textLength": 1173,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_reseni_svj.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/reseni/spravce/",
+    "title": "ifmio pro správce nemovitostí — Řešení | ifmio",
+    "h1": "ifmio pro správce nemovitostí",
+    "textLength": 1215,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_reseni_spravce.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/reseni/facility-management/",
+    "title": "ifmio pro facility management — Řešení | ifmio",
+    "h1": "ifmio pro facility management",
+    "textLength": 1104,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_reseni_facility-management.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/reseni/udrzba/",
+    "title": "ifmio pro údržbu a techniky — Řešení | ifmio",
+    "h1": "ifmio pro údržbu a techniky",
+    "textLength": 1071,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_reseni_udrzba.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/reseni/investori/",
+    "title": "ifmio pro investory do nemovitostí — Řešení | ifmio",
+    "h1": "ifmio pro investory do nemovitostí",
+    "textLength": 1090,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_reseni_investori.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/platforma/evidence/",
+    "title": "Evidence nemovitostí — Platforma | ifmio",
+    "h1": "Evidence nemovitostí",
+    "textLength": 736,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_platforma_evidence.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/platforma/finance/",
+    "title": "Finance & doklady — Platforma | ifmio",
+    "h1": "Finance & doklady",
+    "textLength": 695,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_platforma_finance.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/platforma/predpisy/",
+    "title": "Předpisy plateb — Platforma | ifmio",
+    "h1": "Předpisy plateb",
+    "textLength": 676,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_platforma_predpisy.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/platforma/konto/",
+    "title": "Konto vlastníků — Platforma | ifmio",
+    "h1": "Konto vlastníků",
+    "textLength": 674,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_platforma_konto.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/platforma/revize/",
+    "title": "Revize & TZB — Platforma | ifmio",
+    "h1": "Revize & TZB",
+    "textLength": 674,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_platforma_revize.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/platforma/pracovni-prikazy/",
+    "title": "Pracovní příkazy — Platforma | ifmio",
+    "h1": "Pracovní příkazy",
+    "textLength": 686,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_platforma_pracovni-prikazy.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/platforma/komunikace/",
+    "title": "Komunikace — Platforma | ifmio",
+    "h1": "Komunikace",
+    "textLength": 682,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_platforma_komunikace.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/platforma/meridla/",
+    "title": "Měřidla & odečty — Platforma | ifmio",
+    "h1": "Měřidla & odečty",
+    "textLength": 645,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_platforma_meridla.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/platforma/vyuctovani/",
+    "title": "Vyúčtování — Platforma | ifmio",
+    "h1": "Vyúčtování",
+    "textLength": 639,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_platforma_vyuctovani.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/platforma/mio-ai/",
+    "title": "Mio AI Asistent — Platforma | ifmio",
+    "h1": "Mio AI Asistent",
+    "textLength": 697,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_platforma_mio-ai.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/platforma/portal/",
+    "title": "Portál vlastníků — Platforma | ifmio",
+    "h1": "Portál vlastníků",
+    "textLength": 674,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_platforma_portal.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/platforma/reporting/",
+    "title": "Reporting — Platforma | ifmio",
+    "h1": "Reporting",
+    "textLength": 670,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_platforma_reporting.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/platforma/shromazdeni/",
+    "title": "Shromáždění SVJ — Platforma | ifmio",
+    "h1": "Shromáždění SVJ",
+    "textLength": 655,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_platforma_shromazdeni.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/platforma/mobilni-aplikace/",
+    "title": "Mobilní aplikace — Platforma | ifmio",
+    "h1": "Mobilní aplikace",
+    "textLength": 667,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_platforma_mobilni-aplikace.png",
+    "verdict": "OK"
+  },
+  {
+    "url": "/cs/platforma/banka/",
+    "title": "Bankovní napojení — Platforma | ifmio",
+    "h1": "Bankovní napojení",
+    "textLength": 688,
+    "hasContent": true,
+    "hasNoindex": false,
+    "screenshot": "C:\\projekty\\ifmio\\apps\\e2e\\landing-audit-results\\cs_platforma_banka.png",
+    "verdict": "OK"
+  }
+]

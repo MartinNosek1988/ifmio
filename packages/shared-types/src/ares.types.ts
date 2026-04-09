@@ -32,7 +32,7 @@ export interface AresFullData {
   };
 
   // Ze /ekonomicke-subjekty-ros endpointu
-  datovaSChrana?: string;  // ID datové schránky ze zdroje ROS
+  datovaSchranka?: string;  // ID datové schránky ze zdroje ROS
   stavRos?: string;        // "AKTIVNI" / "ZANIKLÝ" / atd.
 
   fetchedAt: string; // ISO
