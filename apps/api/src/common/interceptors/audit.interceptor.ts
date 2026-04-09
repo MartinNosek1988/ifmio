@@ -86,6 +86,13 @@ const AUDIT_FIELDS: Record<string, string[]> = {
   ProtocolLine: [
     'id', 'protocolId', 'lineType', 'name', 'unit', 'quantity', 'description',
   ],
+  purchaseOrder: [
+    'id', 'propertyId', 'number', 'supplierName', 'supplierIco', 'supplierEmail',
+    'sourceType', 'sourceId', 'description', 'amountBase', 'vatRate',
+    'vatAmount', 'amountTotal', 'currency', 'status', 'matchStatus',
+    'deliveryDate', 'validUntil', 'approvedBy', 'approvedAt', 'sentAt',
+    'cancelledAt', 'cancelReason',
+  ],
 };
 
 /**
@@ -119,6 +126,7 @@ export class AuditInterceptor implements NestInterceptor {
       RevisionEvent: this.prisma.revisionEvent as unknown as PrismaModel,
       Protocol: this.prisma.protocol as unknown as PrismaModel,
       workOrder: this.prisma.workOrder as unknown as PrismaModel,
+      purchaseOrder: this.prisma.purchaseOrder as unknown as PrismaModel,
     };
   }
 
