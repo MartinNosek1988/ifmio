@@ -55,7 +55,7 @@ export default function PurchaseOrdersPage() {
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['purchase-orders', statusFilter, matchFilter, search],
     queryFn: () => purchaseOrdersApi.list({
       ...(statusFilter ? { status: statusFilter } : {}),
