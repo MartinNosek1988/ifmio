@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import {
   Phone, Mail, Users, Monitor, FileText, ArrowRight, Trash2,
 } from 'lucide-react'
@@ -12,31 +13,6 @@ import type { CrmLead, CrmActivity } from './api/crm-pipeline.api'
 
 // ── Constants ────────────────────────────────────
 
-const STAGE_OPTIONS = [
-  { value: 'new_lead', label: 'Novy' },
-  { value: 'contacted', label: 'Kontaktovan' },
-  { value: 'demo_scheduled', label: 'Demo plan.' },
-  { value: 'demo_done', label: 'Demo OK' },
-  { value: 'trial', label: 'Trial' },
-  { value: 'negotiation', label: 'Jednani' },
-  { value: 'won', label: 'Zakaznik' },
-  { value: 'lost', label: 'Prohrane' },
-  { value: 'not_interested', label: 'Nezajem' },
-]
-
-const LEAD_TYPE_OPTIONS = [
-  { value: 'property_manager', label: 'Spravce' },
-  { value: 'svj_direct', label: 'SVJ' },
-  { value: 'bd_direct', label: 'BD' },
-  { value: 'other', label: 'Jiny' },
-]
-
-const PRIORITY_OPTIONS = [
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-]
-
 const ACTIVITY_TYPES = ['call', 'email', 'meeting', 'demo', 'note', 'stage_change'] as const
 
 const ACTIVITY_ICONS: Record<string, React.ReactNode> = {
@@ -46,15 +22,6 @@ const ACTIVITY_ICONS: Record<string, React.ReactNode> = {
   demo: <Monitor size={14} />,
   note: <FileText size={14} />,
   stage_change: <ArrowRight size={14} />,
-}
-
-const ACTIVITY_LABELS: Record<string, string> = {
-  call: 'Hovor',
-  email: 'Email',
-  meeting: 'Schuzka',
-  demo: 'Demo',
-  note: 'Poznamka',
-  stage_change: 'Zmena stage',
 }
 
 // ── Styles ───────────────────────────────────────
@@ -101,8 +68,43 @@ interface Props {
 // ── Component ────────────────────────────────────
 
 export default function CrmLeadModal({ leadId, onClose, onSaved }: Props) {
+  const { t } = useTranslation()
   const qc = useQueryClient()
   const isEdit = !!leadId
+
+  const STAGE_OPTIONS = [
+    { value: 'new_lead', label: t('crm.lead.stages.new_lead') },
+    { value: 'contacted', label: t('crm.lead.stages.contacted') },
+    { value: 'demo_scheduled', label: t('crm.lead.stages.demo_scheduled') },
+    { value: 'demo_done', label: t('crm.lead.stages.demo_done') },
+    { value: 'trial', label: t('crm.lead.stages.trial') },
+    { value: 'negotiation', label: t('crm.lead.stages.negotiation') },
+    { value: 'won', label: t('crm.lead.stages.won') },
+    { value: 'lost', label: t('crm.lead.stages.lost') },
+    { value: 'not_interested', label: t('crm.lead.stages.not_interested') },
+  ]
+
+  const LEAD_TYPE_OPTIONS = [
+    { value: 'property_manager', label: t('crm.lead.leadTypes.property_manager') },
+    { value: 'svj_direct', label: t('crm.lead.leadTypes.svj_direct') },
+    { value: 'bd_direct', label: t('crm.lead.leadTypes.bd_direct') },
+    { value: 'other', label: t('crm.lead.leadTypes.other') },
+  ]
+
+  const PRIORITY_OPTIONS = [
+    { value: 'low', label: t('crm.lead.priorities.low') },
+    { value: 'medium', label: t('crm.lead.priorities.medium') },
+    { value: 'high', label: t('crm.lead.priorities.high') },
+  ]
+
+  const ACTIVITY_LABELS: Record<string, string> = {
+    call: t('crm.lead.activityTypes.call'),
+    email: t('crm.lead.activityTypes.email'),
+    meeting: t('crm.lead.activityTypes.meeting'),
+    demo: t('crm.lead.activityTypes.demo'),
+    note: t('crm.lead.activityTypes.note'),
+    stage_change: t('crm.lead.activityTypes.stage_change'),
+  }
 
   const { data: lead, isLoading } = useQuery<CrmLead>({
     queryKey: ['crm-pipeline', 'detail', leadId],
@@ -203,7 +205,7 @@ export default function CrmLeadModal({ leadId, onClose, onSaved }: Props) {
 
   if (isEdit && isLoading) {
     return (
-      <Modal open onClose={onClose} title="Nacitani..." extraWide>
+      <Modal open onClose={onClose} title={t('crm.lead.loading')} extraWide>
         <LoadingSpinner />
       </Modal>
     )
@@ -218,7 +220,7 @@ export default function CrmLeadModal({ leadId, onClose, onSaved }: Props) {
     <Modal
       open
       onClose={onClose}
-      title={isEdit ? lead?.companyName ?? 'Lead' : 'Novy lead'}
+      title={isEdit ? lead?.companyName ?? 'Lead' : t('crm.lead.create')}
       subtitle={isEdit ? `Stage: ${STAGE_OPTIONS.find((s) => s.value === lead?.stage)?.label ?? lead?.stage}` : undefined}
       extraWide
       footer={
@@ -229,24 +231,24 @@ export default function CrmLeadModal({ leadId, onClose, onSaved }: Props) {
                 className="btn btn--sm"
                 style={{ color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: 4 }}
                 onClick={() => {
-                  if (confirm('Opravdu smazat tento lead?')) deleteMut.mutate()
+                  if (confirm(t('crm.lead.deleteConfirm'))) deleteMut.mutate()
                 }}
                 disabled={deleteMut.isPending}
               >
-                <Trash2 size={14} /> Smazat
+                <Trash2 size={14} /> {t('crm.lead.delete')}
               </button>
             )}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn--sm" onClick={onClose}>
-              Zrusit
+              {t('crm.lead.cancel')}
             </button>
             <button
               className="btn btn--primary btn--sm"
               onClick={() => saveMut.mutate()}
               disabled={saveMut.isPending || !form.companyName}
             >
-              {saveMut.isPending ? 'Ukladam...' : isEdit ? 'Ulozit' : 'Vytvorit'}
+              {saveMut.isPending ? t('crm.lead.saving') : isEdit ? t('crm.lead.save') : t('crm.lead.create')}
             </button>
           </div>
         </div>
@@ -255,7 +257,7 @@ export default function CrmLeadModal({ leadId, onClose, onSaved }: Props) {
       <div style={panelStyle}>
         {/* Left panel — Lead info */}
         <div style={leftPanel}>
-          <FormField label="Nazev firmy" name="companyName">
+          <FormField label={t('crm.lead.fields.companyName')} name="companyName">
             <input
               id="companyName"
               style={inputStyle}
@@ -263,7 +265,7 @@ export default function CrmLeadModal({ leadId, onClose, onSaved }: Props) {
               onChange={(e) => set('companyName', e.target.value)}
             />
           </FormField>
-          <FormField label="ICO" name="ico" required={false}>
+          <FormField label={t('crm.lead.fields.ico')} name="ico" required={false}>
             <input
               id="ico"
               style={inputStyle}
@@ -271,7 +273,7 @@ export default function CrmLeadModal({ leadId, onClose, onSaved }: Props) {
               onChange={(e) => set('ico', e.target.value)}
             />
           </FormField>
-          <FormField label="Adresa" name="address" required={false}>
+          <FormField label={t('crm.lead.fields.address')} name="address" required={false}>
             <input
               id="address"
               style={inputStyle}
@@ -279,7 +281,7 @@ export default function CrmLeadModal({ leadId, onClose, onSaved }: Props) {
               onChange={(e) => set('address', e.target.value)}
             />
           </FormField>
-          <FormField label="Mesto" name="city" required={false}>
+          <FormField label={t('crm.lead.fields.city')} name="city" required={false}>
             <input
               id="city"
               style={inputStyle}
@@ -290,7 +292,7 @@ export default function CrmLeadModal({ leadId, onClose, onSaved }: Props) {
 
           <div style={{ display: 'flex', gap: 12 }}>
             <div style={{ flex: 1 }}>
-              <FormField label="Typ" name="leadType">
+              <FormField label={t('crm.lead.fields.leadType')} name="leadType">
                 <select
                   id="leadType"
                   style={inputStyle}
@@ -304,7 +306,7 @@ export default function CrmLeadModal({ leadId, onClose, onSaved }: Props) {
               </FormField>
             </div>
             <div style={{ flex: 1 }}>
-              <FormField label="Priorita" name="priority">
+              <FormField label={t('crm.lead.fields.priority')} name="priority">
                 <select
                   id="priority"
                   style={inputStyle}
@@ -319,7 +321,7 @@ export default function CrmLeadModal({ leadId, onClose, onSaved }: Props) {
             </div>
           </div>
 
-          <FormField label="Stage" name="stage">
+          <FormField label={t('crm.lead.fields.stage')} name="stage">
             <select
               id="stage"
               style={inputStyle}
@@ -334,7 +336,7 @@ export default function CrmLeadModal({ leadId, onClose, onSaved }: Props) {
 
           <div style={{ borderTop: '1px solid var(--border, #e5e7eb)', margin: '8px 0' }} />
 
-          <FormField label="Kontakt — jmeno" name="contactName" required={false}>
+          <FormField label={t('crm.lead.fields.contactName')} name="contactName" required={false}>
             <input
               id="contactName"
               style={inputStyle}
@@ -342,7 +344,7 @@ export default function CrmLeadModal({ leadId, onClose, onSaved }: Props) {
               onChange={(e) => set('contactName', e.target.value)}
             />
           </FormField>
-          <FormField label="Email" name="contactEmail" required={false}>
+          <FormField label={t('crm.lead.fields.contactEmail')} name="contactEmail" required={false}>
             <input
               id="contactEmail"
               type="email"
@@ -351,7 +353,7 @@ export default function CrmLeadModal({ leadId, onClose, onSaved }: Props) {
               onChange={(e) => set('contactEmail', e.target.value)}
             />
           </FormField>
-          <FormField label="Telefon" name="contactPhone" required={false}>
+          <FormField label={t('crm.lead.fields.contactPhone')} name="contactPhone" required={false}>
             <input
               id="contactPhone"
               style={inputStyle}
@@ -359,7 +361,7 @@ export default function CrmLeadModal({ leadId, onClose, onSaved }: Props) {
               onChange={(e) => set('contactPhone', e.target.value)}
             />
           </FormField>
-          <FormField label="Role" name="contactRole" required={false}>
+          <FormField label={t('crm.lead.fields.contactRole')} name="contactRole" required={false}>
             <input
               id="contactRole"
               style={inputStyle}
@@ -370,7 +372,7 @@ export default function CrmLeadModal({ leadId, onClose, onSaved }: Props) {
 
           <div style={{ display: 'flex', gap: 12 }}>
             <div style={{ flex: 1 }}>
-              <FormField label="Odhadovany pocet jednotek" name="estimatedUnits" required={false}>
+              <FormField label={t('crm.lead.fields.estimatedUnits')} name="estimatedUnits" required={false}>
                 <input
                   id="estimatedUnits"
                   type="number"
@@ -381,7 +383,7 @@ export default function CrmLeadModal({ leadId, onClose, onSaved }: Props) {
               </FormField>
             </div>
             <div style={{ flex: 1 }}>
-              <FormField label="Odhadovane MRR" name="estimatedMrr" required={false}>
+              <FormField label={t('crm.lead.fields.estimatedMrr')} name="estimatedMrr" required={false}>
                 <input
                   id="estimatedMrr"
                   type="number"
@@ -393,7 +395,7 @@ export default function CrmLeadModal({ leadId, onClose, onSaved }: Props) {
             </div>
           </div>
 
-          <FormField label="Nasledujici follow-up" name="nextFollowUpAt" required={false}>
+          <FormField label={t('crm.lead.fields.nextFollowUpAt')} name="nextFollowUpAt" required={false}>
             <input
               id="nextFollowUpAt"
               type="date"
@@ -403,7 +405,7 @@ export default function CrmLeadModal({ leadId, onClose, onSaved }: Props) {
             />
           </FormField>
 
-          <FormField label="Zdroj" name="source" required={false}>
+          <FormField label={t('crm.lead.fields.source')} name="source" required={false}>
             <input
               id="source"
               style={inputStyle}
@@ -412,7 +414,7 @@ export default function CrmLeadModal({ leadId, onClose, onSaved }: Props) {
             />
           </FormField>
 
-          <FormField label="Poznamka" name="note" required={false}>
+          <FormField label={t('crm.lead.fields.note')} name="note" required={false}>
             <textarea
               id="note"
               style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }}
@@ -425,7 +427,7 @@ export default function CrmLeadModal({ leadId, onClose, onSaved }: Props) {
         {/* Right panel — Activities timeline */}
         {isEdit && (
           <div style={rightPanel}>
-            <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: 4 }}>Aktivity</div>
+            <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: 4 }}>{t('crm.lead.activities')}</div>
 
             {/* Add activity form */}
             <div
@@ -463,13 +465,13 @@ export default function CrmLeadModal({ leadId, onClose, onSaved }: Props) {
               </div>
               <input
                 style={inputStyle}
-                placeholder="Nazev aktivity"
+                placeholder={t('crm.lead.activityPlaceholder')}
                 value={actTitle}
                 onChange={(e) => setActTitle(e.target.value)}
               />
               <textarea
                 style={{ ...inputStyle, minHeight: 40, resize: 'vertical' }}
-                placeholder="Popis (nepovinne)"
+                placeholder={t('crm.lead.activityBodyPlaceholder')}
                 value={actBody}
                 onChange={(e) => setActBody(e.target.value)}
               />
@@ -479,14 +481,14 @@ export default function CrmLeadModal({ leadId, onClose, onSaved }: Props) {
                 onClick={() => activityMut.mutate()}
                 style={{ alignSelf: 'flex-end' }}
               >
-                {activityMut.isPending ? 'Pridavam...' : 'Pridat'}
+                {activityMut.isPending ? t('crm.lead.addingActivity') : t('crm.lead.addActivity')}
               </button>
             </div>
 
             {/* Activity timeline */}
             {sortedActivities.length === 0 && (
               <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem', textAlign: 'center', padding: 16 }}>
-                Zatim zadne aktivity
+                {t('crm.lead.noActivities')}
               </div>
             )}
             {sortedActivities.map((act) => (

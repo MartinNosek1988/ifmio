@@ -65,7 +65,23 @@ export function useUpdateTicket() {
   return useMutation({
     mutationFn: ({ id, dto }: { id: string; dto: UpdateTicketPayload }) =>
       helpdeskApi.update(id, dto),
-    onSuccess: (_, { id }) => {
+    onMutate: async ({ id, dto }) => {
+      await qc.cancelQueries({ queryKey: helpdeskKeys.lists() })
+      await qc.cancelQueries({ queryKey: helpdeskKeys.detail(id) })
+      const previousDetail = qc.getQueryData(helpdeskKeys.detail(id))
+      if (previousDetail) {
+        qc.setQueryData(helpdeskKeys.detail(id), (old: Record<string, unknown> | undefined) =>
+          old ? { ...old, ...dto } : old,
+        )
+      }
+      return { previousDetail }
+    },
+    onError: (_err, { id }, context) => {
+      if (context?.previousDetail) {
+        qc.setQueryData(helpdeskKeys.detail(id), context.previousDetail)
+      }
+    },
+    onSettled: (_, _err, { id }) => {
       qc.invalidateQueries({ queryKey: helpdeskKeys.lists() })
       qc.invalidateQueries({ queryKey: helpdeskKeys.detail(id) })
     },

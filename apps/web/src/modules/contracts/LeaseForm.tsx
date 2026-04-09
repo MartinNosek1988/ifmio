@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Modal } from '../../shared/components';
 import { FormSection, FormFooter } from '../../shared/components/FormSection';
 import { FormField } from '../../shared/components/FormField';
+import { CurrencyInput } from '../../shared/components/CurrencyInput';
 import { useCreateContract, useUpdateContract } from './api/contracts.queries';
 import type { ApiLeaseAgreement } from './api/contracts.api';
 import { propertiesApi } from '../properties/properties-api';
@@ -140,12 +141,30 @@ export default function LeaseForm({ lease, onClose }: Props) {
 
       <FormSection title="Finanční podmínky" defaultExpanded>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <FormField label="Měsíční nájem (Kč)" name="monthlyRent" error={errors.monthlyRent}>
-            <input id="monthlyRent" type="number" min="0" value={form.monthlyRent} onChange={(e) => set('monthlyRent', e.target.value)} onBlur={() => blurValidate('monthlyRent')} style={{ ...inputStyle('monthlyRent'), fontFamily: 'var(--font-mono)' }} />
-          </FormField>
-          <FormField label="Kauce (Kč)" name="deposit" required={false} helpText={form.monthlyRent ? `Doporučeno: ${Number(form.monthlyRent) * 2} Kč (2× nájem)` : undefined}>
-            <input id="deposit" type="number" min="0" value={form.deposit} onChange={(e) => set('deposit', e.target.value)} style={{ ...inputStyle(), fontFamily: 'var(--font-mono)' }} placeholder={form.monthlyRent ? `${Number(form.monthlyRent) * 2}` : '0'} />
-          </FormField>
+          <CurrencyInput
+            name="monthlyRent"
+            label="Měsíční nájem"
+            value={form.monthlyRent ? Number(form.monthlyRent) : null}
+            onChange={val => set('monthlyRent', val !== null ? String(val) : '')}
+            error={errors.monthlyRent}
+            min={0}
+          />
+          <div>
+            <CurrencyInput
+              name="deposit"
+              label="Kauce"
+              value={form.deposit ? Number(form.deposit) : null}
+              onChange={val => set('deposit', val !== null ? String(val) : '')}
+              required={false}
+              min={0}
+              placeholder={form.monthlyRent ? `${Number(form.monthlyRent) * 2}` : '0,00'}
+            />
+            {form.monthlyRent && (
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                Doporučeno: {Number(form.monthlyRent) * 2} Kč (2x nájem)
+              </div>
+            )}
+          </div>
         </div>
       </FormSection>
 

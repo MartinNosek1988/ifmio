@@ -26,6 +26,8 @@ export function FormSection({
       <button
         type="button"
         onClick={() => collapsible && setExpanded((v) => !v)}
+        aria-label={collapsible ? (isOpen ? `Sbalit sekci ${title}` : `Rozbalit sekci ${title}`) : undefined}
+        aria-expanded={collapsible ? isOpen : undefined}
         style={{
           display: 'flex',
           alignItems: 'center',

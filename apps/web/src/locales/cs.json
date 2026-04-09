@@ -303,6 +303,203 @@
       "deleted": "Pracovní příkaz smazán"
     }
   },
+  "purchaseOrder": {
+    "title": "Objednávky",
+    "create": "Nová objednávka",
+    "edit": "Upravit {{number}}",
+    "sections": {
+      "basic": "Základní údaje",
+      "supplier": "Dodavatel",
+      "items": "Položky",
+      "summary": "Souhrn"
+    },
+    "fields": {
+      "property": "Nemovitost",
+      "propertyPlaceholder": "— Vyberte —",
+      "sourceType": "Typ zdroje",
+      "sourceManual": "Ruční",
+      "sourceWorkOrder": "Pracovní příkaz",
+      "sourceHelpdesk": "Helpdesk",
+      "description": "Popis",
+      "deliveryDate": "Datum dodání",
+      "validUntil": "Platnost do",
+      "currency": "Měna",
+      "deliveryAddress": "Doručovací adresa",
+      "supplierIco": "IČ dodavatele",
+      "supplierName": "Název dodavatele",
+      "supplierNamePlaceholder": "Automaticky z ARES nebo zadejte ručně",
+      "supplierDic": "DIČ",
+      "supplierEmail": "E-mail dodavatele",
+      "itemDescription": "Popis",
+      "itemDescriptionPlaceholder": "Popis položky",
+      "quantity": "Množství",
+      "unit": "Jednotka",
+      "unitPrice": "Jedn. cena",
+      "total": "Celkem",
+      "vatRate": "Sazba DPH (%)"
+    },
+    "addItem": "Přidat položku",
+    "removeItem": "Odebrat",
+    "aresLookup": "ARES",
+    "aresSearching": "Hledám...",
+    "aresDefunct": "Subjekt je zaniklý dle ARES ({{status}})",
+    "summaryBase": "Základ:",
+    "summaryVat": "DPH ({{rate}}%):",
+    "summaryTotal": "Celkem:",
+    "errors": {
+      "supplierRequired": "Vyplňte dodavatele",
+      "itemsRequired": "Přidejte alespoň jednu položku",
+      "saveFailed": "Nepodařilo se uložit objednávku"
+    },
+    "submitCreate": "Vytvořit",
+    "submitSave": "Uložit"
+  },
+  "massMailing": {
+    "title": "Hromadná korespondence",
+    "create": "Nová kampaň",
+    "edit": "Upravit kampaň",
+    "step": "Krok {{current}} / {{total}}",
+    "sections": {
+      "content": "Obsah zprávy",
+      "recipients": "Příjemci",
+      "summary": "Shrnutí"
+    },
+    "fields": {
+      "name": "Název kampaně",
+      "namePlaceholder": "např. Oznámení o schůzi",
+      "channel": "Kanál",
+      "channelEmail": "Email",
+      "channelSms": "SMS",
+      "channelBoth": "Obojí",
+      "subject": "Předmět",
+      "subjectPlaceholder": "Předmět zprávy",
+      "body": "Text zprávy",
+      "bodyPlaceholder": "Napište text zprávy...",
+      "bodyHelp": "Dostupné proměnné: {{jmeno}}, {{email}}",
+      "properties": "Nemovitosti",
+      "allProperties": "Všechny nemovitosti",
+      "recipientType": "Typ příjemců",
+      "recipientOwners": "Vlastníci",
+      "recipientTenants": "Nájemníci",
+      "recipientAll": "Všichni",
+      "recipientDebtors": "Dlužníci",
+      "recipientCustom": "Vlastní"
+    },
+    "customRecipientNote": "Vlastní výběr bude dostupný po vytvoření kampaně",
+    "reviewChannel": "Kanál:",
+    "reviewRecipients": "Příjemci:",
+    "reviewSubject": "Předmět:",
+    "continue": "Pokračovat",
+    "back": "Zpět",
+    "cancel": "Zrušit",
+    "sendNow": "Odeslat ihned",
+    "error": "Došlo k chybě. Zkuste to prosím znovu."
+  },
+  "esign": {
+    "title": "Elektronické podpisy",
+    "create": "Nová žádost o podpis",
+    "sections": {
+      "document": "Dokument",
+      "signatories": "Podepisující"
+    },
+    "docTypes": {
+      "management_contract": "Smlouva o správě",
+      "tenancy": "Nájemní smlouva",
+      "protocol": "Protokol",
+      "custom": "Vlastní dokument"
+    },
+    "fields": {
+      "documentType": "Typ dokumentu",
+      "documentId": "ID dokumentu",
+      "documentIdPlaceholder": "ID smlouvy nebo protokolu",
+      "documentTitle": "Název dokumentu",
+      "documentTitlePlaceholder": "Smlouva o správě — Bytový dům Krásná 12",
+      "message": "Průvodní zpráva",
+      "expiresAt": "Platnost do",
+      "signatoryName": "Jméno *",
+      "signatoryEmail": "Email *",
+      "signatoryRole": "Role",
+      "signatoryRolePlaceholder": "Předseda SVJ"
+    },
+    "addSignatory": "Přidat podepisujícího",
+    "removeSignatory": "Odebrat",
+    "next": "Další →",
+    "back": "← Zpět",
+    "cancel": "Zrušit",
+    "submit": "Vytvořit",
+    "submitting": "Vytvářím...",
+    "toast": {
+      "created": "Žádost vytvořena",
+      "error": "Vytvoření selhalo"
+    }
+  },
+  "crm": {
+    "title": "CRM",
+    "lead": {
+      "create": "Nový lead",
+      "loading": "Načítání...",
+      "stages": {
+        "new_lead": "Nový",
+        "contacted": "Kontaktován",
+        "demo_scheduled": "Demo plán.",
+        "demo_done": "Demo OK",
+        "trial": "Trial",
+        "negotiation": "Jednání",
+        "won": "Zákazník",
+        "lost": "Prohráno",
+        "not_interested": "Nezájem"
+      },
+      "leadTypes": {
+        "property_manager": "Správce",
+        "svj_direct": "SVJ",
+        "bd_direct": "BD",
+        "other": "Jiný"
+      },
+      "priorities": {
+        "low": "Nízká",
+        "medium": "Střední",
+        "high": "Vysoká"
+      },
+      "fields": {
+        "companyName": "Název firmy",
+        "ico": "IČO",
+        "address": "Adresa",
+        "city": "Město",
+        "leadType": "Typ",
+        "priority": "Priorita",
+        "stage": "Stage",
+        "contactName": "Kontakt — jméno",
+        "contactEmail": "Email",
+        "contactPhone": "Telefon",
+        "contactRole": "Role",
+        "estimatedUnits": "Odhadovaný počet jednotek",
+        "estimatedMrr": "Odhadované MRR",
+        "nextFollowUpAt": "Následující follow-up",
+        "source": "Zdroj",
+        "note": "Poznámka"
+      },
+      "activities": "Aktivity",
+      "noActivities": "Zatím žádné aktivity",
+      "activityPlaceholder": "Název aktivity",
+      "activityBodyPlaceholder": "Popis (nepovinné)",
+      "addActivity": "Přidat",
+      "addingActivity": "Přidávám...",
+      "activityTypes": {
+        "call": "Hovor",
+        "email": "Email",
+        "meeting": "Schůzka",
+        "demo": "Demo",
+        "note": "Poznámka",
+        "stage_change": "Změna stage"
+      },
+      "delete": "Smazat",
+      "deleteConfirm": "Opravdu smazat tento lead?",
+      "cancel": "Zrušit",
+      "save": "Uložit",
+      "create": "Vytvořit",
+      "saving": "Ukládám..."
+    }
+  },
   "finance": {
     "title": "Finance",
     "invoice": {

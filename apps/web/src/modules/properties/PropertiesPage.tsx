@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, Plus } from 'lucide-react';
-import { KpiCard, Table, Badge, SearchBar, Button, EmptyState, LoadingState, ErrorState } from '../../shared/components';
+import { KpiCard, Table, Badge, SearchBar, Button, EmptyState, LoadingSkeleton, ErrorState } from '../../shared/components';
 import type { Column } from '../../shared/components';
 import { getPropertyTypeConfig } from '@ifmio/shared-types';
 import { useProperties } from './use-properties';
@@ -91,7 +91,7 @@ export default function PropertiesPage() {
     },
   ];
 
-  if (isLoading) return <LoadingState />;
+  if (isLoading) return <LoadingSkeleton variant="table" rows={8} />;
   if (error) return <ErrorState message="Nepodařilo se načíst nemovitosti." />;
 
   return (

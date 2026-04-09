@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Download, AlertTriangle } from 'lucide-react';
-import { KpiCard, Table, Badge, SearchBar, Button } from '../../shared/components';
+import { KpiCard, Table, Badge, SearchBar, Button, LoadingSkeleton } from '../../shared/components';
 import type { Column, BadgeVariant } from '../../shared/components';
 import { apiClient } from '../../core/api/client';
+import { useUrlFilters } from '../../shared/hooks/useUrlFilters';
 import AssetForm from './AssetForm';
 
 /* ─── types ──────────────────────────────────────────────────────── */
@@ -55,16 +56,20 @@ const CATEGORIES = ['', 'tzb', 'stroje', 'vybaveni', 'vozidla', 'it', 'ostatni']
 
 /* ─── component ──────────────────────────────────────────────────── */
 
+const ASSET_FILTER_CONFIG = {
+  search: { type: 'string' as const, default: '' },
+  category: { type: 'string' as const, default: '' },
+};
+
 export default function AssetListPage() {
   const navigate = useNavigate();
-  const [search, setSearch] = useState('');
-  const [catFilter, setCatFilter] = useState('');
+  const { filters, setFilter } = useUrlFilters<{ search: string; category: string }>(ASSET_FILTER_CONFIG);
   const [showForm, setShowForm] = useState(false);
 
-  const { data: assets = [], refetch } = useQuery<Asset[]>({
-    queryKey: ['assets', 'list', catFilter],
+  const { data: assets = [], isLoading, refetch } = useQuery<Asset[]>({
+    queryKey: ['assets', 'list', filters.category],
     queryFn: () => apiClient.get('/assets', {
-      params: { category: catFilter || undefined },
+      params: { category: filters.category || undefined },
     }).then((r) => r.data),
   });
 
@@ -74,9 +79,11 @@ export default function AssetListPage() {
     staleTime: 30_000,
   });
 
-  const filtered = search
+  if (isLoading) return <LoadingSkeleton variant="table" rows={8} />;
+
+  const filtered = filters.search
     ? assets.filter((a) => {
-        const q = search.toLowerCase();
+        const q = filters.search.toLowerCase();
         return a.name.toLowerCase().includes(q)
           || (a.manufacturer ?? '').toLowerCase().includes(q)
           || (a.model ?? '').toLowerCase().includes(q)
@@ -150,11 +157,11 @@ export default function AssetListPage() {
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' }}>
         <div style={{ flex: 1 }}>
-          <SearchBar placeholder="Hledat zařízení..." onSearch={setSearch} />
+          <SearchBar placeholder="Hledat zařízení..." onSearch={(v) => setFilter('search', v)} />
         </div>
         <select
-          value={catFilter}
-          onChange={(e) => setCatFilter(e.target.value)}
+          value={filters.category}
+          onChange={(e) => setFilter('category', e.target.value)}
           style={{
             padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)',
             background: 'var(--surface)', color: 'var(--text)', fontSize: '0.85rem',

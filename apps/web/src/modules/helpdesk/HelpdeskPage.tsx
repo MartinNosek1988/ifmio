@@ -1,11 +1,13 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, BarChart3, Settings } from 'lucide-react';
-import { KpiCard, Table, Badge, SearchBar, Button, EmptyState, Modal, LoadingState, ErrorState } from '../../shared/components';
+import { Plus, BarChart3, Settings, LayoutGrid, List } from 'lucide-react';
+import { KpiCard, Table, Badge, SearchBar, Button, EmptyState, Modal, LoadingSkeleton, ErrorState } from '../../shared/components';
+import { KanbanBoard } from '../../shared/components/KanbanBoard';
 import type { Column, BadgeVariant } from '../../shared/components';
-import { useTickets, useDeleteTicket, useSlaStats, useClaimTicket } from './api/helpdesk.queries';
+import { useTickets, useDeleteTicket, useUpdateTicket, useSlaStats, useClaimTicket } from './api/helpdesk.queries';
 import type { ApiTicket } from './api/helpdesk.api';
 import { useAuthStore } from '../../core/auth/auth.store';
+import { useUrlFilters } from '../../shared/hooks/useUrlFilters';
 import TicketDetailModal from './TicketDetailModal';
 import TicketForm from './TicketForm';
 
@@ -55,18 +57,30 @@ function getSlaStatus(ticket: ApiTicket): { label: string; variant: BadgeVariant
 export default function HelpdeskPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterPriority, setFilterPriority] = useState('');
-  const [filterCategory, setFilterCategory] = useState('');
-  const [filterOverdue, setFilterOverdue] = useState(false);
-  const [filterEscalated, setFilterEscalated] = useState(false);
-  const [filterOrigin, setFilterOrigin] = useState('');
+
+  const filterConfig = useMemo(() => ({
+    search: { type: 'string' as const, default: '' },
+    status: { type: 'string' as const, default: '' },
+    priority: { type: 'string' as const, default: '' },
+    category: { type: 'string' as const, default: '' },
+    overdue: { type: 'boolean' as const, default: undefined },
+    escalated: { type: 'boolean' as const, default: undefined },
+    origin: { type: 'string' as const, default: '' },
+    page: { type: 'number' as const, default: undefined },
+  }), []);
+
+  const { filters, setFilter } = useUrlFilters<{
+    search: string; status: string; priority: string; category: string;
+    overdue: boolean | undefined; escalated: boolean | undefined; origin: string;
+    page: number | undefined;
+  }>(filterConfig);
+
   const [selectedTicket, setSelectedTicket] = useState<ApiTicket | null>(null);
   const [deleteTicket, setDeleteTicket] = useState<ApiTicket | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [page, setPage] = useState(1);
+  const [view, setView] = useState<'table' | 'kanban'>('table');
   const PAGE_SIZE = 25;
+  const page = filters.page ?? 1;
 
   // Deep-link: ?ticket=<id> from email
   const deepLinkTicketId = searchParams.get('ticket');
@@ -76,17 +90,14 @@ export default function HelpdeskPage() {
     }
   }, [deepLinkTicketId]);
 
-  // Reset page on filter change
-  useEffect(() => { setPage(1); }, [search, filterStatus, filterPriority, filterCategory, filterOverdue, filterEscalated, filterOrigin]);
-
   const { data: paginated, isLoading, error } = useTickets({
-    ...(search ? { search } : {}),
-    ...(filterStatus ? { status: filterStatus } : {}),
-    ...(filterPriority ? { priority: filterPriority } : {}),
-    ...(filterCategory ? { category: filterCategory } : {}),
-    ...(filterOverdue ? { overdue: 'true' } : {}),
-    ...(filterEscalated ? { escalated: 'true' } : {}),
-    ...(filterOrigin ? { requestOrigin: filterOrigin } : {}),
+    ...(filters.search ? { search: filters.search } : {}),
+    ...(filters.status ? { status: filters.status } : {}),
+    ...(filters.priority ? { priority: filters.priority } : {}),
+    ...(filters.category ? { category: filters.category } : {}),
+    ...(filters.overdue ? { overdue: 'true' } : {}),
+    ...(filters.escalated ? { escalated: 'true' } : {}),
+    ...(filters.origin ? { requestOrigin: filters.origin } : {}),
     page,
     limit: PAGE_SIZE,
   });
@@ -94,6 +105,7 @@ export default function HelpdeskPage() {
   const { data: slaStats } = useSlaStats();
 
   const deleteMutation = useDeleteTicket();
+  const updateMutation = useUpdateTicket();
   const claimMutation = useClaimTicket();
   const currentUser = useAuthStore((s) => s.user);
 
@@ -107,6 +119,19 @@ export default function HelpdeskPage() {
     const today = tickets.filter(t => t.createdAt.slice(0, 10) === new Date().toISOString().slice(0, 10)).length;
     return { total, open, today, urgent };
   }, [tickets, total]);
+
+  const kanbanColumns = useMemo(() => {
+    const statuses = [
+      { id: 'open', title: 'Otevřené', color: '#3b82f6' },
+      { id: 'in_progress', title: 'Probíhá', color: '#f59e0b' },
+      { id: 'resolved', title: 'Vyřešené', color: '#22c55e' },
+      { id: 'closed', title: 'Uzavřené', color: '#6b7280' },
+    ]
+    return statuses.map(s => ({
+      ...s,
+      items: (tickets ?? []).filter((t: ApiTicket) => t.status === s.id),
+    }))
+  }, [tickets])
 
   const columns: Column<ApiTicket>[] = [
     {
@@ -178,7 +203,7 @@ export default function HelpdeskPage() {
     },
   ];
 
-  if (isLoading) return <LoadingState />;
+  if (isLoading) return <LoadingSkeleton variant="table" rows={8} />;
   if (error) return <ErrorState message="Nepodařilo se načíst požadavky." />;
 
   const handleDeleteConfirm = () => {
@@ -204,6 +229,32 @@ export default function HelpdeskPage() {
           <p className="page-subtitle">{stats.open} otevřených požadavků</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border)' }}>
+            <button
+              onClick={() => setView('table')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4, padding: '6px 10px',
+                background: view === 'table' ? 'var(--primary)' : 'var(--surface)',
+                color: view === 'table' ? '#fff' : 'var(--text)',
+                border: 'none', cursor: 'pointer', fontSize: '0.82rem',
+              }}
+              title="Tabulka"
+            >
+              <List size={15} />
+            </button>
+            <button
+              onClick={() => setView('kanban')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4, padding: '6px 10px',
+                background: view === 'kanban' ? 'var(--primary)' : 'var(--surface)',
+                color: view === 'kanban' ? '#fff' : 'var(--text)',
+                border: 'none', cursor: 'pointer', fontSize: '0.82rem',
+              }}
+              title="Kanban"
+            >
+              <LayoutGrid size={15} />
+            </button>
+          </div>
           <Button icon={<BarChart3 size={15} />} onClick={() => navigate('/helpdesk/dashboard')}>Dashboard</Button>
           <Button icon={<Settings size={15} />} onClick={() => navigate('/helpdesk/sla-config')}>SLA</Button>
           <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)} data-testid="ticket-add-btn">Nový požadavek</Button>
@@ -219,41 +270,66 @@ export default function HelpdeskPage() {
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <div style={{ flex: 1 }}><SearchBar placeholder="Hledat požadavky..." onSearch={setSearch} data-testid="ticket-search-input" /></div>
-        <select data-testid="ticket-filter-status" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={selectStyle}>
+        <div style={{ flex: 1 }}><SearchBar placeholder="Hledat požadavky..." onSearch={(v) => setFilter('search', v)} data-testid="ticket-search-input" /></div>
+        <select data-testid="ticket-filter-status" value={filters.status} onChange={(e) => setFilter('status', e.target.value)} style={selectStyle}>
           <option value="">Všechny stavy</option>
           {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
-        <select data-testid="priority-filter" value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} style={selectStyle}>
+        <select data-testid="priority-filter" value={filters.priority} onChange={(e) => setFilter('priority', e.target.value)} style={selectStyle}>
           <option value="">Všechny priority</option>
           {Object.entries(PRIORITY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
         <Button
           size="sm"
-          variant={filterOverdue ? 'danger' : undefined}
-          onClick={() => setFilterOverdue(!filterOverdue)}
+          variant={filters.overdue ? 'danger' : undefined}
+          onClick={() => setFilter('overdue', filters.overdue ? undefined : true)}
         >
           Po termínu
         </Button>
         <Button
           size="sm"
-          variant={filterEscalated ? 'danger' : undefined}
-          onClick={() => setFilterEscalated(!filterEscalated)}
+          variant={filters.escalated ? 'danger' : undefined}
+          onClick={() => setFilter('escalated', filters.escalated ? undefined : true)}
         >
           Eskalované
         </Button>
-        <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={selectStyle}>
+        <select value={filters.category} onChange={(e) => setFilter('category', e.target.value)} style={selectStyle}>
           <option value="">Všechny kategorie</option>
           {Object.entries(CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
-        <select value={filterOrigin} onChange={(e) => setFilterOrigin(e.target.value)} style={selectStyle}>
+        <select value={filters.origin} onChange={(e) => setFilter('origin', e.target.value)} style={selectStyle}>
           <option value="">Všechny zdroje</option>
           <option value="manual">Manuální</option>
           <option value="recurring_plan">Opakované</option>
         </select>
       </div>
 
-      {tickets.length === 0 ? (
+      {view === 'kanban' ? (
+        <KanbanBoard
+          columns={kanbanColumns}
+          renderCard={(ticket: ApiTicket) => (
+            <div style={{ padding: 8, cursor: 'pointer', fontSize: 13 }}
+                 onClick={() => setSelectedTicket(ticket)}>
+              <div style={{ fontWeight: 500, marginBottom: 4 }}>
+                #{ticket.number} {ticket.title}
+              </div>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 }}>
+                <Badge variant={PRIO_COLOR[ticket.priority] || 'muted'}>{PRIORITY_LABELS[ticket.priority] || ticket.priority}</Badge>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                {ticket.assignee?.name ?? 'Nepřiřazeno'}
+              </div>
+            </div>
+          )}
+          getItemId={(t: ApiTicket) => t.id}
+          onMove={(itemId, _from, to) => {
+            const t = tickets.find(t => t.id === itemId);
+            if (t) {
+              updateMutation.mutate({ id: t.id, dto: { status: to } });
+            }
+          }}
+        />
+      ) : tickets.length === 0 ? (
         <EmptyState title="Žádné požadavky" description="Zatím tu nejsou žádné požadavky." />
       ) : (
         <Table data={tickets} columns={columns} rowKey={(t) => t.id} onRowClick={(t) => setSelectedTicket(t)} />
@@ -262,16 +338,16 @@ export default function HelpdeskPage() {
       {/* Pagination */}
       {paginated && paginated.totalPages > 1 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 16 }}>
-          <Button size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>Předchozí</Button>
+          <Button size="sm" onClick={() => setFilter('page', Math.max(1, page - 1))} disabled={page <= 1}>Předchozí</Button>
           <span className="text-muted text-sm">Strana {page} z {paginated.totalPages}</span>
-          <Button size="sm" onClick={() => setPage(p => Math.min(paginated.totalPages, p + 1))} disabled={page >= paginated.totalPages}>Další</Button>
+          <Button size="sm" onClick={() => setFilter('page', Math.min(paginated.totalPages, page + 1))} disabled={page >= paginated.totalPages}>Další</Button>
         </div>
       )}
 
       {selectedTicket && (
         <TicketDetailModal
           ticketId={selectedTicket.id}
-          onClose={() => { setSelectedTicket(null); if (deepLinkTicketId) setSearchParams({}, { replace: true }); }}
+          onClose={() => { setSelectedTicket(null); if (deepLinkTicketId) setSearchParams((prev) => { const next = new URLSearchParams(prev); next.delete('ticket'); return next; }, { replace: true }); }}
           onDelete={() => {
             setDeleteTicket(selectedTicket);
             setSelectedTicket(null);
