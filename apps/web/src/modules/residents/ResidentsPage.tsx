@@ -1,16 +1,21 @@
 import { useMemo, useState } from 'react';
 import { Plus, Upload } from 'lucide-react';
-import { KpiCard, Table, Badge, SearchBar, Button, Modal, LoadingState, ErrorState } from '../../shared/components';
+import { KpiCard, Table, Badge, SearchBar, Button, Modal, LoadingSkeleton, ErrorState } from '../../shared/components';
 import type { Column } from '../../shared/components';
 import { useResidents, useDeleteResident } from './api/residents.queries';
 import type { ApiResident } from './api/residents.api';
+import { useUrlFilters } from '../../shared/hooks/useUrlFilters';
 import ResidentDetailModal from './ResidentDetailModal';
 import ResidentForm from './ResidentForm';
 import { ResidentImportWizard } from './import/ResidentImportWizard';
 
+const RESIDENT_FILTER_CONFIG = {
+  search: { type: 'string' as const, default: '' },
+  role: { type: 'string' as const, default: '' },
+};
+
 export default function ResidentsPage() {
-  const [search, setSearch] = useState('');
-  const [filterRole, setFilterRole] = useState('all');
+  const { filters, setFilter } = useUrlFilters<{ search: string; role: string }>(RESIDENT_FILTER_CONFIG);
   const [selectedResident, setSelectedResident] = useState<ApiResident | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editResident, setEditResident] = useState<ApiResident | null>(null);
@@ -18,8 +23,8 @@ export default function ResidentsPage() {
   const [showImport, setShowImport] = useState(false);
 
   const { data: paginated, isLoading, error } = useResidents({
-    ...(search ? { search } : {}),
-    ...(filterRole !== 'all' ? { role: filterRole } : {}),
+    ...(filters.search ? { search: filters.search } : {}),
+    ...(filters.role ? { role: filters.role } : {}),
     limit: 100,
   });
 
@@ -93,7 +98,7 @@ export default function ResidentsPage() {
     },
   ];
 
-  if (isLoading) return <LoadingState />;
+  if (isLoading) return <LoadingSkeleton variant="table" rows={8} />;
   if (error) return <ErrorState message="Nepodařilo se načíst bydlící." />;
 
   const handleDeleteConfirm = () => {
@@ -130,10 +135,10 @@ export default function ResidentsPage() {
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <div style={{ flex: 1 }}><SearchBar placeholder="Hledat bydlící..." onSearch={setSearch} data-testid="resident-search-input" /></div>
-        <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)}
+        <div style={{ flex: 1 }}><SearchBar placeholder="Hledat bydlící..." onSearch={(v) => setFilter('search', v)} data-testid="resident-search-input" /></div>
+        <select value={filters.role} onChange={(e) => setFilter('role', e.target.value)}
           style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}>
-          <option value="all">Všechny role</option>
+          <option value="">Všechny role</option>
           <option value="owner">Vlastníci</option>
           <option value="tenant">Nájemci</option>
           <option value="member">Členové</option>

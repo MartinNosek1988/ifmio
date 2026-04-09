@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { KpiCard, Table, Badge, SearchBar, Button } from '../../shared/components';
-import { LoadingState } from '../../shared/components/LoadingState';
+import { LoadingSkeleton } from '../../shared/components';
 import { ErrorState } from '../../shared/components/ErrorState';
 import type { Column, BadgeVariant } from '../../shared/components';
 import { useContracts, useContractStats, useDeleteContract } from './api/contracts.queries';
@@ -52,7 +52,7 @@ export default function ContractsPage() {
     });
   };
 
-  if (isLoading) return <LoadingState text="Nacitani smluv..." />;
+  if (isLoading) return <LoadingSkeleton variant="table" rows={8} />;
   if (isError) return <ErrorState onRetry={refetch} />;
 
   const items = contracts ?? [];

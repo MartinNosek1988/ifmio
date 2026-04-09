@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Plus } from 'lucide-react'
-import { Badge, Button, Table, KpiCard, LoadingState, EmptyState } from '../../shared/components'
+import { Badge, Button, Table, KpiCard, LoadingSkeleton, EmptyState } from '../../shared/components'
 import type { Column, BadgeVariant } from '../../shared/components'
 import { massMailingApi, type ApiCampaign } from './api/mass-mailing.api'
 import { MassMailingForm } from './MassMailingForm'
@@ -164,7 +164,7 @@ export default function MassMailingPage() {
 
       {/* Table */}
       {isLoading ? (
-        <LoadingState text="Nacitani kampani..." />
+        <LoadingSkeleton variant="table" rows={8} />
       ) : campaigns.length === 0 ? (
         <EmptyState title="Zadne kampane" description="Zatim nebyla vytvorena zadna kampan." />
       ) : (

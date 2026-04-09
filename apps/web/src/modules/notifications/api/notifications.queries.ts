@@ -29,7 +29,31 @@ export function useMarkRead() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => notificationsApi.markRead(id),
-    onSuccess: () => {
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: notifKeys.all() })
+      const previousLists = qc.getQueriesData({ queryKey: ['notifications'] })
+      // Optimistically mark as read in all notification list caches
+      qc.setQueriesData(
+        { queryKey: ['notifications'] },
+        (old: unknown) => {
+          if (!Array.isArray(old)) return old
+          return old.map((n: Record<string, unknown>) => n.id === id ? { ...n, isRead: true } : n)
+        },
+      )
+      // Optimistically decrement unread count
+      qc.setQueryData(notifKeys.unread(), (old: number | undefined) =>
+        typeof old === 'number' && old > 0 ? old - 1 : old,
+      )
+      return { previousLists }
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previousLists) {
+        for (const [key, data] of context.previousLists) {
+          qc.setQueryData(key, data)
+        }
+      }
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: notifKeys.all() })
     },
   })

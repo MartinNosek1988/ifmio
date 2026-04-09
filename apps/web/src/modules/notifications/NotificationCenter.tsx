@@ -56,6 +56,7 @@ export function NotificationCenter() {
         className="topbar__icon-btn"
         onClick={() => setOpen((o) => !o)}
         title="Notifikace"
+        aria-label="Notifikace"
         style={{ position: 'relative' }}
       >
         <Bell size={18} />
