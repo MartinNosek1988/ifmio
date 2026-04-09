@@ -509,6 +509,41 @@ export default function InvoiceReviewPage() {
         {isSubmitted && <Button onClick={handleReturn} disabled={returnMut.isPending}>Vrátit</Button>}
       </div>
 
+      {/* Invoice lifecycle stepper */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 0, margin: '0', padding: '12px 20px', background: 'var(--surface)', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+        {([
+          { label: 'Vytvořeno', done: true, date: invoice.createdAt },
+          { label: 'Odesláno', done: !!invoice.submittedAt, date: invoice.submittedAt },
+          { label: 'Schváleno', done: invoice.approvalStatus === 'approved', date: invoice.approvedAt },
+          { label: 'Uhrazeno', done: invoice.isPaid, date: invoice.paymentDate },
+        ] as const).map((stage, i, arr) => (
+          <React.Fragment key={stage.label}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 80 }}>
+              <div style={{
+                width: 24, height: 24, borderRadius: '50%',
+                background: stage.done ? 'var(--success, #22c55e)' : 'var(--surface-2, #f3f4f6)',
+                color: stage.done ? '#fff' : 'var(--text-muted)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 11, fontWeight: 600,
+              }}>
+                {stage.done ? '\u2713' : i + 1}
+              </div>
+              <div style={{ fontSize: 11, marginTop: 4, fontWeight: stage.done ? 500 : 400, color: stage.done ? 'var(--text)' : 'var(--text-muted)' }}>
+                {stage.label}
+              </div>
+              {stage.date && (
+                <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                  {new Date(stage.date).toLocaleDateString('cs-CZ')}
+                </div>
+              )}
+            </div>
+            {i < arr.length - 1 && (
+              <div style={{ flex: 1, height: 2, background: arr[i + 1].done ? 'var(--success, #22c55e)' : 'var(--border)', marginBottom: 28 }} />
+            )}
+          </React.Fragment>
+        ))}
+      </div>
+
       {/* Split layout */}
       <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
         {/* Left: PDF Viewer */}

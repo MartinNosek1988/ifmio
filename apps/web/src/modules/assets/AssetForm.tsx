@@ -3,6 +3,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { Modal } from '../../shared/components';
 import { FormSection, FormFooter } from '../../shared/components/FormSection';
 import { FormField } from '../../shared/components/FormField';
+import { CurrencyInput } from '../../shared/components/CurrencyInput';
 import { apiClient } from '../../core/api/client';
 import type { ApiAssetType } from '../asset-types/api/asset-types.api';
 
@@ -140,9 +141,14 @@ export default function AssetForm({ onClose }: Props) {
           <FormField label="Datum pořízení" name="purchaseDate" required={false}>
             <input id="purchaseDate" type="date" value={form.purchaseDate} onChange={(e) => set('purchaseDate', e.target.value)} style={inputStyle()} />
           </FormField>
-          <FormField label="Pořizovací hodnota (Kč)" name="purchaseValue" required={false}>
-            <input id="purchaseValue" type="number" value={form.purchaseValue} onChange={(e) => set('purchaseValue', e.target.value)} style={{ ...inputStyle(), fontFamily: 'var(--font-mono)' }} placeholder="0" />
-          </FormField>
+          <CurrencyInput
+            name="purchaseValue"
+            label="Pořizovací hodnota"
+            value={form.purchaseValue ? Number(form.purchaseValue) : null}
+            onChange={val => set('purchaseValue', val !== null ? String(val) : '')}
+            required={false}
+            min={0}
+          />
         </div>
         <FormField label="Záruka do" name="warrantyUntil" required={false}>
           <input id="warrantyUntil" type="date" value={form.warrantyUntil} onChange={(e) => set('warrantyUntil', e.target.value)} style={inputStyle()} />

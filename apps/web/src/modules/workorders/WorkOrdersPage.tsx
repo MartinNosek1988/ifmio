@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
-import { KpiCard, Table, Badge, SearchBar, Button, EmptyState } from '../../shared/components';
-import { LoadingState } from '../../shared/components/LoadingState';
+import { KpiCard, Table, Badge, SearchBar, Button, EmptyState, LoadingSkeleton } from '../../shared/components';
 import { ErrorState } from '../../shared/components/ErrorState';
 import type { Column, BadgeVariant } from '../../shared/components';
 import { formatCzDate } from '../../shared/utils/format';
@@ -9,25 +8,30 @@ import { WO_STATUS_LABELS, WO_PRIORITY_LABELS, label } from '../../constants/lab
 import { SlaProgressBar } from './SlaProgressBar';
 import { useWorkOrders, useWOStats, useDeleteWorkOrder } from './api/workorders.queries';
 import type { ApiWorkOrder } from './api/workorders.api';
+import { useUrlFilters } from '../../shared/hooks/useUrlFilters';
 import WorkOrderDetailModal from './WorkOrderDetailModal';
 import WorkOrderForm from './WorkOrderForm';
 
 const PRIO_COLOR: Record<string, BadgeVariant> = { kriticka: 'red', vysoka: 'yellow', normalni: 'blue', nizka: 'muted' };
 const STATUS_COLOR: Record<string, BadgeVariant> = { nova: 'blue', v_reseni: 'yellow', vyresena: 'green', uzavrena: 'muted', zrusena: 'red' };
 
+const WO_FILTER_CONFIG = {
+  search: { type: 'string' as const, default: '' },
+  status: { type: 'string' as const, default: '' },
+};
+
 export default function WorkOrdersPage() {
-  const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const { filters, setFilter } = useUrlFilters<{ search: string; status: string }>(WO_FILTER_CONFIG);
   const [selectedWO, setSelectedWO] = useState<ApiWorkOrder | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ApiWorkOrder | null>(null);
 
   const params = useMemo(() => {
     const p: Record<string, string> = {};
-    if (filterStatus !== 'all') p.status = filterStatus;
-    if (search) p.search = search;
+    if (filters.status) p.status = filters.status;
+    if (filters.search) p.search = filters.search;
     return p;
-  }, [filterStatus, search]);
+  }, [filters.status, filters.search]);
 
   const { data: workOrders, isLoading, isError, refetch } = useWorkOrders(params);
   const { data: stats } = useWOStats();
@@ -40,7 +44,7 @@ export default function WorkOrdersPage() {
     });
   };
 
-  if (isLoading) return <LoadingState text="Načítání pracovních úkolů..." />;
+  if (isLoading) return <LoadingSkeleton variant="table" rows={8} />;
   if (isError) return <ErrorState onRetry={refetch} />;
 
   const items = workOrders ?? [];
@@ -82,9 +86,9 @@ export default function WorkOrdersPage() {
       </div>
 
       <div className="flex-bar" style={{ marginBottom: 16 }}>
-        <SearchBar placeholder="Hledat work orders..." onSearch={setSearch} data-testid="wo-search-input" />
-        <select className="btn" value={filterStatus} onChange={e => setFilterStatus(e.target.value)} data-testid="wo-filter-status">
-          <option value="all">Vse</option>
+        <SearchBar placeholder="Hledat work orders..." onSearch={(v) => setFilter('search', v)} data-testid="wo-search-input" />
+        <select className="btn" value={filters.status} onChange={e => setFilter('status', e.target.value)} data-testid="wo-filter-status">
+          <option value="">Vse</option>
           {Object.entries(WO_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
       </div>

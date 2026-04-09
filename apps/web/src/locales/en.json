@@ -141,6 +141,203 @@
     "gdprHeadings": ["Processing information per Art. 13/14 GDPR", "Your rights", "How to exercise your rights", "Contact"],
     "cookiesHeadings": ["What are cookies", "Cookies we use", "Managing cookies"]
   },
+  "purchaseOrder": {
+    "title": "Purchase Orders",
+    "create": "New purchase order",
+    "edit": "Edit {{number}}",
+    "sections": {
+      "basic": "Basic information",
+      "supplier": "Supplier",
+      "items": "Items",
+      "summary": "Summary"
+    },
+    "fields": {
+      "property": "Property",
+      "propertyPlaceholder": "— Select —",
+      "sourceType": "Source type",
+      "sourceManual": "Manual",
+      "sourceWorkOrder": "Work order",
+      "sourceHelpdesk": "Helpdesk",
+      "description": "Description",
+      "deliveryDate": "Delivery date",
+      "validUntil": "Valid until",
+      "currency": "Currency",
+      "deliveryAddress": "Delivery address",
+      "supplierIco": "Supplier ID",
+      "supplierName": "Supplier name",
+      "supplierNamePlaceholder": "Auto-filled from ARES or enter manually",
+      "supplierDic": "Tax ID",
+      "supplierEmail": "Supplier email",
+      "itemDescription": "Description",
+      "itemDescriptionPlaceholder": "Item description",
+      "quantity": "Quantity",
+      "unit": "Unit",
+      "unitPrice": "Unit price",
+      "total": "Total",
+      "vatRate": "VAT rate (%)"
+    },
+    "addItem": "Add item",
+    "removeItem": "Remove",
+    "aresLookup": "ARES",
+    "aresSearching": "Searching...",
+    "aresDefunct": "Entity is defunct per ARES ({{status}})",
+    "summaryBase": "Subtotal:",
+    "summaryVat": "VAT ({{rate}}%):",
+    "summaryTotal": "Total:",
+    "errors": {
+      "supplierRequired": "Supplier is required",
+      "itemsRequired": "Add at least one item",
+      "saveFailed": "Failed to save purchase order"
+    },
+    "submitCreate": "Create",
+    "submitSave": "Save"
+  },
+  "massMailing": {
+    "title": "Mass mailing",
+    "create": "New campaign",
+    "edit": "Edit campaign",
+    "step": "Step {{current}} / {{total}}",
+    "sections": {
+      "content": "Message content",
+      "recipients": "Recipients",
+      "summary": "Summary"
+    },
+    "fields": {
+      "name": "Campaign name",
+      "namePlaceholder": "e.g. Meeting announcement",
+      "channel": "Channel",
+      "channelEmail": "Email",
+      "channelSms": "SMS",
+      "channelBoth": "Both",
+      "subject": "Subject",
+      "subjectPlaceholder": "Message subject",
+      "body": "Message body",
+      "bodyPlaceholder": "Write your message...",
+      "bodyHelp": "Available variables: {{jmeno}}, {{email}}",
+      "properties": "Properties",
+      "allProperties": "All properties",
+      "recipientType": "Recipient type",
+      "recipientOwners": "Owners",
+      "recipientTenants": "Tenants",
+      "recipientAll": "All",
+      "recipientDebtors": "Debtors",
+      "recipientCustom": "Custom"
+    },
+    "customRecipientNote": "Custom selection will be available after creating the campaign",
+    "reviewChannel": "Channel:",
+    "reviewRecipients": "Recipients:",
+    "reviewSubject": "Subject:",
+    "continue": "Continue",
+    "back": "Back",
+    "cancel": "Cancel",
+    "sendNow": "Send now",
+    "error": "An error occurred. Please try again."
+  },
+  "esign": {
+    "title": "Electronic signatures",
+    "create": "New signature request",
+    "sections": {
+      "document": "Document",
+      "signatories": "Signatories"
+    },
+    "docTypes": {
+      "management_contract": "Management contract",
+      "tenancy": "Tenancy agreement",
+      "protocol": "Protocol",
+      "custom": "Custom document"
+    },
+    "fields": {
+      "documentType": "Document type",
+      "documentId": "Document ID",
+      "documentIdPlaceholder": "Contract or protocol ID",
+      "documentTitle": "Document title",
+      "documentTitlePlaceholder": "Management contract — Residential building Krásná 12",
+      "message": "Cover letter",
+      "expiresAt": "Valid until",
+      "signatoryName": "Name *",
+      "signatoryEmail": "Email *",
+      "signatoryRole": "Role",
+      "signatoryRolePlaceholder": "SVJ Chairperson"
+    },
+    "addSignatory": "Add signatory",
+    "removeSignatory": "Remove",
+    "next": "Next →",
+    "back": "← Back",
+    "cancel": "Cancel",
+    "submit": "Create",
+    "submitting": "Creating...",
+    "toast": {
+      "created": "Request created",
+      "error": "Creation failed"
+    }
+  },
+  "crm": {
+    "title": "CRM",
+    "lead": {
+      "create": "New lead",
+      "loading": "Loading...",
+      "stages": {
+        "new_lead": "New",
+        "contacted": "Contacted",
+        "demo_scheduled": "Demo sched.",
+        "demo_done": "Demo OK",
+        "trial": "Trial",
+        "negotiation": "Negotiation",
+        "won": "Customer",
+        "lost": "Lost",
+        "not_interested": "Not interested"
+      },
+      "leadTypes": {
+        "property_manager": "Manager",
+        "svj_direct": "SVJ",
+        "bd_direct": "BD",
+        "other": "Other"
+      },
+      "priorities": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      },
+      "fields": {
+        "companyName": "Company name",
+        "ico": "Company ID",
+        "address": "Address",
+        "city": "City",
+        "leadType": "Type",
+        "priority": "Priority",
+        "stage": "Stage",
+        "contactName": "Contact name",
+        "contactEmail": "Email",
+        "contactPhone": "Phone",
+        "contactRole": "Role",
+        "estimatedUnits": "Estimated units",
+        "estimatedMrr": "Estimated MRR",
+        "nextFollowUpAt": "Next follow-up",
+        "source": "Source",
+        "note": "Note"
+      },
+      "activities": "Activities",
+      "noActivities": "No activities yet",
+      "activityPlaceholder": "Activity title",
+      "activityBodyPlaceholder": "Description (optional)",
+      "addActivity": "Add",
+      "addingActivity": "Adding...",
+      "activityTypes": {
+        "call": "Call",
+        "email": "Email",
+        "meeting": "Meeting",
+        "demo": "Demo",
+        "note": "Note",
+        "stage_change": "Stage change"
+      },
+      "delete": "Delete",
+      "deleteConfirm": "Really delete this lead?",
+      "cancel": "Cancel",
+      "save": "Save",
+      "create": "Create",
+      "saving": "Saving..."
+    }
+  },
   "language": {
     "cs": "Čeština",
     "en": "English",

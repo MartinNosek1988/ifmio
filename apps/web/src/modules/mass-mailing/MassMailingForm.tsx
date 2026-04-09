@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Modal, Button, FormSection, FormFooter, FormField } from '../../shared/components'
+import { useTranslation } from 'react-i18next'
+import { Modal, FormSection, FormFooter, FormField } from '../../shared/components'
 import { massMailingApi, type ApiCampaign } from './api/mass-mailing.api'
 
 interface Props {
@@ -13,22 +14,23 @@ interface Props {
 type Channel = 'email' | 'sms' | 'both'
 type RecipientType = 'all_owners' | 'all_tenants' | 'all_residents' | 'debtors' | 'custom'
 
-const CHANNEL_OPTIONS: { value: Channel; label: string }[] = [
-  { value: 'email', label: 'Email' },
-  { value: 'sms', label: 'SMS' },
-  { value: 'both', label: 'Oboji' },
-]
-
-const RECIPIENT_OPTIONS: { value: RecipientType; label: string }[] = [
-  { value: 'all_owners', label: 'Vlastnici' },
-  { value: 'all_tenants', label: 'Najemnici' },
-  { value: 'all_residents', label: 'Vsichni' },
-  { value: 'debtors', label: 'Dluznici' },
-  { value: 'custom', label: 'Vlastni' },
-]
-
 export function MassMailingForm({ open, onClose, onSuccess, editData }: Props) {
+  const { t } = useTranslation()
   const [step, setStep] = useState(1)
+
+  const CHANNEL_OPTIONS: { value: Channel; label: string }[] = [
+    { value: 'email', label: t('massMailing.fields.channelEmail') },
+    { value: 'sms', label: t('massMailing.fields.channelSms') },
+    { value: 'both', label: t('massMailing.fields.channelBoth') },
+  ]
+
+  const RECIPIENT_OPTIONS: { value: RecipientType; label: string }[] = [
+    { value: 'all_owners', label: t('massMailing.fields.recipientOwners') },
+    { value: 'all_tenants', label: t('massMailing.fields.recipientTenants') },
+    { value: 'all_residents', label: t('massMailing.fields.recipientAll') },
+    { value: 'debtors', label: t('massMailing.fields.recipientDebtors') },
+    { value: 'custom', label: t('massMailing.fields.recipientCustom') },
+  ]
 
   // Form state
   const [name, setName] = useState(editData?.name ?? '')
@@ -79,15 +81,15 @@ export function MassMailingForm({ open, onClose, onSuccess, editData }: Props) {
   }
 
   const payload = { name, channel, subject, body, recipientType, allProperties }
-  const canProceedStep1 = name.trim() && subject.trim() && body.trim()
+  const canProceedStep1 = !!(name.trim() && subject.trim() && body.trim())
   const canProceedStep2 = !!recipientType
 
   return (
     <Modal
       open={open}
       onClose={handleClose}
-      title={editData ? 'Upravit kampan' : 'Nova kampan'}
-      subtitle={`Krok ${step} / 3`}
+      title={editData ? t('massMailing.edit') : t('massMailing.create')}
+      subtitle={t('massMailing.step', { current: step, total: 3 })}
       wide
     >
       {/* Step indicators */}
@@ -106,18 +108,18 @@ export function MassMailingForm({ open, onClose, onSuccess, editData }: Props) {
 
       {/* Step 1: Content */}
       {step === 1 && (
-        <FormSection title="Obsah zpravy">
-          <FormField label="Nazev kampane" name="name">
+        <FormSection title={t('massMailing.sections.content')}>
+          <FormField label={t('massMailing.fields.name')} name="name">
             <input
               type="text"
               className="form-input"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="napr. Oznameni o schuzi"
+              placeholder={t('massMailing.fields.namePlaceholder')}
             />
           </FormField>
 
-          <FormField label="Kanal" name="channel">
+          <FormField label={t('massMailing.fields.channel')} name="channel">
             <div style={{ display: 'flex', gap: 8 }}>
               {CHANNEL_OPTIONS.map((opt) => (
                 <button
@@ -140,23 +142,23 @@ export function MassMailingForm({ open, onClose, onSuccess, editData }: Props) {
             </div>
           </FormField>
 
-          <FormField label="Predmet" name="subject">
+          <FormField label={t('massMailing.fields.subject')} name="subject">
             <input
               type="text"
               className="form-input"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              placeholder="Predmet zpravy"
+              placeholder={t('massMailing.fields.subjectPlaceholder')}
             />
           </FormField>
 
-          <FormField label="Text zpravy" name="body" helpText="Dostupne promenne: {{jmeno}}, {{email}}">
+          <FormField label={t('massMailing.fields.body')} name="body" helpText={t('massMailing.fields.bodyHelp', { jmeno: '{{jmeno}}', email: '{{email}}' })}>
             <textarea
               className="form-input"
               rows={8}
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              placeholder="Napiste text zpravy..."
+              placeholder={t('massMailing.fields.bodyPlaceholder')}
               style={{ resize: 'vertical' }}
             />
           </FormField>
@@ -165,27 +167,27 @@ export function MassMailingForm({ open, onClose, onSuccess, editData }: Props) {
             onCancel={handleClose}
             onSubmit={() => setStep(2)}
             isValid={canProceedStep1}
-            submitLabel="Pokracovat"
-            cancelLabel="Zrusit"
+            submitLabel={t('massMailing.continue')}
+            cancelLabel={t('massMailing.cancel')}
           />
         </FormSection>
       )}
 
       {/* Step 2: Recipients */}
       {step === 2 && (
-        <FormSection title="Prijemci">
-          <FormField label="Nemovitosti" name="propertyIds">
+        <FormSection title={t('massMailing.sections.recipients')}>
+          <FormField label={t('massMailing.fields.properties')} name="propertyIds">
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
               <input
                 type="checkbox"
                 checked={allProperties}
                 onChange={(e) => setAllProperties(e.target.checked)}
               />
-              <span style={{ fontSize: '0.85rem' }}>Vsechny nemovitosti</span>
+              <span style={{ fontSize: '0.85rem' }}>{t('massMailing.fields.allProperties')}</span>
             </label>
           </FormField>
 
-          <FormField label="Typ prijemcu" name="recipientType">
+          <FormField label={t('massMailing.fields.recipientType')} name="recipientType">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {RECIPIENT_OPTIONS.map((opt) => (
                 <label
@@ -218,7 +220,7 @@ export function MassMailingForm({ open, onClose, onSuccess, editData }: Props) {
               background: 'var(--bg-muted, #f9fafb)',
               fontSize: '0.82rem', color: 'var(--text-muted)',
             }}>
-              Vlastni vyber bude dostupny po vytvoreni kampane
+              {t('massMailing.customRecipientNote')}
             </div>
           )}
 
@@ -226,22 +228,22 @@ export function MassMailingForm({ open, onClose, onSuccess, editData }: Props) {
             onCancel={() => setStep(1)}
             onSubmit={() => setStep(3)}
             isValid={canProceedStep2}
-            submitLabel="Pokracovat"
-            cancelLabel="Zpet"
+            submitLabel={t('massMailing.continue')}
+            cancelLabel={t('massMailing.back')}
           />
         </FormSection>
       )}
 
       {/* Step 3: Review */}
       {step === 3 && (
-        <FormSection title="Shrnuti">
+        <FormSection title={t('massMailing.sections.summary')}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px 16px', fontSize: '0.85rem' }}>
-              <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>Kanal:</span>
+              <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{t('massMailing.reviewChannel')}</span>
               <span>{CHANNEL_OPTIONS.find((o) => o.value === channel)?.label}</span>
-              <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>Prijemci:</span>
+              <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{t('massMailing.reviewRecipients')}</span>
               <span>{RECIPIENT_OPTIONS.find((o) => o.value === recipientType)?.label}</span>
-              <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>Predmet:</span>
+              <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{t('massMailing.reviewSubject')}</span>
               <span>{subject}</span>
             </div>
 
@@ -260,15 +262,15 @@ export function MassMailingForm({ open, onClose, onSuccess, editData }: Props) {
             onCancel={() => setStep(2)}
             onSubmit={() => sendMutation.mutate(payload)}
             isSubmitting={createMutation.isPending || sendMutation.isPending}
-            submitLabel="Odeslat ihned"
-            cancelLabel="Zpet"
+            submitLabel={t('massMailing.sendNow')}
+            cancelLabel={t('massMailing.back')}
             showDraft
             onSaveDraft={() => createMutation.mutate(payload)}
           />
 
           {(createMutation.isError || sendMutation.isError) && (
             <div style={{ marginTop: 12, color: 'var(--danger, #ef4444)', fontSize: '0.82rem' }}>
-              Doslo k chybe. Zkuste to prosim znovu.
+              {t('massMailing.error')}
             </div>
           )}
         </FormSection>

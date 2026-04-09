@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Modal } from '../../shared/components';
 import { FormSection, FormFooter } from '../../shared/components/FormSection';
 import { FormField } from '../../shared/components/FormField';
+import { CurrencyInput } from '../../shared/components/CurrencyInput';
 import { useCreateWorkOrder } from './api/workorders.queries';
 import { propertiesApi } from '../properties/properties-api';
 import { apiClient } from '../../core/api/client';
@@ -147,12 +148,22 @@ export default function WorkOrderForm({ onClose }: Props) {
           <FormField label="Odhad (hodiny)" name="estimatedHours" required={false}>
             <input id="estimatedHours" type="number" min="0" value={form.estimatedHours} onChange={e => set('estimatedHours', e.target.value)} style={inputStyle()} placeholder="0" />
           </FormField>
-          <FormField label="Náklady práce (Kč)" name="laborCost" required={false}>
-            <input id="laborCost" type="number" min="0" value={form.laborCost} onChange={e => set('laborCost', e.target.value)} style={{ ...inputStyle(), fontFamily: 'var(--font-mono)' }} placeholder="0" />
-          </FormField>
-          <FormField label="Materiál (Kč)" name="materialCost" required={false}>
-            <input id="materialCost" type="number" min="0" value={form.materialCost} onChange={e => set('materialCost', e.target.value)} style={{ ...inputStyle(), fontFamily: 'var(--font-mono)' }} placeholder="0" />
-          </FormField>
+          <CurrencyInput
+            name="laborCost"
+            label="Náklady práce"
+            value={form.laborCost ? Number(form.laborCost) : null}
+            onChange={val => set('laborCost', val !== null ? String(val) : '')}
+            required={false}
+            min={0}
+          />
+          <CurrencyInput
+            name="materialCost"
+            label="Materiál"
+            value={form.materialCost ? Number(form.materialCost) : null}
+            onChange={val => set('materialCost', val !== null ? String(val) : '')}
+            required={false}
+            min={0}
+          />
         </div>
       </FormSection>
     </Modal>

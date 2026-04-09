@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { KpiCard, Table, Badge, SearchBar, Button, EmptyState } from '../../shared/components';
-import { LoadingState } from '../../shared/components/LoadingState';
+import { LoadingSkeleton } from '../../shared/components';
 import { ErrorState } from '../../shared/components/ErrorState';
 import type { Column, BadgeVariant } from '../../shared/components';
 import { METER_TYPE_LABELS, label } from '../../constants/labels';
@@ -48,7 +48,7 @@ export default function MetersPage() {
     });
   };
 
-  if (isLoading) return <LoadingState text="Načítání měřidel..." />;
+  if (isLoading) return <LoadingSkeleton variant="table" rows={8} />;
   if (isError) return <ErrorState onRetry={refetch} />;
 
   const items = meters ?? [];

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { KpiCard, Table, Badge, SearchBar, Button, EmptyState } from '../../shared/components';
-import { LoadingState } from '../../shared/components/LoadingState';
+import { LoadingSkeleton } from '../../shared/components';
 import { ErrorState } from '../../shared/components/ErrorState';
 import type { Column, BadgeVariant } from '../../shared/components';
 import { formatCzDate } from '../../shared/utils/format';
@@ -42,7 +42,7 @@ export default function DocumentsPage() {
   const { data: listData, isLoading, isError, refetch } = useDocuments(params);
   const { data: stats } = useDocStats();
 
-  if (isLoading) return <LoadingState text="Nacitani dokumentu..." />;
+  if (isLoading) return <LoadingSkeleton variant="table" rows={8} />;
   if (isError) return <ErrorState onRetry={refetch} />;
 
   // Client-side filter for "helpdesk" pill — show only HD- prefixed documents

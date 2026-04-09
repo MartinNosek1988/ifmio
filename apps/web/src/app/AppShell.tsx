@@ -408,6 +408,7 @@ export default function AppShell() {
               onClick={clearGlobalProperty}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)', padding: 0, display: 'flex' }}
               title="Zrušit filtr"
+              aria-label="Zrušit filtr"
             >
               <X size={12} />
             </button>
@@ -422,19 +423,20 @@ export default function AppShell() {
           )}
           <NotificationCenter />
           <div className="user-menu-wrap" ref={userMenuRef}>
-            <div
+            <button
               className="topbar__avatar"
               data-testid="user-menu"
               title={meData?.name ?? 'Uzivatel'}
+              aria-label="Uživatelské menu"
               onClick={() => setShowUserMenu((v) => !v)}
-              style={{ cursor: 'pointer' }}
+              style={{ cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}
             >
               {avatarData ? (
                 <img src={avatarData} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
               ) : (
                 (meData?.name ?? 'U').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
               )}
-            </div>
+            </button>
             {showUserMenu && (
               <div className="user-dropdown">
                 <div className="user-dropdown__header">

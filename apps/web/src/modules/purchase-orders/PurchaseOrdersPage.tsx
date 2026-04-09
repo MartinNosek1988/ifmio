@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, FileText, Clock, CheckCircle, Link2 } from 'lucide-react';
-import { KpiCard, Badge, Button, LoadingSpinner } from '../../shared/components';
+import { KpiCard, Badge, Button, LoadingSkeleton } from '../../shared/components';
 import { formatKc, formatCzDate } from '../../shared/utils/format';
 import { purchaseOrdersApi } from './api/purchase-orders.api';
 import type { ApiPurchaseOrder } from './api/purchase-orders.api';
@@ -70,7 +70,7 @@ export default function PurchaseOrdersPage() {
     queryFn: purchaseOrdersApi.stats,
   });
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSkeleton variant="table" rows={8} />;
 
   return (
     <div style={{ padding: '24px 32px' }}>

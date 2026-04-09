@@ -81,7 +81,23 @@ export function useChangeWOStatus() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) => workOrdersApi.changeStatus(id, status),
-    onSuccess: (_, { id }) => {
+    onMutate: async ({ id, status }) => {
+      await qc.cancelQueries({ queryKey: woKeys.lists() });
+      await qc.cancelQueries({ queryKey: woKeys.detail(id) });
+      const previousDetail = qc.getQueryData(woKeys.detail(id));
+      if (previousDetail) {
+        qc.setQueryData(woKeys.detail(id), (old: Record<string, unknown> | undefined) =>
+          old ? { ...old, status } : old,
+        );
+      }
+      return { previousDetail };
+    },
+    onError: (_err, { id }, context) => {
+      if (context?.previousDetail) {
+        qc.setQueryData(woKeys.detail(id), context.previousDetail);
+      }
+    },
+    onSettled: (_, _err, { id }) => {
       qc.invalidateQueries({ queryKey: woKeys.lists() });
       qc.invalidateQueries({ queryKey: woKeys.stats() });
       qc.invalidateQueries({ queryKey: woKeys.detail(id) });
