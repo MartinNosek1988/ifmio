@@ -105,6 +105,8 @@ const MyTicketsPage = lazy(() => import('../modules/portal/MyTicketsPage'));
 const MyMetersPage = lazy(() => import('../modules/portal/MyMetersPage'));
 const MyDocumentsPage = lazy(() => import('../modules/portal/MyDocumentsPage'));
 const MyKontoPage = lazy(() => import('../modules/portal/MyKontoPage'));
+const PortalVotingPage = lazy(() => import('../modules/portal/PortalVotingPage'));
+const PortalESignPage = lazy(() => import('../modules/portal/PortalESignPage'));
 
 function withBoundary(name: string, Component: React.ComponentType) {
   return (
@@ -189,6 +191,8 @@ export const router = createBrowserRouter([
       { path: 'portal/meters', element: withBoundary('Měřiče', MyMetersPage) },
       { path: 'portal/documents', element: withBoundary('Dokumenty', MyDocumentsPage) },
       { path: 'portal/konto', element: withBoundary('Konto', MyKontoPage) },
+      { path: 'portal/voting', element: withBoundary('Hlasování', PortalVotingPage) },
+      { path: 'portal/esign', element: withBoundary('Podpisy', PortalESignPage) },
       { path: 'properties', element: withBoundary('Nemovitosti', PropertiesPage) },
       { path: 'properties/new', element: withBoundary('Nová nemovitost', PropertyFormPage) },
       { path: 'properties/:id/edit', element: withBoundary('Upravit nemovitost', PropertyFormPage) },

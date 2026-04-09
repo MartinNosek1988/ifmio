@@ -8,7 +8,7 @@ import {
   Wrench, Headphones, Box, Gauge, FileText, UserCheck,
   Wallet, AlertTriangle, TrendingUp, ShoppingCart,
   MessageSquare, Mail, Settings, BarChart3, Database, Download, Landmark, MapPinned,
-  ClipboardList, ClipboardCheck, ScrollText, UsersRound, FileCheck2, Columns3,
+  ClipboardList, ClipboardCheck, ScrollText, UsersRound, FileCheck2, Columns3, Vote, PenLine,
   User as UserIcon, LogOut, Shield, Menu, X, ChevronDown, Sparkles,
 } from 'lucide-react';
 import { LoadingSpinner } from '../shared/components';
@@ -137,6 +137,8 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/portal/meters', label: 'Měřiče', icon: <Gauge size={17} /> },
       { to: '/portal/documents', label: 'Dokumenty', icon: <FolderOpen size={17} /> },
       { to: '/portal/konto', label: 'Konto', icon: <Wallet size={17} /> },
+      { to: '/portal/voting', label: 'Hlasování', icon: <Vote size={17} /> },
+      { to: '/portal/esign', label: 'Podpisy', icon: <PenLine size={17} /> },
     ],
   },
 ];
@@ -180,6 +182,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/portal/meters': 'Měřiče',
   '/portal/documents': 'Dokumenty',
   '/portal/konto': 'Konto',
+  '/portal/voting': 'Hlasování',
+  '/portal/esign': 'Podpisy',
   '/kanban': 'Pipeline',
 };
 
