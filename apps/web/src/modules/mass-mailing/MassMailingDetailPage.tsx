@@ -105,7 +105,7 @@ export default function MassMailingDetailPage() {
     <div data-testid="mass-mailing-detail-page">
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
-        <Button variant="ghost" onClick={() => navigate('/mass-mailing')} icon={<ArrowLeft size={15} />}>
+        <Button variant="default" onClick={() => navigate('/mass-mailing')} icon={<ArrowLeft size={15} />}>
           Zpet
         </Button>
         <h1 className="page-title" style={{ margin: 0, flex: 1, minWidth: 200 }}>{campaign.name}</h1>
