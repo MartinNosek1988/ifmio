@@ -161,12 +161,13 @@ export function MassMailingForm({ open, onClose, onSuccess, editData }: Props) {
             />
           </FormField>
 
-          <FormFooter>
-            <Button variant="ghost" onClick={handleClose}>Zrusit</Button>
-            <Button variant="primary" onClick={() => setStep(2)} disabled={!canProceedStep1}>
-              Pokracovat
-            </Button>
-          </FormFooter>
+          <FormFooter
+            onCancel={handleClose}
+            onSubmit={() => setStep(2)}
+            isValid={canProceedStep1}
+            submitLabel="Pokracovat"
+            cancelLabel="Zrusit"
+          />
         </FormSection>
       )}
 
@@ -221,12 +222,13 @@ export function MassMailingForm({ open, onClose, onSuccess, editData }: Props) {
             </div>
           )}
 
-          <FormFooter>
-            <Button variant="ghost" onClick={() => setStep(1)}>Zpet</Button>
-            <Button variant="primary" onClick={() => setStep(3)} disabled={!canProceedStep2}>
-              Pokracovat
-            </Button>
-          </FormFooter>
+          <FormFooter
+            onCancel={() => setStep(1)}
+            onSubmit={() => setStep(3)}
+            isValid={canProceedStep2}
+            submitLabel="Pokracovat"
+            cancelLabel="Zpet"
+          />
         </FormSection>
       )}
 
@@ -254,23 +256,15 @@ export function MassMailingForm({ open, onClose, onSuccess, editData }: Props) {
             </div>
           </div>
 
-          <FormFooter>
-            <Button variant="ghost" onClick={() => setStep(2)}>Zpet</Button>
-            <Button
-              variant="secondary"
-              onClick={() => createMutation.mutate(payload)}
-              disabled={createMutation.isPending || sendMutation.isPending}
-            >
-              Ulozit jako koncept
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => sendMutation.mutate(payload)}
-              disabled={createMutation.isPending || sendMutation.isPending}
-            >
-              Odeslat ihned
-            </Button>
-          </FormFooter>
+          <FormFooter
+            onCancel={() => setStep(2)}
+            onSubmit={() => sendMutation.mutate(payload)}
+            isSubmitting={createMutation.isPending || sendMutation.isPending}
+            submitLabel="Odeslat ihned"
+            cancelLabel="Zpet"
+            showDraft
+            onSaveDraft={() => createMutation.mutate(payload)}
+          />
 
           {(createMutation.isError || sendMutation.isError) && (
             <div style={{ marginTop: 12, color: 'var(--danger, #ef4444)', fontSize: '0.82rem' }}>
