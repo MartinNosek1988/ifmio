@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import { Injectable, NotFoundException, Logger } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { PropertyScopeService } from '../common/services/property-scope.service'
 import { EmailService } from '../email/email.service'
@@ -8,6 +8,8 @@ import type { AuthUser } from '@ifmio/shared-types'
 
 @Injectable()
 export class RemindersService {
+  private readonly logger = new Logger(RemindersService.name)
+
   constructor(
     private prisma: PrismaService,
     private scope: PropertyScopeService,
@@ -247,17 +249,21 @@ export class RemindersService {
       const subject = render(reminder.template?.subject ?? 'Upominka platby')
       const body    = render(reminder.template?.body    ?? subject)
 
-      await this.email.sendReminder({
-        to:         reminder.resident.email,
-        firstName:  reminder.resident.firstName,
-        lastName:   reminder.resident.lastName,
-        tenantName: tenant?.name ?? '',
-        subject,
-        body,
-        amount:     Number(reminder.amount),
-        dueDate:    reminder.dueDate.toISOString(),
-        level:      reminder.level,
-      })
+      try {
+        await this.email.sendReminder({
+          to:         reminder.resident.email,
+          firstName:  reminder.resident.firstName,
+          lastName:   reminder.resident.lastName,
+          tenantName: tenant?.name ?? '',
+          subject,
+          body,
+          amount:     Number(reminder.amount),
+          dueDate:    reminder.dueDate.toISOString(),
+          level:      reminder.level,
+        })
+      } catch (err) {
+        this.logger.error(`Email upominky ${id} selhal: ${err}`)
+      }
     }
 
     return updated

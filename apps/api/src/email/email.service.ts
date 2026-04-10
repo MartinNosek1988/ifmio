@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common'
 import * as nodemailer from 'nodemailer'
 import { ConfigService } from '@nestjs/config'
+import { PrismaService } from '../prisma/prisma.service'
+import { getTenantId } from '../common/tenant-context'
 
 export interface SendEmailDto {
   to:       string | string[]
@@ -27,7 +29,10 @@ export class EmailService {
   private readonly fromEmail: string
   private readonly fromName:  string
 
-  constructor(private config: ConfigService) {
+  constructor(
+    private config: ConfigService,
+    private prisma: PrismaService,
+  ) {
     const host = this.config.get<string>('SMTP_HOST')
     const port = parseInt(this.config.get<string>('SMTP_PORT') ?? '587')
     const user = this.config.get<string>('SMTP_USER')
@@ -56,20 +61,53 @@ export class EmailService {
       return false
     }
 
+    const recipient = Array.isArray(dto.to) ? dto.to.join(', ') : dto.to
+
     try {
       const info = await this.transporter.sendMail({
         from:    `"${this.fromName}" <${this.fromEmail}>`,
-        to:      Array.isArray(dto.to) ? dto.to.join(', ') : dto.to,
+        to:      recipient,
         subject: dto.subject,
         html:    dto.html,
         text:    dto.text ?? dto.html.replace(/<[^>]*>/g, ''),
       })
 
-      this.logger.log(`Email odeslan: ${info.messageId} → ${dto.to}`)
+      this.logger.log(`Email odeslan: ${info.messageId} → ${recipient}`)
+      this.logToOutbox(recipient, dto.subject, 'sent', info.messageId).catch(() => {})
       return true
     } catch (err) {
-      this.logger.error(`Email selhal: ${err}`)
+      const message = err instanceof Error ? err.message : String(err)
+      this.logger.error(`Email selhal: ${message}`)
+      this.logToOutbox(recipient, dto.subject, 'failed', undefined, message).catch(() => {})
       return false
+    }
+  }
+
+  /** Write to OutboxLog — fire-and-forget, never throws */
+  private async logToOutbox(
+    recipient: string,
+    subject: string | undefined,
+    status: 'sent' | 'failed',
+    externalId?: string,
+    error?: string,
+  ): Promise<void> {
+    try {
+      const tenantId = getTenantId()
+      if (!tenantId) return // system emails without tenant context — skip logging
+
+      await this.prisma.outboxLog.create({
+        data: {
+          tenantId,
+          channel: 'email',
+          recipient,
+          subject: subject ?? null,
+          status,
+          externalId: externalId ?? null,
+          error: error ?? null,
+        },
+      })
+    } catch (err) {
+      this.logger.warn(`OutboxLog zapis selhal: ${err}`)
     }
   }
 
