@@ -317,12 +317,13 @@ export default function CrmBuildingDetailPage() {
                 {building.units.map((u: any) => (
                   <tr
                     key={u.id}
+                    onClick={() => navigate(`/crm/buildings/${id}/units/${u.id}`)}
                     style={{ cursor: 'pointer', borderBottom: '1px solid var(--border-light, #f3f4f6)' }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-muted, #f9fafb)')}
                     onMouseLeave={e => (e.currentTarget.style.background = '')}
                   >
                     <td style={{ padding: '6px 8px', fontWeight: 500 }}>
-                      <Link to={`/crm/buildings/${id}/units/${u.id}`} style={{ color: 'inherit', textDecoration: 'none', display: 'block' }}>
+                      <Link to={`/crm/buildings/${id}/units/${u.id}`} onClick={e => e.stopPropagation()} style={{ color: 'inherit', textDecoration: 'none', display: 'block' }}>
                         {u.unitNumber || '—'}
                       </Link>
                     </td>
