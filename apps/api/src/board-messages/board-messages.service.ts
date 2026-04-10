@@ -9,12 +9,13 @@ import type {
   UpdateBoardMessageDto,
   ReviewBoardMessageDto,
 } from './dto/board-message.dto'
+import type { UserRole } from '../common/decorators/roles.decorator'
 
 const NOT_DELETED = { deletedAt: null }
 const USER_SELECT = { id: true, name: true, email: true } as const
 
 /** Roles that can publish directly without approval */
-const ADMIN_ROLES: string[] = ['tenant_owner', 'tenant_admin']
+const ADMIN_ROLES: UserRole[] = ['tenant_owner', 'tenant_admin']
 
 @Injectable()
 export class BoardMessagesService {
@@ -306,7 +307,12 @@ export class BoardMessagesService {
 
   // ─── Portal feed (PUBLISHED only) ─────────────────────────────
 
-  async getPortalFeed(user: AuthUser, pagination: { page?: number; limit?: number }) {
+  async getPortalFeed(user: AuthUser, pagination: { page?: number; limit?: number; mine?: boolean }) {
+    // Return user's own non-published messages
+    if (pagination.mine) {
+      return this.getMyPortalMessages(user, pagination)
+    }
+
     const page = Math.max(1, pagination.page ?? 1)
     const limit = Math.min(100, Math.max(1, pagination.limit ?? 20))
 
@@ -461,7 +467,7 @@ export class BoardMessagesService {
     const admins = await this.prisma.user.findMany({
       where: {
         tenantId: user.tenantId,
-        role: { in: ADMIN_ROLES as any },
+        role: { in: ADMIN_ROLES },
         isActive: true,
       },
       select: { id: true },
@@ -483,6 +489,63 @@ export class BoardMessagesService {
     }
 
     return created
+  }
+
+  // ─── Portal: my messages (non-published) ────────────────────────
+
+  private async getMyPortalMessages(user: AuthUser, pagination: { page?: number; limit?: number }) {
+    const page = Math.max(1, pagination.page ?? 1)
+    const limit = Math.min(100, Math.max(1, pagination.limit ?? 20))
+
+    const where = {
+      tenantId: user.tenantId,
+      authorId: user.id,
+      status: { in: ['DRAFT', 'PENDING_APPROVAL', 'REJECTED'] },
+      ...NOT_DELETED,
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.boardMessage.findMany({
+        where,
+        include: { author: { select: USER_SELECT } },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.boardMessage.count({ where }),
+    ])
+
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) }
+  }
+
+  // ─── Portal: update own message ────────────────────────────────
+
+  async updateFromPortal(user: AuthUser, id: string, dto: UpdateBoardMessageDto) {
+    const msg = await this.prisma.boardMessage.findFirst({
+      where: { id, tenantId: user.tenantId, authorId: user.id, ...NOT_DELETED },
+    })
+    if (!msg) throw new NotFoundException('Zpráva nenalezena')
+
+    if (!['DRAFT', 'REJECTED'].includes(msg.status)) {
+      throw new BadRequestException('Zprávu lze upravit pouze ve stavu DRAFT nebo REJECTED')
+    }
+
+    return this.prisma.boardMessage.update({
+      where: { id },
+      data: {
+        ...(dto.title !== undefined && { title: dto.title }),
+        ...(dto.body !== undefined && { body: dto.body }),
+        ...(dto.visibility !== undefined && { visibility: dto.visibility }),
+        ...(dto.tags !== undefined && { tags: dto.tags }),
+        ...(dto.validFrom !== undefined && { validFrom: new Date(dto.validFrom) }),
+        ...(dto.validUntil !== undefined && { validUntil: new Date(dto.validUntil) }),
+        ...(dto.attachmentIds !== undefined && { attachmentIds: dto.attachmentIds }),
+        status: dto.submitForApproval ? 'PENDING_APPROVAL' : msg.status,
+        submittedAt: dto.submitForApproval ? new Date() : msg.submittedAt,
+        rejectionNote: null,
+      },
+      include: { author: { select: USER_SELECT } },
+    })
   }
 
   // ─── Helpers ───────────────────────────────────────────────────
