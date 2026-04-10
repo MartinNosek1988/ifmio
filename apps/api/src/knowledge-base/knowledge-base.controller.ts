@@ -6,6 +6,7 @@ import { KnowledgeBaseService } from './knowledge-base.service'
 import { DataorService } from '../integrations/dataor/dataor.service'
 import { PropertyEnrichmentOrchestrator } from './property-enrichment.orchestrator'
 import { BuildingIntelligenceService } from './building-intelligence.service'
+import { BuildingCompletenessService } from './building-completeness.service'
 import { BulkImportService, type BulkImportStep } from './bulk-import.service'
 import { TerritorySeedService } from './territory-seed.service'
 import { CuzkApiKnService } from '../integrations/cuzk/cuzk-api-kn.service'
@@ -82,6 +83,7 @@ export class KnowledgeBaseController {
     private cuzkApiKn: CuzkApiKnService,
     private territorySeed: TerritorySeedService,
     private dataorService: DataorService,
+    private completenessService: BuildingCompletenessService,
   ) {}
 
   @Post('enrich')
@@ -541,6 +543,20 @@ export class KnowledgeBaseController {
     ])
 
     return { data, total, limit: take, offset: skip }
+  }
+
+  @Get('buildings/completeness-summary')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Bulk completeness summary' })
+  getCompletenessSummary(@Query('ids') ids: string) {
+    return this.completenessService.getCompletenessSummary(ids?.split(',').filter(Boolean) ?? [])
+  }
+
+  @Get('buildings/:id/completeness')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Completeness breakdown budovy' })
+  getBuildingCompleteness(@Param('id') id: string) {
+    return this.completenessService.getCompleteness(id)
   }
 
   @Get('buildings/:id')
