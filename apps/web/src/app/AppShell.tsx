@@ -13,6 +13,7 @@ import {
   User as UserIcon, LogOut, Shield, Menu, X, ChevronDown, Sparkles,
 } from 'lucide-react';
 import { LoadingSpinner } from '../shared/components';
+import { useAuthStore } from '../core/auth/auth.store';
 import { Breadcrumbs as BreadcrumbsNav } from '../shared/components/Breadcrumbs';
 import { OfflineBanner } from '../shared/components/OfflineBanner';
 import { GlobalSearch } from '../modules/search/GlobalSearch';
@@ -208,9 +209,20 @@ function getPageTitle(pathname: string): string {
 }
 
 export default function AppShell() {
+  const authLoading = useAuthStore(s => s.isLoading);
   const location = useLocation();
   const navigate = useNavigate();
   const pageTitle = getPageTitle(location.pathname);
+
+  // Wait for auth session to be restored before rendering sidebar
+  // (prevents useRoleUX returning 'resident' fallback for null user)
+  if (authLoading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+        <LoadingSpinner />
+      </div>
+    );
+  }
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showPropertyPicker, setShowPropertyPicker] = useState(false);
