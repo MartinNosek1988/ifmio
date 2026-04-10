@@ -65,6 +65,12 @@ services:
         condition: service_healthy
     expose:
       - '80'
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1:80/']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   caddy:
     image: caddy:2-alpine
@@ -85,15 +91,16 @@ services:
       - web
       - api
 
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    restart: unless-stopped
-    command: tunnel --no-autoupdate run
-    environment:
-      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN:-}
-    depends_on:
-      - web
-      - api
+  # cloudflared:
+  #   image: cloudflare/cloudflared:latest
+  #   restart: unless-stopped
+  #   command: tunnel --no-autoupdate run
+  #   environment:
+  #     - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN:-}
+  #   depends_on:
+  #     - web
+  #     - api
+  #   # TODO: Nakonfigurovat CLOUDFLARE_TUNNEL_TOKEN pro aktivaci
 
 volumes:
   caddy_data:
