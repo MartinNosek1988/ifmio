@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { CuzkApiKnService } from '../integrations/cuzk/cuzk-api-kn.service'
+import { BuildingUnitMatchingService } from './building-unit-matching.service'
 
 @Injectable()
 export class CuzkEnrichService {
@@ -10,6 +11,7 @@ export class CuzkEnrichService {
   constructor(
     private prisma: PrismaService,
     private cuzkApi: CuzkApiKnService,
+    private matching: BuildingUnitMatchingService,
   ) {}
 
   /** Daily auto-enrich: fetch ČÚZK data for buildings without units. Max ~60/day. */
@@ -80,6 +82,16 @@ export class CuzkEnrichService {
                 cuzkStavbaId: stavba.id,
               },
             })
+          }
+
+          // Auto-link existing business Units to newly created BuildingUnits
+          try {
+            const linkResult = await this.matching.linkUnitsToBuilding(building.id)
+            if (linkResult.linked > 0) {
+              this.logger.log(`Auto-linked ${linkResult.linked} units for building ${building.id}`)
+            }
+          } catch (linkErr) {
+            this.logger.warn(`Unit linking failed for building ${building.id}: ${linkErr}`)
           }
 
           enriched++

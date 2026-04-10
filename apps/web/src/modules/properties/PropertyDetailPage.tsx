@@ -190,6 +190,12 @@ export default function PropertyDetailPage() {
       key: 'personCount', label: 'Osoby', align: 'right',
       render: (u) => u.personCount != null ? String(u.personCount) : <span style={{ color: 'var(--text-muted)' }}>—</span>,
     },
+    {
+      key: 'buildingUnitId', label: 'KB', align: 'center',
+      render: (u) => u.buildingUnitId
+        ? <span title="Propojeno s KB BuildingUnit" style={{ color: 'var(--success, #22c55e)', fontWeight: 600, fontSize: '0.8rem' }}>KB</span>
+        : <span style={{ color: 'var(--text-muted)' }}>—</span>,
+    },
     ...(hasSvjContract ? [{
       key: 'ownerShare', label: 'Podíl',
       render: (u: ApiUnit) => {

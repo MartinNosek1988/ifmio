@@ -6,9 +6,10 @@ import { UnitsController } from './units.controller';
 import { UnitDetailController } from './unit-detail.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PropertyScopeModule } from '../common/services/property-scope.module';
+import { KnowledgeBaseModule } from '../knowledge-base/knowledge-base.module';
 
 @Module({
-  imports: [PrismaModule, PropertyScopeModule],
+  imports: [PrismaModule, PropertyScopeModule, KnowledgeBaseModule],
   providers: [UnitsService, TransferService, UnitDetailService],
   controllers: [UnitsController, UnitDetailController],
   exports: [UnitsService],

@@ -7,6 +7,7 @@ import { DataorService } from '../integrations/dataor/dataor.service'
 import { PropertyEnrichmentOrchestrator } from './property-enrichment.orchestrator'
 import { BuildingIntelligenceService } from './building-intelligence.service'
 import { BuildingCompletenessService } from './building-completeness.service'
+import { BuildingUnitMatchingService } from './building-unit-matching.service'
 import { UpdateBuildingUnitDto } from './dto/update-building-unit.dto'
 import { BulkImportService, type BulkImportStep } from './bulk-import.service'
 import { TerritorySeedService } from './territory-seed.service'
@@ -85,6 +86,7 @@ export class KnowledgeBaseController {
     private territorySeed: TerritorySeedService,
     private dataorService: DataorService,
     private completenessService: BuildingCompletenessService,
+    private matchingService: BuildingUnitMatchingService,
   ) {}
 
   @Post('enrich')
@@ -948,5 +950,12 @@ export class KnowledgeBaseController {
     const rok = body.rok ?? new Date().getFullYear()
     const typ = body.typ ?? 'actual'
     return this.dataorService.importAll(rok, typ, body.pravniForma, body.soud)
+  }
+
+  @Post('admin/link-units')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Bulk propojeni Unit <-> BuildingUnit (jednorazova migrace)' })
+  async bulkLinkUnits(@Body() dto: { dryRun?: boolean }) {
+    return this.matchingService.bulkLinkAll(dto.dryRun ?? false)
   }
 }
