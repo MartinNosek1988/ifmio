@@ -117,6 +117,7 @@ const PortalVotingPage = lazy(() => import('../modules/portal/PortalVotingPage')
 const PortalESignPage = lazy(() => import('../modules/portal/PortalESignPage'));
 const PortalContactsPage = lazy(() => import('../modules/portal/PortalContactsPage'));
 const PortalMessagesPage = lazy(() => import('../modules/portal/PortalMessagesPage'));
+const PortalBoardPage = lazy(() => import('../modules/portal/PortalBoardPage'));
 
 function withBoundary(name: string, Component: React.ComponentType) {
   return (
@@ -205,6 +206,7 @@ export const router = createBrowserRouter([
       { path: 'portal/voting', element: withBoundary('Hlasování', PortalVotingPage) },
       { path: 'portal/esign', element: withBoundary('Podpisy', PortalESignPage) },
       { path: 'portal/messages', element: withBoundary('Zprávy', PortalMessagesPage) },
+      { path: 'portal/nastenka', element: withBoundary('Nástěnka', PortalBoardPage) },
       { path: 'portal/contacts', element: withBoundary('Kontakty', PortalContactsPage) },
       { path: 'properties', element: withBoundary('Nemovitosti', PropertiesPage) },
       { path: 'properties/new', element: withBoundary('Nová nemovitost', PropertyFormPage) },

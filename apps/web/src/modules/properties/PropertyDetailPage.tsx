@@ -31,6 +31,7 @@ import BulkUnitForm from './BulkUnitForm';
 import { getPropertyTypeConfig } from '@ifmio/shared-types';
 import OccupancyForm from './OccupancyForm';
 import InsuranceTab from '../insurance/InsuranceTab';
+import BoardMessagesTab from '../board-messages/BoardMessagesTab';
 import { usePropertyContracts, type ApiManagementContract } from './management-contracts-api';
 import { usePropertyFinancialContexts, type ApiFinancialContext } from './financial-contexts-api';
 import { usePropertyOwnerships, useUnitOwnershipsByProperty, type ApiOwnership } from './ownerships-api';
@@ -99,7 +100,7 @@ export default function PropertyDetailPage() {
     enabled: !!id,
   });
 
-  type DetailTab = 'overview' | 'units' | 'owners' | 'groups' | 'meters' | 'components' | 'representatives' | 'assemblies' | 'per-rollam' | 'floor-plans' | 'map' | 'profile' | 'building' | 'insurance' | 'registry'
+  type DetailTab = 'overview' | 'units' | 'owners' | 'groups' | 'meters' | 'components' | 'representatives' | 'assemblies' | 'per-rollam' | 'floor-plans' | 'map' | 'profile' | 'building' | 'insurance' | 'registry' | 'board-messages'
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
 
   // PropertyTypeConfig drives which tabs are visible
@@ -440,6 +441,7 @@ export default function PropertyDetailPage() {
           { key: 'map' as DetailTab, label: 'Mapa', configKey: 'overview' },
           { key: 'insurance' as DetailTab, label: 'Pojištění', configKey: 'insurance' },
           { key: 'registry' as DetailTab, label: 'Rejstřík', configKey: 'registry' },
+          { key: 'board-messages' as DetailTab, label: 'Nástěnka', configKey: 'board-messages' },
           { key: 'building' as DetailTab, label: 'O budově', configKey: 'building-info' },
           { key: 'profile' as DetailTab, label: 'Profil', configKey: 'overview' },
         ] as const).filter(t => configTabs.includes(t.configKey as any)).map(t => (
@@ -738,6 +740,9 @@ export default function PropertyDetailPage() {
           onRefresh={refetch}
         />
       )}
+
+      {/* ── NÁSTĚNKA TAB ──────────────────────────────────────── */}
+      {detailTab === 'board-messages' && <BoardMessagesTab propertyId={id!} />}
 
       {/* ── POJIŠTĚNÍ TAB ──────────────────────────────────────── */}
       {detailTab === 'insurance' && <InsuranceTab property={property} />}

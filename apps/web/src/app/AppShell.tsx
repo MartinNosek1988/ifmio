@@ -9,7 +9,7 @@ import {
   Wallet, AlertTriangle, TrendingUp, ShoppingCart, Receipt,
   MessageSquare, Mail, Send, Settings, BarChart3, Database, Download, Landmark, MapPinned,
   ClipboardList, ClipboardCheck, ScrollText, UsersRound, FileCheck2, Columns3, Vote, PenLine,
-  Phone,
+  Phone, Megaphone,
   User as UserIcon, LogOut, Shield, Menu, X, ChevronDown, Sparkles,
 } from 'lucide-react';
 import { LoadingSpinner } from '../shared/components';
@@ -147,6 +147,7 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/portal/contacts', label: 'Kontakty', icon: <Phone size={17} /> },
       { to: '/portal/voting', label: 'Hlasování', icon: <Vote size={17} /> },
       { to: '/portal/esign', label: 'Podpisy', icon: <PenLine size={17} /> },
+      { to: '/portal/nastenka', label: 'Nástěnka', icon: <Megaphone size={17} /> },
     ],
   },
 ];
@@ -195,6 +196,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/portal/esign': 'Podpisy',
   '/portal/messages': 'Zprávy',
   '/portal/contacts': 'Kontakty',
+  '/portal/nastenka': 'Nástěnka',
   '/crm/pipeline': 'CRM Pipeline',
   '/crm/kb-candidates': 'KB Kandidati',
   '/kanban': 'Pipeline',
