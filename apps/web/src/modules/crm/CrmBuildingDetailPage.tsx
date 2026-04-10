@@ -501,46 +501,55 @@ const linkBtn: React.CSSProperties = {
 
 // ── Completeness tab ───────────────────────────────
 
+interface CField { key: string; label: string; present: boolean; value?: string | number | null; source: string }
+interface CCategory { key: string; label: string; status: 'complete' | 'partial' | 'missing'; score: number; fields: CField[] }
+interface CData { buildingId: string; overallScore: number; categories: CCategory[]; missingCount: number; totalCount: number }
+
 function CompletenessTab({ buildingId }: { buildingId: string }) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery<CData>({
     queryKey: ['kb', 'building', buildingId, 'completeness'],
     queryFn: () => apiClient.get(`/knowledge-base/buildings/${buildingId}/completeness`).then(r => r.data),
   })
 
-  if (isLoading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Nacitam...</div>
+  if (isLoading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Načítám...</div>
+  if (isError) return (
+    <div style={{ padding: 24, border: '1px solid #fecaca', background: '#fef2f2', color: '#991b1b', borderRadius: 12, display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-start' }}>
+      <div style={{ fontWeight: 600 }}>Nepodařilo se načíst data o kompletnosti.</div>
+      <button type="button" onClick={() => refetch()} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'white', cursor: 'pointer' }}>Zkusit znovu</button>
+    </div>
+  )
   if (!data) return null
 
   return (
     <div>
-      {/* Overall score */}
       <div style={{ textAlign: 'center', padding: '20px 0', marginBottom: 20 }}>
         <div style={{ fontSize: '2.5rem', fontWeight: 700, color: data.overallScore > 70 ? '#22c55e' : data.overallScore > 40 ? '#eab308' : '#ef4444' }}>
           {data.overallScore}%
         </div>
         <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-          {data.totalCount - data.missingCount} / {data.totalCount} poli vyplneno
+          {data.totalCount - data.missingCount} / {data.totalCount} polí vyplněno
         </div>
       </div>
-
-      {/* Categories */}
-      {data.categories.map((cat: any) => (
+      {data.categories.map((cat) => (
         <CategoryCard key={cat.key} category={cat} />
       ))}
     </div>
   )
 }
 
-function CategoryCard({ category }: { category: any }) {
+function CategoryCard({ category }: { category: CCategory }) {
   const [expanded, setExpanded] = useState(false)
   const color = category.status === 'complete' ? '#22c55e' : category.status === 'partial' ? '#eab308' : '#ef4444'
-  const present = category.fields.filter((f: any) => f.present).length
+  const present = category.fields.filter((f) => f.present).length
   const total = category.fields.length
 
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 8, marginBottom: 8, overflow: 'hidden' }}>
-      <div
+      <button
+        type="button"
         onClick={() => setExpanded(!expanded)}
-        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', cursor: 'pointer' }}
+        aria-expanded={expanded}
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', cursor: 'pointer', width: '100%', background: 'none', border: 'none', textAlign: 'left' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
@@ -553,10 +562,10 @@ function CategoryCard({ category }: { category: any }) {
           </div>
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{category.score} b.</span>
         </div>
-      </div>
+      </button>
       {expanded && (
         <div style={{ borderTop: '1px solid var(--border)', padding: '8px 14px' }}>
-          {category.fields.map((f: any) => (
+          {category.fields.map((f: CField) => (
             <div key={f.key} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '0.82rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ color: f.present ? '#22c55e' : '#ef4444' }}>{f.present ? '\u2713' : '\u2717'}</span>
