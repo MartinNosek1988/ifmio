@@ -180,7 +180,6 @@ export function useResetEmailTemplate() {
 }
 
 export function usePreviewEmailTemplate() {
-  const qc = useQueryClient()
   return useMutation({
     mutationFn: (code: string) => adminApi.emailTemplates.preview(code),
   })
