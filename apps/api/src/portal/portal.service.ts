@@ -424,7 +424,7 @@ export class PortalService {
 
     const parts = ['SPD*1.0', `ACC:${iban.replace(/\s/g, '')}`, `AM:${amount.toFixed(2)}`, 'CC:CZK']
     if (prescription.variableSymbol) parts.push(`X-VS:${prescription.variableSymbol}`)
-    const msg = `Predpis ${prescription.description ?? ''}`.slice(0, 60)
+    const msg = `Predpis ${(prescription.description ?? '').replace(/[*\n\r]/g, ' ')}`.slice(0, 60)
     parts.push(`MSG:${msg}`)
 
     const qrString = parts.join('*')

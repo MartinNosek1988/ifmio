@@ -23,3 +23,8 @@ ALTER TABLE "email_templates" ADD CONSTRAINT "email_templates_tenantId_fkey" FOR
 
 -- RLS
 ALTER TABLE "email_templates" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "tenant_isolation_email_templates" ON "email_templates"
+  FOR ALL
+  USING ("tenantId" = current_setting('app.current_tenant_id', true))
+  WITH CHECK ("tenantId" = current_setting('app.current_tenant_id', true));

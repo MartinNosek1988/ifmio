@@ -213,16 +213,6 @@ export default function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const pageTitle = getPageTitle(location.pathname);
-
-  // Wait for auth session to be restored before rendering sidebar
-  // (prevents useRoleUX returning 'resident' fallback for null user)
-  if (authLoading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-        <LoadingSpinner />
-      </div>
-    );
-  }
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showPropertyPicker, setShowPropertyPicker] = useState(false);
@@ -318,6 +308,15 @@ export default function AppShell() {
       navigate('/portal', { replace: true });
     }
   }, [uxRole, location.pathname, navigate]);
+
+  // Wait for auth session to be restored before rendering sidebar
+  if (authLoading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   const visibleSections = NAV_SECTIONS
     .filter((sec) => !sec.roles || sec.roles.includes(uxRole))

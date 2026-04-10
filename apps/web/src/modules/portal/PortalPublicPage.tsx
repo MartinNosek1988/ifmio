@@ -72,7 +72,7 @@ export default function PortalPublicPage() {
               padding: '10px 20px', background: 'var(--primary, #6366f1)', color: '#fff',
               borderRadius: 8, textDecoration: 'none', fontWeight: 600, fontSize: '0.9rem',
             }}>
-              <Mail size={16} /> Kontaktovat správce
+              <Mail size={16} /> Kontaktovat podporu ifmio
             </a>
           </div>
         </div>
