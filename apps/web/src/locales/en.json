@@ -289,7 +289,6 @@
   "crm": {
     "title": "CRM",
     "lead": {
-      "create": "New lead",
       "createTitle": "New lead",
       "createCta": "Create",
       "loading": "Loading...",
@@ -351,7 +350,6 @@
       "deleteConfirm": "Really delete this lead?",
       "cancel": "Cancel",
       "save": "Save",
-      "create": "Create",
       "saving": "Saving..."
     }
   },

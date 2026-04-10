@@ -17,22 +17,24 @@ interface State {
 export class ErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false, error: null, isChunkError: false };
 
-  static getDerivedStateFromError(error: Error): State {
-    const isChunkError =
+  private static isChunkLoadError(error: Error): boolean {
+    return (
       error.name === 'ChunkLoadError' ||
       error.message?.includes('Loading chunk') ||
-      error.message?.includes('Failed to fetch dynamically imported module');
+      error.message?.includes('Failed to fetch dynamically imported module')
+    );
+  }
 
-    return { hasError: true, error, isChunkError };
+  static getDerivedStateFromError(error: Error): State {
+    return {
+      hasError: true,
+      error,
+      isChunkError: ErrorBoundary.isChunkLoadError(error),
+    };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    const isChunkError =
-      error.name === 'ChunkLoadError' ||
-      error.message?.includes('Loading chunk') ||
-      error.message?.includes('Failed to fetch dynamically imported module');
-
-    if (isChunkError) {
+    if (ErrorBoundary.isChunkLoadError(error)) {
       const lastAttempt = sessionStorage.getItem('chunk-reload-attempted');
       const now = Date.now();
       if (!lastAttempt || now - Number(lastAttempt) > 10000) {
@@ -56,7 +58,6 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
-      // Chunk load error — show reload prompt (auto-reload already attempted)
       if (this.state.isChunkError) {
         return (
           <div className="error-boundary">
