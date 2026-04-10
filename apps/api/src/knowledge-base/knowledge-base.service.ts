@@ -139,9 +139,10 @@ export class KnowledgeBaseService {
           },
           orderBy: { createdAt: 'desc' },
         },
+        // KB endpoint is SUPER_ADMIN only — showing all linked tenants intentionally
         units: {
-          select: { id: true, name: true, propertyId: true, property: { select: { id: true, name: true } } },
-          take: 5,
+          select: { id: true, name: true, propertyId: true, property: { select: { id: true, name: true, tenantId: true } } },
+          take: 10,
         },
       },
     })
