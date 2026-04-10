@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Query, Body, Res, BadRequestException, NotFoundException } from '@nestjs/common'
+import { Controller, Get, Post, Patch, Delete, Param, Query, Body, Res, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common'
 import type { FastifyReply } from 'fastify'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { IsString, IsNotEmpty, IsOptional, IsNumber, IsIn } from 'class-validator'
@@ -949,8 +949,8 @@ export class KnowledgeBaseController {
     @CurrentUser() user: AuthUser,
     @Body() body: { rok?: number; typ?: 'full' | 'actual'; pravniForma?: string; soud?: string },
   ) {
-    const isSuperAdmin = await this.superAdmin.isSuperAdmin(user.id)
-    if (!isSuperAdmin) throw new BadRequestException('Super admin required')
+    const isSuperAdmin = this.superAdmin.isSuperAdmin(user.email)
+    if (!isSuperAdmin) throw new ForbiddenException('Super admin required')
 
     const rok = body.rok ?? new Date().getFullYear()
     const typ = body.typ ?? 'actual'
@@ -964,8 +964,8 @@ export class KnowledgeBaseController {
     @CurrentUser() user: AuthUser,
     @Body() dto: BulkLinkUnitsDto,
   ) {
-    const isSA = await this.superAdmin.isSuperAdmin(user.id)
-    if (!isSA) throw new BadRequestException('Super admin required')
+    const isSA = this.superAdmin.isSuperAdmin(user.email)
+    if (!isSA) throw new ForbiddenException('Super admin required')
     return this.matchingService.bulkLinkAll(dto.dryRun ?? false)
   }
 }
