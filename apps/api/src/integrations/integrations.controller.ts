@@ -8,6 +8,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AresService } from './ares/ares.service';
 import { CuzkService } from './cuzk/cuzk.service';
 import { RuianService } from './ruian/ruian.service';
+import { RuianLocalLookupService } from '../knowledge-base/ruian-vfr/ruian-local-lookup.service';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '@ifmio/shared-types';
@@ -19,6 +20,7 @@ export class IntegrationsController {
     private readonly ares: AresService,
     private readonly cuzk: CuzkService,
     private readonly ruian: RuianService,
+    private readonly ruianLocal: RuianLocalLookupService,
   ) {}
 
   @Public()
@@ -55,9 +57,30 @@ export class IntegrationsController {
 
   @Public()
   @Get('ruian/address')
-  @ApiOperation({ summary: 'RÚIAN address autocomplete' })
+  @ApiOperation({ summary: 'RÚIAN address autocomplete (local DB → ArcGIS API fallback)' })
   async ruianAddress(@Query('q') q: string) {
-    if (!q || q.length < 3) return [];
+    if (!q || q.length < 2) return [];
+
+    // Try local RÚIAN database first (no API limit)
+    const localAvailable = await this.ruianLocal.isAvailable();
+    if (localAvailable) {
+      const results = await this.ruianLocal.searchAddress(q, 8);
+      if (results.length > 0) {
+        return results.map(r => ({
+          label: r.fullAddress,
+          street: r.street || '',
+          city: r.city,
+          postalCode: r.postalCode || '',
+          district: r.district,
+          lat: r.lat,
+          lng: r.lng,
+          ruianCode: String(r.ruianCode),
+        }));
+      }
+    }
+
+    // Fallback to ČÚZK ArcGIS API
+    if (q.length < 3) return [];
     return this.ruian.searchAddress(q);
   }
 }

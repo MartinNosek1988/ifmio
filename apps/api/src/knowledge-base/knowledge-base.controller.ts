@@ -11,6 +11,8 @@ import { BuildingUnitMatchingService } from './building-unit-matching.service'
 import { UpdateBuildingUnitDto } from './dto/update-building-unit.dto'
 import { BulkLinkUnitsDto } from './dto/bulk-link-units.dto'
 import { BulkImportService, type BulkImportStep } from './bulk-import.service'
+import { RuianVfrImportService } from './ruian-vfr/ruian-vfr-import.service'
+import { RuianLocalLookupService } from './ruian-vfr/ruian-local-lookup.service'
 import { TerritorySeedService } from './territory-seed.service'
 import { CuzkApiKnService } from '../integrations/cuzk/cuzk-api-kn.service'
 import { PrismaService } from '../prisma/prisma.service'
@@ -88,6 +90,8 @@ export class KnowledgeBaseController {
     private dataorService: DataorService,
     private completenessService: BuildingCompletenessService,
     private matchingService: BuildingUnitMatchingService,
+    private ruianVfr: RuianVfrImportService,
+    private ruianLocalLookup: RuianLocalLookupService,
   ) {}
 
   @Post('enrich')
@@ -979,5 +983,72 @@ export class KnowledgeBaseController {
     const isSA = this.superAdmin.isSuperAdmin(user.email)
     if (!isSA) throw new ForbiddenException('Super admin required')
     return this.matchingService.bulkLinkAll(dto.dryRun ?? false)
+  }
+
+  // ─── RÚIAN VFR — lokální databáze adres ──────────────────
+
+  @Post('admin/ruian-vfr/import')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Spustit import RÚIAN VFR dat (SUPER_ADMIN)' })
+  async ruianVfrImport(@CurrentUser() user: AuthUser) {
+    const isSA = this.superAdmin.isSuperAdmin(user.email)
+    if (!isSA) throw new ForbiddenException('Super admin required')
+    if (this.ruianVfr.running) throw new BadRequestException('Import already running')
+
+    // Fire-and-forget — import runs in background
+    this.ruianVfr.runFullImport().catch(() => {})
+    return { status: 'started' }
+  }
+
+  @Get('admin/ruian-vfr/status')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Stav RÚIAN VFR importu' })
+  async ruianVfrStatus(@CurrentUser() user: AuthUser) {
+    const isSA = this.superAdmin.isSuperAdmin(user.email)
+    if (!isSA) throw new ForbiddenException('Super admin required')
+
+    const [log, counts] = await Promise.all([
+      this.ruianVfr.getLatestLog(),
+      this.ruianVfr.getCounts(),
+    ])
+    return { latestImport: log, counts, isRunning: this.ruianVfr.running }
+  }
+
+  // ─── Address search (lokální RÚIAN) ──────────────────────
+
+  @Get('ruian/address-search')
+  @Public()
+  @ApiOperation({ summary: 'Hledání adresy v lokální RÚIAN databázi' })
+  async ruianAddressSearch(
+    @Query('q') q?: string,
+    @Query('limit') limit?: string,
+  ) {
+    if (!q || q.length < 2) return []
+    const lim = Math.min(parseInt(limit || '10', 10) || 10, 50)
+    return this.ruianLocalLookup.searchAddress(q, lim)
+  }
+
+  @Get('ruian/geocode')
+  @Public()
+  @ApiOperation({ summary: 'Geocoding adresy → GPS' })
+  async ruianGeocode(@Query('q') q?: string) {
+    if (!q) return null
+    return this.ruianLocalLookup.geocode(q)
+  }
+
+  @Get('ruian/reverse-geocode')
+  @Public()
+  @ApiOperation({ summary: 'Reverse geocoding GPS → adresa' })
+  async ruianReverseGeocode(
+    @Query('lat') lat?: string,
+    @Query('lng') lng?: string,
+    @Query('radius') radius?: string,
+  ) {
+    if (!lat || !lng) return null
+    const latN = parseFloat(lat)
+    const lngN = parseFloat(lng)
+    if (isNaN(latN) || isNaN(lngN)) return null
+    const radiusM = parseInt(radius || '50', 10) || 50
+    return this.ruianLocalLookup.reverseGeocode(latN, lngN, radiusM)
   }
 }
