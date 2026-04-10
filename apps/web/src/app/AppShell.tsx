@@ -228,7 +228,7 @@ export default function AppShell() {
   const { data: activePropertyData } = useQuery({
     queryKey: ['properties', activePropertyId],
     queryFn: () => apiClient.get(`/properties/${activePropertyId}`).then(r => r.data),
-    enabled: !!activePropertyId,
+    enabled: !authLoading && !!activePropertyId,
     staleTime: 60_000,
   });
 
@@ -253,6 +253,7 @@ export default function AppShell() {
     queryKey: ['admin', 'onboarding'],
     queryFn: () => apiClient.get('/admin/onboarding').then((r) => r.data),
     staleTime: 30_000,
+    enabled: !authLoading,
   });
 
   // Consolidated badge counts — single API call replaces 4 separate queries
@@ -262,6 +263,7 @@ export default function AppShell() {
     staleTime: 60_000,
     refetchInterval: 60_000,
     retry: false,
+    enabled: !authLoading,
   });
   const openTicketsCount = (badges?.helpdesk?.open ?? 0) + (badges?.helpdesk?.inProgress ?? 0);
   const expiringContracts = badges?.contracts?.expiringSoon ?? 0;
@@ -272,12 +274,13 @@ export default function AppShell() {
     queryFn: () => apiClient.get('/auth/me').then((r) => r.data),
     staleTime: 300_000,
     retry: false,
+    enabled: !authLoading,
   });
   // Fetch avatar via authenticated API call (img tags can't send Authorization header)
   const { data: avatarData } = useQuery({
     queryKey: ['auth', 'avatar'],
     queryFn: () => apiClient.get('/auth/me/avatar').then((r) => r.data?.avatarBase64 ?? null).catch(() => null),
-    enabled: !!meData?.hasAvatar,
+    enabled: !authLoading && !!meData?.hasAvatar,
     staleTime: Infinity,
   });
   const { data: saCheck } = useQuery({
@@ -285,6 +288,7 @@ export default function AppShell() {
     queryFn: () => apiClient.get('/super-admin/check').then((r) => r.data),
     staleTime: Infinity,
     retry: false,
+    enabled: !authLoading,
   });
   const isSuperAdmin = saCheck?.isSuperAdmin === true;
   const trialDays = (() => {
