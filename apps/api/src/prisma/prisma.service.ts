@@ -19,6 +19,7 @@ const NO_TENANT_MODELS = new Set([
   'CampaignRecipient',
   'CrmLead',
   'CrmActivity',
+  'TicrCredential',
 ]);
 
 const SLOW_QUERY_THRESHOLD_MS = 200;
