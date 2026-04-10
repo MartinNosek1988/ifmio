@@ -14,7 +14,7 @@ const NOT_DELETED = { deletedAt: null }
 const USER_SELECT = { id: true, name: true, email: true } as const
 
 /** Roles that can publish directly without approval */
-const ADMIN_ROLES = ['tenant_owner', 'tenant_admin', 'property_manager']
+const ADMIN_ROLES: string[] = ['tenant_owner', 'tenant_admin']
 
 @Injectable()
 export class BoardMessagesService {
@@ -200,7 +200,7 @@ export class BoardMessagesService {
           : `Zpráva byla ${dto.decision === 'PUBLISHED' ? 'publikována' : 'zamítnuta'}.`,
         entityId: id,
         entityType: 'BoardMessage',
-        url: `/properties/${msg.propertyId}/board-messages/${id}`,
+        url: `/properties/${msg.propertyId}?tab=board`,
       },
     })
 
@@ -438,7 +438,7 @@ export class BoardMessagesService {
       throw new ForbiddenException('Nemáte přístup k této nemovitosti')
     }
 
-    return this.prisma.boardMessage.create({
+    const created = await this.prisma.boardMessage.create({
       data: {
         tenantId: user.tenantId,
         propertyId: dto.propertyId,
@@ -456,6 +456,33 @@ export class BoardMessagesService {
       },
       include: { author: { select: USER_SELECT } },
     })
+
+    // Notify admins about the new pending message
+    const admins = await this.prisma.user.findMany({
+      where: {
+        tenantId: user.tenantId,
+        role: { in: ADMIN_ROLES as any },
+        isActive: true,
+      },
+      select: { id: true },
+    })
+
+    if (admins.length > 0) {
+      await this.prisma.notification.createMany({
+        data: admins.map(admin => ({
+          tenantId: user.tenantId,
+          userId: admin.id,
+          type: 'board_message_pending',
+          title: `Nová zpráva čeká na schválení: "${dto.title}"`,
+          body: `Uživatel ${created.author?.name ?? 'Neznámý'} odeslal zprávu ke schválení.`,
+          entityId: created.id,
+          entityType: 'BoardMessage',
+          url: `/properties/${dto.propertyId}?tab=board`,
+        })),
+      })
+    }
+
+    return created
   }
 
   // ─── Helpers ───────────────────────────────────────────────────

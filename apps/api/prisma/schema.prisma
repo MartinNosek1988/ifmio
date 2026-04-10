@@ -111,6 +111,7 @@ model Tenant {
   expenses                   Expense[]
   emailTemplates             EmailTemplate[]
   boardMessages              BoardMessage[]
+  boardMessageReadReceipts   BoardMessageReadReceipt[]
 
   @@map("tenants")
 }
@@ -5631,6 +5632,7 @@ model BoardMessageReadReceipt {
   userId    String
   readAt    DateTime @default(now())
 
+  tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   message   BoardMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
   user      User         @relation(fields: [userId], references: [id])
 

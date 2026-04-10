@@ -22,11 +22,11 @@ export default function PortalPage() {
     queryKey: ['portal', 'messages', 'unread'],
     queryFn: portalApi.getUnreadMessageCount,
   })
-  const { data: boardFeed = [] } = useQuery({
+  const { data: boardFeedData } = useQuery({
     queryKey: ['portal', 'board-messages'],
     queryFn: boardMessagesApi.portalFeed,
   })
-  const latestBoardMessages = (boardFeed as BoardMessage[]).slice(0, 3)
+  const latestBoardMessages = ((boardFeedData?.data ?? boardFeedData ?? []) as BoardMessage[]).slice(0, 3)
 
   const totalMonthly = (prescriptions ?? []).reduce((s: number, p: any) => s + Number(p.amount ?? 0), 0)
   const openTickets = (tickets ?? []).filter((t: any) => t.status === 'open' || t.status === 'in_progress').length
@@ -113,9 +113,9 @@ export default function PortalPage() {
       {latestBoardMessages.length > 0 && (
         <div style={{ marginTop: 32 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h2 style={{ fontSize: '1.1rem', fontWeight: 600, margin: 0 }}>Nastenka</h2>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 600, margin: 0 }}>Nástěnka</h2>
             <button className="btn btn--sm" onClick={() => navigate('/portal/nastenka')} style={{ fontSize: '.78rem' }}>
-              Zobrazit vse
+              Zobrazit vše
             </button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
