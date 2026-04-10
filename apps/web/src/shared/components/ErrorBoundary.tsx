@@ -11,16 +11,37 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+  isChunkError: boolean;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = { hasError: false, error: null };
+  state: State = { hasError: false, error: null, isChunkError: false };
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+    const isChunkError =
+      error.name === 'ChunkLoadError' ||
+      error.message?.includes('Loading chunk') ||
+      error.message?.includes('Failed to fetch dynamically imported module');
+
+    return { hasError: true, error, isChunkError };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
+    const isChunkError =
+      error.name === 'ChunkLoadError' ||
+      error.message?.includes('Loading chunk') ||
+      error.message?.includes('Failed to fetch dynamically imported module');
+
+    if (isChunkError) {
+      const lastAttempt = sessionStorage.getItem('chunk-reload-attempted');
+      const now = Date.now();
+      if (!lastAttempt || now - Number(lastAttempt) > 10000) {
+        sessionStorage.setItem('chunk-reload-attempted', String(now));
+        window.location.reload();
+        return;
+      }
+    }
+
     console.error(
       `[ErrorBoundary] ${this.props.moduleName ?? 'Unknown module'}:`,
       error,
@@ -35,6 +56,27 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      // Chunk load error — show reload prompt (auto-reload already attempted)
+      if (this.state.isChunkError) {
+        return (
+          <div className="error-boundary">
+            <div className="error-boundary__icon">↻</div>
+            <div className="error-boundary__title">
+              Byla nasazena nová verze aplikace
+            </div>
+            <div className="error-boundary__message">
+              Pro pokračování je potřeba obnovit stránku.
+            </div>
+            <button
+              className="error-boundary__retry"
+              onClick={() => window.location.reload()}
+            >
+              Obnovit stránku
+            </button>
+          </div>
+        );
+      }
+
       if (this.props.fallback) return this.props.fallback;
       return (
         <div className="error-boundary">
@@ -49,7 +91,7 @@ export class ErrorBoundary extends Component<Props, State> {
           </div>
           <button
             className="error-boundary__retry"
-            onClick={() => this.setState({ hasError: false, error: null })}
+            onClick={() => this.setState({ hasError: false, error: null, isChunkError: false })}
           >
             Zkusit znovu
           </button>
