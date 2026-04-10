@@ -317,7 +317,10 @@ export default function CrmBuildingDetailPage() {
                 {building.units.map((u: any) => (
                   <tr
                     key={u.id}
+                    role="link"
+                    tabIndex={0}
                     onClick={() => navigate(`/crm/buildings/${id}/units/${u.id}`)}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/crm/buildings/${id}/units/${u.id}`) } }}
                     style={{ cursor: 'pointer', borderBottom: '1px solid var(--border-light, #f3f4f6)' }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-muted, #f9fafb)')}
                     onMouseLeave={e => (e.currentTarget.style.background = '')}
