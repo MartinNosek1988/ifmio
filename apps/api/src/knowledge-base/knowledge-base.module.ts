@@ -9,6 +9,7 @@ import { BuildingIntelligenceService } from './building-intelligence.service'
 import { BulkImportService } from './bulk-import.service'
 import { TerritorySeedService } from './territory-seed.service'
 import { CuzkEnrichService } from './cuzk-enrich.service'
+import { BuildingCompletenessService } from './building-completeness.service'
 import { PrismaModule } from '../prisma/prisma.module'
 import { IntegrationsModule } from '../integrations/integrations.module'
 import { SuperAdminModule } from '../super-admin/super-admin.module'
@@ -17,7 +18,7 @@ import { DataorModule } from '../integrations/dataor/dataor.module'
 @Module({
   imports: [PrismaModule, IntegrationsModule, SuperAdminModule, DataorModule],
   controllers: [KnowledgeBaseController],
-  providers: [KnowledgeBaseService, BuildingEnrichmentService, PropertyEnrichmentOrchestrator, IprPriceService, GeoRiskService, BuildingIntelligenceService, BulkImportService, TerritorySeedService, CuzkEnrichService],
+  providers: [KnowledgeBaseService, BuildingEnrichmentService, PropertyEnrichmentOrchestrator, IprPriceService, GeoRiskService, BuildingIntelligenceService, BulkImportService, TerritorySeedService, CuzkEnrichService, BuildingCompletenessService],
   exports: [KnowledgeBaseService, BuildingEnrichmentService, CuzkEnrichService],
 })
 export class KnowledgeBaseModule {}

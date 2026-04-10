@@ -384,6 +384,7 @@ export default function CrmBuildingsPage() {
                     <th style={thStyle} onClick={() => setSort('orientationNumber')}>ČO{sortIcon('orientationNumber')}</th>
                     <th style={thStyle}>Organizace</th>
                     <th style={thStyle}>IČO</th>
+                    <th style={{ ...thStyle, textAlign: 'center' }}>Jed.</th>
                     <th style={{ ...thStyle, textAlign: 'center' }} onClick={() => setSort('dataQualityScore')}>
                       Q{sortIcon('dataQualityScore')}
                     </th>
@@ -425,6 +426,9 @@ export default function CrmBuildingsPage() {
                       <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: '0.72rem' }}>
                         {b.managingOrg?.ico || '—'}
                       </td>
+                      <td style={{ ...tdStyle, textAlign: 'center', color: (b._count?.units ?? 0) === 0 ? '#dc2626' : 'inherit' }}>
+                        {b._count?.units ?? 0}
+                      </td>
                       <td style={{ ...tdStyle, textAlign: 'center' }}>
                         <QualityBadge score={b.dataQualityScore || 0} />
                       </td>
@@ -442,7 +446,7 @@ export default function CrmBuildingsPage() {
                     )
                   })}
                   {(!result?.data || result.data.length === 0) && (
-                    <tr><td colSpan={12} style={{ padding: 40, textAlign: 'center' }}>
+                    <tr><td colSpan={13} style={{ padding: 40, textAlign: 'center' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
                         <Building2 size={36} style={{ color: 'var(--text-muted)', opacity: 0.5 }} />
                         <div style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Žádné budovy v databázi</div>

@@ -5,7 +5,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { apiClient } from '../../core/api/client'
-import { ArrowLeft, MapPin, Building2, FileText, Clock, Wrench, RefreshCw } from 'lucide-react'
+import { ArrowLeft, MapPin, Building2, FileText, Clock, Wrench, RefreshCw, BarChart3 } from 'lucide-react'
 
 // ── Leaflet icon fix (Vite) ─────────────────────────
 
@@ -21,7 +21,7 @@ const buildingIcon = L.divIcon({
 
 // ── Types ───────────────────────────────────────────
 
-type Tab = 'overview' | 'units' | 'documents' | 'history' | 'condition'
+type Tab = 'overview' | 'units' | 'documents' | 'history' | 'condition' | 'completeness'
 
 // ── Styles ──────────────────────────────────────────
 
@@ -93,6 +93,7 @@ export default function CrmBuildingDetailPage() {
           { key: 'documents' as Tab, label: 'Sbírka listin', icon: <FileText size={14} /> },
           { key: 'history' as Tab, label: 'Historie OR', icon: <Clock size={14} /> },
           { key: 'condition' as Tab, label: 'Stav budovy', icon: <Wrench size={14} /> },
+          { key: 'completeness' as Tab, label: 'Kompletnost', icon: <BarChart3 size={14} /> },
         ]).map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{
             padding: '8px 14px', border: 'none', cursor: 'pointer', fontSize: '0.82rem', fontWeight: tab === t.key ? 600 : 400,
@@ -428,6 +429,9 @@ export default function CrmBuildingDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Tab: Kompletnost */}
+      {tab === 'completeness' && id && <CompletenessTab buildingId={id} />}
     </div>
   )
 }
@@ -493,4 +497,79 @@ function RiskBadge({ source, available, positive, positiveLabel, negativeLabel }
 const linkBtn: React.CSSProperties = {
   fontSize: '0.75rem', color: 'var(--primary)', textDecoration: 'none',
   padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)',
+}
+
+// ── Completeness tab ───────────────────────────────
+
+function CompletenessTab({ buildingId }: { buildingId: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['kb', 'building', buildingId, 'completeness'],
+    queryFn: () => apiClient.get(`/knowledge-base/buildings/${buildingId}/completeness`).then(r => r.data),
+  })
+
+  if (isLoading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Nacitam...</div>
+  if (!data) return null
+
+  return (
+    <div>
+      {/* Overall score */}
+      <div style={{ textAlign: 'center', padding: '20px 0', marginBottom: 20 }}>
+        <div style={{ fontSize: '2.5rem', fontWeight: 700, color: data.overallScore > 70 ? '#22c55e' : data.overallScore > 40 ? '#eab308' : '#ef4444' }}>
+          {data.overallScore}%
+        </div>
+        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+          {data.totalCount - data.missingCount} / {data.totalCount} poli vyplneno
+        </div>
+      </div>
+
+      {/* Categories */}
+      {data.categories.map((cat: any) => (
+        <CategoryCard key={cat.key} category={cat} />
+      ))}
+    </div>
+  )
+}
+
+function CategoryCard({ category }: { category: any }) {
+  const [expanded, setExpanded] = useState(false)
+  const color = category.status === 'complete' ? '#22c55e' : category.status === 'partial' ? '#eab308' : '#ef4444'
+  const present = category.fields.filter((f: any) => f.present).length
+  const total = category.fields.length
+
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 8, marginBottom: 8, overflow: 'hidden' }}>
+      <div
+        onClick={() => setExpanded(!expanded)}
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', cursor: 'pointer' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
+          <span style={{ fontWeight: 500, fontSize: '0.9rem' }}>{category.label}</span>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>({present}/{total})</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 60, height: 4, background: 'var(--border)', borderRadius: 2 }}>
+            <div style={{ width: `${total > 0 ? (present / total) * 100 : 0}%`, height: '100%', background: color, borderRadius: 2 }} />
+          </div>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{category.score} b.</span>
+        </div>
+      </div>
+      {expanded && (
+        <div style={{ borderTop: '1px solid var(--border)', padding: '8px 14px' }}>
+          {category.fields.map((f: any) => (
+            <div key={f.key} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '0.82rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ color: f.present ? '#22c55e' : '#ef4444' }}>{f.present ? '\u2713' : '\u2717'}</span>
+                <span>{f.label}</span>
+              </div>
+              <div style={{ display: 'flex', gap: 8, color: 'var(--text-muted)' }}>
+                {f.value != null && <span>{String(f.value).slice(0, 30)}</span>}
+                <span style={{ fontSize: '0.72rem' }}>{f.source}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
