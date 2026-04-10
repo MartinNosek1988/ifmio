@@ -139,6 +139,10 @@ export class KnowledgeBaseService {
           },
           orderBy: { createdAt: 'desc' },
         },
+        units: {
+          select: { id: true, name: true, propertyId: true, property: { select: { id: true, name: true } } },
+          take: 5,
+        },
       },
     })
 

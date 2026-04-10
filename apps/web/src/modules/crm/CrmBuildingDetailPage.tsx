@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
@@ -318,14 +318,15 @@ export default function CrmBuildingDetailPage() {
                   <tr
                     key={u.id}
                     onClick={() => navigate(`/crm/buildings/${id}/units/${u.id}`)}
-                    tabIndex={0}
-                    role="link"
-                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/crm/buildings/${id}/units/${u.id}`) } }}
                     style={{ cursor: 'pointer', borderBottom: '1px solid var(--border-light, #f3f4f6)' }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-muted, #f9fafb)')}
                     onMouseLeave={e => (e.currentTarget.style.background = '')}
                   >
-                    <td style={{ padding: '6px 8px', fontWeight: 500 }}>{u.unitNumber || '—'}</td>
+                    <td style={{ padding: '6px 8px', fontWeight: 500 }}>
+                      <Link to={`/crm/buildings/${id}/units/${u.id}`} style={{ color: 'inherit', textDecoration: 'none', display: 'block' }}>
+                        {u.unitNumber || '—'}
+                      </Link>
+                    </td>
                     <td style={{ padding: '6px 8px' }}>{u.unitType || '—'}</td>
                     <td style={{ padding: '6px 8px' }}>{u.usage || '—'}</td>
                     <td style={{ padding: '6px 8px', textAlign: 'right' }}>{u.area || '—'}</td>
