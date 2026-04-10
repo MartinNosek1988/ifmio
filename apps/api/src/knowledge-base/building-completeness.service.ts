@@ -43,7 +43,7 @@ export class BuildingCompletenessService {
       },
     })
 
-    if (!building) throw new NotFoundException(`Building ${buildingId} not found`)
+    if (!building) throw new NotFoundException(`Budova ${buildingId} nebyla nalezena`)
 
     const enrichment = (building.enrichmentData as any) ?? {}
     const categories: CompletenessCategory[] = []

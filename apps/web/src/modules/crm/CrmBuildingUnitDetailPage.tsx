@@ -141,17 +141,27 @@ function InfoRow({ label, value, mono }: { label: string; value?: string | numbe
   )
 }
 
+function parseOptionalNumber(value: string): number | null {
+  const trimmed = value.trim()
+  if (trimmed === '') return null
+  const num = Number(trimmed)
+  return Number.isNaN(num) ? null : num
+}
+
 function EditUnitModal({ buildingId, unitId, unit, onClose, onSaved }: { buildingId: string; unitId: string; unit: any; onClose: () => void; onSaved: () => void }) {
   const [area, setArea] = useState(unit.area?.toString() ?? '')
   const [floor, setFloor] = useState(unit.floor?.toString() ?? '')
   const [roomLayout, setRoomLayout] = useState(unit.roomLayout ?? '')
 
   const mut = useMutation({
-    mutationFn: () => apiClient.patch(`/knowledge-base/buildings/${buildingId}/units/${unitId}`, {
-      ...(area ? { area: Number(area) } : {}),
-      ...(floor ? { floor: Number(floor) } : {}),
-      ...(roomLayout ? { roomLayout } : {}),
-    }),
+    mutationFn: () => {
+      const trimmedLayout = roomLayout.trim()
+      return apiClient.patch(`/knowledge-base/buildings/${buildingId}/units/${unitId}`, {
+        area: parseOptionalNumber(area),
+        floor: parseOptionalNumber(floor),
+        roomLayout: trimmedLayout === '' ? null : trimmedLayout,
+      })
+    },
     onSuccess: onSaved,
   })
 
