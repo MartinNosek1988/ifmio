@@ -109,6 +109,7 @@ model Tenant {
   purchaseOrders             PurchaseOrder[]
   massMailingCampaigns       MassMailingCampaign[]
   expenses                   Expense[]
+  emailTemplates             EmailTemplate[]
 
   @@map("tenants")
 }
@@ -5535,4 +5536,23 @@ model Expense {
   @@index([status])
   @@index([propertyId])
   @@map("expenses")
+}
+
+// ─── EMAIL TEMPLATES ─────────────────────────────────────────────
+
+model EmailTemplate {
+  id         String   @id @default(uuid())
+  tenantId   String
+  code       String
+  subject    String
+  body       String   @db.Text
+  isCustom   Boolean  @default(false)
+  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now())
+
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("email_templates")
 }

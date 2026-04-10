@@ -2,12 +2,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminApi } from './admin.api'
 
 export const adminKeys = {
-  tenant:      () => ['admin', 'tenant']       as const,
-  settings:    () => ['admin', 'settings']     as const,
-  users:       () => ['admin', 'users']        as const,
-  mioConfig:   () => ['admin', 'mioConfig']    as const,
-  mioMeta:     () => ['admin', 'mioMeta']      as const,
-  mioDefaults: () => ['admin', 'mioDefaults']  as const,
+  tenant:         () => ['admin', 'tenant']          as const,
+  settings:       () => ['admin', 'settings']        as const,
+  users:          () => ['admin', 'users']           as const,
+  mioConfig:      () => ['admin', 'mioConfig']       as const,
+  mioMeta:        () => ['admin', 'mioMeta']         as const,
+  mioDefaults:    () => ['admin', 'mioDefaults']     as const,
+  emailTemplates: () => ['admin', 'emailTemplates']  as const,
 }
 
 export function useTenantInfo() {
@@ -149,6 +150,39 @@ export function useMioDigestPreview() {
     queryKey: ['mio', 'digestPreview'] as const,
     queryFn:  () => adminApi.mioDigestPrefs.preview(),
     enabled: false, // only fetch on demand
+  })
+}
+
+/* ─── EMAIL TEMPLATES ────────────────────────────────────────────── */
+
+export function useEmailTemplates() {
+  return useQuery({
+    queryKey: adminKeys.emailTemplates(),
+    queryFn:  () => adminApi.emailTemplates.list(),
+  })
+}
+
+export function useSaveEmailTemplate() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ code, subject, body }: { code: string; subject: string; body: string }) =>
+      adminApi.emailTemplates.save(code, { subject, body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: adminKeys.emailTemplates() }),
+  })
+}
+
+export function useResetEmailTemplate() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (code: string) => adminApi.emailTemplates.reset(code),
+    onSuccess: () => qc.invalidateQueries({ queryKey: adminKeys.emailTemplates() }),
+  })
+}
+
+export function usePreviewEmailTemplate() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (code: string) => adminApi.emailTemplates.preview(code),
   })
 }
 
