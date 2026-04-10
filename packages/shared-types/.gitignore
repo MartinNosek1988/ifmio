@@ -1,0 +1,5 @@
+# Compiled output — never commit, Vite imports .ts source directly
+dist/
+src/**/*.js
+src/**/*.js.map
+src/**/*.d.ts
