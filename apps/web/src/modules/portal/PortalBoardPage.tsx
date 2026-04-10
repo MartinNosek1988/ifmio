@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Megaphone, Plus, ChevronDown, ChevronUp, Circle, AlertTriangle, Edit3 } from 'lucide-react'
-import { useAuthStore } from '../../core/auth/auth.store'
 import { boardMessagesApi, type BoardMessage } from '../board-messages/api'
 import { Badge, Button, Modal, EmptyState, LoadingState } from '../../shared/components'
 import { FormField } from '../../shared/components/FormField'
@@ -12,7 +11,6 @@ type Section = 'feed' | 'mine'
 export default function PortalBoardPage() {
   const queryClient = useQueryClient()
   const toast = useToast()
-  const currentUserId = useAuthStore(s => s.user?.id)
   const [section, setSection] = useState<Section>('feed')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
@@ -23,6 +21,12 @@ export default function PortalBoardPage() {
     queryFn: boardMessagesApi.portalFeed,
   })
   const feed: BoardMessage[] = feedData?.data ?? feedData ?? []
+
+  const { data: myData, isLoading: myLoading } = useQuery({
+    queryKey: ['portal', 'board-messages', 'mine'],
+    queryFn: boardMessagesApi.portalMyMessages,
+  })
+  const myMessages: BoardMessage[] = myData?.data ?? myData ?? []
 
   const markReadMut = useMutation({
     mutationFn: (id: string) => boardMessagesApi.portalMarkRead(id),
@@ -46,9 +50,13 @@ export default function PortalBoardPage() {
   const [form, setForm] = useState({ title: '', body: '' })
 
   const createMut = useMutation({
-    mutationFn: () => boardMessagesApi.portalCreate(editMsg ? { ...form, id: editMsg.id } : form),
+    mutationFn: () =>
+      editMsg
+        ? boardMessagesApi.portalUpdate(editMsg.id, { title: form.title, body: form.body, submitForApproval: true })
+        : boardMessagesApi.portalCreate(form),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['portal', 'board-messages'] })
+      queryClient.invalidateQueries({ queryKey: ['portal', 'board-messages', 'mine'] })
       toast.success(editMsg ? 'Zpráva aktualizována' : 'Zpráva odeslána ke schválení')
       setShowCreate(false)
       setEditMsg(null)
@@ -56,10 +64,8 @@ export default function PortalBoardPage() {
     },
   })
 
-  // Published feed messages
-  const published = feed.filter((m: BoardMessage) => m.status === 'PUBLISHED')
-  // My messages (DRAFT, PENDING_APPROVAL, REJECTED from feed that belong to me)
-  const myMessages = feed.filter((m: BoardMessage) => m.author?.id === currentUserId && m.status !== 'PUBLISHED')
+  // Published feed messages (portal feed already returns only PUBLISHED)
+  const published = feed
 
   const openEdit = (msg: BoardMessage) => {
     setEditMsg(msg)
@@ -149,6 +155,7 @@ export default function PortalBoardPage() {
       )}
 
       {section === 'mine' && (
+        myLoading ? <LoadingState /> :
         myMessages.length === 0 ? (
           <EmptyState title="Žádné vlastní zprávy" description="Zatím jste neodeslali žádnou zprávu." />
         ) : (

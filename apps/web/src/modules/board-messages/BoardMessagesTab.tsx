@@ -270,8 +270,8 @@ export default function BoardMessagesTab({ propertyId }: { propertyId: string })
         <FormField label="Viditelnost" name="create-visibility" required={false}>
           <select id="create-visibility" className="input" value={form.visibility} onChange={e => setForm({ ...form, visibility: e.target.value })}>
             <option value="all">Všichni obyvatelé</option>
-            <option value="owners_only">Pouze vlastníci</option>
-            <option value="committee">Pouze výbor</option>
+            <option value="owners">Pouze vlastníci</option>
+            <option value="tenants">Pouze nájemníci</option>
           </select>
         </FormField>
         <FormField label="Štítky" name="create-tags" required={false}>
