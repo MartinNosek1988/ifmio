@@ -141,11 +141,11 @@ function InfoRow({ label, value, mono }: { label: string; value?: string | numbe
   )
 }
 
-function parseOptionalNumber(value: string): number | null {
+function parseOptionalNumber(value: string): number | null | undefined {
   const trimmed = value.trim()
   if (trimmed === '') return null
   const num = Number(trimmed)
-  return Number.isNaN(num) ? null : num
+  return Number.isNaN(num) ? undefined : num
 }
 
 function EditUnitModal({ buildingId, unitId, unit, onClose, onSaved }: { buildingId: string; unitId: string; unit: any; onClose: () => void; onSaved: () => void }) {
@@ -155,12 +155,14 @@ function EditUnitModal({ buildingId, unitId, unit, onClose, onSaved }: { buildin
 
   const mut = useMutation({
     mutationFn: () => {
+      const parsedArea = parseOptionalNumber(area)
+      const parsedFloor = parseOptionalNumber(floor)
       const trimmedLayout = roomLayout.trim()
-      return apiClient.patch(`/knowledge-base/buildings/${buildingId}/units/${unitId}`, {
-        area: parseOptionalNumber(area),
-        floor: parseOptionalNumber(floor),
-        roomLayout: trimmedLayout === '' ? null : trimmedLayout,
-      })
+      const payload: Record<string, any> = {}
+      if (parsedArea !== undefined) payload.area = parsedArea
+      if (parsedFloor !== undefined) payload.floor = parsedFloor
+      payload.roomLayout = trimmedLayout === '' ? null : trimmedLayout
+      return apiClient.patch(`/knowledge-base/buildings/${buildingId}/units/${unitId}`, payload)
     },
     onSuccess: onSaved,
   })
