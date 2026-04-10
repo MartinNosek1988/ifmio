@@ -372,19 +372,21 @@ export function MassMailingForm({ open, onClose, onSuccess, editData }: Props) {
                 </div>
               )}
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
-                <button
-                  type="button"
-                  onClick={toggleAllRecipients}
-                  style={{
-                    padding: '4px 12px', borderRadius: 4, fontSize: '0.78rem',
-                    background: 'transparent', border: '1px solid var(--border, #e5e7eb)',
-                    cursor: 'pointer', color: 'var(--text-muted)',
-                  }}
-                >
-                  {excludedIds.size === 0 ? t('massMailing.deselectAll') : t('massMailing.selectAll')}
-                </button>
-              </div>
+              {recipientType === 'custom' && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+                  <button
+                    type="button"
+                    onClick={toggleAllRecipients}
+                    style={{
+                      padding: '4px 12px', borderRadius: 4, fontSize: '0.78rem',
+                      background: 'transparent', border: '1px solid var(--border, #e5e7eb)',
+                      cursor: 'pointer', color: 'var(--text-muted)',
+                    }}
+                  >
+                    {excludedIds.size === 0 ? t('massMailing.deselectAll') : t('massMailing.selectAll')}
+                  </button>
+                </div>
+              )}
 
               <div style={{
                 maxHeight: 260, overflowY: 'auto', border: '1px solid var(--border, #e5e7eb)',
@@ -393,7 +395,7 @@ export function MassMailingForm({ open, onClose, onSuccess, editData }: Props) {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--border, #e5e7eb)', background: 'var(--bg-muted, #f9fafb)' }}>
-                      <th style={{ width: 36, padding: '6px 8px' }} />
+                      {recipientType === 'custom' && <th style={{ width: 36, padding: '6px 8px' }} />}
                       <th style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 500 }}>{t('massMailing.previewName')}</th>
                       <th style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 500 }}>{t('massMailing.previewEmail')}</th>
                       <th style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 500 }}>{t('massMailing.previewProperty')}</th>
@@ -411,14 +413,16 @@ export function MassMailingForm({ open, onClose, onSuccess, editData }: Props) {
                             background: !r.hasContact ? 'rgba(239,68,68,0.03)' : 'transparent',
                           }}
                         >
-                          <td style={{ padding: '4px 8px', textAlign: 'center' }}>
-                            <input
-                              type="checkbox"
-                              checked={!excluded && r.hasContact}
-                              disabled={!r.hasContact}
-                              onChange={() => toggleExclude(r.residentId)}
-                            />
-                          </td>
+                          {recipientType === 'custom' && (
+                            <td style={{ padding: '4px 8px', textAlign: 'center' }}>
+                              <input
+                                type="checkbox"
+                                checked={!excluded && r.hasContact}
+                                disabled={!r.hasContact}
+                                onChange={() => toggleExclude(r.residentId)}
+                              />
+                            </td>
+                          )}
                           <td style={{ padding: '4px 8px' }}>
                             {r.name}
                             {!r.hasContact && (
