@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PropertyScopeService } from '../common/services/property-scope.service';
+import { BuildingUnitMatchingService } from '../knowledge-base/building-unit-matching.service';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
 import { CreateOccupancyDto } from './dto/create-occupancy.dto';
@@ -9,9 +10,12 @@ import type { AuthUser } from '@ifmio/shared-types';
 
 @Injectable()
 export class UnitsService {
+  private readonly logger = new Logger(UnitsService.name);
+
   constructor(
     private prisma: PrismaService,
     private scope: PropertyScopeService,
+    private matching: BuildingUnitMatchingService,
   ) {}
 
   private async verifyProperty(user: AuthUser, propertyId: string) {
@@ -57,7 +61,7 @@ export class UnitsService {
   async create(user: AuthUser, propertyId: string, dto: CreateUnitDto) {
     await this.verifyProperty(user, propertyId);
     const { validFrom, validTo, spaceType, ...rest } = dto;
-    return this.prisma.unit.create({
+    const created = await this.prisma.unit.create({
       data: {
         propertyId,
         ...rest,
@@ -66,6 +70,26 @@ export class UnitsService {
         validTo: validTo ? new Date(validTo) : undefined,
       },
     });
+
+    // Auto-link to KB BuildingUnit (best-effort)
+    try {
+      const matchId = await this.matching.findMatch({
+        name: created.name,
+        knDesignation: (created as any).knDesignation ?? null,
+        propertyId,
+      });
+      if (matchId) {
+        await this.prisma.unit.update({
+          where: { id: created.id },
+          data: { buildingUnitId: matchId },
+        });
+        this.logger.log(`Auto-linked Unit ${created.id} -> BuildingUnit ${matchId}`);
+      }
+    } catch (err) {
+      this.logger.warn(`BuildingUnit matching failed for unit ${created.id}: ${err}`);
+    }
+
+    return created;
   }
 
   async update(user: AuthUser, propertyId: string, id: string, dto: UpdateUnitDto) {

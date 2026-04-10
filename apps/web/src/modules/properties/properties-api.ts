@@ -67,6 +67,7 @@ export interface ApiUnit {
   heatingMethod?: string | null;
   validFrom?: string | null;
   validTo?: string | null;
+  buildingUnitId?: string | null;
   extAllocatorRef?: string | null;
   occupancies?: { resident: { firstName: string; lastName: string; companyName?: string | null; isLegalEntity?: boolean } }[];
   createdAt: string;
