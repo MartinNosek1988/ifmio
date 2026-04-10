@@ -91,7 +91,8 @@ export class CuzkEnrichService {
               this.logger.log(`Auto-linked ${linkResult.linked} units for building ${building.id}`)
             }
           } catch (linkErr) {
-            this.logger.warn(`Unit linking failed for building ${building.id}: ${linkErr}`)
+            const linkMsg = linkErr instanceof Error ? linkErr.message : String(linkErr)
+            this.logger.warn(`Unit linking failed for building ${building.id}: ${linkMsg}`)
           }
 
           enriched++

@@ -9,6 +9,7 @@ import { BuildingIntelligenceService } from './building-intelligence.service'
 import { BuildingCompletenessService } from './building-completeness.service'
 import { BuildingUnitMatchingService } from './building-unit-matching.service'
 import { UpdateBuildingUnitDto } from './dto/update-building-unit.dto'
+import { BulkLinkUnitsDto } from './dto/bulk-link-units.dto'
 import { BulkImportService, type BulkImportStep } from './bulk-import.service'
 import { TerritorySeedService } from './territory-seed.service'
 import { CuzkApiKnService } from '../integrations/cuzk/cuzk-api-kn.service'
@@ -954,8 +955,13 @@ export class KnowledgeBaseController {
 
   @Post('admin/link-units')
   @Roles(...ROLES_MANAGE)
-  @ApiOperation({ summary: 'Bulk propojeni Unit <-> BuildingUnit (jednorazova migrace)' })
-  async bulkLinkUnits(@Body() dto: { dryRun?: boolean }) {
+  @ApiOperation({ summary: 'Bulk propojení Unit ↔ BuildingUnit (SUPER_ADMIN migrace)' })
+  async bulkLinkUnits(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: BulkLinkUnitsDto,
+  ) {
+    const isSA = await this.superAdmin.isSuperAdmin(user.id)
+    if (!isSA) throw new BadRequestException('Super admin required')
     return this.matchingService.bulkLinkAll(dto.dryRun ?? false)
   }
 }

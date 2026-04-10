@@ -75,18 +75,21 @@ export class UnitsService {
     try {
       const matchId = await this.matching.findMatch({
         name: created.name,
-        knDesignation: (created as any).knDesignation ?? null,
+        knDesignation: created.knDesignation ?? null,
         propertyId,
       });
       if (matchId) {
-        await this.prisma.unit.update({
+        const updated = await this.prisma.unit.update({
           where: { id: created.id },
           data: { buildingUnitId: matchId },
         });
         this.logger.log(`Auto-linked Unit ${created.id} -> BuildingUnit ${matchId}`);
+        return updated;
       }
     } catch (err) {
-      this.logger.warn(`BuildingUnit matching failed for unit ${created.id}: ${err}`);
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`BuildingUnit matching failed for unit ${created.id}: ${msg}`);
+      if (err instanceof Error && err.stack) this.logger.debug(err.stack);
     }
 
     return created;

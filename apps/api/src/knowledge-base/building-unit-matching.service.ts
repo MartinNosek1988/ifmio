@@ -4,23 +4,39 @@ import { PrismaService } from '../prisma/prisma.service'
 @Injectable()
 export class BuildingUnitMatchingService {
   private readonly logger = new Logger(BuildingUnitMatchingService.name)
+  private propertyBuildingCache = new Map<string, string | null>()
+  private buildingUnitsCache = new Map<string, { id: string; unitNumber: string | null }[]>()
 
   constructor(private prisma: PrismaService) {}
 
+  clearCache() {
+    this.propertyBuildingCache.clear()
+    this.buildingUnitsCache.clear()
+  }
+
   /** Find the best matching BuildingUnit for a business Unit */
   async findMatch(unit: { name: string; knDesignation?: string | null; propertyId: string }): Promise<string | null> {
-    // 1. Get buildingId via Property
-    const property = await this.prisma.property.findUnique({
-      where: { id: unit.propertyId },
-      select: { buildingId: true },
-    })
-    if (!property?.buildingId) return null
+    // 1. Get buildingId via Property (cached for bulk)
+    let buildingId = this.propertyBuildingCache.get(unit.propertyId)
+    if (buildingId === undefined) {
+      const property = await this.prisma.property.findUnique({
+        where: { id: unit.propertyId },
+        select: { buildingId: true },
+      })
+      buildingId = property?.buildingId ?? null
+      this.propertyBuildingCache.set(unit.propertyId, buildingId)
+    }
+    if (!buildingId) return null
 
-    // 2. Get all BuildingUnits for this building
-    const buildingUnits = await this.prisma.buildingUnit.findMany({
-      where: { buildingId: property.buildingId },
-      select: { id: true, unitNumber: true },
-    })
+    // 2. Get all BuildingUnits for this building (cached for bulk)
+    let buildingUnits = this.buildingUnitsCache.get(buildingId)
+    if (!buildingUnits) {
+      buildingUnits = await this.prisma.buildingUnit.findMany({
+        where: { buildingId },
+        select: { id: true, unitNumber: true },
+      })
+      this.buildingUnitsCache.set(buildingId, buildingUnits)
+    }
     if (buildingUnits.length === 0) return null
 
     // 3a. Exact match knDesignation <-> unitNumber
@@ -69,46 +85,57 @@ export class BuildingUnitMatchingService {
             this.logger.log(`Linked Unit ${unit.id} -> BuildingUnit ${matchId}`)
           }
         } catch (err) {
-          this.logger.warn(`Match failed for unit ${unit.id}: ${err}`)
+          const msg = err instanceof Error ? err.message : String(err)
+          this.logger.warn(`Match failed for unit ${unit.id}: ${msg}`)
         }
       }
     }
     return { linked }
   }
 
-  /** Bulk migration: link all unlinked Units where Property has buildingId */
+  /** Bulk migration: link all unlinked Units (cursor-based batching) */
   async bulkLinkAll(dryRun = false): Promise<{ total: number; matched: number; unmatched: number; errors: number; dryRun: boolean }> {
-    const unlinked = await this.prisma.unit.findMany({
-      where: {
-        buildingUnitId: null,
-        property: { buildingId: { not: null } },
-      },
-      select: { id: true, name: true, knDesignation: true, propertyId: true },
-    })
+    this.clearCache()
+    const batchSize = 100
+    const where = { buildingUnitId: null, property: { buildingId: { not: null } } } as any
 
+    const total = await this.prisma.unit.count({ where })
     let matched = 0, unmatched = 0, errors = 0
+    let cursor: string | undefined
 
-    for (const unit of unlinked) {
-      try {
-        const matchId = await this.findMatch(unit)
-        if (matchId) {
-          if (!dryRun) {
-            await this.prisma.unit.update({
-              where: { id: unit.id },
-              data: { buildingUnitId: matchId },
-            })
+    while (true) {
+      const batch = await this.prisma.unit.findMany({
+        where,
+        select: { id: true, name: true, knDesignation: true, propertyId: true },
+        orderBy: { id: 'asc' },
+        take: batchSize,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      })
+      if (batch.length === 0) break
+
+      for (const unit of batch) {
+        try {
+          const matchId = await this.findMatch(unit)
+          if (matchId) {
+            if (!dryRun) {
+              await this.prisma.unit.update({
+                where: { id: unit.id },
+                data: { buildingUnitId: matchId },
+              })
+            }
+            matched++
+          } else {
+            unmatched++
           }
-          matched++
-        } else {
-          unmatched++
-        }
-      } catch {
-        errors++
+        } catch { errors++ }
       }
+
+      cursor = batch[batch.length - 1].id
     }
 
-    this.logger.log(`Bulk link: ${matched} matched, ${unmatched} unmatched, ${errors} errors (dryRun=${dryRun})`)
-    return { total: unlinked.length, matched, unmatched, errors, dryRun }
+    this.clearCache()
+    this.logger.log(`Bulk link: ${matched}/${total} matched, ${unmatched} unmatched, ${errors} errors (dryRun=${dryRun})`)
+    return { total, matched, unmatched, errors, dryRun }
   }
 
   private extractNumber(s: string | null | undefined): number | null {
