@@ -97,6 +97,8 @@ const PartyDetailPage = lazy(() => import('../modules/parties/PartyDetailPage'))
 const PurchaseOrdersPage = lazy(() => import('../modules/purchase-orders/PurchaseOrdersPage'));
 const PurchaseOrderDetailPage = lazy(() => import('../modules/purchase-orders/PurchaseOrderDetailPage'));
 const SettlementPage = lazy(() => import('../modules/settlement/SettlementPage'));
+const ExpensesPage = lazy(() => import('../modules/expenses/ExpensesPage'));
+const ExpenseDetailPage = lazy(() => import('../modules/expenses/ExpenseDetailPage'));
 const KanbanPage = lazy(() => import('../modules/kanban/KanbanPage'));
 const TermsPage = lazy(() => import('../modules/legal/TermsPage'));
 const PrivacyPage = lazy(() => import('../modules/legal/PrivacyPage'));
@@ -214,6 +216,8 @@ export const router = createBrowserRouter([
       { path: 'purchase-orders', element: withBoundary('Objednávky', PurchaseOrdersPage) },
       { path: 'purchase-orders/:id', element: withBoundary('Detail objednávky', PurchaseOrderDetailPage) },
       { path: 'settlements', element: withBoundary('Vyúčtování', SettlementPage) },
+      { path: 'expenses', element: withBoundary('Výdaje', ExpensesPage) },
+      { path: 'expenses/:id', element: withBoundary('Detail výdaje', ExpenseDetailPage) },
       { path: 'kanban', element: withBoundary('Pipeline', KanbanPage) },
       { path: 'workorders', element: withBoundary('Pracovní úkoly', WorkOrdersPage) },
       { path: 'my-agenda', element: withBoundary('Moje agenda', TechnicianAgendaPage) },
