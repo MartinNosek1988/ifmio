@@ -24,6 +24,7 @@ const ResetPasswordPage = lazy(() => import('../modules/auth/ResetPasswordPage')
 const AcceptInvitationPage = lazy(() => import('../modules/auth/AcceptInvitationPage'));
 const OAuthCallbackPage = lazy(() => import('../modules/auth/OAuthCallbackPage'));
 const PortalPage = lazy(() => import('../modules/portal/PortalPage'));
+const PortalPublicPage = lazy(() => import('../modules/portal/PortalPublicPage'));
 import { ErrorBoundary } from '../shared/components';
 
 const DashboardPage = lazy(() => import('../modules/dashboard/DashboardPage'));
@@ -179,6 +180,7 @@ export const router = createBrowserRouter([
   { path: '/registry/organizations/:ico', element: withBoundary('Výpis z rejstříku', OrganizationProfilePage) },
   { path: '/registry/persons/:id', element: withBoundary('Profil osoby', PersonProfilePage) },
   { path: '/sign/:token', element: withBoundary('Elektronický podpis', SignPage) },
+  { path: '/portal-public/:token', element: withBoundary('Portál vlastníka', PortalPublicPage) },
   { path: '/terms', element: withBoundary('Terms', TermsPage) },
   { path: '/privacy', element: withBoundary('Privacy', PrivacyPage) },
   { path: '/gdpr', element: withBoundary('GDPR', GdprPage) },
