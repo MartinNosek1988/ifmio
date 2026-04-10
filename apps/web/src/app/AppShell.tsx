@@ -214,15 +214,6 @@ export default function AppShell() {
   const navigate = useNavigate();
   const pageTitle = getPageTitle(location.pathname);
 
-  // Wait for auth session to be restored before rendering sidebar
-  // (prevents useRoleUX returning 'resident' fallback for null user)
-  if (authLoading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-        <LoadingSpinner />
-      </div>
-    );
-  }
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showPropertyPicker, setShowPropertyPicker] = useState(false);

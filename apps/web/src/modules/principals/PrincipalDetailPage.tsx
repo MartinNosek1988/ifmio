@@ -21,6 +21,8 @@ export default function PrincipalDetailPage() {
   const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('overview')
   const { data: principal, isLoading, error } = usePrincipal(principalId!)
+  const qc = useQueryClient()
+  const [contractModal, setContractModal] = useState<{ contract?: any } | null>(null)
 
   if (isLoading) return <LoadingState />
   if (error || !principal) return (
@@ -32,8 +34,6 @@ export default function PrincipalDetailPage() {
 
   const party = principal.party
   const t = TYPE_LABELS[principal.type] ?? { label: principal.type, color: 'muted' }
-  const qc = useQueryClient()
-  const [contractModal, setContractModal] = useState<{ contract?: any } | null>(null)
   const displayName = (principal.displayName ?? '').replace(/^SJM\s+/i, 'SJ ')
 
   const neuvedeno = <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>neuvedeno</span>
