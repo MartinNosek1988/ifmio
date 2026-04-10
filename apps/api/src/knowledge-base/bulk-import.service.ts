@@ -157,6 +157,17 @@ export class BulkImportService {
     return false
   }
 
+  cancelJob(jobId: string): boolean {
+    const job = this.activeJobs.get(jobId)
+    if (job && (job.status === 'RUNNING' || job.status === 'PAUSED')) {
+      job.status = 'FAILED'
+      job.error = 'Zrušeno uživatelem'
+      job.completedAt = new Date()
+      return true
+    }
+    return false
+  }
+
   // ── Import Router ───────────────────────────────────
 
   private async runImport(job: BulkImportJob, params: StartImportParams): Promise<void> {
@@ -808,7 +819,66 @@ export class BulkImportService {
             }
             enrichCache.sources = sources
 
-            // Step D: Justice.cz (if org found)
+            // Step D: ČÚZK — create BuildingUnit records
+            job.currentStep = 'ČÚZK'
+            if (this.cuzkApiKn.isConfigured && (b.ruianId || building.ruianAddressId)) {
+              try {
+                let stavba = building.ruianAddressId
+                  ? await this.cuzkApiKn.getStavbaByAdresniMisto(Number(building.ruianAddressId))
+                  : null
+                if (!stavba && b.ruianId) stavba = await this.cuzkApiKn.getStavbaDetail(Number(b.ruianId))
+                if (stavba?.jednotky?.length) {
+                  for (const jRef of stavba.jednotky) {
+                    try {
+                      const j = await this.cuzkApiKn.getJednotkaDetail(jRef.id)
+                      if (!j) continue
+                      const un = String(j.cisloJednotky)
+                      await this.prisma.buildingUnit.upsert({
+                        where: { buildingId_unitNumber: { buildingId: building.id, unitNumber: un } },
+                        create: {
+                          buildingId: building.id, unitNumber: un,
+                          unitType: j.zpusobVyuziti?.nazev?.includes('byt') ? 'APARTMENT' : 'NON_RESIDENTIAL',
+                          usage: j.zpusobVyuziti?.nazev,
+                          shareNumerator: j.podilNaSpolecnychCastechDomu?.citatel,
+                          shareDenominator: j.podilNaSpolecnychCastechDomu?.jmenovatel,
+                          lvNumber: j.lv?.cislo?.toString(),
+                          cuzkStavbaId: stavba!.id,
+                        },
+                        update: {
+                          unitType: j.zpusobVyuziti?.nazev?.includes('byt') ? 'APARTMENT' : 'NON_RESIDENTIAL',
+                          usage: j.zpusobVyuziti?.nazev,
+                          shareNumerator: j.podilNaSpolecnychCastechDomu?.citatel,
+                          shareDenominator: j.podilNaSpolecnychCastechDomu?.jmenovatel,
+                          lvNumber: j.lv?.cislo?.toString(),
+                          cuzkStavbaId: stavba!.id,
+                        },
+                      })
+                    } catch { /* skip individual unit errors */ }
+                  }
+                  enrichCache.cuzkUnitsCount = stavba.jednotky.length
+                  if (stavba.lv) {
+                    await this.prisma.building.update({
+                      where: { id: building.id },
+                      data: {
+                        landRegistrySheet: stavba.lv.cislo?.toString(),
+                        cadastralTerritoryCode: stavba.lv.katastralniUzemi?.kod?.toString(),
+                        cadastralTerritoryName: stavba.lv.katastralniUzemi?.nazev,
+                      },
+                    })
+                  }
+                  qualityBonus += 10
+                  sources.push({ name: 'ČÚZK API', fetchedAt: new Date().toISOString(), status: 'ok' })
+                } else {
+                  sources.push({ name: 'ČÚZK API', fetchedAt: new Date().toISOString(), status: stavba ? 'no_units' : 'no_data' })
+                }
+              } catch (err) {
+                this.logger.warn(`ČÚZK failed for ${building.id}: ${err instanceof Error ? err.message : err}`)
+                sources.push({ name: 'ČÚZK API', fetchedAt: new Date().toISOString(), status: 'error' })
+              }
+              await this.delay(500) // ČÚZK rate limit
+            }
+
+            // Step E: Justice.cz (if org found)
             job.currentStep = 'Justice'
             const updatedBuilding = await this.prisma.building.findUnique({
               where: { id: building.id },
@@ -831,8 +901,25 @@ export class BulkImportService {
               await this.delay(1000) // Justice rate limit
             }
 
-            // Update quality score + cache enrichment data
-            const finalScore = Math.min((updatedBuilding?.dataQualityScore || 30) + qualityBonus, 100)
+            // Update quality score — component-based (aligned with fullReEnrich)
+            const bData = await this.prisma.building.findUnique({ where: { id: building.id } })
+            let score = 0
+            if (bData?.lat && bData?.lng) score += 5
+            if (bData?.houseNumber) score += 5
+            if (bData?.numberOfFloors) score += 3
+            if (bData?.numberOfUnits) score += 3
+            if (bData?.builtUpArea) score += 2
+            if (bData?.ruianAddressId) score += 3
+            if (bData?.cadastralTerritoryName) score += 2
+            if (bData?.managingOrgId) score += 10
+            if (enrichCache.cuzkUnitsCount) score += 10
+            if (enrichCache.risks) score += 5
+            if (enrichCache.poi) score += 5
+            if (enrichCache.priceEstimate) score += 5
+            if (sources.some(s => s.name === 'ARES' && s.status === 'ok')) score += 5
+            if (sources.some(s => s.name === 'Justice.cz' && s.status === 'ok')) score += 10
+            const finalScore = Math.min(score, 100)
+
             await this.prisma.building.update({
               where: { id: building.id },
               data: {
