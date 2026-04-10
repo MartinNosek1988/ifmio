@@ -266,6 +266,13 @@ export class MassMailingService {
     let sent = 0
     for (const c of due) {
       try {
+        // Atomically claim: only proceed if still scheduled (prevents duplicate sends)
+        const claimed = await this.prisma.massMailingCampaign.updateMany({
+          where: { id: c.id, status: 'scheduled' },
+          data: { status: 'sending' },
+        })
+        if (claimed.count === 0) continue
+
         const fakeUser = {
           id: c.createdBy,
           tenantId: c.tenantId,

@@ -319,6 +319,15 @@ export default function AppShell() {
     }
   }, [uxRole, location.pathname, navigate]);
 
+  // Wait for auth session to be restored before rendering sidebar
+  if (authLoading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
   const visibleSections = NAV_SECTIONS
     .filter((sec) => !sec.roles || sec.roles.includes(uxRole))
     .map((sec) => ({

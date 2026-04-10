@@ -116,12 +116,12 @@ function TemplateEditor({ template }: { template: TemplateItem }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h3 style={{ margin: 0, fontSize: 16 }}>{template.label}</h3>
         <div style={{ display: 'flex', gap: 8 }}>
-          <Button size="sm" variant="ghost" onClick={handlePreview} disabled={previewMutation.isPending}>
+          <Button size="sm" variant="default" onClick={handlePreview} disabled={previewMutation.isPending}>
             {showPreview ? <EyeOff size={14} /> : <Eye size={14} />}
             {showPreview ? 'Editor' : 'Nahled'}
           </Button>
           {template.isCustom && (
-            <Button size="sm" variant="ghost" onClick={handleReset} disabled={resetMutation.isPending}>
+            <Button size="sm" variant="default" onClick={handleReset} disabled={resetMutation.isPending}>
               <RotateCcw size={14} /> Obnovit vychozi
             </Button>
           )}

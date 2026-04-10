@@ -27,7 +27,8 @@ export class EmailTemplateService {
     const def = this.getDefault(code)
     if (def) return { subject: def.subject, body: def.body }
 
-    return { subject: '', body: '' }
+    this.logger.warn(`Email template '${code}' not found for tenant ${tenantId}`)
+    return { subject: `[ifmio] ${code}`, body: '' }
   }
 
   async renderTemplate(tenantId: string | null, code: string, variables: Record<string, string>): Promise<{ subject: string; body: string }> {
