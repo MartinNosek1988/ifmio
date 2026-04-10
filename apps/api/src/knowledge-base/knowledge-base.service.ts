@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import type { Building, KbOrganization, KbOrgType } from '@prisma/client'
 
@@ -123,6 +123,45 @@ export class KnowledgeBaseService {
       persons,
       avgQualityScore: Math.round(avgQuality._avg.dataQualityScore ?? 0),
     }
+  }
+
+  async getBuildingUnit(buildingId: string, unitId: string) {
+    const unit = await this.prisma.buildingUnit.findFirst({
+      where: { id: unitId, buildingId },
+      include: {
+        building: {
+          select: { id: true, street: true, houseNumber: true, orientationNumber: true, city: true, district: true, managingOrgId: true },
+        },
+        ownerships: {
+          include: {
+            person: { select: { id: true, firstName: true, lastName: true, titulPred: true, titulZa: true, datumNarozeni: true, adresa: true } },
+            organization: { select: { id: true, name: true, ico: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+        units: {
+          select: { id: true, name: true, propertyId: true, property: { select: { id: true, name: true } } },
+          take: 5,
+        },
+      },
+    })
+
+    if (!unit) throw new NotFoundException('Jednotka nenalezena')
+    return unit
+  }
+
+  async updateBuildingUnit(buildingId: string, unitId: string, dto: { area?: number; floor?: number; roomLayout?: string; note?: string }) {
+    const unit = await this.prisma.buildingUnit.findFirst({ where: { id: unitId, buildingId } })
+    if (!unit) throw new NotFoundException('Jednotka nenalezena')
+
+    return this.prisma.buildingUnit.update({
+      where: { id: unitId },
+      data: {
+        ...(dto.area !== undefined ? { area: dto.area } : {}),
+        ...(dto.floor !== undefined ? { floor: dto.floor } : {}),
+        ...(dto.roomLayout !== undefined ? { roomLayout: dto.roomLayout } : {}),
+      },
+    })
   }
 
   private calculateQuality(data: Partial<Building>): number {
