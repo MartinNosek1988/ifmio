@@ -16,8 +16,10 @@ import { RetentionService } from './retention.service';
 import { PvkService } from '../pvk/pvk.service';
 import { CuzkEnrichService } from '../knowledge-base/cuzk-enrich.service';
 import { DataorService } from '../integrations/dataor/dataor.service';
+import { MassMailingService } from '../mass-mailing/mass-mailing.service';
 
 const ONE_HOUR = 60 * 60 * 1000;
+const FIVE_MIN = 5 * 60 * 1000;
 const FIFTEEN_MIN = 15 * 60 * 1000;
 const SIX_HOURS = 6 * ONE_HOUR;
 const TWENTY_FOUR_HOURS = 24 * ONE_HOUR;
@@ -37,6 +39,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
   private bankingSyncInterval: ReturnType<typeof setInterval> | null = null;
   private batchPollInterval: ReturnType<typeof setInterval> | null = null;
   private mioRetentionInterval: ReturnType<typeof setInterval> | null = null;
+  private scheduledCampaignInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private readonly config: ConfigService,
@@ -56,6 +59,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     private readonly pvk: PvkService,
     private readonly cuzkEnrich: CuzkEnrichService,
     private readonly dataor: DataorService,
+    private readonly massMailing: MassMailingService,
   ) {}
 
   onModuleInit() {
@@ -76,6 +80,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     this.initPvkSync();
     this.initCuzkEnrich();
     this.initDataorImport();
+    this.initScheduledCampaigns();
   }
 
   onModuleDestroy() {
@@ -130,6 +135,10 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     if (this.dataorImportInterval) {
       clearInterval(this.dataorImportInterval);
       this.dataorImportInterval = null;
+    }
+    if (this.scheduledCampaignInterval) {
+      clearInterval(this.scheduledCampaignInterval);
+      this.scheduledCampaignInterval = null;
     }
     this.logger.log('Cron intervals cleared');
   }
@@ -624,6 +633,24 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
       }
     } catch (err) {
       this.logger.error('Dataor nightly import FAILED', (err as Error).stack);
+    }
+  }
+
+  // ── Scheduled Mass Mailing Campaigns (every 5 min) ────────────
+
+  private initScheduledCampaigns() {
+    this.logger.log('Scheduled campaigns enabled — checking every 5 minutes');
+    this.scheduledCampaignInterval = setInterval(() => this.runScheduledCampaigns(), FIVE_MIN);
+  }
+
+  private async runScheduledCampaigns() {
+    try {
+      const sent = await this.massMailing.sendScheduledCampaigns();
+      if (sent > 0) {
+        this.logger.log(`Scheduled campaigns: ${sent} dispatched`);
+      }
+    } catch (err) {
+      this.logger.error('Scheduled campaigns check FAILED', (err as Error).stack);
     }
   }
 }
