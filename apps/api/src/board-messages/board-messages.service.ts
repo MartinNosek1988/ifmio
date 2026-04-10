@@ -91,7 +91,7 @@ export class BoardMessagesService {
   // ─── Create ────────────────────────────────────────────────────
 
   async create(user: AuthUser, dto: CreateBoardMessageDto) {
-    if (!dto.propertyId) throw new BadRequestException('propertyId is required')
+    if (!dto.propertyId) throw new BadRequestException('propertyId je povinné')
     await this.scope.verifyPropertyAccess(user, dto.propertyId)
 
     const isAdmin = ADMIN_ROLES.includes(user.role)
@@ -417,14 +417,34 @@ export class BoardMessagesService {
   // ─── Portal: create (→ PENDING_APPROVAL) ───────────────────────
 
   async createFromPortal(user: AuthUser, dto: CreateBoardMessageDto) {
-    if (!dto.propertyId) throw new BadRequestException('propertyId is required')
-    // Verify the user has a relation to this property via unit ownership/tenancy
+    // Resolve propertyId from user's unit relations if not provided
     const dbUser = await this.prisma.user.findUnique({
       where: { id: user.id },
       select: { partyId: true },
     })
     if (!dbUser?.partyId) throw new ForbiddenException('Nemáte přiřazenou osobu')
 
+    if (!dto.propertyId) {
+      const [ownerships, tenancies] = await Promise.all([
+        this.prisma.unitOwnership.findMany({
+          where: { partyId: dbUser.partyId, isActive: true },
+          select: { unit: { select: { propertyId: true } } },
+        }),
+        this.prisma.tenancy.findMany({
+          where: { partyId: dbUser.partyId, isActive: true },
+          select: { unit: { select: { propertyId: true } } },
+        }),
+      ])
+      const propertyIds = [...new Set([
+        ...ownerships.map(o => o.unit.propertyId),
+        ...tenancies.map(t => t.unit.propertyId),
+      ])]
+      if (propertyIds.length === 0) throw new BadRequestException('Nemáte přiřazenou nemovitost')
+      if (propertyIds.length > 1) throw new BadRequestException('Máte více nemovitostí — vyberte, ke které zprávu přidat')
+      dto.propertyId = propertyIds[0]
+    }
+
+    // Verify the user has a relation to this property via unit ownership/tenancy
     const unitInProperty = await this.prisma.unitOwnership.findFirst({
       where: {
         partyId: dbUser.partyId,

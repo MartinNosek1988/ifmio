@@ -1,9 +1,11 @@
 import { IsString, IsOptional, IsArray, IsBoolean, IsDateString, IsIn } from 'class-validator'
+import { ApiHideProperty } from '@nestjs/swagger'
 
 export class CreateBoardMessageDto {
   @IsString() title!: string
   @IsString() body!: string
-  /** May be provided in request body or set by controller from route param */
+  /** Set by controller from route param, or auto-resolved in portal */
+  @ApiHideProperty()
   @IsOptional() @IsString() propertyId?: string
   @IsOptional() @IsString() visibility?: string
   @IsOptional() @IsArray() @IsString({ each: true }) tags?: string[]

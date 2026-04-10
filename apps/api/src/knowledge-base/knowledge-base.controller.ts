@@ -493,6 +493,8 @@ export class KnowledgeBaseController {
     @Query('minQuality') minQuality?: string,
     @Query('maxQuality') maxQuality?: string,
     @Query('hasOrganization') hasOrganization?: string,
+    @Query('orgName') orgName?: string,
+    @Query('ico') ico?: string,
     @Query('sort') sort?: string,
     @Query('order') order?: string,
     @Query('limit') limit?: string,
@@ -527,6 +529,8 @@ export class KnowledgeBaseController {
     if (maxQuality) { const n = Number(maxQuality); if (!Number.isNaN(n)) where.dataQualityScore = { ...((where.dataQualityScore as any) || {}), lte: n } }
     if (hasOrganization === 'true') where.managingOrgId = { not: null }
     if (hasOrganization === 'false') where.managingOrgId = null
+    if (orgName) where.managingOrg = { ...((where.managingOrg as any) || {}), name: { contains: orgName, mode: 'insensitive' } }
+    if (ico) where.managingOrg = { ...((where.managingOrg as any) || {}), ico: { startsWith: ico } }
 
     const validSortFields = ['dataQualityScore', 'city', 'district', 'street', 'houseNumber', 'orientationNumber', 'lastEnrichedAt', 'createdAt']
     const sortField = validSortFields.includes(sort || '') ? sort! : 'dataQualityScore'
@@ -826,6 +830,14 @@ export class KnowledgeBaseController {
   async resumeImport(@Param('jobId') jobId: string) {
     const ok = this.bulkImport.resumeJob(jobId)
     return { status: ok ? 'resumed' : 'not_found' }
+  }
+
+  @Post('bulk-import/:jobId/cancel')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Zrušit import job' })
+  async cancelImport(@Param('jobId') jobId: string) {
+    const ok = this.bulkImport.cancelJob(jobId)
+    return { status: ok ? 'cancelled' : 'not_found' }
   }
 
   @Post('bulk-import/full')
