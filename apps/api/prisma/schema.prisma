@@ -5640,3 +5640,102 @@ model BoardMessageReadReceipt {
   @@index([tenantId])
   @@map("board_message_read_receipts")
 }
+
+// ─── KNOWLEDGE BASE — RÚIAN LOCAL DATA ──────────────────────────
+// Globální tabulky (bez tenantId) — lokální kopie VFR dat
+
+model KbRuianObec {
+  id           Int      @id // RÚIAN kód obce
+  name         String // Název obce
+  statusCode   Int? // Kód statusu obce
+  districtCode Int? // Kód okresu
+  regionCode   Int? // Kód kraje
+  nutsLau      String? // NUTS LAU kód
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  streets       KbRuianUlice[]
+  addressPlaces KbRuianAdresniMisto[]
+
+  @@map("kb_ruian_obec")
+}
+
+model KbRuianUlice {
+  id     Int    @id // RÚIAN kód ulice
+  name   String // Název ulice
+  obecId Int
+
+  obec KbRuianObec @relation(fields: [obecId], references: [id])
+
+  addressPlaces KbRuianAdresniMisto[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([obecId])
+  @@index([name])
+  @@map("kb_ruian_ulice")
+}
+
+model KbRuianStavebniObjekt {
+  id                     Int    @id // RÚIAN kód stavebního objektu
+  buildingType           String? // Typ stavebního objektu (č.p., č.ev., bez č.)
+  numberOfFloors         Int?
+  numberOfUnits          Int? // Počet bytů
+  builtUpArea            Float? // Zastavěná plocha m²
+  buildingTechCode       Int? // Kód způsobu využití
+  cadastralTerritoryCode Int? // Kód KÚ
+  lat                    Float? // Definiční bod Y (WGS84)
+  lng                    Float? // Definiční bod X (WGS84)
+  iscrCode               String? // ISČR (identifikátor z ISKN)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  addressPlaces KbRuianAdresniMisto[]
+
+  @@index([cadastralTerritoryCode])
+  @@index([lat, lng])
+  @@map("kb_ruian_stavebni_objekt")
+}
+
+model KbRuianAdresniMisto {
+  id                      Int     @id // RÚIAN kód adresního místa
+  houseNumber             Int? // Číslo domovní
+  orientationNumber       Int? // Číslo orientační
+  orientationNumberLetter String? // Písmeno orient. čísla
+  postalCode              String? // PSČ
+  obecId                  Int?
+  uliceId                 Int?
+  stavebniObjektId        Int?
+  castObceNazev           String? // Název části obce
+  lat                     Float? // WGS84
+  lng                     Float? // WGS84
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  obec           KbRuianObec?           @relation(fields: [obecId], references: [id])
+  ulice          KbRuianUlice?          @relation(fields: [uliceId], references: [id])
+  stavebniObjekt KbRuianStavebniObjekt? @relation(fields: [stavebniObjektId], references: [id])
+
+  @@index([obecId])
+  @@index([uliceId])
+  @@index([stavebniObjektId])
+  @@index([postalCode])
+  @@index([lat, lng])
+  @@map("kb_ruian_adresni_misto")
+}
+
+model KbRuianImportLog {
+  id              String   @id @default(cuid())
+  fileName        String // Název VFR souboru
+  fileDate        DateTime // Datum stavového souboru
+  recordsTotal    Int      @default(0)
+  recordsInserted Int      @default(0)
+  recordsUpdated  Int      @default(0)
+  durationMs      Int      @default(0)
+  status          String   @default("running") // running | completed | failed
+  error           String?
+  createdAt       DateTime @default(now())
+
+  @@map("kb_ruian_import_log")
+}
