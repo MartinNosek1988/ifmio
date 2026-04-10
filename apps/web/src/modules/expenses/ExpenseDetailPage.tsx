@@ -73,7 +73,10 @@ export default function ExpenseDetailPage() {
   })
 
   const reimburseMutation = useMutation({
-    mutationFn: () => expensesApi.reimburse(id!, {}),
+    mutationFn: () => expensesApi.reimburse(id!, {
+      reimbursedAmount: expense?.amountTotal ?? 0,
+      reimbursementType: expense?.reimbursementType ?? 'cash',
+    }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['expenses'] }),
   })
 

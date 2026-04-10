@@ -28,6 +28,13 @@ function serialize<T>(obj: T): T {
 export class ExpensesService {
   private readonly logger = new Logger(ExpensesService.name);
 
+  private parseDate(value: string | undefined, fieldName: string): Date | undefined {
+    if (!value) return undefined;
+    const d = new Date(value);
+    if (isNaN(d.getTime())) throw new BadRequestException(`Neplatné datum: ${fieldName}`);
+    return d;
+  }
+
   constructor(
     private prisma: PrismaService,
     private scope: PropertyScopeService,
@@ -83,8 +90,14 @@ export class ExpensesService {
       ...(query.category ? { category: query.category } : {}),
       ...(query.propertyId ? { propertyId: query.propertyId } : {}),
       ...(query.workOrderId ? { workOrderId: query.workOrderId } : {}),
-      ...(query.dateFrom ? { receiptDate: { gte: new Date(query.dateFrom) } } : {}),
-      ...(query.dateTo ? { receiptDate: { ...(query.dateFrom ? { gte: new Date(query.dateFrom) } : {}), lte: new Date(query.dateTo) } } : {}),
+      ...(() => {
+        const from = this.parseDate(query.dateFrom, 'dateFrom');
+        const to = this.parseDate(query.dateTo, 'dateTo');
+        if (from && to) return { receiptDate: { gte: from, lte: to } };
+        if (from) return { receiptDate: { gte: from } };
+        if (to) return { receiptDate: { lte: to } };
+        return {};
+      })(),
       ...(query.search ? {
         OR: [
           { number: { contains: query.search, mode: 'insensitive' } },
@@ -320,9 +333,9 @@ export class ExpensesService {
       throw new BadRequestException('Obrazek je prilis velky (max ~10 MB)');
     }
 
-    const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+    const allowedTypes = ['image/jpeg', 'image/png'];
     if (!allowedTypes.includes(dto.mimeType)) {
-      throw new BadRequestException('Nepodporovany format souboru. Povoleno: JPEG, PNG, PDF');
+      throw new BadRequestException('Nepodporovany format souboru. Povoleno: JPEG, PNG');
     }
 
     const result = await this.ai.extractFromImage(dto.imageBase64, dto.mimeType);

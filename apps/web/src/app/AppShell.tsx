@@ -87,7 +87,7 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/finance?tab=konto', label: 'Konto vlastníků', icon: <Wallet size={17} /> },
       { to: '/finance?tab=debtors', label: 'Dlužníci', icon: <AlertTriangle size={17} /> },
       { to: '/finance?tab=revenues', label: 'Výnosy SVJ', icon: <TrendingUp size={17} /> },
-      { to: '/expenses', label: 'Výdaje', icon: <Receipt size={17} />, roles: ['fm', 'tech'] },
+      { to: '/expenses', label: 'Výdaje', icon: <Receipt size={17} />, roles: ['fm', 'tech', 'owner'] },
       { to: '/purchase-orders', label: 'Objednávky', icon: <ShoppingCart size={17} /> },
       { to: '/settlements', label: 'Vyúčtování', icon: <BarChart3 size={17} /> },
     ],
@@ -198,6 +198,7 @@ const PAGE_TITLES: Record<string, string> = {
 function getPageTitle(pathname: string): string {
   if (pathname.startsWith('/properties/')) return 'Detail nemovitosti';
   if (pathname.startsWith('/assets/')) return 'Karta zařízení';
+  if (pathname.startsWith('/expenses/')) return 'Detail výdaje';
   return PAGE_TITLES[pathname] || 'ifmio';
 }
 

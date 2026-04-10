@@ -1,9 +1,26 @@
-import { IsString, IsOptional, IsEnum, IsNumber, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsNumber, IsDateString, IsIn } from 'class-validator';
+
+export enum ExpenseCategoryEnum {
+  material = 'material',
+  fuel = 'fuel',
+  transport = 'transport',
+  tools = 'tools',
+  services = 'services',
+  accommodation = 'accommodation',
+  food = 'food',
+  other = 'other',
+}
+
+export enum ReimbursementTypeEnum {
+  cash = 'cash',
+  bank_transfer = 'bank_transfer',
+  company_card = 'company_card',
+}
 
 export class CreateExpenseDto {
   @IsOptional() @IsString() propertyId?: string;
   @IsOptional() @IsString() workOrderId?: string;
-  @IsEnum(['material', 'fuel', 'transport', 'tools', 'services', 'accommodation', 'food', 'other']) category!: string;
+  @IsEnum(ExpenseCategoryEnum) category!: ExpenseCategoryEnum;
   @IsString() description!: string;
   @IsOptional() @IsString() vendor?: string;
   @IsOptional() @IsString() vendorIco?: string;
@@ -18,14 +35,14 @@ export class CreateExpenseDto {
   @IsOptional() @IsString() mimeType?: string;
   @IsOptional() @IsNumber() aiConfidence?: number;
   @IsOptional() aiRawResponse?: any;
-  @IsOptional() @IsEnum(['cash', 'bank_transfer', 'company_card']) reimbursementType?: string;
+  @IsOptional() @IsEnum(ReimbursementTypeEnum) reimbursementType?: ReimbursementTypeEnum;
 }
 
 export class UpdateExpenseDto extends CreateExpenseDto {}
 
 export class ExtractExpenseDto {
   @IsString() imageBase64!: string;
-  @IsString() mimeType!: string;
+  @IsIn(['image/jpeg', 'image/png']) mimeType!: string;
 }
 
 export class RejectExpenseDto {
@@ -34,5 +51,5 @@ export class RejectExpenseDto {
 
 export class ReimburseExpenseDto {
   @IsNumber() reimbursedAmount!: number;
-  @IsOptional() @IsEnum(['cash', 'bank_transfer', 'company_card']) reimbursementType?: string;
+  @IsOptional() @IsEnum(ReimbursementTypeEnum) reimbursementType?: ReimbursementTypeEnum;
 }

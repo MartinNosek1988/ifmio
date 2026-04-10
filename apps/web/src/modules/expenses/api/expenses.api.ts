@@ -45,17 +45,25 @@ export interface ExtractedExpense {
 
 export const expensesApi = {
   list: (params?: Record<string, string>) =>
-    apiClient.get<ApiExpense[]>('/expenses', { params }).then((r) => r.data),
+    apiClient.get('/expenses', { params }).then((r) => {
+      const d = r.data
+      return Array.isArray(d) ? d : (d.items ?? d)
+    }) as Promise<ApiExpense[]>,
   stats: () =>
-    apiClient
-      .get<{
-        pending: number
-        approved: number
-        toReimburse: number
-        totalThisMonth: number
-      }>('/expenses/stats')
-      .then((r) => r.data),
-  my: () => apiClient.get<ApiExpense[]>('/expenses/my').then((r) => r.data),
+    apiClient.get('/expenses/stats').then((r) => {
+      const s = r.data
+      return {
+        pending: s.submitted ?? s.pending ?? 0,
+        approved: s.approved ?? 0,
+        toReimburse: Math.max((s.approved ?? 0) - (s.reimbursed ?? 0), 0),
+        totalThisMonth: (s.draft ?? 0) + (s.submitted ?? 0) + (s.approved ?? 0) + (s.rejected ?? 0) + (s.reimbursed ?? 0),
+      }
+    }),
+  my: () =>
+    apiClient.get('/expenses/my').then((r) => {
+      const d = r.data
+      return Array.isArray(d) ? d : (d.items ?? d)
+    }) as Promise<ApiExpense[]>,
   getById: (id: string) => apiClient.get<ApiExpense>(`/expenses/${id}`).then((r) => r.data),
   create: (data: Partial<ApiExpense>) =>
     apiClient.post<ApiExpense>('/expenses', data).then((r) => r.data),

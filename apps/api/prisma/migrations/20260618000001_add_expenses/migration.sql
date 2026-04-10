@@ -76,5 +76,7 @@ ALTER TABLE "expenses" ADD CONSTRAINT "expenses_workOrderId_fkey" FOREIGN KEY ("
 -- RLS: Tenant isolation policy
 ALTER TABLE "expenses" ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "tenant_isolation" ON "expenses"
-  USING ("tenantId" = current_setting('app.current_tenant_id', true));
+CREATE POLICY "tenant_isolation_expenses" ON "expenses"
+  FOR ALL
+  USING ("tenantId" = current_setting('app.current_tenant_id', true))
+  WITH CHECK ("tenantId" = current_setting('app.current_tenant_id', true));

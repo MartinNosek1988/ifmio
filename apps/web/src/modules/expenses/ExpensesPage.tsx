@@ -81,10 +81,10 @@ export default function ExpensesPage() {
 
       {/* KPI cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12, marginBottom: 20 }}>
-        <KpiCard label="Ceka na schvaleni" value={String(stats?.pending ?? 0)} color="var(--accent-yellow, #eab308)" />
-        <KpiCard label="Schvaleno" value={String(stats?.approved ?? 0)} color="var(--accent-green, #22c55e)" />
-        <KpiCard label="K proplaceni" value={String(stats?.toReimburse ?? 0)} color="var(--accent-blue, #3b82f6)" />
-        <KpiCard label="Celkem tento mesic" value={formatKc(stats?.totalThisMonth ?? 0)} color="var(--primary, #6366f1)" />
+        <KpiCard label="Čeká na schválení" value={String(stats?.pending ?? 0)} color="var(--accent-yellow, #eab308)" />
+        <KpiCard label="Schváleno" value={String(stats?.approved ?? 0)} color="var(--accent-green, #22c55e)" />
+        <KpiCard label="K proplacení" value={String(stats?.toReimburse ?? 0)} color="var(--accent-blue, #3b82f6)" />
+        <KpiCard label="Celkem tento měsíc" value={formatKc(stats?.totalThisMonth ?? 0)} color="var(--primary, #6366f1)" />
       </div>
 
       {/* Tab toggle + filters */}
