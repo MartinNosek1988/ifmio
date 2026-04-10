@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Pin, Plus, ChevronDown, ChevronUp, Eye } from 'lucide-react'
+import { Pin, Plus, ChevronUp, Eye } from 'lucide-react'
 import { boardMessagesApi, type BoardMessage } from './api'
 import { Badge, Button, Modal, EmptyState, LoadingState, Table } from '../../shared/components'
 import { FormField } from '../../shared/components/FormField'
