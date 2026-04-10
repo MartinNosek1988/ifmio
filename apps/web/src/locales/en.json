@@ -290,6 +290,8 @@
     "title": "CRM",
     "lead": {
       "create": "New lead",
+      "createTitle": "New lead",
+      "createCta": "Create",
       "loading": "Loading...",
       "stages": {
         "new_lead": "New",
