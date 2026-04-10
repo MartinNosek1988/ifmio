@@ -3,8 +3,8 @@ import { IsString, IsOptional, IsArray, IsBoolean, IsDateString, IsIn } from 'cl
 export class CreateBoardMessageDto {
   @IsString() title!: string
   @IsString() body!: string
-  /** Set by controller from route param — not in request body */
-  propertyId!: string
+  /** May be provided in request body or set by controller from route param */
+  @IsOptional() @IsString() propertyId?: string
   @IsOptional() @IsString() visibility?: string
   @IsOptional() @IsArray() @IsString({ each: true }) tags?: string[]
   @IsOptional() @IsBoolean() isPinned?: boolean
