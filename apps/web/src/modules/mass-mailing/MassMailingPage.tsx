@@ -22,11 +22,11 @@ const CHANNEL_CONFIG: Record<string, { label: string; color: BadgeVariant }> = {
 }
 
 const RECIPIENT_TYPE_LABELS: Record<string, string> = {
-  all_owners: 'Vlastnici',
-  all_tenants: 'Najemnici',
-  all_residents: 'Vsichni',
-  debtors: 'Dluznici',
-  custom: 'Vlastni',
+  all_owners: 'Vlastníci',
+  all_tenants: 'Nájemníci',
+  all_residents: 'Všichni',
+  debtors: 'Dlužníci',
+  custom: 'Vlastní',
 }
 
 export default function MassMailingPage() {
@@ -39,10 +39,11 @@ export default function MassMailingPage() {
   if (statusFilter) params.status = statusFilter
   if (channelFilter) params.channel = channelFilter
 
-  const { data: campaigns = [], isLoading, refetch } = useQuery({
+  const { data: rawData, isLoading, refetch } = useQuery({
     queryKey: ['mass-mailing', 'list', params],
     queryFn: () => massMailingApi.list(params),
   })
+  const campaigns: ApiCampaign[] = Array.isArray(rawData) ? rawData : rawData?.items ?? []
 
   const { data: stats } = useQuery({
     queryKey: ['mass-mailing', 'stats'],
@@ -52,12 +53,12 @@ export default function MassMailingPage() {
   const columns: Column<ApiCampaign>[] = [
     {
       key: 'name',
-      label: 'Nazev',
+      label: 'Název',
       render: (c) => <span style={{ fontWeight: 500 }}>{c.name}</span>,
     },
     {
       key: 'channel',
-      label: 'Kanal',
+      label: 'Kanál',
       render: (c) => {
         const cfg = CHANNEL_CONFIG[c.channel] ?? { label: c.channel, color: 'muted' as BadgeVariant }
         return <Badge variant={cfg.color}>{cfg.label}</Badge>
@@ -70,7 +71,7 @@ export default function MassMailingPage() {
     },
     {
       key: 'totalRecipients',
-      label: 'Prijemci',
+      label: 'Příjemci',
       render: (c) => <span>{c.totalRecipients}</span>,
     },
     {
@@ -99,28 +100,28 @@ export default function MassMailingPage() {
     <div data-testid="mass-mailing-page">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Hromadna posta</h1>
-          <p className="page-subtitle">{campaigns.length} kampani</p>
+          <h1 className="page-title">Hromadná pošta</h1>
+          <p className="page-subtitle">{campaigns.length} kampaní</p>
         </div>
         <Button variant="primary" icon={<Plus size={15} />} onClick={() => setShowForm(true)}>
-          Nova kampan
+          Nová kampaň
         </Button>
       </div>
 
       {/* Stats cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
         <KpiCard
-          label="Kampani celkem"
+          label="Kampaní celkem"
           value={String(stats?.totalCampaigns ?? 0)}
           color="var(--accent-blue)"
         />
         <KpiCard
-          label="Odeslano tento mesic"
+          label="Odesláno tento měsíc"
           value={String(stats?.sentThisMonth ?? 0)}
           color="var(--accent-green, #22c55e)"
         />
         <KpiCard
-          label="Prumerna uspesnost"
+          label="Průměrná úspěšnost"
           value={`${stats?.avgSuccessRate ?? 0} %`}
           color="var(--accent-purple, #8b5cf6)"
         />
@@ -138,12 +139,12 @@ export default function MassMailingPage() {
             color: 'var(--text)', fontSize: '0.85rem',
           }}
         >
-          <option value="">Vsechny stavy</option>
+          <option value="">Všechny stavy</option>
           <option value="draft">Koncept</option>
-          <option value="scheduled">Naplanovano</option>
-          <option value="sending">Odesilani</option>
-          <option value="sent">Odeslano</option>
-          <option value="cancelled">Zruseno</option>
+          <option value="scheduled">Naplánováno</option>
+          <option value="sending">Odesílání</option>
+          <option value="sent">Odesláno</option>
+          <option value="cancelled">Zrušeno</option>
         </select>
         <select
           value={channelFilter}
@@ -155,7 +156,7 @@ export default function MassMailingPage() {
             color: 'var(--text)', fontSize: '0.85rem',
           }}
         >
-          <option value="">Vsechny kanaly</option>
+          <option value="">Všechny kanály</option>
           <option value="email">Email</option>
           <option value="sms">SMS</option>
           <option value="both">Email + SMS</option>
@@ -166,7 +167,7 @@ export default function MassMailingPage() {
       {isLoading ? (
         <LoadingSkeleton variant="table" rows={8} />
       ) : campaigns.length === 0 ? (
-        <EmptyState title="Zadne kampane" description="Zatim nebyla vytvorena zadna kampan." />
+        <EmptyState title="Žádné kampaně" description="Zatím nebyla vytvořena žádná kampaň." />
       ) : (
         <Table
           data={campaigns}
