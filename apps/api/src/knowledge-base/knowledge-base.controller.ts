@@ -7,6 +7,7 @@ import { DataorService } from '../integrations/dataor/dataor.service'
 import { PropertyEnrichmentOrchestrator } from './property-enrichment.orchestrator'
 import { BuildingIntelligenceService } from './building-intelligence.service'
 import { BuildingCompletenessService } from './building-completeness.service'
+import { UpdateBuildingUnitDto } from './dto/update-building-unit.dto'
 import { BulkImportService, type BulkImportStep } from './bulk-import.service'
 import { TerritorySeedService } from './territory-seed.service'
 import { CuzkApiKnService } from '../integrations/cuzk/cuzk-api-kn.service'
@@ -595,7 +596,7 @@ export class KnowledgeBaseController {
   async updateBuildingUnit(
     @Param('buildingId') buildingId: string,
     @Param('unitId') unitId: string,
-    @Body() dto: { area?: number; floor?: number; roomLayout?: string; note?: string },
+    @Body() dto: UpdateBuildingUnitDto,
   ) {
     return this.kb.updateBuildingUnit(buildingId, unitId, dto)
   }

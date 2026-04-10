@@ -134,14 +134,10 @@ export class KnowledgeBaseService {
         },
         ownerships: {
           include: {
-            person: { select: { id: true, firstName: true, lastName: true, titulPred: true, titulZa: true, datumNarozeni: true, adresa: true } },
+            person: { select: { id: true, firstName: true, lastName: true, titulPred: true, titulZa: true } },
             organization: { select: { id: true, name: true, ico: true } },
           },
           orderBy: { createdAt: 'desc' },
-        },
-        units: {
-          select: { id: true, name: true, propertyId: true, property: { select: { id: true, name: true } } },
-          take: 5,
         },
       },
     })
@@ -150,7 +146,7 @@ export class KnowledgeBaseService {
     return unit
   }
 
-  async updateBuildingUnit(buildingId: string, unitId: string, dto: { area?: number; floor?: number; roomLayout?: string; note?: string }) {
+  async updateBuildingUnit(buildingId: string, unitId: string, dto: { area?: number | null; floor?: number | null; roomLayout?: string | null }) {
     const unit = await this.prisma.buildingUnit.findFirst({ where: { id: unitId, buildingId } })
     if (!unit) throw new NotFoundException('Jednotka nenalezena')
 
