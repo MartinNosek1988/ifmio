@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Megaphone, Plus, ChevronDown, ChevronUp, Circle, AlertTriangle, Edit3 } from 'lucide-react'
+import { useAuthStore } from '../../core/auth/auth.store'
 import { boardMessagesApi, type BoardMessage } from '../board-messages/api'
 import { Badge, Button, Modal, EmptyState, LoadingState } from '../../shared/components'
 import { FormField } from '../../shared/components/FormField'
@@ -11,15 +12,17 @@ type Section = 'feed' | 'mine'
 export default function PortalBoardPage() {
   const queryClient = useQueryClient()
   const toast = useToast()
+  const currentUserId = useAuthStore(s => s.user?.id)
   const [section, setSection] = useState<Section>('feed')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [editMsg, setEditMsg] = useState<BoardMessage | null>(null)
 
-  const { data: feed = [], isLoading: feedLoading } = useQuery({
+  const { data: feedData, isLoading: feedLoading } = useQuery({
     queryKey: ['portal', 'board-messages'],
     queryFn: boardMessagesApi.portalFeed,
   })
+  const feed: BoardMessage[] = feedData?.data ?? feedData ?? []
 
   const markReadMut = useMutation({
     mutationFn: (id: string) => boardMessagesApi.portalMarkRead(id),
@@ -46,7 +49,7 @@ export default function PortalBoardPage() {
     mutationFn: () => boardMessagesApi.portalCreate(editMsg ? { ...form, id: editMsg.id } : form),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['portal', 'board-messages'] })
-      toast.success(editMsg ? 'Zprava aktualizovana' : 'Zprava odeslana ke schvaleni')
+      toast.success(editMsg ? 'Zpráva aktualizována' : 'Zpráva odeslána ke schválení')
       setShowCreate(false)
       setEditMsg(null)
       setForm({ title: '', body: '' })
@@ -54,9 +57,9 @@ export default function PortalBoardPage() {
   })
 
   // Published feed messages
-  const published = feed.filter((m: BoardMessage) => m.authorId !== '_self' || m.status === 'PUBLISHED')
-  // My messages (DRAFT, PENDING, REJECTED from feed that belong to me)
-  const myMessages = feed.filter((m: BoardMessage) => m.authorId === '_self' && m.status !== 'PUBLISHED')
+  const published = feed.filter((m: BoardMessage) => m.status === 'PUBLISHED')
+  // My messages (DRAFT, PENDING_APPROVAL, REJECTED from feed that belong to me)
+  const myMessages = feed.filter((m: BoardMessage) => m.author?.id === currentUserId && m.status !== 'PUBLISHED')
 
   const openEdit = (msg: BoardMessage) => {
     setEditMsg(msg)
@@ -67,10 +70,10 @@ export default function PortalBoardPage() {
   const statusBadge = (status: string) => {
     const map: Record<string, { variant: 'blue' | 'green' | 'yellow' | 'red' | 'muted'; label: string }> = {
       DRAFT: { variant: 'muted', label: 'Koncept' },
-      PENDING: { variant: 'yellow', label: 'Ceka na schvaleni' },
-      REJECTED: { variant: 'red', label: 'Zamitnuto' },
-      PUBLISHED: { variant: 'green', label: 'Publikovano' },
-      ARCHIVED: { variant: 'muted', label: 'Archivovano' },
+      PENDING_APPROVAL: { variant: 'yellow', label: 'Čeká na schválení' },
+      REJECTED: { variant: 'red', label: 'Zamítnuto' },
+      PUBLISHED: { variant: 'green', label: 'Publikováno' },
+      ARCHIVED: { variant: 'muted', label: 'Archivováno' },
     }
     const s = map[status] ?? { variant: 'muted' as const, label: status }
     return <Badge variant={s.variant}>{s.label}</Badge>
@@ -81,27 +84,27 @@ export default function PortalBoardPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Megaphone size={22} style={{ color: 'var(--primary)' }} />
-          <h1 style={{ fontSize: '1.3rem', fontWeight: 700, margin: 0 }}>Nastenka</h1>
+          <h1 style={{ fontSize: '1.3rem', fontWeight: 700, margin: 0 }}>Nástěnka</h1>
         </div>
         <Button variant="primary" icon={<Plus size={15} />} onClick={() => { setEditMsg(null); setForm({ title: '', body: '' }); setShowCreate(true); }}>
-          Nova zprava
+          Nová zpráva
         </Button>
       </div>
 
       {/* Section toggle */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid var(--border)' }}>
         <button className={`tab-btn${section === 'feed' ? ' active' : ''}`} onClick={() => setSection('feed')}>
-          Zpravy
+          Zprávy
         </button>
         <button className={`tab-btn${section === 'mine' ? ' active' : ''}`} onClick={() => setSection('mine')}>
-          Moje zpravy
+          Moje zprávy
         </button>
       </div>
 
       {section === 'feed' && (
         feedLoading ? <LoadingState /> :
         published.length === 0 ? (
-          <EmptyState title="Zadne zpravy" description="Na nastenku zatim nebyly pridany zadne zpravy." />
+          <EmptyState title="Žádné zprávy" description="Na nástěnku zatím nebyly přidány žádné zprávy." />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {(published as BoardMessage[]).map(msg => (
@@ -119,7 +122,7 @@ export default function PortalBoardPage() {
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   {!msg.isRead && <Circle size={8} fill="var(--primary)" stroke="none" />}
-                  {msg.isPinned && <span title="Pripnuto" style={{ color: 'var(--primary)' }}>&#128204;</span>}
+                  {msg.isPinned && <span title="Připnuto" style={{ color: 'var(--primary)' }}>&#128204;</span>}
                   <span style={{ flex: 1, fontWeight: msg.isRead ? 400 : 600, fontSize: '.92rem' }}>{msg.title}</span>
                   <span style={{ fontSize: '.78rem', color: 'var(--text-muted)' }}>
                     {new Date(msg.createdAt).toLocaleDateString('cs-CZ')}
@@ -147,7 +150,7 @@ export default function PortalBoardPage() {
 
       {section === 'mine' && (
         myMessages.length === 0 ? (
-          <EmptyState title="Zadne vlastni zpravy" description="Zatim jste neodeslali zadnou zpravu." />
+          <EmptyState title="Žádné vlastní zprávy" description="Zatím jste neodeslali žádnou zprávu." />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {(myMessages as BoardMessage[]).map(msg => (
@@ -170,7 +173,7 @@ export default function PortalBoardPage() {
                   }}>
                     <AlertTriangle size={16} style={{ color: 'var(--danger)', flexShrink: 0, marginTop: 2 }} />
                     <div>
-                      <div style={{ fontWeight: 600, marginBottom: 2 }}>Duvod zamitnuti:</div>
+                      <div style={{ fontWeight: 600, marginBottom: 2 }}>Důvod zamítnutí:</div>
                       {msg.rejectionNote}
                     </div>
                   </div>
@@ -190,9 +193,9 @@ export default function PortalBoardPage() {
       <Modal
         open={showCreate}
         onClose={() => { setShowCreate(false); setEditMsg(null); }}
-        title={editMsg ? 'Upravit zpravu' : 'Nova zprava'}
+        title={editMsg ? 'Upravit zprávu' : 'Nová zpráva'}
       >
-        <FormField label="Nazev" name="portal-msg-title">
+        <FormField label="Název" name="portal-msg-title">
           <input
             id="portal-msg-title"
             className="input"
@@ -200,7 +203,7 @@ export default function PortalBoardPage() {
             onChange={e => setForm({ ...form, title: e.target.value })}
           />
         </FormField>
-        <FormField label="Text zpravy" name="portal-msg-body">
+        <FormField label="Text zprávy" name="portal-msg-body">
           <textarea
             id="portal-msg-body"
             className="input"
@@ -211,13 +214,13 @@ export default function PortalBoardPage() {
           />
         </FormField>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
-          <Button onClick={() => { setShowCreate(false); setEditMsg(null); }}>Zrusit</Button>
+          <Button onClick={() => { setShowCreate(false); setEditMsg(null); }}>Zrušit</Button>
           <Button
             variant="primary"
             onClick={() => createMut.mutate()}
             disabled={!form.title || !form.body || createMut.isPending}
           >
-            {createMut.isPending ? 'Odesilam...' : editMsg ? 'Upravit a odeslat' : 'Odeslat'}
+            {createMut.isPending ? 'Odesílám...' : editMsg ? 'Upravit a odeslat' : 'Odeslat'}
           </Button>
         </div>
       </Modal>

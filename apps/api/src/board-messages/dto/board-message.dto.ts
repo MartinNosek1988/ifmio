@@ -1,9 +1,9 @@
-import { IsString, IsOptional, IsArray, IsBoolean, IsDateString } from 'class-validator'
+import { IsString, IsOptional, IsArray, IsBoolean, IsDateString, IsIn } from 'class-validator'
 
 export class CreateBoardMessageDto {
   @IsString() title!: string
   @IsString() body!: string
-  @IsString() propertyId!: string
+  @IsOptional() @IsString() propertyId!: string
   @IsOptional() @IsString() visibility?: string
   @IsOptional() @IsArray() @IsString({ each: true }) tags?: string[]
   @IsOptional() @IsBoolean() isPinned?: boolean
@@ -26,6 +26,6 @@ export class UpdateBoardMessageDto {
 }
 
 export class ReviewBoardMessageDto {
-  @IsString() decision!: 'PUBLISHED' | 'REJECTED'
+  @IsIn(['PUBLISHED', 'REJECTED']) decision!: 'PUBLISHED' | 'REJECTED'
   @IsOptional() @IsString() rejectionNote?: string
 }

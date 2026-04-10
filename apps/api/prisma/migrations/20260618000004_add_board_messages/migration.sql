@@ -71,8 +71,12 @@ ALTER TABLE "board_message_read_receipts" ADD CONSTRAINT "board_message_read_rec
 -- RLS: Tenant isolation
 ALTER TABLE "board_messages" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "tenant_isolation_board_messages" ON "board_messages"
-  USING ("tenantId" = current_setting('app.current_tenant_id', true));
+  FOR ALL
+  USING ("tenantId" = current_setting('app.current_tenant_id', true))
+  WITH CHECK ("tenantId" = current_setting('app.current_tenant_id', true));
 
 ALTER TABLE "board_message_read_receipts" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "tenant_isolation_board_message_read_receipts" ON "board_message_read_receipts"
-  USING ("tenantId" = current_setting('app.current_tenant_id', true));
+  FOR ALL
+  USING ("tenantId" = current_setting('app.current_tenant_id', true))
+  WITH CHECK ("tenantId" = current_setting('app.current_tenant_id', true));
