@@ -176,19 +176,17 @@ export default function CrmBuildingsPage() {
     queryFn: () => {
       const params: Record<string, string> = { limit: String(PAGE_SIZE), offset: String(offset) }
       if (activeTerritoryId) params.territoryId = activeTerritoryId
-      if (street) params.street = street
-      if (houseNumber) params.houseNumber = houseNumber
-      if (orientationNumber) params.orientationNumber = orientationNumber
+      // Street-level: cascade filters take precedence, column filters as fallback
+      if (street || colStreet) params.street = street || colStreet
+      if (houseNumber || colHouseNumber) params.houseNumber = houseNumber || colHouseNumber
+      if (orientationNumber || colOrientationNumber) params.orientationNumber = orientationNumber || colOrientationNumber
       if (q) params.q = q
       if (minQuality) params.minQuality = minQuality
       if (maxQuality) params.maxQuality = maxQuality
       if (hasOrganization) params.hasOrganization = hasOrganization
-      // Inline column filters
+      // Inline column filters (non-overlapping with cascade)
       if (colCity) params.city = colCity
       if (colDistrict) params.district = colDistrict
-      if (colStreet) params.street = colStreet
-      if (colHouseNumber) params.houseNumber = colHouseNumber
-      if (colOrientationNumber) params.orientationNumber = colOrientationNumber
       if (colOrgName) params.orgName = colOrgName
       if (colIco) params.ico = colIco
       if (sort) params.sort = sort
@@ -614,7 +612,7 @@ function paginationRange(current: number, total: number): (string | number)[] {
   return pages
 }
 
-// Inline column filter input with debounce on Enter
+// Inline column filter input — commits on Enter or blur
 function ColumnFilter({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
   const [local, setLocal] = useState(value)
   useEffect(() => setLocal(value), [value])

@@ -12,7 +12,7 @@ import { CuzkApiKnService } from '../integrations/cuzk/cuzk-api-kn.service'
 
 export interface BulkImportJob {
   id: string
-  status: 'RUNNING' | 'PAUSED' | 'COMPLETED' | 'FAILED'
+  status: 'RUNNING' | 'PAUSED' | 'COMPLETED' | 'FAILED' | 'CANCELLED'
   step: BulkImportStep
   region: string
   district?: string
@@ -160,7 +160,7 @@ export class BulkImportService {
   cancelJob(jobId: string): boolean {
     const job = this.activeJobs.get(jobId)
     if (job && (job.status === 'RUNNING' || job.status === 'PAUSED')) {
-      job.status = 'FAILED'
+      job.status = 'CANCELLED'
       job.error = 'Zrušeno uživatelem'
       job.completedAt = new Date()
       return true
@@ -776,7 +776,6 @@ export class BulkImportService {
 
             // Step C: Geo enrichment (risks + POI)
             job.currentStep = 'Enrichment'
-            let qualityBonus = 0
             const enrichCache: Record<string, unknown> = {}
             const sources: Array<{ name: string; fetchedAt: string; status: string }> = []
             // Track RÚIAN source
@@ -785,7 +784,6 @@ export class BulkImportService {
               try {
                 const risks = await this.geoRisk.getRiskProfile(b.lat, b.lng)
                 enrichCache.risks = risks
-                qualityBonus += 5
                 sources.push({ name: 'GeoRisk', fetchedAt: new Date().toISOString(), status: 'ok' })
               } catch (err) {
                 this.logger.warn(`GeoRisk failed for ${building.id}: ${err instanceof Error ? err.message : err}`)
@@ -793,7 +791,7 @@ export class BulkImportService {
               }
               try {
                 const price = await this.iprPrice.getLandPrice(b.lat, b.lng)
-                if (price) { enrichCache.priceEstimate = price; qualityBonus += 10 }
+                if (price) { enrichCache.priceEstimate = price }
                 sources.push({ name: 'IPR', fetchedAt: new Date().toISOString(), status: price ? 'ok' : 'no_data' })
               } catch (err) {
                 this.logger.warn(`IPR price failed for ${building.id}: ${err instanceof Error ? err.message : err}`)
@@ -806,7 +804,7 @@ export class BulkImportService {
                   if (key === 'details') return Array.isArray(value) && value.length > 0
                   return typeof value === 'number' && value > 0
                 })
-                if (hasAnyPoi) { enrichCache.poi = poi; qualityBonus += 5 }
+                if (hasAnyPoi) { enrichCache.poi = poi }
                 sources.push({ name: 'Overpass', fetchedAt: new Date().toISOString(), status: hasAnyPoi ? 'ok' : 'no_data' })
               } catch (err) {
                 this.logger.warn(`POI failed for ${building.id}: ${err instanceof Error ? err.message : err}`)
@@ -866,7 +864,6 @@ export class BulkImportService {
                       },
                     })
                   }
-                  qualityBonus += 10
                   sources.push({ name: 'ČÚZK API', fetchedAt: new Date().toISOString(), status: 'ok' })
                 } else {
                   sources.push({ name: 'ČÚZK API', fetchedAt: new Date().toISOString(), status: stavba ? 'no_units' : 'no_data' })

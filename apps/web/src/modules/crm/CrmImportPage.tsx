@@ -36,6 +36,7 @@ export default function CrmImportPage() {
   const isPaused = fullJob?.status === 'PAUSED'
   const isCompleted = fullJob?.status === 'COMPLETED'
   const isFailed = fullJob?.status === 'FAILED'
+  const isCancelled = fullJob?.status === 'CANCELLED'
   const pct = fullJob && fullJob.totalEstimated > 0 ? Math.round((fullJob.processed / fullJob.totalEstimated) * 100) : 0
 
   const startMut = useMutation({
@@ -101,7 +102,7 @@ export default function CrmImportPage() {
             <div style={{ height: 10, background: '#e5e7eb', borderRadius: 5, overflow: 'hidden', marginBottom: 8 }}>
               <div style={{
                 height: '100%', width: `${pct}%`, borderRadius: 5, transition: 'width 0.5s',
-                background: isRunning ? 'var(--primary)' : isPaused ? 'var(--warning)' : isFailed ? 'var(--danger)' : 'var(--success)',
+                background: isRunning ? 'var(--primary)' : isPaused ? 'var(--warning)' : (isFailed || isCancelled) ? 'var(--danger)' : 'var(--success)',
               }} />
             </div>
 
@@ -113,6 +114,7 @@ export default function CrmImportPage() {
             </div>
 
             {isFailed && fullJob.error && <div style={{ marginTop: 8, fontSize: '0.78rem', color: 'var(--danger)' }}>{fullJob.error}</div>}
+            {isCancelled && <div style={{ marginTop: 8, fontSize: '0.78rem', color: 'var(--warning, #d97706)', fontWeight: 600 }}>Import zrušen uživatelem</div>}
             {isCompleted && (
               <div style={{ marginTop: 8, fontSize: '0.82rem', color: 'var(--success)', fontWeight: 600 }}>
                 <CheckCircle2 size={14} style={{ verticalAlign: -2, marginRight: 4 }} /> Import dokončen

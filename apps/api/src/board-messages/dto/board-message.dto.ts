@@ -1,11 +1,10 @@
 import { IsString, IsOptional, IsArray, IsBoolean, IsDateString, IsIn } from 'class-validator'
-import { ApiHideProperty } from '@nestjs/swagger'
+import { OmitType } from '@nestjs/swagger'
 
+/** Portal DTO — propertyId is optional (auto-resolved from user's units when absent) */
 export class CreateBoardMessageDto {
   @IsString() title!: string
   @IsString() body!: string
-  /** Set by controller from route param, or auto-resolved in portal */
-  @ApiHideProperty()
   @IsOptional() @IsString() propertyId?: string
   @IsOptional() @IsString() visibility?: string
   @IsOptional() @IsArray() @IsString({ each: true }) tags?: string[]
@@ -15,6 +14,9 @@ export class CreateBoardMessageDto {
   @IsOptional() @IsArray() @IsString({ each: true }) attachmentIds?: string[]
   @IsOptional() @IsBoolean() submitForApproval?: boolean
 }
+
+/** Property-scoped DTO — propertyId is set from route param, hidden from Swagger body */
+export class CreateBoardMessageBodyDto extends OmitType(CreateBoardMessageDto, ['propertyId'] as const) {}
 
 export class UpdateBoardMessageDto {
   @IsOptional() @IsString() title?: string

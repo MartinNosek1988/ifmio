@@ -8,7 +8,7 @@ import { Roles } from '../common/decorators/roles.decorator'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
 import { AuditAction } from '../common/decorators/audit.decorator'
 import { ROLES_WRITE, ROLES_MANAGE } from '../common/constants/roles.constants'
-import { CreateBoardMessageDto, UpdateBoardMessageDto, ReviewBoardMessageDto } from './dto/board-message.dto'
+import { CreateBoardMessageDto, CreateBoardMessageBodyDto, UpdateBoardMessageDto, ReviewBoardMessageDto } from './dto/board-message.dto'
 import type { AuthUser } from '@ifmio/shared-types'
 
 @ApiTags('Board Messages')
@@ -53,9 +53,9 @@ export class BoardMessagesController {
   create(
     @CurrentUser() user: AuthUser,
     @Param('propertyId') propertyId: string,
-    @Body() dto: CreateBoardMessageDto,
+    @Body() body: CreateBoardMessageBodyDto,
   ) {
-    dto.propertyId = propertyId
+    const dto: CreateBoardMessageDto = { ...body, propertyId }
     return this.service.create(user, dto)
   }
 
