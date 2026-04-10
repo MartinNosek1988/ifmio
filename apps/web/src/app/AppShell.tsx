@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Building2, Users, FolderOpen, Calendar,
   Wrench, Headphones, Box, Gauge, FileText, UserCheck,
   Wallet, AlertTriangle, TrendingUp, ShoppingCart, Receipt,
-  MessageSquare, Mail, Send, Settings, BarChart3, Database, Download, Landmark, MapPinned,
+  MessageSquare, Send, Settings, BarChart3, Database, Download, Landmark, MapPinned,
   ClipboardList, ClipboardCheck, ScrollText, UsersRound, FileCheck2, Columns3, Vote, PenLine,
   Phone, Megaphone,
   User as UserIcon, LogOut, Shield, Menu, X, ChevronDown, Sparkles,
@@ -99,8 +99,7 @@ const NAV_SECTIONS: NavSection[] = [
     roles: ['fm', 'owner'],
     items: [
       { to: '/communication', label: 'Komunikace', icon: <MessageSquare size={17} /> },
-      { to: '/communication?tab=mail', label: 'Pošta', icon: <Mail size={17} /> },
-      { to: '/mass-mailing', label: 'Hromadna posta', icon: <Send size={17} />, roles: ['fm'] },
+      { to: '/mass-mailing', label: 'Hromadná pošta', icon: <Send size={17} />, roles: ['fm'] },
     ],
   },
   {
@@ -200,7 +199,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/crm/pipeline': 'CRM Pipeline',
   '/crm/kb-candidates': 'KB Kandidati',
   '/kanban': 'Pipeline',
-  '/mass-mailing': 'Hromadna posta',
+  '/mass-mailing': 'Hromadná pošta',
 };
 
 function getPageTitle(pathname: string): string {
