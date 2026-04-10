@@ -72,6 +72,7 @@ const SuperAdminPage = lazy(() => import('../modules/super-admin/SuperAdminPage'
 const KnowledgeBaseDashboard = lazy(() => import('../modules/admin/KnowledgeBaseDashboard'));
 const CrmBuildingsPage = lazy(() => import('../modules/crm/CrmBuildingsPage'));
 const CrmBuildingDetailPage = lazy(() => import('../modules/crm/CrmBuildingDetailPage'));
+const CrmBuildingUnitDetailPage = lazy(() => import('../modules/crm/CrmBuildingUnitDetailPage'));
 const CrmOrganizationsPage = lazy(() => import('../modules/crm/CrmOrganizationsPage'));
 const CrmMapPage = lazy(() => import('../modules/crm/CrmMapPage'));
 const CrmImportPage = lazy(() => import('../modules/crm/CrmImportPage'));
@@ -270,6 +271,7 @@ export const router = createBrowserRouter([
       { path: 'crm', element: withBoundary('CRM Přehled', KnowledgeBaseDashboard) },
       { path: 'crm/buildings', element: withBoundary('CRM Budovy', CrmBuildingsPage) },
       { path: 'crm/buildings/:id', element: withBoundary('CRM Detail budovy', CrmBuildingDetailPage) },
+      { path: 'crm/buildings/:buildingId/units/:unitId', element: withBoundary('Detail jednotky KB', CrmBuildingUnitDetailPage) },
       { path: 'crm/organizations', element: withBoundary('CRM Organizace', CrmOrganizationsPage) },
       { path: 'crm/import', element: withBoundary('CRM Import', CrmImportPage) },
       { path: 'crm/map', element: withBoundary('CRM Mapa', CrmMapPage) },

@@ -315,7 +315,13 @@ export default function CrmBuildingDetailPage() {
               </thead>
               <tbody>
                 {building.units.map((u: any) => (
-                  <tr key={u.id} style={{ borderBottom: '1px solid var(--border-light, #f3f4f6)' }}>
+                  <tr
+                    key={u.id}
+                    onClick={() => navigate(`/crm/buildings/${id}/units/${u.id}`)}
+                    style={{ cursor: 'pointer', borderBottom: '1px solid var(--border-light, #f3f4f6)' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-muted, #f9fafb)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = '')}
+                  >
                     <td style={{ padding: '6px 8px', fontWeight: 500 }}>{u.unitNumber || '—'}</td>
                     <td style={{ padding: '6px 8px' }}>{u.unitType || '—'}</td>
                     <td style={{ padding: '6px 8px' }}>{u.usage || '—'}</td>

@@ -579,6 +579,27 @@ export class KnowledgeBaseController {
     })
   }
 
+  @Get('buildings/:buildingId/units/:unitId')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Detail KB jednotky' })
+  async getBuildingUnit(
+    @Param('buildingId') buildingId: string,
+    @Param('unitId') unitId: string,
+  ) {
+    return this.kb.getBuildingUnit(buildingId, unitId)
+  }
+
+  @Patch('buildings/:buildingId/units/:unitId')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Editace KB jednotky' })
+  async updateBuildingUnit(
+    @Param('buildingId') buildingId: string,
+    @Param('unitId') unitId: string,
+    @Body() dto: { area?: number; floor?: number; roomLayout?: string; note?: string },
+  ) {
+    return this.kb.updateBuildingUnit(buildingId, unitId, dto)
+  }
+
   @Delete('buildings/purge')
   @Roles(...ROLES_MANAGE)
   @ApiOperation({ summary: 'Smazat VŠECHNY budovy z KB (super admin only, pro reimport)' })
