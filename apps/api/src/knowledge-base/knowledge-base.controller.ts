@@ -585,22 +585,26 @@ export class KnowledgeBaseController {
 
   @Get('buildings/:buildingId/units/:unitId')
   @Roles(...ROLES_MANAGE)
-  @ApiOperation({ summary: 'Detail KB jednotky' })
+  @ApiOperation({ summary: 'Detail KB jednotky (SUPER_ADMIN — cross-tenant data)' })
   async getBuildingUnit(
+    @CurrentUser() user: AuthUser,
     @Param('buildingId') buildingId: string,
     @Param('unitId') unitId: string,
   ) {
+    this.superAdmin.assertSuperAdmin(user.email)
     return this.kb.getBuildingUnit(buildingId, unitId)
   }
 
   @Patch('buildings/:buildingId/units/:unitId')
   @Roles(...ROLES_MANAGE)
-  @ApiOperation({ summary: 'Editace KB jednotky' })
+  @ApiOperation({ summary: 'Editace KB jednotky (SUPER_ADMIN)' })
   async updateBuildingUnit(
+    @CurrentUser() user: AuthUser,
     @Param('buildingId') buildingId: string,
     @Param('unitId') unitId: string,
     @Body() dto: UpdateBuildingUnitDto,
   ) {
+    this.superAdmin.assertSuperAdmin(user.email)
     return this.kb.updateBuildingUnit(buildingId, unitId, dto)
   }
 
