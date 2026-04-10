@@ -91,6 +91,7 @@ export class BoardMessagesService {
   // ─── Create ────────────────────────────────────────────────────
 
   async create(user: AuthUser, dto: CreateBoardMessageDto) {
+    if (!dto.propertyId) throw new BadRequestException('propertyId is required')
     await this.scope.verifyPropertyAccess(user, dto.propertyId)
 
     const isAdmin = ADMIN_ROLES.includes(user.role)
@@ -151,14 +152,14 @@ export class BoardMessagesService {
     return this.prisma.boardMessage.update({
       where: { id },
       data: {
-        ...(dto.title !== undefined && { title: dto.title }),
-        ...(dto.body !== undefined && { body: dto.body }),
-        ...(dto.visibility !== undefined && { visibility: dto.visibility }),
-        ...(dto.tags !== undefined && { tags: dto.tags }),
-        ...(dto.isPinned !== undefined && { isPinned: dto.isPinned }),
-        ...(dto.validFrom !== undefined && { validFrom: new Date(dto.validFrom) }),
-        ...(dto.validUntil !== undefined && { validUntil: new Date(dto.validUntil) }),
-        ...(dto.attachmentIds !== undefined && { attachmentIds: dto.attachmentIds }),
+        ...(dto.title != null && { title: dto.title }),
+        ...(dto.body != null && { body: dto.body }),
+        ...(dto.visibility != null && { visibility: dto.visibility }),
+        ...(dto.tags != null && { tags: dto.tags }),
+        ...(dto.isPinned != null && { isPinned: dto.isPinned }),
+        ...(dto.validFrom != null && { validFrom: new Date(dto.validFrom) }),
+        ...(dto.validUntil != null && { validUntil: new Date(dto.validUntil) }),
+        ...(dto.attachmentIds != null && { attachmentIds: dto.attachmentIds }),
         status,
         submittedAt,
         rejectionNote: null, // clear on re-edit
@@ -416,6 +417,7 @@ export class BoardMessagesService {
   // ─── Portal: create (→ PENDING_APPROVAL) ───────────────────────
 
   async createFromPortal(user: AuthUser, dto: CreateBoardMessageDto) {
+    if (!dto.propertyId) throw new BadRequestException('propertyId is required')
     // Verify the user has a relation to this property via unit ownership/tenancy
     const dbUser = await this.prisma.user.findUnique({
       where: { id: user.id },
@@ -533,13 +535,13 @@ export class BoardMessagesService {
     return this.prisma.boardMessage.update({
       where: { id },
       data: {
-        ...(dto.title !== undefined && { title: dto.title }),
-        ...(dto.body !== undefined && { body: dto.body }),
-        ...(dto.visibility !== undefined && { visibility: dto.visibility }),
-        ...(dto.tags !== undefined && { tags: dto.tags }),
-        ...(dto.validFrom !== undefined && { validFrom: new Date(dto.validFrom) }),
-        ...(dto.validUntil !== undefined && { validUntil: new Date(dto.validUntil) }),
-        ...(dto.attachmentIds !== undefined && { attachmentIds: dto.attachmentIds }),
+        ...(dto.title != null && { title: dto.title }),
+        ...(dto.body != null && { body: dto.body }),
+        ...(dto.visibility != null && { visibility: dto.visibility }),
+        ...(dto.tags != null && { tags: dto.tags }),
+        ...(dto.validFrom != null && { validFrom: new Date(dto.validFrom) }),
+        ...(dto.validUntil != null && { validUntil: new Date(dto.validUntil) }),
+        ...(dto.attachmentIds != null && { attachmentIds: dto.attachmentIds }),
         status: dto.submitForApproval ? 'PENDING_APPROVAL' : msg.status,
         submittedAt: dto.submitForApproval ? new Date() : msg.submittedAt,
         rejectionNote: null,

@@ -25,6 +25,7 @@ export default function PortalBoardPage() {
   const { data: myData, isLoading: myLoading } = useQuery({
     queryKey: ['portal', 'board-messages', 'mine'],
     queryFn: boardMessagesApi.portalMyMessages,
+    enabled: section === 'mine',
   })
   const myMessages: BoardMessage[] = myData?.data ?? myData ?? []
 
@@ -56,7 +57,6 @@ export default function PortalBoardPage() {
         : boardMessagesApi.portalCreate(form),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['portal', 'board-messages'] })
-      queryClient.invalidateQueries({ queryKey: ['portal', 'board-messages', 'mine'] })
       toast.success(editMsg ? 'Zpráva aktualizována' : 'Zpráva odeslána ke schválení')
       setShowCreate(false)
       setEditMsg(null)
