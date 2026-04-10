@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 
 export interface CompletenessField {
@@ -43,46 +43,46 @@ export class BuildingCompletenessService {
       },
     })
 
-    if (!building) return { buildingId, overallScore: 0, categories: [], missingCount: 0, totalCount: 0 }
+    if (!building) throw new NotFoundException(`Building ${buildingId} not found`)
 
     const enrichment = (building.enrichmentData as any) ?? {}
     const categories: CompletenessCategory[] = []
 
     // ADDRESS (weight 20)
     const addressFields: CompletenessField[] = [
-      { key: 'street', label: 'Ulice', present: !!building.street, value: building.street, source: 'RUIAN' },
-      { key: 'houseNumber', label: 'Cislo popisne', present: !!building.houseNumber, value: building.houseNumber, source: 'RUIAN' },
-      { key: 'city', label: 'Mesto', present: !!building.city, value: building.city, source: 'RUIAN' },
-      { key: 'district', label: 'Mestska cast', present: !!building.district, value: building.district, source: 'RUIAN' },
-      { key: 'postalCode', label: 'PSC', present: !!building.postalCode, value: building.postalCode, source: 'RUIAN' },
-      { key: 'cadastralTerritoryName', label: 'Katastralni uzemi', present: !!building.cadastralTerritoryName, value: building.cadastralTerritoryName, source: 'RUIAN' },
+      { key: 'street', label: 'Ulice', present: !!building.street, value: building.street, source: 'RÚIAN' },
+      { key: 'houseNumber', label: 'Číslo popisné', present: !!building.houseNumber, value: building.houseNumber, source: 'RÚIAN' },
+      { key: 'city', label: 'Město', present: !!building.city, value: building.city, source: 'RÚIAN' },
+      { key: 'district', label: 'Městská část', present: !!building.district, value: building.district, source: 'RÚIAN' },
+      { key: 'postalCode', label: 'PSČ', present: !!building.postalCode, value: building.postalCode, source: 'RÚIAN' },
+      { key: 'cadastralTerritoryName', label: 'Katastrální území', present: !!building.cadastralTerritoryName, value: building.cadastralTerritoryName, source: 'RÚIAN' },
     ]
     categories.push(this.buildCategory('address', 'Adresa', addressFields, 20))
 
     // RUIAN (weight 20)
     const ruianFields: CompletenessField[] = [
-      { key: 'lat', label: 'GPS sirka', present: building.lat != null, value: building.lat, source: 'RUIAN' },
-      { key: 'lng', label: 'GPS delka', present: building.lng != null, value: building.lng, source: 'RUIAN' },
-      { key: 'numberOfUnits', label: 'Pocet jednotek', present: building.numberOfUnits != null, value: building.numberOfUnits, source: 'RUIAN' },
-      { key: 'numberOfFloors', label: 'Pocet podlazi', present: building.numberOfFloors != null, value: building.numberOfFloors, source: 'RUIAN' },
-      { key: 'builtUpArea', label: 'Zastavena plocha', present: building.builtUpArea != null, value: building.builtUpArea ? Number(building.builtUpArea) : null, source: 'RUIAN' },
-      { key: 'ruianBuildingId', label: 'RUIAN ID', present: !!building.ruianBuildingId, value: building.ruianBuildingId, source: 'RUIAN' },
+      { key: 'lat', label: 'GPS šířka', present: building.lat != null, value: building.lat, source: 'RÚIAN' },
+      { key: 'lng', label: 'GPS délka', present: building.lng != null, value: building.lng, source: 'RÚIAN' },
+      { key: 'numberOfUnits', label: 'Počet jednotek', present: building.numberOfUnits != null, value: building.numberOfUnits, source: 'RÚIAN' },
+      { key: 'numberOfFloors', label: 'Počet podlaží', present: building.numberOfFloors != null, value: building.numberOfFloors, source: 'RÚIAN' },
+      { key: 'builtUpArea', label: 'Zastavěná plocha', present: building.builtUpArea != null, value: building.builtUpArea != null ? Number(building.builtUpArea) : null, source: 'RÚIAN' },
+      { key: 'ruianBuildingId', label: 'RÚIAN ID', present: !!building.ruianBuildingId, value: building.ruianBuildingId, source: 'RÚIAN' },
     ]
-    categories.push(this.buildCategory('ruian', 'RUIAN', ruianFields, 20))
+    categories.push(this.buildCategory('ruian', 'RÚIAN', ruianFields, 20))
 
     // ARES (weight 20)
     const org = building.managingOrg
     const aresFields: CompletenessField[] = [
       { key: 'hasOrg', label: 'Organizace', present: !!org, value: org?.name ?? null, source: 'ARES' },
-      { key: 'ico', label: 'ICO', present: !!org?.ico, value: org?.ico ?? null, source: 'ARES' },
-      { key: 'legalForm', label: 'Pravni forma', present: !!org?.legalFormName, value: org?.legalFormName ?? null, source: 'ARES' },
+      { key: 'ico', label: 'IČO', present: !!org?.ico, value: org?.ico ?? null, source: 'ARES' },
+      { key: 'legalForm', label: 'Právní forma', present: !!org?.legalFormName, value: org?.legalFormName ?? null, source: 'ARES' },
     ]
     categories.push(this.buildCategory('ares', 'ARES', aresFields, 20))
 
     // JUSTICE (weight 15)
     const justiceFields: CompletenessField[] = [
-      { key: 'statutoryBodies', label: 'Statutarni organ', present: (org?.statutoryBodies?.length ?? 0) > 0, value: org?.statutoryBodies?.length ?? 0, source: 'Justice.cz' },
-      { key: 'sbirkaListiny', label: 'Sbirka listin', present: (org?.sbirkaListiny?.length ?? 0) > 0, value: org?.sbirkaListiny?.length ?? 0, source: 'Justice.cz' },
+      { key: 'statutoryBodies', label: 'Statutární orgán', present: (org?.statutoryBodies?.length ?? 0) > 0, value: org?.statutoryBodies?.length ?? 0, source: 'Justice.cz' },
+      { key: 'sbirkaListiny', label: 'Sbírka listin', present: (org?.sbirkaListiny?.length ?? 0) > 0, value: org?.sbirkaListiny?.length ?? 0, source: 'Justice.cz' },
     ]
     categories.push(this.buildCategory('justice', 'Justice.cz', justiceFields, 15))
 
@@ -90,15 +90,15 @@ export class BuildingCompletenessService {
     const unitCount = building.units?.length ?? 0
     const unitsWithArea = building.units?.filter(u => u.area && Number(u.area) > 0).length ?? 0
     const unitsFields: CompletenessField[] = [
-      { key: 'unitCount', label: 'Pocet jednotek v KB', present: unitCount > 0, value: unitCount, source: 'CUZK' },
-      { key: 'unitsWithArea', label: 'Jednotky s plochou', present: unitsWithArea > 0, value: unitsWithArea, source: 'CUZK' },
+      { key: 'unitCount', label: 'Počet jednotek v KB', present: unitCount > 0, value: unitCount, source: 'ČÚZK' },
+      { key: 'unitsWithArea', label: 'Jednotky s plochou', present: unitsWithArea > 0, value: unitsWithArea, source: 'ČÚZK' },
     ]
     categories.push(this.buildCategory('units', 'Jednotky', unitsFields, 15))
 
     // RISKS (weight 5)
     const risks = enrichment.risks ?? {}
     const risksFields: CompletenessField[] = [
-      { key: 'flood', label: 'Zaplavova zona', present: risks.flood != null, value: risks.flood ?? null, source: 'GeoRisk' },
+      { key: 'flood', label: 'Záplavová zóna', present: risks.flood != null, value: risks.flood ?? null, source: 'GeoRisk' },
       { key: 'radon', label: 'Radon', present: risks.radon != null, value: risks.radon ?? null, source: 'GeoRisk' },
     ]
     categories.push(this.buildCategory('risks', 'Rizika', risksFields, 5))
@@ -106,7 +106,7 @@ export class BuildingCompletenessService {
     // POI (weight 5)
     const poi = enrichment.poi ?? []
     const poiFields: CompletenessField[] = [
-      { key: 'poi', label: 'Body zajmu', present: Array.isArray(poi) && poi.length > 0, value: Array.isArray(poi) ? poi.length : 0, source: 'Enrichment' },
+      { key: 'poi', label: 'Body zájmu', present: Array.isArray(poi) && poi.length > 0, value: Array.isArray(poi) ? poi.length : 0, source: 'Enrichment' },
     ]
     categories.push(this.buildCategory('poi', 'POI', poiFields, 5))
 
@@ -130,8 +130,8 @@ export class BuildingCompletenessService {
     const result: Record<string, { score: number; missingCount: number; unitCount: number }> = {}
     for (const b of buildings) {
       result[b.id] = {
-        score: Math.round((b.dataQualityScore ?? 0) * 100),
-        missingCount: 0, // Approximate — full calc would be expensive for bulk
+        score: Math.round(b.dataQualityScore ?? 0),
+        missingCount: 0,
         unitCount: b._count.units,
       }
     }

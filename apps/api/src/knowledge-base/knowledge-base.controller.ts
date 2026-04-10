@@ -548,7 +548,7 @@ export class KnowledgeBaseController {
   @Get('buildings/completeness-summary')
   @Roles(...ROLES_MANAGE)
   @ApiOperation({ summary: 'Bulk completeness summary' })
-  getCompletenessSummary(@Query('ids') ids: string) {
+  getCompletenessSummary(@Query('ids') ids?: string) {
     return this.completenessService.getCompletenessSummary(ids?.split(',').filter(Boolean) ?? [])
   }
 
