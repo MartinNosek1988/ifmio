@@ -9,6 +9,7 @@ import * as crypto       from 'crypto'
 import type { AuthUser } from '@ifmio/shared-types'
 import type { UserRole } from '@prisma/client'
 import { OffboardingService } from './offboarding.service'
+import { EmailTemplateService } from '../email/email-template.service'
 
 @Injectable()
 export class AdminService {
@@ -19,6 +20,7 @@ export class AdminService {
     private email:  EmailService,
     private config: ConfigService,
     private offboarding: OffboardingService,
+    private templates: EmailTemplateService,
   ) {}
 
   // ─── TENANT SETTINGS ──────────────────────────────────────────
@@ -557,20 +559,12 @@ export class AdminService {
     const link = `${frontendUrl}/accept-invitation?token=${token}`
 
     try {
-      await this.email.send({
-        to: dto.email,
-        subject: `Pozvánka do ${invitation.tenant.name} — ifmio`,
-        html: `<div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:24px">
-          <div style="background:#1e1b4b;padding:20px 24px;border-radius:8px 8px 0 0"><h1 style="color:#fff;margin:0;font-size:20px">ifmio</h1></div>
-          <div style="border:1px solid #e5e7eb;border-top:none;padding:32px;border-radius:0 0 8px 8px">
-            <h2>Byli jste pozváni do ${invitation.tenant.name}</h2>
-            <p>Dobrý den, ${dto.name},</p>
-            <p>správce nemovitosti vás zve do klientského portálu ifmio.</p>
-            <a href="${link}" style="display:inline-block;background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;margin:16px 0">Přijmout pozvánku a nastavit heslo</a>
-            <p style="color:#6b7280;font-size:12px">Odkaz je platný 7 dní. ${link}</p>
-          </div>
-        </div>`,
+      const rendered = await this.templates.renderTemplate(tenantId, 'tenant_invitation', {
+        tenantName: invitation.tenant.name,
+        name: dto.name,
+        link,
       })
+      await this.email.send({ to: dto.email, subject: rendered.subject, html: rendered.body })
     } catch (err) {
       this.logger.error(`Failed to send invitation email to ${dto.email}: ${err}`)
     }
@@ -601,20 +595,12 @@ export class AdminService {
     const link = `${frontendUrl}/accept-invitation?token=${token}`
 
     try {
-      await this.email.send({
-        to: inv.email,
-        subject: `Pozvánka do ${updated.tenant.name} — ifmio (opakované odeslání)`,
-        html: `<div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:24px">
-          <div style="background:#1e1b4b;padding:20px 24px;border-radius:8px 8px 0 0"><h1 style="color:#fff;margin:0;font-size:20px">ifmio</h1></div>
-          <div style="border:1px solid #e5e7eb;border-top:none;padding:32px;border-radius:0 0 8px 8px">
-            <h2>Pozvánka do ${updated.tenant.name}</h2>
-            <p>Dobrý den, ${inv.name},</p>
-            <p>připomínáme vám pozvánku do klientského portálu ifmio.</p>
-            <a href="${link}" style="display:inline-block;background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;margin:16px 0">Přijmout pozvánku</a>
-            <p style="color:#6b7280;font-size:12px">Odkaz je platný 7 dní. ${link}</p>
-          </div>
-        </div>`,
+      const rendered = await this.templates.renderTemplate(tenantId, 'tenant_invitation', {
+        tenantName: updated.tenant.name,
+        name: inv.name,
+        link,
       })
+      await this.email.send({ to: inv.email, subject: rendered.subject, html: rendered.body })
     } catch (err) {
       this.logger.error(`Failed to resend invitation email: ${err}`)
     }

@@ -30,8 +30,8 @@ export class EmailTemplateService {
     return { subject: '', body: '' }
   }
 
-  async renderTemplate(tenantId: string, code: string, variables: Record<string, string>): Promise<{ subject: string; body: string }> {
-    const template = await this.getTemplate(tenantId, code)
+  async renderTemplate(tenantId: string | null, code: string, variables: Record<string, string>): Promise<{ subject: string; body: string }> {
+    const template = tenantId ? await this.getTemplate(tenantId, code) : (() => { const d = this.getDefault(code); return d ? { subject: d.subject, body: d.body } : { subject: '', body: '' } })()
     return {
       subject: this.interpolate(template.subject, variables),
       body: this.interpolate(template.body, variables),

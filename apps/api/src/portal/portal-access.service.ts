@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { EmailService } from '../email/email.service'
+import { EmailTemplateService } from '../email/email-template.service'
 import { randomBytes } from 'crypto'
 
 const PORTAL_TOKEN_EXPIRY_DAYS = 90
@@ -12,6 +13,7 @@ export class PortalAccessService {
   constructor(
     private prisma: PrismaService,
     private email: EmailService,
+    private templates: EmailTemplateService,
   ) {}
 
   // ─── TOKEN VALIDATION ──────────────────────────────────────────
@@ -181,21 +183,13 @@ export class PortalAccessService {
     const name = `${access.resident.firstName} ${access.resident.lastName}`
     const portalUrl = `${process.env.WEB_URL ?? 'https://app.ifmio.com'}/portal-public/${access.accessToken}`
 
-    const html = `
-      <p>Dobrý den, ${name},</p>
-      <p>byl Vám zřízen přístup do portálu vlastníka pro ${propertyName}.</p>
-      <p><a href="${portalUrl}" style="display:inline-block;padding:12px 24px;background:#6366f1;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">Otevřít portál vlastníka</a></p>
-      ${access.pin ? `<p>Váš PIN: <strong>${access.pin}</strong></p>` : ''}
-      <p style="color:#888;font-size:13px;">Tento odkaz je určen výhradně pro Vás. Nesdílejte jej s nikým.</p>
-      <p>S pozdravem,<br>správa nemovitosti</p>
-    `
-
     try {
-      await this.email.send({
-        to: access.email,
-        subject: `Přístup do portálu vlastníka — ${propertyName}`,
-        html,
+      const rendered = await this.templates.renderTemplate(tenantId, 'portal_invitation', {
+        name,
+        propertyName,
+        portalUrl,
       })
+      await this.email.send({ to: access.email, subject: rendered.subject, html: rendered.body })
       return { sent: true }
     } catch (err) {
       this.logger.error(`Portal invitation email failed: ${err}`)

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { EmailService } from '../email/email.service'
+import { EmailTemplateService } from '../email/email-template.service'
 import { randomUUID } from 'crypto'
 import type { AuthUser } from '@ifmio/shared-types'
 import type { MajorityType, VoteChoice } from '@prisma/client'
@@ -33,6 +34,7 @@ export class PerRollamService {
   constructor(
     private prisma: PrismaService,
     private email: EmailService,
+    private templates: EmailTemplateService,
   ) {}
 
   // ─── CRUD ──────────────────────────────────────────────────────
@@ -209,18 +211,14 @@ export class PerRollamService {
       if (!ballot.party?.email) continue
       try {
         const deadline = new Date(voting.deadline).toLocaleDateString('cs-CZ')
-        await this.email.send({
-          to: ballot.party.email,
-          subject: `Hlasování per rollam — ${voting.title}`,
-          html: `
-            <p>Dobrý den, ${ballot.party.displayName},</p>
-            <p>bylo zahájeno hlasování per rollam <strong>${voting.title}</strong>.</p>
-            <p>Počet bodů k hlasování: <strong>${voting.items.length}</strong></p>
-            <p>Termín pro hlasování: <strong>${deadline}</strong></p>
-            ${frontendUrl ? `<p><a href="${frontendUrl}/hlasovani/${ballot.accessToken}" style="display:inline-block;padding:12px 24px;background:#6366f1;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">Hlasovat</a></p>` : ''}
-            <p style="color:#888;font-size:13px;">Pokud jste tento email neočekávali, kontaktujte správce nemovitosti.</p>
-          `,
+        const rendered = await this.templates.renderTemplate(user.tenantId, 'per_rollam_voting', {
+          partyDisplayName: ballot.party.displayName,
+          votingTitle: voting.title,
+          itemCount: String(voting.items.length),
+          deadline,
+          voteUrl: frontendUrl ? `${frontendUrl}/hlasovani/${ballot.accessToken}` : '',
         })
+        await this.email.send({ to: ballot.party.email, subject: rendered.subject, html: rendered.body })
         emailsSent++
       } catch (err) {
         emailsFailed++

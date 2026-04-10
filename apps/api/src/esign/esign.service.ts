@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { PrismaService } from '../prisma/prisma.service'
 import { EmailService } from '../email/email.service'
 import type { AuthUser } from '@ifmio/shared-types'
+import { EmailTemplateService } from '../email/email-template.service'
 import type { CreateESignRequestDto, SignDocumentDto } from './dto/esign.dto'
 
 @Injectable()
@@ -11,6 +12,7 @@ export class ESignService {
   constructor(
     private prisma: PrismaService,
     private email: EmailService,
+    private templates: EmailTemplateService,
   ) {}
 
   async create(user: AuthUser, dto: CreateESignRequestDto) {
@@ -68,18 +70,15 @@ export class ESignService {
     const baseUrl = process.env.PUBLIC_WEB_URL || 'https://app.ifmio.com'
     for (const sig of req.signatories) {
       const signUrl = `${baseUrl}/sign/${sig.token}`
-      await this.email.send({
-        to: sig.email,
-        subject: `${req.documentTitle} — žádost o elektronický podpis`,
-        html: `
-          <p>Dobrý den, ${sig.name},</p>
-          ${req.message ? `<p>${req.message}</p>` : '<p>Prosíme o elektronický podpis níže uvedeného dokumentu.</p>'}
-          <p><strong>${req.documentTitle}</strong></p>
-          <p><a href="${signUrl}" style="display:inline-block;padding:12px 24px;background:#0D9488;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Podepsat dokument →</a></p>
-          <p style="color:#6b7280;font-size:0.85rem;">Platnost odkazu: ${req.expiresAt.toLocaleDateString('cs-CZ')}</p>
-          <p style="color:#9ca3af;font-size:0.78rem;">Tento email byl odeslán systémem ifmio.</p>
-        `,
-      }).catch(err => this.logger.warn(`Failed to send eSign email to ${sig.email}: ${err}`))
+      const rendered = await this.templates.renderTemplate(req.tenantId ?? null, 'esign_request', {
+        name: sig.name,
+        documentTitle: req.documentTitle,
+        message: req.message || 'Prosíme o elektronický podpis níže uvedeného dokumentu.',
+        signUrl,
+        expiresAt: req.expiresAt.toLocaleDateString('cs-CZ'),
+      })
+      await this.email.send({ to: sig.email, subject: rendered.subject, html: rendered.body })
+        .catch(err => this.logger.warn(`Failed to send eSign email to ${sig.email}: ${err}`))
     }
 
     await this.prisma.eSignRequest.update({

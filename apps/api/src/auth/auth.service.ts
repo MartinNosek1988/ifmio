@@ -21,6 +21,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { validatePassword } from './password-policy';
 import { RiskScoringService } from './risk-scoring.service';
 import { SecurityAlertingService } from '../common/security/security-alerting.service';
+import { EmailTemplateService } from '../email/email-template.service';
 import type { AuthUser } from '@ifmio/shared-types';
 
 export interface RequestMeta {
@@ -60,6 +61,7 @@ export class AuthService {
     private cryptoSvc: CryptoService,
     private riskScoring: RiskScoringService,
     private alerting: SecurityAlertingService,
+    private templates: EmailTemplateService,
   ) {}
 
   async register(dto: RegisterDto, meta?: RequestMeta): Promise<AuthResponse> {
@@ -734,20 +736,8 @@ export class AuthService {
     const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
 
     try {
-      await this.email.send({
-        to: email,
-        subject: 'Obnova hesla — ifmio',
-        html: `
-          <div style="font-family:system-ui,sans-serif;max-width:500px;margin:0 auto;padding:24px;">
-            <h2 style="color:#6366f1;">Obnova hesla</h2>
-            <p>Obdrželi jsme žádost o obnovu hesla pro váš účet v ifmio.</p>
-            <p>Klikněte na tlačítko níže pro nastavení nového hesla:</p>
-            <a href="${resetUrl}" style="display:inline-block;background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;margin:16px 0;">
-              Nastavit nové heslo
-            </a>
-            <p style="color:#6b7280;font-size:0.85rem;">Odkaz je platný 1 hodinu. Pokud jste o obnovu nežádali, tento email ignorujte.</p>
-          </div>`,
-      });
+      const rendered = await this.templates.renderTemplate(user.tenantId ?? null, 'password_reset', { resetUrl });
+      await this.email.send({ to: email, subject: rendered.subject, html: rendered.body });
     } catch (err) {
       this.logger.error(`Failed to send password reset email: ${err}`);
     }
