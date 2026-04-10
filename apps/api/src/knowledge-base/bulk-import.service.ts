@@ -111,9 +111,11 @@ export class BulkImportService {
 
     // Fire-and-forget
     this.runImport(job, params).catch(err => {
-      job.status = 'FAILED'
-      job.error = err instanceof Error ? err.message : String(err)
-      this.logger.error(`Bulk import job ${job.id} failed: ${job.error}`)
+      if (job.status === 'RUNNING' || job.status === 'PAUSED') {
+        job.status = 'FAILED'
+        job.error = err instanceof Error ? err.message : String(err)
+      }
+      this.logger.error(`Bulk import job ${job.id} failed: ${err instanceof Error ? err.message : err}`)
     })
 
     return job
@@ -149,8 +151,10 @@ export class BulkImportService {
         cadastralCode: job.cadastralCode,
         step: job.step,
       }).catch(err => {
-        job.status = 'FAILED'
-        job.error = err instanceof Error ? err.message : String(err)
+        if (job.status === 'RUNNING' || job.status === 'PAUSED') {
+          job.status = 'FAILED'
+          job.error = err instanceof Error ? err.message : String(err)
+        }
       })
       return true
     }
@@ -879,7 +883,11 @@ export class BulkImportService {
             job.currentStep = 'Justice'
             const updatedBuilding = await this.prisma.building.findUnique({
               where: { id: building.id },
-              select: { managingOrgId: true, dataQualityScore: true },
+              select: {
+                managingOrgId: true, lat: true, lng: true,
+                houseNumber: true, numberOfFloors: true, numberOfUnits: true,
+                builtUpArea: true, ruianAddressId: true, cadastralTerritoryName: true,
+              },
             })
             if (updatedBuilding?.managingOrgId) {
               try {
@@ -899,7 +907,7 @@ export class BulkImportService {
             }
 
             // Update quality score — component-based (aligned with fullReEnrich)
-            const bData = await this.prisma.building.findUnique({ where: { id: building.id } })
+            const bData = updatedBuilding
             let score = 0
             if (bData?.lat && bData?.lng) score += 5
             if (bData?.houseNumber) score += 5
