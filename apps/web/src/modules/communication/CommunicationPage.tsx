@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Send } from 'lucide-react'
-import { Table, Badge, Button, LoadingState, EmptyState, Modal } from '../../shared/components'
+import { Table, Badge, Button, LoadingState, EmptyState } from '../../shared/components'
 import type { Column, BadgeVariant } from '../../shared/components'
 import { communicationApi, type OutboxEntry } from './api/communication.api'
 import { ChannelStatusSection } from './ChannelStatusSection'
@@ -28,20 +28,6 @@ interface ChannelStatus {
   channel: string
   label: string
   configured: boolean
-}
-
-const CHANNEL_REQUIREMENTS: Record<string, (r: ComposeRecipient) => string | null> = {
-  email: r => r.email ? null : 'Příjemce nemá e-mail',
-  sms: r => r.phone?.startsWith('+') ? null : 'Příjemce nemá telefon (+420...)',
-  whatsapp: r => r.phone?.startsWith('+') ? null : 'Příjemce nemá telefon (+420...)',
-  letter: () => null,
-  isds: () => null,
-}
-
-interface ComposeRecipient {
-  name?: string
-  email?: string
-  phone?: string
 }
 
 /* ─── Inline Compose Form ────────────────────────────────────── */
