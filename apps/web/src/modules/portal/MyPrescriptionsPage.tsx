@@ -1,7 +1,45 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useMyPrescriptions } from './api/portal.queries'
 import { LoadingSpinner } from '../../shared/components'
 import { ChevronDown, ChevronUp } from 'lucide-react'
+import { apiClient } from '../../core/api/client'
+
+function PaymentQrCode({ prescriptionId, variableSymbol, amount }: { prescriptionId: string; variableSymbol: string; amount: number }) {
+  const { data } = useQuery({
+    queryKey: ['portal', 'prescription-qr', prescriptionId],
+    queryFn: () => apiClient.get(`/portal/prescriptions/${prescriptionId}/payment-qr`).then(r => r.data),
+  })
+
+  return (
+    <div style={{ marginTop: 8, padding: '10px 14px', borderRadius: 6, background: 'rgba(99,102,241,.05)', border: '1px solid rgba(99,102,241,.15)', fontSize: '.78rem' }}>
+      <div style={{ fontWeight: 600, marginBottom: 6, color: 'var(--primary)' }}>Platební údaje</div>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+        {data?.qrDataUrl && (
+          <img
+            src={data.qrDataUrl}
+            alt="QR platba"
+            style={{ width: 120, height: 120, borderRadius: 4, border: '1px solid var(--border)' }}
+          />
+        )}
+        <div>
+          <div>VS: <strong style={{ fontFamily: 'monospace' }}>{variableSymbol}</strong></div>
+          <div>Částka: <strong>{amount.toLocaleString('cs-CZ')} Kč</strong></div>
+          {data?.qrDataUrl && (
+            <div className="text-muted" style={{ marginTop: 6, fontSize: '.72rem' }}>
+              Naskenujte QR kód v bankovní aplikaci
+            </div>
+          )}
+          {!data?.qrDataUrl && (
+            <div className="text-muted" style={{ marginTop: 6, fontSize: '.72rem' }}>
+              QR kód není dostupný — zadejte údaje ručně.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function MyPrescriptionsPage() {
   const { data: prescriptions, isLoading, error } = useMyPrescriptions()
@@ -44,14 +82,7 @@ export default function MyPrescriptionsPage() {
               </div>
               {/* QR Platba — SPD format */}
               {p.variableSymbol && (
-                <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 6, background: 'rgba(99,102,241,.05)', border: '1px solid rgba(99,102,241,.15)', fontSize: '.78rem' }}>
-                  <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--primary)' }}>Platební údaje</div>
-                  <div>VS: <strong style={{ fontFamily: 'monospace' }}>{p.variableSymbol}</strong></div>
-                  <div>Částka: <strong>{Number(p.amount).toLocaleString('cs-CZ')} Kč</strong></div>
-                  <div className="text-muted" style={{ marginTop: 4, fontSize: '.72rem' }}>
-                    Naskenujte QR kód v bankovní aplikaci nebo zadejte údaje ručně.
-                  </div>
-                </div>
+                <PaymentQrCode prescriptionId={p.id} variableSymbol={p.variableSymbol} amount={Number(p.amount)} />
               )}
               {p.items?.length > 0 && (
                 <div style={{ marginTop: 6 }}>

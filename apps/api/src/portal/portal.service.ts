@@ -1,7 +1,8 @@
-import { Injectable, ForbiddenException } from '@nestjs/common'
+import { Injectable, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common'
+import QRCode from 'qrcode'
 import { PrismaService } from '../prisma/prisma.service'
 import type { AuthUser } from '@ifmio/shared-types'
-import type { CreatePortalTicketDto, SubmitMeterReadingDto } from './dto/portal.dto'
+import type { CreatePortalTicketDto, SubmitMeterReadingDto, SendPortalMessageDto } from './dto/portal.dto'
 
 @Injectable()
 export class PortalService {
@@ -348,6 +349,90 @@ export class PortalService {
     }))
   }
 
+  async getMyContacts(user: AuthUser) {
+    // Get tenant settings (property management company info)
+    const settings = await this.prisma.tenantSettings.findUnique({
+      where: { tenantId: user.tenantId },
+    })
+
+    // Get user's properties
+    const unitIds = await this.resolveUserUnitIds(user)
+    const units = await this.prisma.unit.findMany({
+      where: { id: { in: unitIds } },
+      select: { propertyId: true },
+    })
+    const propertyIds = [...new Set(units.map(u => u.propertyId))]
+
+    // Get properties with contact info
+    const properties = await this.prisma.property.findMany({
+      where: { id: { in: propertyIds } },
+      select: {
+        id: true, name: true, address: true, city: true,
+        contactName: true, contactEmail: true, contactPhone: true,
+      },
+    })
+
+    return {
+      manager: settings ? {
+        orgName: settings.orgName,
+        email: settings.orgEmail ?? settings.emailFrom,
+        phone: settings.orgPhone,
+        address: [settings.orgStreet, settings.orgCity, settings.orgZip].filter(Boolean).join(', ') || null,
+      } : null,
+      properties: properties.map(p => ({
+        id: p.id,
+        name: p.name,
+        address: p.address ? `${p.address}, ${p.city}` : p.city,
+        contactName: p.contactName,
+        contactEmail: p.contactEmail,
+        contactPhone: p.contactPhone,
+      })),
+    }
+  }
+
+  async getPrescriptionQr(user: AuthUser, prescriptionId: string) {
+    const unitIds = await this.resolveUserUnitIds(user)
+
+    const prescription = await this.prisma.prescription.findFirst({
+      where: { id: prescriptionId, unitId: { in: unitIds } },
+      include: {
+        unit: {
+          select: {
+            propertyId: true,
+            property: {
+              select: {
+                bankAccounts: {
+                  where: { isActive: true, isDefault: true },
+                  take: 1,
+                  select: { iban: true, accountNumber: true, bankCode: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    })
+
+    if (!prescription) return { qrDataUrl: null, qrString: null }
+
+    const bankAccount = prescription.unit?.property?.bankAccounts?.[0]
+    const iban = bankAccount?.iban
+    if (!iban) return { qrDataUrl: null, qrString: null }
+
+    const amount = Number(prescription.amount ?? 0)
+    if (amount <= 0) return { qrDataUrl: null, qrString: null }
+
+    const parts = ['SPD*1.0', `ACC:${iban.replace(/\s/g, '')}`, `AM:${amount.toFixed(2)}`, 'CC:CZK']
+    if (prescription.variableSymbol) parts.push(`X-VS:${prescription.variableSymbol}`)
+    const msg = `Predpis ${prescription.description ?? ''}`.slice(0, 60)
+    parts.push(`MSG:${msg}`)
+
+    const qrString = parts.join('*')
+    const qrDataUrl = await QRCode.toDataURL(qrString, { width: 200, margin: 1 })
+
+    return { qrDataUrl, qrString }
+  }
+
   async getMyESignRequests(user: AuthUser) {
     const dbUser = await this.prisma.user.findUnique({
       where: { id: user.id },
@@ -380,5 +465,115 @@ export class PortalService {
       accessToken: s.token,
       createdAt: s.request.createdAt,
     }))
+  }
+
+  // ─── Unit Detail ────────────────────────────────────────────
+
+  async getUnitDetail(user: AuthUser, unitId: string) {
+    const unitIds = await this.resolveUserUnitIds(user)
+    if (!unitIds.includes(unitId)) throw new NotFoundException('Jednotka nenalezena')
+
+    const unit = await this.prisma.unit.findUnique({
+      where: { id: unitId },
+      include: {
+        property: {
+          select: {
+            id: true, name: true, address: true, city: true,
+            cadastralArea: true, landRegistrySheet: true,
+          },
+        },
+        rooms: {
+          orderBy: { name: 'asc' },
+          select: { id: true, name: true, area: true, roomType: true, coefficient: true, calculatedArea: true },
+        },
+        equipment: {
+          orderBy: { name: 'asc' },
+          select: { id: true, name: true, status: true, quantity: true, serialNumber: true, purchaseDate: true, description: true },
+        },
+        occupancies: {
+          where: { isActive: true },
+          include: {
+            resident: { select: { id: true, firstName: true, lastName: true, email: true } },
+          },
+          orderBy: { startDate: 'desc' },
+        },
+      },
+    })
+
+    if (!unit) throw new NotFoundException('Jednotka nenalezena')
+    return unit
+  }
+
+  // ─── Messaging ──────────────────────────────────────────────
+
+  private async resolveUserResidentId(user: AuthUser): Promise<string | null> {
+    const dbUser = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      select: { partyId: true },
+    })
+    if (!dbUser?.partyId) return null
+
+    const resident = await this.prisma.resident.findFirst({
+      where: { tenantId: user.tenantId, partyId: dbUser.partyId, isActive: true },
+      select: { id: true },
+    })
+    return resident?.id ?? null
+  }
+
+  async getMyMessages(user: AuthUser) {
+    const residentId = await this.resolveUserResidentId(user)
+    if (!residentId) return []
+
+    return this.prisma.portalMessage.findMany({
+      where: { tenantId: user.tenantId, residentId },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    })
+  }
+
+  async sendMyMessage(user: AuthUser, dto: SendPortalMessageDto) {
+    const residentId = await this.resolveUserResidentId(user)
+    if (!residentId) throw new BadRequestException('Nepodařilo se identifikovat vlastníka')
+
+    const unitIds = await this.resolveUserUnitIds(user)
+    const unit = unitIds.length > 0 ? await this.prisma.unit.findFirst({
+      where: { id: { in: unitIds } },
+      select: { propertyId: true },
+    }) : null
+
+    return this.prisma.portalMessage.create({
+      data: {
+        tenantId: user.tenantId,
+        residentId,
+        propertyId: unit?.propertyId ?? null,
+        subject: dto.subject,
+        body: dto.body,
+        direction: 'inbound',
+      },
+    })
+  }
+
+  async markMessageRead(user: AuthUser, messageId: string) {
+    const residentId = await this.resolveUserResidentId(user)
+    if (!residentId) throw new BadRequestException('Nepodařilo se identifikovat vlastníka')
+
+    const msg = await this.prisma.portalMessage.findFirst({
+      where: { id: messageId, tenantId: user.tenantId, residentId },
+    })
+    if (!msg) throw new NotFoundException('Zpráva nenalezena')
+
+    return this.prisma.portalMessage.update({
+      where: { id: messageId },
+      data: { isRead: true },
+    })
+  }
+
+  async getUnreadMessageCount(user: AuthUser): Promise<number> {
+    const residentId = await this.resolveUserResidentId(user)
+    if (!residentId) return 0
+
+    return this.prisma.portalMessage.count({
+      where: { tenantId: user.tenantId, residentId, direction: 'outbound', isRead: false },
+    })
   }
 }

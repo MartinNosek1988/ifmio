@@ -9,9 +9,11 @@ import {
   Wallet, AlertTriangle, TrendingUp, ShoppingCart, Receipt,
   MessageSquare, Mail, Send, Settings, BarChart3, Database, Download, Landmark, MapPinned,
   ClipboardList, ClipboardCheck, ScrollText, UsersRound, FileCheck2, Columns3, Vote, PenLine,
+  Phone,
   User as UserIcon, LogOut, Shield, Menu, X, ChevronDown, Sparkles,
 } from 'lucide-react';
 import { LoadingSpinner } from '../shared/components';
+import { useAuthStore } from '../core/auth/auth.store';
 import { Breadcrumbs as BreadcrumbsNav } from '../shared/components/Breadcrumbs';
 import { OfflineBanner } from '../shared/components/OfflineBanner';
 import { GlobalSearch } from '../modules/search/GlobalSearch';
@@ -141,6 +143,8 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/portal/meters', label: 'Měřiče', icon: <Gauge size={17} /> },
       { to: '/portal/documents', label: 'Dokumenty', icon: <FolderOpen size={17} /> },
       { to: '/portal/konto', label: 'Konto', icon: <Wallet size={17} /> },
+      { to: '/portal/messages', label: 'Zprávy', icon: <MessageSquare size={17} /> },
+      { to: '/portal/contacts', label: 'Kontakty', icon: <Phone size={17} /> },
       { to: '/portal/voting', label: 'Hlasování', icon: <Vote size={17} /> },
       { to: '/portal/esign', label: 'Podpisy', icon: <PenLine size={17} /> },
     ],
@@ -189,6 +193,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/portal/konto': 'Konto',
   '/portal/voting': 'Hlasování',
   '/portal/esign': 'Podpisy',
+  '/portal/messages': 'Zprávy',
+  '/portal/contacts': 'Kontakty',
   '/crm/pipeline': 'CRM Pipeline',
   '/crm/kb-candidates': 'KB Kandidati',
   '/kanban': 'Pipeline',
@@ -203,9 +209,20 @@ function getPageTitle(pathname: string): string {
 }
 
 export default function AppShell() {
+  const authLoading = useAuthStore(s => s.isLoading);
   const location = useLocation();
   const navigate = useNavigate();
   const pageTitle = getPageTitle(location.pathname);
+
+  // Wait for auth session to be restored before rendering sidebar
+  // (prevents useRoleUX returning 'resident' fallback for null user)
+  if (authLoading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+        <LoadingSpinner />
+      </div>
+    );
+  }
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showPropertyPicker, setShowPropertyPicker] = useState(false);

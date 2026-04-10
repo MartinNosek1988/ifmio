@@ -23,4 +23,14 @@ export const portalApi = {
     apiClient.get('/portal/my-votings').then(r => r.data),
   getMyESignRequests: () =>
     apiClient.get('/portal/my-esign').then(r => r.data),
+  getUnitDetail: (unitId: string) =>
+    apiClient.get(`/portal/units/${unitId}`).then(r => r.data),
+  getMyMessages: () =>
+    apiClient.get('/portal/my-messages').then(r => r.data),
+  sendMessage: (data: { subject: string; body: string }) =>
+    apiClient.post('/portal/my-messages', data).then(r => r.data),
+  markMessageRead: (id: string) =>
+    apiClient.patch(`/portal/my-messages/${id}/read`).then(r => r.data),
+  getUnreadMessageCount: () =>
+    apiClient.get('/portal/my-messages/unread-count').then(r => r.data),
 }

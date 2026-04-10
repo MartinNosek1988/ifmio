@@ -12,8 +12,9 @@ import {
 } from 'lucide-react';
 import { integrationsApi } from '../integrations/api/integrations.api';
 import { EmailInboundSettings } from './email-inbound/EmailInboundSettings';
+import { EmailTemplatesSettings } from './email-templates/EmailTemplatesSettings';
 
-type TabKey = 'firma' | 'email' | 'fakturace' | 'upominky' | 'vzhled' | 'mio' | 'inbound' | 'export';
+type TabKey = 'firma' | 'email' | 'fakturace' | 'upominky' | 'vzhled' | 'mio' | 'inbound' | 'export' | 'email-templates';
 
 const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
   { key: 'firma', label: 'Firma & Branding', icon: <Building2 size={15} /> },
@@ -23,6 +24,7 @@ const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
   { key: 'upominky', label: 'Upomínky', icon: <Bell size={15} /> },
   { key: 'vzhled', label: 'Vzhled', icon: <Palette size={15} /> },
   { key: 'mio', label: 'Mio Governance', icon: <Bot size={15} /> },
+  { key: 'email-templates', label: 'Email šablony', icon: <Mail size={15} /> },
   { key: 'export', label: 'Záloha dat', icon: <Download size={15} /> },
 ];
 
@@ -75,6 +77,7 @@ export default function SettingsPage() {
         {tab === 'vzhled' && <VzhledTab settings={settings} onSave={handleSave} saving={updateMutation.isPending} />}
         {tab === 'mio' && <MioGovernanceTab />}
         {tab === 'inbound' && <EmailInboundSettings />}
+        {tab === 'email-templates' && <EmailTemplatesSettings />}
         {tab === 'export' && <ExportTab />}
       </div>
     </div>

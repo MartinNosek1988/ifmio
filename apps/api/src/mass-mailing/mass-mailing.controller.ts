@@ -71,6 +71,16 @@ export class MassMailingController {
     return this.service.remove(user, id)
   }
 
+  @Post('preview-recipients')
+  @Roles(...ROLES_FINANCE)
+  @ApiOperation({ summary: 'Náhled příjemců z parametrů (bez kampaně)' })
+  previewRecipientsFromParams(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: { recipientType: string; propertyIds?: string[]; channel?: string },
+  ) {
+    return this.service.previewRecipientsFromParams(user, dto)
+  }
+
   @Post(':id/preview')
   @Roles(...ROLES_FINANCE)
   @ApiOperation({ summary: 'Náhled příjemců' })

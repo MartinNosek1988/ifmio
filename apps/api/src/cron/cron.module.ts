@@ -12,9 +12,10 @@ import { FinanceModule } from '../finance/finance.module';
 import { PvkModule } from '../pvk/pvk.module';
 import { KnowledgeBaseModule } from '../knowledge-base/knowledge-base.module';
 import { DataorModule } from '../integrations/dataor/dataor.module';
+import { MassMailingModule } from '../mass-mailing/mass-mailing.module';
 
 @Module({
-  imports: [HelpdeskModule, RevisionsModule, ReportsModule, RecurringPlansModule, MioModule, BankingModule, WhatsAppModule, FinanceModule, PvkModule, KnowledgeBaseModule, DataorModule],
+  imports: [HelpdeskModule, RevisionsModule, ReportsModule, RecurringPlansModule, MioModule, BankingModule, WhatsAppModule, FinanceModule, PvkModule, KnowledgeBaseModule, DataorModule, MassMailingModule],
   providers: [CronService, RetentionService],
   exports: [CronService],
 })

@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
+import { EmailService } from '../email/email.service'
+import { EmailTemplateService } from '../email/email-template.service'
 import { randomUUID } from 'crypto'
 import type { AuthUser } from '@ifmio/shared-types'
 import type { MajorityType, VoteChoice } from '@prisma/client'
@@ -29,7 +31,11 @@ export function evaluateMajority(
 export class PerRollamService {
   private readonly logger = new Logger(PerRollamService.name)
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private email: EmailService,
+    private templates: EmailTemplateService,
+  ) {}
 
   // ─── CRUD ──────────────────────────────────────────────────────
 
@@ -191,7 +197,36 @@ export class PerRollamService {
       data: { status: 'PUBLISHED', publishedAt: new Date() },
     })
 
-    return { ballotsCreated }
+    // Send email notifications to ballot holders
+    let emailsSent = 0
+    let emailsFailed = 0
+    const createdBallots = await this.prisma.perRollamBallot.findMany({
+      where: { votingId: id },
+      include: { party: { select: { email: true, displayName: true } } },
+    })
+
+    const frontendUrl = process.env.FRONTEND_URL || (process.env.DOMAIN ? `https://${process.env.DOMAIN}` : '')
+
+    for (const ballot of createdBallots) {
+      if (!ballot.party?.email) continue
+      try {
+        const deadline = new Date(voting.deadline).toLocaleDateString('cs-CZ')
+        const rendered = await this.templates.renderTemplate(user.tenantId, 'per_rollam_voting', {
+          partyDisplayName: ballot.party.displayName,
+          votingTitle: voting.title,
+          itemCount: String(voting.items.length),
+          deadline,
+          voteUrl: frontendUrl ? `${frontendUrl}/hlasovani/${ballot.accessToken}` : '',
+        })
+        await this.email.send({ to: ballot.party.email, subject: rendered.subject, html: rendered.body })
+        emailsSent++
+      } catch (err) {
+        emailsFailed++
+        this.logger.error(`Per rollam email failed for ${ballot.party.email}: ${err}`)
+      }
+    }
+
+    return { ballotsCreated, emailsSent, emailsFailed }
   }
 
   async close(user: AuthUser, id: string) {

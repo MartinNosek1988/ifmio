@@ -43,6 +43,8 @@ export const massMailingApi = {
     apiClient.delete(`/mass-mailing/${id}`),
   preview: (id: string) =>
     apiClient.post(`/mass-mailing/${id}/preview`).then(r => r.data),
+  previewRecipients: (params: { recipientType: string; propertyIds?: string[]; channel?: string }) =>
+    apiClient.post('/mass-mailing/preview-recipients', params).then(r => r.data),
   send: (id: string) =>
     apiClient.post(`/mass-mailing/${id}/send`).then(r => r.data),
   schedule: (id: string, scheduledAt: string) =>

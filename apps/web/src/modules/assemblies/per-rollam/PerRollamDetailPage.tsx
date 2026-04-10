@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus, Download, Trash2, Copy } from 'lucide-react'
 import { Badge, Button, LoadingState, ErrorState } from '../../../shared/components'
+import { useToast } from '../../../shared/components/toast/Toast'
 import type { BadgeVariant } from '../../../shared/components'
 import { usePerRollam, usePerRollamTransition, useDeletePerRollam, usePerRollamBallots, usePerRollamProgress } from '../lib/perRollamApi'
 import { PR_STATUS_LABELS, PR_STATUS_COLORS, BALLOT_STATUS_LABELS, BALLOT_STATUS_COLORS, type PerRollamBallot } from '../lib/perRollamTypes'
@@ -23,6 +24,7 @@ export default function PerRollamDetailPage() {
   const { data: ballots = [] } = usePerRollamBallots(votingId!)
   const { data: progress } = usePerRollamProgress(votingId!)
 
+  const toast = useToast()
   const [tab, setTab] = useState<Tab>('items')
   const [showEdit, setShowEdit] = useState(false)
   const [showAddItem, setShowAddItem] = useState(false)
@@ -37,7 +39,16 @@ export default function PerRollamDetailPage() {
   )
 
   const handleTransition = (action: 'publish' | 'close' | 'evaluate' | 'notify-results' | 'cancel') => {
-    transitionMut.mutate({ id: voting.id, action })
+    transitionMut.mutate({ id: voting.id, action }, {
+      onSuccess: (res: any) => {
+        if (action === 'publish' && res?.emailsSent !== undefined) {
+          toast.success(`Publikováno, odesláno ${res.emailsSent} emailů`)
+          if (res.emailsFailed > 0) {
+            toast.warning(`${res.emailsFailed} emailů se nepodařilo odeslat`)
+          }
+        }
+      },
+    })
   }
 
   const handleDelete = () => {

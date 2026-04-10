@@ -236,6 +236,52 @@ export class MassMailingService {
     return { items, total, page: query.page ?? 1, limit: take }
   }
 
+  // ─── PREVIEW FROM PARAMS (no campaign needed) ─────────────────
+
+  async previewRecipientsFromParams(
+    user: AuthUser,
+    params: { recipientType: string; propertyIds?: string[]; channel?: string },
+  ) {
+    const fakeCampaign = {
+      tenantId: user.tenantId,
+      recipientType: params.recipientType,
+      propertyIds: params.propertyIds ?? [],
+      propertyId: null,
+      recipientIds: [],
+      channel: params.channel ?? 'email',
+    } as unknown as MassMailingCampaign
+
+    const recipients = await this.resolveRecipientsWithProperty(fakeCampaign)
+    return { total: recipients.length, recipients }
+  }
+
+  // ─── SCHEDULED CAMPAIGNS (cron, no AuthUser) ──────────────────
+
+  async sendScheduledCampaigns(): Promise<number> {
+    const due = await this.prisma.massMailingCampaign.findMany({
+      where: { status: 'scheduled', scheduledAt: { lte: new Date() }, deletedAt: null },
+      select: { id: true, tenantId: true, createdBy: true },
+    })
+
+    let sent = 0
+    for (const c of due) {
+      try {
+        const fakeUser = {
+          id: c.createdBy,
+          tenantId: c.tenantId,
+          role: 'tenant_admin',
+          email: '',
+          name: '',
+        } as unknown as AuthUser
+        await this.sendCampaign(fakeUser, c.id)
+        sent++
+      } catch (err) {
+        this.logger.error(`Scheduled campaign ${c.id} failed: ${err}`)
+      }
+    }
+    return sent
+  }
+
   // ─── PRIVATE: RESOLVE RECIPIENTS ──────────────────────────────
 
   private async resolveRecipients(campaign: MassMailingCampaign): Promise<ResolvedRecipient[]> {
@@ -302,6 +348,58 @@ export class MassMailingService {
         phone: r.phone ?? undefined,
         name: `${r.firstName} ${r.lastName}`,
       }))
+  }
+
+  // ─── PRIVATE: RESOLVE WITH PROPERTY (for preview) ──────────────
+
+  private async resolveRecipientsWithProperty(campaign: MassMailingCampaign) {
+    const baseWhere: Record<string, unknown> = { tenantId: campaign.tenantId, isActive: true }
+    if (campaign.propertyIds.length > 0) {
+      baseWhere.propertyId = { in: campaign.propertyIds }
+    } else if (campaign.propertyId) {
+      baseWhere.propertyId = campaign.propertyId
+    }
+
+    const select = {
+      id: true, email: true, phone: true, firstName: true, lastName: true,
+      property: { select: { id: true, name: true } },
+    } as const
+
+    type Row = { id: string; email: string | null; phone: string | null; firstName: string; lastName: string; property: { id: string; name: string } | null }
+    let residents: Row[]
+
+    switch (campaign.recipientType) {
+      case 'all_owners':
+        residents = await this.prisma.resident.findMany({ where: { ...baseWhere, role: 'owner' }, select })
+        break
+      case 'all_tenants':
+        residents = await this.prisma.resident.findMany({ where: { ...baseWhere, role: 'tenant' }, select })
+        break
+      case 'all_residents':
+        residents = await this.prisma.resident.findMany({ where: baseWhere, select })
+        break
+      case 'debtors':
+        residents = await this.prisma.resident.findMany({ where: { ...baseWhere, hasDebt: true }, select })
+        break
+      case 'custom':
+        if (!campaign.recipientIds.length) return []
+        residents = await this.prisma.resident.findMany({
+          where: { id: { in: campaign.recipientIds }, tenantId: campaign.tenantId, isActive: true },
+          select,
+        })
+        break
+      default:
+        return []
+    }
+
+    return residents.map((r) => ({
+      residentId: r.id,
+      email: r.email ?? null,
+      phone: r.phone ?? null,
+      name: `${r.firstName} ${r.lastName}`,
+      propertyName: r.property?.name ?? null,
+      hasContact: campaign.channel === 'email' ? !!r.email : campaign.channel === 'sms' ? !!r.phone : !!(r.email || r.phone),
+    }))
   }
 
   // ─── PRIVATE: DISPATCH ─────────────────────────────────────────

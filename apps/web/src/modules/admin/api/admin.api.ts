@@ -57,6 +57,15 @@ export const adminApi = {
     failures: () => apiClient.get('/mio/admin/failures').then((r) => r.data),
   },
 
+  emailTemplates: {
+    list:    () => apiClient.get('/admin/email-templates').then((r) => r.data),
+    get:     (code: string) => apiClient.get(`/admin/email-templates/${code}`).then((r) => r.data),
+    save:    (code: string, dto: { subject: string; body: string }) =>
+      apiClient.put(`/admin/email-templates/${code}`, dto).then((r) => r.data),
+    reset:   (code: string) => apiClient.post(`/admin/email-templates/${code}/reset`).then((r) => r.data),
+    preview: (code: string) => apiClient.post(`/admin/email-templates/${code}/preview`).then((r) => r.data),
+  },
+
   users: {
     list:       () =>
       apiClient.get('/admin/users').then((r) => r.data),
