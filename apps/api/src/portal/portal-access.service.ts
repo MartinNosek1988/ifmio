@@ -89,8 +89,7 @@ export class PortalAccessService {
     })
   }
 
-  async bulkGenerateAccess(tenantId: string, propertyId: string) {
-    // Find all active occupancies with residents that have emails
+  async bulkGenerateAccess(tenantId: string, propertyId: string, sendEmail = true) {
     const occupancies = await this.prisma.occupancy.findMany({
       where: {
         tenantId,
@@ -103,21 +102,36 @@ export class PortalAccessService {
       },
     })
 
-    let generated = 0, skipped = 0
+    let generated = 0, sent = 0, skipped = 0, emailFailed = 0
     const errors: string[] = []
+    const skippedNames: string[] = []
 
     for (const occ of occupancies) {
-      if (!occ.resident?.email) { skipped++; continue }
+      if (!occ.resident?.email) {
+        skipped++
+        skippedNames.push(`${occ.resident?.firstName ?? ''} ${occ.resident?.lastName ?? ''}`.trim())
+        continue
+      }
 
       try {
-        await this.generateAccess(tenantId, occ.residentId, occ.resident.email)
+        const access = await this.generateAccess(tenantId, occ.residentId, occ.resident.email)
         generated++
+
+        if (sendEmail) {
+          try {
+            await this.sendInvitation(tenantId, access.id)
+            sent++
+          } catch (err: any) {
+            emailFailed++
+            this.logger.error(`Bulk invite email failed for ${occ.resident.email}: ${err.message}`)
+          }
+        }
       } catch (err: any) {
         errors.push(`${occ.resident.firstName} ${occ.resident.lastName}: ${err.message}`)
       }
     }
 
-    return { generated, skipped, errors, total: occupancies.length }
+    return { generated, sent, skipped, emailFailed, errors, skippedNames, total: occupancies.length }
   }
 
   async revokeAccess(tenantId: string, id: string) {

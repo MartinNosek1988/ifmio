@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
+import { EmailService } from '../email/email.service'
 import { randomUUID } from 'crypto'
 import type { AuthUser } from '@ifmio/shared-types'
 import type { MajorityType, VoteChoice } from '@prisma/client'
@@ -29,7 +30,10 @@ export function evaluateMajority(
 export class PerRollamService {
   private readonly logger = new Logger(PerRollamService.name)
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private email: EmailService,
+  ) {}
 
   // ─── CRUD ──────────────────────────────────────────────────────
 
@@ -191,7 +195,40 @@ export class PerRollamService {
       data: { status: 'PUBLISHED', publishedAt: new Date() },
     })
 
-    return { ballotsCreated }
+    // Send email notifications to ballot holders
+    let emailsSent = 0
+    let emailsFailed = 0
+    const createdBallots = await this.prisma.perRollamBallot.findMany({
+      where: { votingId: id },
+      include: { party: { select: { email: true, displayName: true } } },
+    })
+
+    const frontendUrl = process.env.FRONTEND_URL || (process.env.DOMAIN ? `https://${process.env.DOMAIN}` : '')
+
+    for (const ballot of createdBallots) {
+      if (!ballot.party?.email) continue
+      try {
+        const deadline = new Date(voting.deadline).toLocaleDateString('cs-CZ')
+        await this.email.send({
+          to: ballot.party.email,
+          subject: `Hlasování per rollam — ${voting.title}`,
+          html: `
+            <p>Dobrý den, ${ballot.party.displayName},</p>
+            <p>bylo zahájeno hlasování per rollam <strong>${voting.title}</strong>.</p>
+            <p>Počet bodů k hlasování: <strong>${voting.items.length}</strong></p>
+            <p>Termín pro hlasování: <strong>${deadline}</strong></p>
+            ${frontendUrl ? `<p><a href="${frontendUrl}/hlasovani/${ballot.accessToken}" style="display:inline-block;padding:12px 24px;background:#6366f1;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">Hlasovat</a></p>` : ''}
+            <p style="color:#888;font-size:13px;">Pokud jste tento email neočekávali, kontaktujte správce nemovitosti.</p>
+          `,
+        })
+        emailsSent++
+      } catch (err) {
+        emailsFailed++
+        this.logger.error(`Per rollam email failed for ${ballot.party.email}: ${err}`)
+      }
+    }
+
+    return { ballotsCreated, emailsSent, emailsFailed }
   }
 
   async close(user: AuthUser, id: string) {

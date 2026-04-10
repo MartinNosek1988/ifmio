@@ -527,7 +527,10 @@ export default function PropertyDetailPage() {
               try {
                 const res = await (await import('../../core/api/client')).apiClient.post(`/portal/admin/bulk-generate/${id}`)
                 const d = res.data as any
-                toast.success(`Vygenerováno: ${d.generated}, přeskočeno: ${d.skipped}`)
+                toast.success(`Vygenerováno: ${d.generated}, odesláno: ${d.sent ?? 0} emailů, přeskočeno: ${d.skipped}`)
+                if (d.skippedNames?.length > 0) {
+                  toast.warning(`Bez emailu: ${d.skippedNames.join(', ')}`)
+                }
               } catch { toast.error('Generování přístupů selhalo') }
             }}
             data-testid="portal-bulk-generate-btn"

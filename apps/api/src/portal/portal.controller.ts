@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Patch, Delete, Body, Param, HttpCode,
+  Controller, Get, Post, Patch, Delete, Body, Param, Query, HttpCode,
 } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { PortalService } from './portal.service'
@@ -149,12 +149,14 @@ export class PortalController {
 
   @Post('admin/bulk-generate/:propertyId')
   @Roles(...ROLES_MANAGE)
-  @ApiOperation({ summary: 'Hromadně vygenerovat přístupy pro nemovitost' })
+  @ApiOperation({ summary: 'Hromadně vygenerovat přístupy + odeslat pozvánky' })
   bulkGenerateAccess(
     @CurrentUser() user: AuthUser,
     @Param('propertyId') propertyId: string,
+    @Query('sendEmail') sendEmail?: string,
   ) {
-    return this.accessService.bulkGenerateAccess(user.tenantId, propertyId)
+    const send = sendEmail !== 'false' // default true
+    return this.accessService.bulkGenerateAccess(user.tenantId, propertyId, send)
   }
 
   @Post('admin/refresh-access/:id')
