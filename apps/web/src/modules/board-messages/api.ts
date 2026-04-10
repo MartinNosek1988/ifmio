@@ -48,6 +48,10 @@ export const boardMessagesApi = {
     apiClient.get('/portal/board-messages').then(r => r.data),
   portalCreate: (data: Record<string, unknown>) =>
     apiClient.post('/portal/board-messages', data).then(r => r.data),
+  portalUpdate: (id: string, data: Record<string, unknown>) =>
+    apiClient.put(`/portal/board-messages/${id}`, data).then(r => r.data),
+  portalMyMessages: () =>
+    apiClient.get('/portal/board-messages', { params: { mine: 'true' } }).then(r => r.data),
   portalMarkRead: (id: string) =>
     apiClient.post(`/portal/board-messages/${id}/read`).then(r => r.data),
 }

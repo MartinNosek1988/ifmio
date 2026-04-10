@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Patch, Delete, Body, Param, Query, HttpCode,
+  Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, HttpCode,
 } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { PortalService } from './portal.service'
@@ -10,7 +10,7 @@ import { Roles } from '../common/decorators/roles.decorator'
 import { ROLES_MANAGE } from '../common/constants/roles.constants'
 import type { AuthUser } from '@ifmio/shared-types'
 import { CreatePortalTicketDto, SubmitMeterReadingDto, SendPortalMessageDto } from './dto/portal.dto'
-import { CreateBoardMessageDto } from '../board-messages/dto/board-message.dto'
+import { CreateBoardMessageDto, UpdateBoardMessageDto } from '../board-messages/dto/board-message.dto'
 
 @ApiTags('Portal')
 @ApiBearerAuth()
@@ -146,10 +146,12 @@ export class PortalController {
     @CurrentUser() user: AuthUser,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('mine') mine?: string,
   ) {
     return this.boardMessagesService.getPortalFeed(user, {
       page: Number(page) || 1,
       limit: Number(limit) || 20,
+      mine: mine === 'true',
     })
   }
 
@@ -164,6 +166,16 @@ export class PortalController {
   @ApiOperation({ summary: 'Odeslat zprávu na nástěnku (ke schválení)' })
   createBoardMessage(@CurrentUser() user: AuthUser, @Body() dto: CreateBoardMessageDto) {
     return this.boardMessagesService.createFromPortal(user, dto)
+  }
+
+  @Put('board-messages/:id')
+  @ApiOperation({ summary: 'Upravit vlastní zprávu (DRAFT/REJECTED) a znovu odeslat' })
+  updateBoardMessage(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateBoardMessageDto,
+  ) {
+    return this.boardMessagesService.updateFromPortal(user, id, dto)
   }
 
   @Post('board-messages/:id/read')
