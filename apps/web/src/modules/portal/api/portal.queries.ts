@@ -53,3 +53,31 @@ export function useMyVotings() {
 export function useMyESignRequests() {
   return useQuery({ queryKey: ['portal', 'esign'], queryFn: portalApi.getMyESignRequests })
 }
+
+export function useUnitDetail(unitId: string | null) {
+  return useQuery({
+    queryKey: ['portal', 'unit-detail', unitId],
+    queryFn: () => portalApi.getUnitDetail(unitId!),
+    enabled: !!unitId,
+  })
+}
+
+export function useMyMessages() {
+  return useQuery({ queryKey: ['portal', 'messages'], queryFn: portalApi.getMyMessages })
+}
+
+export function useSendMessage() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: portalApi.sendMessage,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['portal', 'messages'] }),
+  })
+}
+
+export function useMarkMessageRead() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: portalApi.markMessageRead,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['portal', 'messages'] }),
+  })
+}

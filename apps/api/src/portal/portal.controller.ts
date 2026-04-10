@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Delete, Body, Param, HttpCode,
+  Controller, Get, Post, Patch, Delete, Body, Param, HttpCode,
 } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { PortalService } from './portal.service'
@@ -8,7 +8,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator'
 import { Roles } from '../common/decorators/roles.decorator'
 import { ROLES_MANAGE } from '../common/constants/roles.constants'
 import type { AuthUser } from '@ifmio/shared-types'
-import { CreatePortalTicketDto, SubmitMeterReadingDto } from './dto/portal.dto'
+import { CreatePortalTicketDto, SubmitMeterReadingDto, SendPortalMessageDto } from './dto/portal.dto'
 
 @ApiTags('Portal')
 @ApiBearerAuth()
@@ -102,6 +102,37 @@ export class PortalController {
   @ApiOperation({ summary: 'Elektronické podpisy klienta' })
   getMyESignRequests(@CurrentUser() user: AuthUser) {
     return this.portalService.getMyESignRequests(user)
+  }
+
+  @Get('units/:id')
+  @ApiOperation({ summary: 'Detail jednotky (evidenční list)' })
+  getUnitDetail(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.portalService.getUnitDetail(user, id)
+  }
+
+  @Get('my-messages/unread-count')
+  @ApiOperation({ summary: 'Počet nepřečtených zpráv' })
+  getUnreadMessageCount(@CurrentUser() user: AuthUser) {
+    return this.portalService.getUnreadMessageCount(user)
+  }
+
+  @Get('my-messages')
+  @ApiOperation({ summary: 'Zprávy vlastníka' })
+  getMyMessages(@CurrentUser() user: AuthUser) {
+    return this.portalService.getMyMessages(user)
+  }
+
+  @Post('my-messages')
+  @HttpCode(201)
+  @ApiOperation({ summary: 'Odeslat zprávu správci' })
+  sendMyMessage(@CurrentUser() user: AuthUser, @Body() dto: SendPortalMessageDto) {
+    return this.portalService.sendMyMessage(user, dto)
+  }
+
+  @Patch('my-messages/:id/read')
+  @ApiOperation({ summary: 'Označit zprávu jako přečtenou' })
+  markMessageRead(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.portalService.markMessageRead(user, id)
   }
 
   // ─── ADMIN: Portal Access Management ────────────────────────

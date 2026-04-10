@@ -1,8 +1,8 @@
-import { Injectable, ForbiddenException } from '@nestjs/common'
+import { Injectable, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common'
 import QRCode from 'qrcode'
 import { PrismaService } from '../prisma/prisma.service'
 import type { AuthUser } from '@ifmio/shared-types'
-import type { CreatePortalTicketDto, SubmitMeterReadingDto } from './dto/portal.dto'
+import type { CreatePortalTicketDto, SubmitMeterReadingDto, SendPortalMessageDto } from './dto/portal.dto'
 
 @Injectable()
 export class PortalService {
@@ -465,5 +465,115 @@ export class PortalService {
       accessToken: s.token,
       createdAt: s.request.createdAt,
     }))
+  }
+
+  // ─── Unit Detail ────────────────────────────────────────────
+
+  async getUnitDetail(user: AuthUser, unitId: string) {
+    const unitIds = await this.resolveUserUnitIds(user)
+    if (!unitIds.includes(unitId)) throw new NotFoundException('Jednotka nenalezena')
+
+    const unit = await this.prisma.unit.findUnique({
+      where: { id: unitId },
+      include: {
+        property: {
+          select: {
+            id: true, name: true, address: true, city: true,
+            cadastralArea: true, landRegistrySheet: true,
+          },
+        },
+        rooms: {
+          orderBy: { name: 'asc' },
+          select: { id: true, name: true, area: true, roomType: true, coefficient: true, calculatedArea: true },
+        },
+        equipment: {
+          orderBy: { name: 'asc' },
+          select: { id: true, name: true, status: true, quantity: true, serialNumber: true, purchaseDate: true, description: true },
+        },
+        occupancies: {
+          where: { isActive: true },
+          include: {
+            resident: { select: { id: true, firstName: true, lastName: true, email: true } },
+          },
+          orderBy: { startDate: 'desc' },
+        },
+      },
+    })
+
+    if (!unit) throw new NotFoundException('Jednotka nenalezena')
+    return unit
+  }
+
+  // ─── Messaging ──────────────────────────────────────────────
+
+  private async resolveUserResidentId(user: AuthUser): Promise<string | null> {
+    const dbUser = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      select: { partyId: true },
+    })
+    if (!dbUser?.partyId) return null
+
+    const resident = await this.prisma.resident.findFirst({
+      where: { tenantId: user.tenantId, partyId: dbUser.partyId, isActive: true },
+      select: { id: true },
+    })
+    return resident?.id ?? null
+  }
+
+  async getMyMessages(user: AuthUser) {
+    const residentId = await this.resolveUserResidentId(user)
+    if (!residentId) return []
+
+    return this.prisma.portalMessage.findMany({
+      where: { tenantId: user.tenantId, residentId },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    })
+  }
+
+  async sendMyMessage(user: AuthUser, dto: SendPortalMessageDto) {
+    const residentId = await this.resolveUserResidentId(user)
+    if (!residentId) throw new BadRequestException('Nepodařilo se identifikovat vlastníka')
+
+    const unitIds = await this.resolveUserUnitIds(user)
+    const unit = unitIds.length > 0 ? await this.prisma.unit.findFirst({
+      where: { id: { in: unitIds } },
+      select: { propertyId: true },
+    }) : null
+
+    return this.prisma.portalMessage.create({
+      data: {
+        tenantId: user.tenantId,
+        residentId,
+        propertyId: unit?.propertyId ?? null,
+        subject: dto.subject,
+        body: dto.body,
+        direction: 'inbound',
+      },
+    })
+  }
+
+  async markMessageRead(user: AuthUser, messageId: string) {
+    const residentId = await this.resolveUserResidentId(user)
+    if (!residentId) throw new BadRequestException('Nepodařilo se identifikovat vlastníka')
+
+    const msg = await this.prisma.portalMessage.findFirst({
+      where: { id: messageId, tenantId: user.tenantId, residentId },
+    })
+    if (!msg) throw new NotFoundException('Zpráva nenalezena')
+
+    return this.prisma.portalMessage.update({
+      where: { id: messageId },
+      data: { isRead: true },
+    })
+  }
+
+  async getUnreadMessageCount(user: AuthUser): Promise<number> {
+    const residentId = await this.resolveUserResidentId(user)
+    if (!residentId) return 0
+
+    return this.prisma.portalMessage.count({
+      where: { tenantId: user.tenantId, residentId, direction: 'outbound', isRead: false },
+    })
   }
 }

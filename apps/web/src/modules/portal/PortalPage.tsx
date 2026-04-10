@@ -1,7 +1,9 @@
 import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../../core/auth/auth.store'
 import { useMyUnits, useMyPrescriptions, useMyTickets, useMyKonto, useMyVotings, useMyESignRequests } from './api/portal.queries'
-import { Building2, FileText, Headphones, Wallet, Plus, Gauge, FolderOpen, Vote, FileSignature } from 'lucide-react'
+import { portalApi } from './api/portal.api'
+import { Building2, FileText, Headphones, Wallet, Plus, Gauge, FolderOpen, Vote, FileSignature, MessageSquare } from 'lucide-react'
 import { LoadingSpinner } from '../../shared/components'
 
 export default function PortalPage() {
@@ -15,6 +17,10 @@ export default function PortalPage() {
   const { data: esignReqs } = useMyESignRequests()
   const pendingVotings = (votings ?? []).filter((v: any) => !v.hasResponded)
   const pendingESign = (esignReqs ?? []).filter((r: any) => r.signatoryStatus === 'pending' || r.signatoryStatus === 'viewed')
+  const { data: unreadCount } = useQuery({
+    queryKey: ['portal', 'messages', 'unread'],
+    queryFn: portalApi.getUnreadMessageCount,
+  })
 
   const totalMonthly = (prescriptions ?? []).reduce((s: number, p: any) => s + Number(p.amount ?? 0), 0)
   const openTickets = (tickets ?? []).filter((t: any) => t.status === 'open' || t.status === 'in_progress').length
@@ -63,6 +69,16 @@ export default function PortalPage() {
           </div>
           <div style={{ fontSize: '1.6rem', fontWeight: 700 }}>{openTickets}</div>
         </div>
+
+        {(unreadCount ?? 0) > 0 && (
+          <div style={cardStyle} onClick={() => navigate('/portal/messages')}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <MessageSquare size={20} style={{ color: 'var(--primary, #6366f1)' }} />
+              <span style={{ fontSize: '.82rem', color: 'var(--text-muted)' }}>Nepřečtené zprávy</span>
+            </div>
+            <div style={{ fontSize: '1.6rem', fontWeight: 700 }}>{unreadCount}</div>
+          </div>
+        )}
 
         <div style={cardStyle} onClick={() => navigate('/portal/konto')}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
