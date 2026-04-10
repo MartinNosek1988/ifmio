@@ -451,7 +451,6 @@
   "crm": {
     "title": "CRM",
     "lead": {
-      "create": "Nový lead",
       "createTitle": "Nový lead",
       "createCta": "Vytvořit",
       "loading": "Načítání...",
@@ -513,7 +512,6 @@
       "deleteConfirm": "Opravdu smazat tento lead?",
       "cancel": "Zrušit",
       "save": "Uložit",
-      "create": "Vytvořit",
       "saving": "Ukládám..."
     }
   },

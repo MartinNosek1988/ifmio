@@ -220,7 +220,7 @@ export default function CrmLeadModal({ leadId, onClose, onSaved }: Props) {
     <Modal
       open
       onClose={onClose}
-      title={isEdit ? lead?.companyName ?? 'Lead' : t('crm.lead.create')}
+      title={isEdit ? lead?.companyName ?? 'Lead' : t('crm.lead.createTitle')}
       subtitle={isEdit ? `Stage: ${STAGE_OPTIONS.find((s) => s.value === lead?.stage)?.label ?? lead?.stage}` : undefined}
       extraWide
       footer={
@@ -248,7 +248,7 @@ export default function CrmLeadModal({ leadId, onClose, onSaved }: Props) {
               onClick={() => saveMut.mutate()}
               disabled={saveMut.isPending || !form.companyName}
             >
-              {saveMut.isPending ? t('crm.lead.saving') : isEdit ? t('crm.lead.save') : t('crm.lead.create')}
+              {saveMut.isPending ? t('crm.lead.saving') : isEdit ? t('crm.lead.save') : t('crm.lead.createCta')}
             </button>
           </div>
         </div>
