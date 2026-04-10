@@ -4,11 +4,13 @@ import {
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { PortalService } from './portal.service'
 import { PortalAccessService } from './portal-access.service'
+import { BoardMessagesService } from '../board-messages/board-messages.service'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
 import { Roles } from '../common/decorators/roles.decorator'
 import { ROLES_MANAGE } from '../common/constants/roles.constants'
 import type { AuthUser } from '@ifmio/shared-types'
 import { CreatePortalTicketDto, SubmitMeterReadingDto, SendPortalMessageDto } from './dto/portal.dto'
+import { CreateBoardMessageDto } from '../board-messages/dto/board-message.dto'
 
 @ApiTags('Portal')
 @ApiBearerAuth()
@@ -18,6 +20,7 @@ export class PortalController {
   constructor(
     private portalService: PortalService,
     private accessService: PortalAccessService,
+    private boardMessagesService: BoardMessagesService,
   ) {}
 
   @Get('my-units')
@@ -133,6 +136,41 @@ export class PortalController {
   @ApiOperation({ summary: 'Označit zprávu jako přečtenou' })
   markMessageRead(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.portalService.markMessageRead(user, id)
+  }
+
+  // ─── BOARD MESSAGES (Nástěnka domu) ─────────────────────────
+
+  @Get('board-messages')
+  @ApiOperation({ summary: 'Nástěnka — publikované zprávy' })
+  getBoardMessages(
+    @CurrentUser() user: AuthUser,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.boardMessagesService.getPortalFeed(user, {
+      page: Number(page) || 1,
+      limit: Number(limit) || 20,
+    })
+  }
+
+  @Get('board-messages/:id')
+  @ApiOperation({ summary: 'Detail zprávy z nástěnky' })
+  getBoardMessage(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.boardMessagesService.findOneForPortal(user, id)
+  }
+
+  @Post('board-messages')
+  @HttpCode(201)
+  @ApiOperation({ summary: 'Odeslat zprávu na nástěnku (ke schválení)' })
+  createBoardMessage(@CurrentUser() user: AuthUser, @Body() dto: CreateBoardMessageDto) {
+    return this.boardMessagesService.createFromPortal(user, dto)
+  }
+
+  @Post('board-messages/:id/read')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Označit zprávu na nástěnce jako přečtenou' })
+  markBoardMessageRead(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.boardMessagesService.markAsRead(user, id)
   }
 
   // ─── ADMIN: Portal Access Management ────────────────────────

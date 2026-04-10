@@ -110,6 +110,7 @@ model Tenant {
   massMailingCampaigns       MassMailingCampaign[]
   expenses                   Expense[]
   emailTemplates             EmailTemplate[]
+  boardMessages              BoardMessage[]
 
   @@map("tenants")
 }
@@ -189,6 +190,9 @@ model User {
   chatMentions            ChatMention[]                 @relation("ChatMentioned")
   assignedActivities      Activity[]                    @relation("ActivityAssigned")
   doneActivities          Activity[]                    @relation("ActivityDone")
+  boardMessagesAuthored   BoardMessage[]                @relation("BoardMsgAuthor")
+  boardMessagesReviewed   BoardMessage[]                @relation("BoardMsgReviewer")
+  boardMessageReadReceipts BoardMessageReadReceipt[]
 
   @@unique([tenantId, email])
   @@unique([oauthProvider, oauthId])
@@ -492,6 +496,7 @@ model Property {
 
   insurances           Insurance[]
   massMailingCampaigns MassMailingCampaign[]
+  boardMessages        BoardMessage[]
 
   // Enrichment data (ARES)
   aresData   Json? // AresFullData
@@ -5581,4 +5586,55 @@ model TicrCredential {
   @@index([registryType])
   @@index([validUntil])
   @@map("ticr_credentials")
+}
+
+// ─── BOARD MESSAGES (Nástěnka domu) ─────────────────────────────
+
+model BoardMessage {
+  id            String    @id @default(uuid())
+  tenantId      String
+  propertyId    String
+  title         String
+  body          String    @db.Text
+  visibility    String    @default("all")
+  tags          String[]  @default([])
+  isPinned      Boolean   @default(false)
+  status        String    @default("DRAFT")
+  submittedAt   DateTime?
+  reviewedBy    String?
+  reviewedAt    DateTime?
+  rejectionNote String?   @db.Text
+  validFrom     DateTime?
+  validUntil    DateTime?
+  authorId      String
+  attachmentIds String[]  @default([])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property      Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  author        User      @relation("BoardMsgAuthor", fields: [authorId], references: [id])
+  reviewer      User?     @relation("BoardMsgReviewer", fields: [reviewedBy], references: [id])
+  readReceipts  BoardMessageReadReceipt[]
+
+  @@index([tenantId])
+  @@index([propertyId, status])
+  @@index([propertyId, isPinned])
+  @@map("board_messages")
+}
+
+model BoardMessageReadReceipt {
+  id        String   @id @default(uuid())
+  tenantId  String
+  messageId String
+  userId    String
+  readAt    DateTime @default(now())
+
+  message   BoardMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id])
+
+  @@unique([messageId, userId])
+  @@index([tenantId])
+  @@map("board_message_read_receipts")
 }

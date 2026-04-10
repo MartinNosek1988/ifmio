@@ -3,7 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../../core/auth/auth.store'
 import { useMyUnits, useMyPrescriptions, useMyTickets, useMyKonto, useMyVotings, useMyESignRequests } from './api/portal.queries'
 import { portalApi } from './api/portal.api'
-import { Building2, FileText, Headphones, Wallet, Plus, Gauge, FolderOpen, Vote, FileSignature, MessageSquare } from 'lucide-react'
+import { boardMessagesApi, type BoardMessage } from '../board-messages/api'
+import { Building2, FileText, Headphones, Wallet, Plus, Gauge, FolderOpen, Vote, FileSignature, MessageSquare, Megaphone } from 'lucide-react'
 import { LoadingSpinner } from '../../shared/components'
 
 export default function PortalPage() {
@@ -21,6 +22,11 @@ export default function PortalPage() {
     queryKey: ['portal', 'messages', 'unread'],
     queryFn: portalApi.getUnreadMessageCount,
   })
+  const { data: boardFeed = [] } = useQuery({
+    queryKey: ['portal', 'board-messages'],
+    queryFn: boardMessagesApi.portalFeed,
+  })
+  const latestBoardMessages = (boardFeed as BoardMessage[]).slice(0, 3)
 
   const totalMonthly = (prescriptions ?? []).reduce((s: number, p: any) => s + Number(p.amount ?? 0), 0)
   const openTickets = (tickets ?? []).filter((t: any) => t.status === 'open' || t.status === 'in_progress').length
@@ -103,6 +109,39 @@ export default function PortalPage() {
           <FolderOpen size={15} /> Dokumenty
         </button>
       </div>
+
+      {latestBoardMessages.length > 0 && (
+        <div style={{ marginTop: 32 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 600, margin: 0 }}>Nastenka</h2>
+            <button className="btn btn--sm" onClick={() => navigate('/portal/nastenka')} style={{ fontSize: '.78rem' }}>
+              Zobrazit vse
+            </button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {latestBoardMessages.map(msg => (
+              <div
+                key={msg.id}
+                onClick={() => navigate('/portal/nastenka')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px',
+                  background: 'var(--surface)', border: `1px solid ${!msg.isRead ? 'var(--primary, #6366f1)' : 'var(--border)'}`,
+                  borderRadius: 8, cursor: 'pointer', textDecoration: 'none', color: 'var(--text)',
+                }}
+              >
+                <Megaphone size={18} style={{ color: 'var(--primary)' }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: msg.isRead ? 400 : 600, fontSize: '0.9rem' }}>{msg.title}</div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    {new Date(msg.createdAt).toLocaleDateString('cs-CZ')}
+                    {msg.author?.name && ` · ${msg.author.name}`}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {(pendingVotings.length > 0 || pendingESign.length > 0) && (
         <div style={{ marginTop: 32 }}>

@@ -515,6 +515,70 @@
       "saving": "Ukládám..."
     }
   },
+  "boardMessages": {
+    "title": "Nástěnka",
+    "create": "Nová zpráva",
+    "edit": "Upravit zprávu",
+    "tabs": {
+      "published": "Publikované",
+      "pending": "Ke schválení",
+      "draft": "Koncepty",
+      "archived": "Archiv"
+    },
+    "fields": {
+      "title": "Název",
+      "body": "Text zprávy",
+      "visibility": "Viditelnost",
+      "tags": "Štítky",
+      "isPinned": "Připnout nahoře",
+      "validFrom": "Platnost od",
+      "validUntil": "Platnost do"
+    },
+    "visibility": {
+      "ALL_RESIDENTS": "Všichni obyvatelé",
+      "OWNERS_ONLY": "Pouze vlastníci",
+      "TENANTS_ONLY": "Pouze nájemníci",
+      "BOARD_ONLY": "Pouze výbor"
+    },
+    "status": {
+      "DRAFT": "Koncept",
+      "PENDING": "Čeká na schválení",
+      "PUBLISHED": "Publikováno",
+      "REJECTED": "Zamítnuto",
+      "ARCHIVED": "Archivováno"
+    },
+    "actions": {
+      "approve": "Schválit",
+      "reject": "Zamítnout",
+      "publish": "Publikovat",
+      "archive": "Archivovat",
+      "delete": "Smazat",
+      "editResubmit": "Upravit a znovu odeslat"
+    },
+    "rejectionNote": "Důvod zamítnutí",
+    "readStats": "Přečteno",
+    "empty": {
+      "title": "Žádné zprávy",
+      "noPublished": "Zatím nebyly publikovány žádné zprávy.",
+      "noOwn": "Zatím jste neodeslali žádnou zprávu."
+    },
+    "toast": {
+      "created": "Zpráva vytvořena",
+      "reviewed": "Zpráva posouzena",
+      "published": "Zpráva publikována",
+      "archived": "Zpráva archivována",
+      "deleted": "Zpráva smazána",
+      "updated": "Zpráva aktualizována",
+      "submitted": "Zpráva odeslána ke schválení"
+    },
+    "portal": {
+      "title": "Nástěnka",
+      "feed": "Zprávy",
+      "myMessages": "Moje zprávy",
+      "newMessage": "Nová zpráva",
+      "showAll": "Zobrazit vše"
+    }
+  },
   "finance": {
     "title": "Finance",
     "invoice": {
