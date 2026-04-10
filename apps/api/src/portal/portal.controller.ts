@@ -80,6 +80,18 @@ export class PortalController {
     return this.portalService.getMyKonto(user)
   }
 
+  @Get('my-contacts')
+  @ApiOperation({ summary: 'Kontakty správce a nemovitostí' })
+  getMyContacts(@CurrentUser() user: AuthUser) {
+    return this.portalService.getMyContacts(user)
+  }
+
+  @Get('prescriptions/:id/payment-qr')
+  @ApiOperation({ summary: 'QR kód pro platbu předpisu (SPAYD)' })
+  getPrescriptionQr(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.portalService.getPrescriptionQr(user, id)
+  }
+
   @Get('my-votings')
   @ApiOperation({ summary: 'Per rollam hlasování klienta' })
   getMyVotings(@CurrentUser() user: AuthUser) {
