@@ -52,7 +52,9 @@ export function Step4Actions({ onBack }: { onBack: () => void }) {
           return (
             <button
               key={value}
+              type="button"
               data-testid={`action-${value}`}
+              aria-pressed={isSelected}
               onClick={() => toggle(value)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px',

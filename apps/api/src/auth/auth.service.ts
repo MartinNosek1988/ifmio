@@ -674,7 +674,7 @@ export class AuthService {
   private async issueTokens(
     user: { id: string; email: string; name: string; role: string; tenantId: string },
     meta?: RequestMeta,
-  ): Promise<AuthResponse> {
+  ): Promise<AuthResponse & { onboardingCompleted?: boolean; onboardingStep?: number }> {
     // jti (JWT ID) ensures uniqueness even if two tokens are issued in the same second
     const jti = crypto.randomBytes(16).toString('hex');
     const payload = { sub: user.id, tenantId: user.tenantId, role: user.role, jti };
@@ -704,6 +704,12 @@ export class AuthService {
       },
     });
 
+    // Fetch onboarding status for redirect decision
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: user.tenantId },
+      select: { onboardingCompleted: true, onboardingStep: true },
+    });
+
     return {
       accessToken,
       refreshToken,
@@ -714,6 +720,8 @@ export class AuthService {
         role: user.role as AuthUser['role'],
         tenantId: user.tenantId,
       },
+      onboardingCompleted: tenant?.onboardingCompleted ?? true,
+      onboardingStep: tenant?.onboardingStep ?? 0,
     };
   }
 
