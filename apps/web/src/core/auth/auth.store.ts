@@ -26,7 +26,6 @@ export const useAuthStore = create<AuthState>((set) => ({
     sessionStorage.setItem('ifmio:access_token', accessToken);
     sessionStorage.setItem('ifmio:refresh_token', refreshToken);
     sessionStorage.setItem('ifmio:user', JSON.stringify(user));
-    console.log('[AUTH LOGIN] success', { role: user?.role, isLoading: true });
     set({ user, isLoggedIn: true, isLoading: false, passwordExpired: !!passwordExpired });
   },
 
@@ -52,7 +51,6 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   restoreSession: async () => {
     const cached = sessionStorage.getItem('ifmio:user');
-    console.log('[AUTH RESTORE] start', { hasCache: !!cached });
     if (!cached) {
       set({ isLoading: false });
       return;
@@ -61,7 +59,6 @@ export const useAuthStore = create<AuthState>((set) => ({
     // Set cached user SYNCHRONOUSLY so uxRole is correct immediately
     try {
       const cachedUser: AuthUser = JSON.parse(cached);
-      console.log('[AUTH RESTORE] cached user', { role: cachedUser.role });
       set({ user: cachedUser, isLoggedIn: true });
     } catch {
       // Corrupted cache — clear and bail
@@ -76,10 +73,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (res.data.language && res.data.language !== i18n.language) {
         i18n.changeLanguage(res.data.language);
       }
-      console.log('[AUTH RESTORE] done', { role: res.data?.role, isLoading: false });
       set({ user: res.data, isLoggedIn: true, isLoading: false });
-    } catch (err) {
-      console.log('[AUTH RESTORE] failed', { error: err instanceof Error ? err.message : err });
+    } catch {
       sessionStorage.removeItem('ifmio:access_token');
       sessionStorage.removeItem('ifmio:user');
       set({ user: null, isLoggedIn: false, isLoading: false });
