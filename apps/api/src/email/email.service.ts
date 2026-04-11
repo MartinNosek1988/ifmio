@@ -3,6 +3,7 @@ import * as nodemailer from 'nodemailer'
 import { ConfigService } from '@nestjs/config'
 import { PrismaService } from '../prisma/prisma.service'
 import { getTenantId } from '../common/tenant-context'
+import { emailLayout, emailButton, emailHeading, emailText, emailMutedText, emailWarningBox } from './email-templates'
 
 export interface SendEmailDto {
   to:       string | string[]
@@ -142,29 +143,12 @@ export class EmailService {
     tenantName: string
     loginUrl:   string
   }): Promise<boolean> {
-    const html = `
-<!DOCTYPE html>
-<html lang="cs">
-<head><meta charset="UTF-8"><title>Vitejte v ${escapeHtml(params.tenantName)}</title></head>
-<body style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #374151;">
-  <div style="background: #1e1b4b; padding: 24px; border-radius: 8px 8px 0 0;">
-    <h1 style="color: #fff; margin: 0; font-size: 24px;">ifmio</h1>
-  </div>
-  <div style="border: 1px solid #e5e7eb; border-top: none; padding: 32px; border-radius: 0 0 8px 8px;">
-    <h2 style="color: #111827;">Vítejte, ${escapeHtml(params.name)}!</h2>
-    <p>Byl vám vytvořen přístup do systému ${escapeHtml(params.tenantName)}.</p>
-    <a href="${encodeURI(params.loginUrl)}"
-       style="display: inline-block; background: #6366f1; color: #fff;
-              padding: 12px 24px; border-radius: 6px; text-decoration: none;
-              font-weight: 600; margin: 16px 0;">
-      Přihlásit se
-    </a>
-    <p style="color: #6b7280; font-size: 13px; margin-top: 24px;">
-      Pokud jste tento email neočekávali, ignorujte jej.
-    </p>
-  </div>
-</body>
-</html>`
+    const html = emailLayout(`
+  ${emailHeading(`Vítejte, ${escapeHtml(params.name)}!`)}
+  ${emailText(`Byl vám vytvořen přístup do systému <strong>${escapeHtml(params.tenantName)}</strong>.`)}
+  ${emailButton('Přihlásit se', encodeURI(params.loginUrl))}
+  ${emailMutedText('Pokud jste tento email neočekávali, ignorujte jej.')}
+`)
 
     return this.send({
       to:      params.to,
@@ -187,36 +171,16 @@ export class EmailService {
 
     const borderColor =
       params.level === 'third'  ? '#ef4444' :
-      params.level === 'second' ? '#f59e0b' : '#6366f1'
+      params.level === 'second' ? '#f59e0b' : '#0D9488'
 
-    return `
-<!DOCTYPE html>
-<html lang="cs">
-<head><meta charset="UTF-8"></head>
-<body style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #374151;">
-  <div style="background: #1e1b4b; padding: 20px 24px; border-radius: 8px 8px 0 0;">
-    <h1 style="color: #fff; margin: 0; font-size: 20px;">${escapeHtml(params.tenantName)}</h1>
-  </div>
-  <div style="border: 1px solid #e5e7eb; border-top: 4px solid ${borderColor};
-              border-radius: 0 0 8px 8px; padding: 32px;">
-    <p style="white-space: pre-line; line-height: 1.7;">${escapeHtml(params.body)}</p>
-
-    <div style="background: #fef3c7; border: 1px solid #fcd34d;
-                border-radius: 8px; padding: 16px 20px; margin: 24px 0;">
-      <div style="font-size: 18px; font-weight: 700; color: #92400e;">
-        Dlužná částka: ${amountFmt} Kč
-      </div>
-      <div style="color: #92400e; margin-top: 4px;">
-        Splatnost: ${dueFmt}
-      </div>
-    </div>
-
-    <p style="color: #6b7280; font-size: 12px; margin-top: 32px; border-top: 1px solid #f3f4f6; padding-top: 16px;">
-      Tento email byl odeslan systemem ifmio. Neodpovidejte na nej.
-    </p>
-  </div>
-</body>
-</html>`
+    return emailLayout(`
+  ${emailHeading(escapeHtml(params.tenantName))}
+  ${emailText(escapeHtml(params.body).replace(/\n/g, '<br>'))}
+  ${emailWarningBox(`
+    <div style="font-size:18px;font-weight:700;color:#92400e;">Dlužná částka: ${amountFmt} Kč</div>
+    <div style="color:#92400e;margin-top:4px;">Splatnost: ${dueFmt}</div>
+  `)}
+`)
   }
 
   async verifyConnection(): Promise<boolean> {

@@ -104,25 +104,16 @@ export class SecurityAlertingService {
       .map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#6b7280;font-size:13px">${this.escapeHtml(k)}</td><td style="padding:4px 0;font-size:13px">${this.escapeHtml(String(v))}</td></tr>`)
       .join('')
 
-    return `<!DOCTYPE html>
-<html lang="cs">
-<head><meta charset="UTF-8"></head>
-<body style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#374151">
-  <div style="background:#0f172a;padding:20px 24px;border-radius:8px 8px 0 0">
-    <h1 style="color:#fff;margin:0;font-size:20px">ifmio — Bezpečnostní upozornění</h1>
-  </div>
-  <div style="border:1px solid #e5e7eb;border-top:4px solid ${color};padding:24px;border-radius:0 0 8px 8px">
-    <div style="display:inline-block;background:${color};color:#fff;padding:4px 12px;border-radius:4px;font-size:12px;font-weight:700;margin-bottom:12px">${label}</div>
-    <h2 style="color:#111827;margin:8px 0 16px">${this.escapeHtml(title)}</h2>
-    <table style="border-collapse:collapse;width:100%">${detailRows}</table>
-    <p style="color:#6b7280;font-size:12px;margin-top:24px;border-top:1px solid #f3f4f6;padding-top:16px">
-      Čas: ${event.timestamp.toLocaleString('cs-CZ', { timeZone: 'Europe/Prague' })}<br>
-      <a href="https://ifmio.com/admin/security" style="color:#6366f1">Otevřít Security Dashboard →</a>
-    </p>
-    <p style="color:#9ca3af;font-size:11px">Tento email byl odeslán automaticky systémem ifmio. Neodpovídejte na něj.</p>
-  </div>
-</body>
-</html>`
+    const { emailLayout, emailHeading, emailSeverityBadge, emailDetailTable } = require('../../email/email-templates')
+    return emailLayout(`
+  ${emailSeverityBadge(label, color)}
+  ${emailHeading(this.escapeHtml(title))}
+  <table style="border-collapse:collapse;width:100%">${detailRows}</table>
+  <p style="margin:16px 0 0;font-size:13px;color:#6B7280;">
+    Čas: ${event.timestamp.toLocaleString('cs-CZ', { timeZone: 'Europe/Prague' })}<br>
+    <a href="https://ifmio.com/admin/security" style="color:#0D9488;font-weight:600;">Otevřít Security Dashboard →</a>
+  </p>
+`)
   }
 
   private escapeHtml(str: string): string {
