@@ -331,7 +331,7 @@ export default function AppShell() {
       {/* Mobile sidebar overlay */}
       <div className={`sidebar-overlay${sidebarOpen ? ' open' : ''}`} onClick={() => setSidebarOpen(false)} />
 
-      <nav className={`sidebar${sidebarOpen ? ' open' : ''}`} aria-label="Hlavní navigace">
+      <nav data-testid="sidebar" className={`sidebar${sidebarOpen ? ' open' : ''}`} aria-label="Hlavní navigace">
         <div className="sidebar__logo">ifmio</div>
         {authLoading ? (
           <div style={{ padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -501,7 +501,7 @@ export default function AppShell() {
         </div>
       </div>
 
-      <main id="main-content" className="main-content">
+      <main id="main-content" data-testid="main-content" className="main-content">
         {showOnboardingBanner && (
           <div
             data-testid="onboarding-banner"

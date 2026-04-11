@@ -612,5 +612,63 @@
       "credit": "Celkem přeplatky",
       "netBalance": "Čistý stav"
     }
+  },
+  "onboarding": {
+    "title": "Nastavení ifmio",
+    "continue": "Pokračovat",
+    "back": "Zpět",
+    "progress": {
+      "step1": "Typ subjektu",
+      "step2": "Údaje subjektu",
+      "step3": "Nemovitost",
+      "step4": "Co dál?"
+    },
+    "step1": {
+      "title": "Jak ifmio používáte?",
+      "subtitle": "Pomůže nám přizpůsobit systém vašim potřebám",
+      "selfManaged": "Samosprávné SVJ / BD",
+      "selfManagedDesc": "Jsme předseda nebo výbor SVJ / bytového družstva",
+      "managementCompany": "Správcovská firma",
+      "managementCompanyDesc": "Spravujeme nemovitosti pro klienty",
+      "rentalOwner": "Vlastník nájemního domu",
+      "rentalOwnerDesc": "Vlastním a pronajímám nemovitost"
+    },
+    "step2": {
+      "title": "Subjekt, který spravujete",
+      "subtitleHoa": "Údaje vašeho SVJ / BD",
+      "subtitleCompany": "Údaje vaší firmy",
+      "subtitleOwner": "Vaše údaje",
+      "name": "Název",
+      "ico": "IČ",
+      "dic": "DIČ",
+      "legalForm": "Právní forma",
+      "aresVerified": "Ověřeno v ARES",
+      "aresNotFound": "IČ nenalezeno v ARES",
+      "aresLoading": "Ověřuji v ARES..."
+    },
+    "step3": {
+      "title": "Vaše první nemovitost",
+      "subtitle": "Další nemovitosti můžete přidat kdykoliv později",
+      "name": "Název nemovitosti",
+      "address": "Adresa",
+      "city": "Město",
+      "postalCode": "PSČ",
+      "type": "Typ nemovitosti",
+      "ico": "IČ nemovitosti"
+    },
+    "step4": {
+      "title": "Co chcete udělat jako první?",
+      "subtitle": "Vyberte jednu nebo více akcí — k ostatním se můžete vrátit kdykoliv",
+      "importUnits": "Import jednotek z ČÚZK",
+      "importUnitsDesc": "Automaticky načte byty, garáže a sklepy",
+      "addOwners": "Zadat vlastníky / obyvatele",
+      "addOwnersDesc": "Evidence vlastníků a nájemců",
+      "connectBank": "Připojit bankovní účet",
+      "connectBankDesc": "Automatický import výpisů z Fio banky",
+      "setupPrescriptions": "Nastavit měsíční předpisy",
+      "setupPrescriptionsDesc": "Fond oprav, zálohy na služby",
+      "start": "Začít",
+      "skip": "Přeskočit a jít na dashboard"
+    }
   }
 }

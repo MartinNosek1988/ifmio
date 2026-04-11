@@ -72,6 +72,7 @@ export default function LoginPage() {
     // Set Zustand store BEFORE navigation so AppShell sidebar has correct role
     useAuthStore.setState({ user, isLoggedIn: true, isLoading: false, passwordExpired: !!passwordExpired });
     if (passwordExpired) navigate('/profile?tab=security&expired=1', { replace: true });
+    else if (data.onboardingCompleted === false) navigate('/onboarding/setup', { replace: true });
     else navigate(returnUrl, { replace: true });
   };
 
