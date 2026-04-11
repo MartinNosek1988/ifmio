@@ -22,6 +22,10 @@ model Tenant {
   maxProperties         Int        @default(3)
   trialEndsAt           DateTime?
   notes                 String?
+  // Onboarding
+  archetype             TenantArchetype?
+  onboardingCompleted   Boolean    @default(false)
+  onboardingStep        Int        @default(0)
   // Data retention policies (ZT-W5-02)
   retentionAuditLogDays Int        @default(365)
   retentionBackupDays   Int        @default(90)
@@ -112,6 +116,7 @@ model Tenant {
   emailTemplates             EmailTemplate[]
   boardMessages              BoardMessage[]
   boardMessageReadReceipts   BoardMessageReadReceipt[]
+  userPropertyRoles          UserPropertyRole[]
 
   @@map("tenants")
 }
@@ -121,6 +126,21 @@ enum TenantPlan {
   starter
   pro
   enterprise
+}
+
+enum TenantArchetype {
+  SELF_MANAGED_HOA
+  MANAGEMENT_COMPANY
+  RENTAL_OWNER
+}
+
+enum UserPropertyRoleType {
+  MANAGER
+  ACCOUNTANT
+  TECHNICIAN
+  OWNER
+  TENANT_USER
+  VIEWER
 }
 
 // ─── USER ─────────────────────────────────────────────────────────
@@ -168,6 +188,7 @@ model User {
   createdDocuments        Document[]
   notifications           Notification[]
   propertyAssignments     UserPropertyAssignment[]
+  propertyRoles           UserPropertyRole[]
   submittedInvoices       Invoice[]                     @relation("InvoiceSubmitter")
   approvedInvoices        Invoice[]                     @relation("InvoiceApprover")
   rejectedInvoices        Invoice[]                     @relation("InvoiceRejecter")
@@ -468,6 +489,7 @@ model Property {
   expenses        Expense[]
 
   userAssignments        UserPropertyAssignment[]
+  userPropertyRoles      UserPropertyRole[]
   slaPolicies            SlaPolicy[]
   revisionSubjects       RevisionSubject[]
   revisionPlans          RevisionPlan[]
@@ -528,6 +550,25 @@ model UserPropertyAssignment {
   @@index([userId])
   @@index([propertyId])
   @@map("user_property_assignments")
+}
+
+model UserPropertyRole {
+  id         String               @id @default(cuid())
+  tenantId   String
+  userId     String
+  propertyId String
+  role       UserPropertyRoleType
+  createdAt  DateTime             @default(now())
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, propertyId])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([propertyId])
+  @@map("user_property_roles")
 }
 
 enum PropertyType {

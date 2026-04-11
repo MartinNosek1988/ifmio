@@ -88,6 +88,7 @@ const QrResolvePage = lazy(() => import('../modules/asset-qr/QrResolvePage'));
 const PrincipalsPage = lazy(() => import('../modules/principals/PrincipalsPage'));
 const PrincipalDetailPage = lazy(() => import('../modules/principals/PrincipalDetailPage'));
 const OnboardingPage = lazy(() => import('../modules/onboarding/OnboardingPage'));
+const OnboardingWizardPage = lazy(() => import('../modules/onboarding/wizard/WizardPage'));
 const AssemblyListPage = lazy(() => import('../modules/assemblies/AssemblyListPage'));
 const AssemblyDetailPage = lazy(() => import('../modules/assemblies/AssemblyDetailPage'));
 const PerRollamListPage = lazy(() => import('../modules/assemblies/per-rollam/PerRollamListPage'));
@@ -189,6 +190,8 @@ export const router = createBrowserRouter([
   { path: '/privacy', element: withBoundary('Privacy', PrivacyPage) },
   { path: '/gdpr', element: withBoundary('GDPR', GdprPage) },
   { path: '/cookies', element: withBoundary('Cookies', CookiesPage) },
+  // Initial setup wizard — full-page, outside AppShell
+  { path: '/onboarding/setup', element: withBoundary('Nastavení', OnboardingWizardPage) },
   {
     path: '/',
     element: <AppShell />,
