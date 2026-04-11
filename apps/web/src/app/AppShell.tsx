@@ -315,16 +315,7 @@ export default function AppShell() {
     }
   }, [uxRole, location.pathname, navigate]);
 
-  // Wait for auth session to be restored before rendering sidebar
-  if (authLoading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-        <LoadingSpinner />
-      </div>
-    );
-  }
-
-  const visibleSections = NAV_SECTIONS
+  const visibleSections = authLoading ? [] : NAV_SECTIONS
     .filter((sec) => !sec.roles || sec.roles.includes(uxRole))
     .map((sec) => ({
       ...sec,
@@ -346,9 +337,9 @@ export default function AppShell() {
           <div style={{ padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 24 }}>
             {[1, 2, 3, 4].map(i => (
               <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div style={{ height: 10, width: 64, background: 'var(--border, #e5e7eb)', borderRadius: 4, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                <div style={{ height: 10, width: 64, background: 'var(--border, #e5e7eb)', borderRadius: 4, animation: 'skeleton-pulse 1.5s ease-in-out infinite' }} />
                 {[1, 2, 3].map(j => (
-                  <div key={j} style={{ height: 32, width: '100%', background: 'var(--bg-secondary, #f3f4f6)', borderRadius: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                  <div key={j} style={{ height: 32, width: '100%', background: 'var(--bg-secondary, #f3f4f6)', borderRadius: 8, animation: 'skeleton-pulse 1.5s ease-in-out infinite' }} />
                 ))}
               </div>
             ))}

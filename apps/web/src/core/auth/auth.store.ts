@@ -26,7 +26,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     sessionStorage.setItem('ifmio:access_token', accessToken);
     sessionStorage.setItem('ifmio:refresh_token', refreshToken);
     sessionStorage.setItem('ifmio:user', JSON.stringify(user));
-    set({ user, isLoggedIn: true, passwordExpired: !!passwordExpired });
+    set({ user, isLoggedIn: true, isLoading: false, passwordExpired: !!passwordExpired });
   },
 
   register: async (data) => {
@@ -55,9 +55,21 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ isLoading: false });
       return;
     }
+
+    // Set cached user SYNCHRONOUSLY so uxRole is correct immediately
+    try {
+      const cachedUser: AuthUser = JSON.parse(cached);
+      set({ user: cachedUser, isLoggedIn: true });
+    } catch {
+      // Corrupted cache — clear and bail
+      sessionStorage.removeItem('ifmio:user');
+      set({ isLoading: false });
+      return;
+    }
+
+    // Async refresh from API — updates user data + clears isLoading
     try {
       const res = await apiClient.get<AuthUser>('/auth/me');
-      // Sync i18n language from user profile
       if (res.data.language && res.data.language !== i18n.language) {
         i18n.changeLanguage(res.data.language);
       }
