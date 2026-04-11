@@ -67,9 +67,7 @@ export class RuianVfrImportService {
 
       this.logger.log(`RÚIAN VFR import completed in ${Math.round(durationMs / 1000)}s — ${stats.total} records`)
 
-      // 4. Cleanup
-      await this.download.cleanup()
-
+      // Downloaded files kept for cache — cleanup() available for manual use
       return { logId: log.id, status: 'completed' }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err)

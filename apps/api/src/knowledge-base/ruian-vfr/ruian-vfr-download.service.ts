@@ -178,11 +178,14 @@ export class RuianVfrDownloadService {
 
     await this.streamToFile(res.body, csvPath)
 
-    // Sanity check: first line should contain CSV-like headers
-    const { readFileSync } = await import('fs')
-    const firstLine = readFileSync(csvPath, 'utf-8').split('\n')[0] || ''
+    // Sanity check: read only first 1KB to validate CSV headers
+    const { openSync, readSync, closeSync, unlinkSync } = await import('fs')
+    const fd = openSync(csvPath, 'r')
+    const buf = Buffer.alloc(1024)
+    const bytesRead = readSync(fd, buf, 0, 1024, 0)
+    closeSync(fd)
+    const firstLine = buf.toString('utf-8', 0, bytesRead).split('\n')[0] || ''
     if (!firstLine.includes(';') && !firstLine.includes(',')) {
-      const { unlinkSync } = await import('fs')
       unlinkSync(csvPath)
       throw new Error(`Downloaded file is not CSV (first line: ${firstLine.slice(0, 100)})`)
     }
