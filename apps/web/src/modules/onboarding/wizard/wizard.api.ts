@@ -45,7 +45,7 @@ export const wizardApi = {
     apiClient.post<{ redirectTo: string }>('/onboarding/step/4', data).then(r => r.data),
 
   aresLookup: (ico: string): Promise<AresResult> =>
-    apiClient.get<AresSubjectResponse>('/integrations/ares/ico', { params: { ico } }).then(r => {
+    apiClient.get<AresSubjectResponse | null>('/integrations/ares/ico', { params: { ico } }).then(r => {
       const data = r.data
       return {
         ico,
