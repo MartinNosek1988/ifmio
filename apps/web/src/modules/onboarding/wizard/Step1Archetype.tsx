@@ -10,13 +10,13 @@ const ARCHETYPES = [
   { value: 'RENTAL_OWNER', icon: Home, labelKey: 'rentalOwner', descKey: 'rentalOwnerDesc' },
 ] as const
 
-export function Step1Archetype({ onComplete }: { onComplete: () => void }) {
+export function Step1Archetype({ onComplete }: { onComplete: (archetype: string) => void }) {
   const { t } = useTranslation()
   const [selected, setSelected] = useState<string | null>(null)
 
   const mutation = useMutation({
     mutationFn: (archetype: string) => wizardApi.step1({ archetype }),
-    onSuccess: () => onComplete(),
+    onSuccess: (_data, archetype) => onComplete(archetype),
   })
 
   return (
@@ -28,16 +28,27 @@ export function Step1Archetype({ onComplete }: { onComplete: () => void }) {
         {t('onboarding.step1.subtitle')}
       </p>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {ARCHETYPES.map(({ value, icon: Icon, labelKey, descKey }) => {
+      <div role="radiogroup" aria-label={t('onboarding.step1.title')} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {ARCHETYPES.map(({ value, icon: Icon, labelKey, descKey }, index) => {
           const isSelected = selected === value
           return (
             <button
               key={value}
+              type="button"
+              role="radio"
+              tabIndex={isSelected || (!selected && index === 0) ? 0 : -1}
               data-testid={`archetype-${value}`}
-              aria-selected={isSelected}
+              aria-checked={isSelected}
               data-selected={isSelected || undefined}
               onClick={() => setSelected(value)}
+              onKeyDown={e => {
+                if (!['ArrowDown', 'ArrowUp'].includes(e.key)) return
+                e.preventDefault()
+                const next = e.key === 'ArrowDown'
+                  ? (index + 1) % ARCHETYPES.length
+                  : (index - 1 + ARCHETYPES.length) % ARCHETYPES.length
+                setSelected(ARCHETYPES[next].value)
+              }}
               style={{
                 display: 'flex', alignItems: 'center', gap: 14, padding: '16px 18px',
                 borderRadius: 12, cursor: 'pointer', textAlign: 'left', width: '100%',
