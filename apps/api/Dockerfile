@@ -7,12 +7,13 @@ COPY packages/validation/package.json ./packages/validation/
 RUN npm install --workspace=@ifmio/api --include-workspace-root --ignore-scripts
 COPY packages/ ./packages/
 COPY apps/api/ ./apps/api/
-RUN cd apps/api && npx prisma generate && npx tsc -p tsconfig.build.json --noEmit && npm run build
+# CI already typechecks — skip redundant tsc --noEmit to save RAM/time on deploy
+RUN cd apps/api && npx prisma generate && npm run build
 
 FROM node:20-alpine
 LABEL org.opencontainers.image.source="https://github.com/ifmio/ifmio"
 LABEL org.opencontainers.image.description="ifmio API — property management platform"
-RUN apk add --no-cache icu-libs icu-data-full wget \
+RUN apk add --no-cache icu-libs icu-data-full wget unzip \
     && addgroup -g 1001 -S ifmio && adduser -S ifmio -u 1001
 ENV NODE_ICU_DATA=/usr/share/icu
 WORKDIR /app
