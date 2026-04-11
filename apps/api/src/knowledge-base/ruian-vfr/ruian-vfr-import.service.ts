@@ -38,19 +38,19 @@ export class RuianVfrImportService {
     try {
       // 1. Download
       this.logger.log('Step 1: Downloading VFR data...')
-      const { xmlPath, dateTag } = await this.download.downloadAndExtract()
+      const { filePath, dateTag } = await this.download.downloadAndExtract()
 
       await this.prisma.kbRuianImportLog.update({
         where: { id: log.id },
-        data: { fileName: xmlPath, fileDate: new Date(`${dateTag.slice(0, 4)}-${dateTag.slice(4, 6)}-${dateTag.slice(6, 8)}`) },
+        data: { fileName: filePath, fileDate: new Date(`${dateTag.slice(0, 4)}-${dateTag.slice(4, 6)}-${dateTag.slice(6, 8)}`) },
       })
 
       // 2. Parse & import
-      this.logger.log(`Step 2: Parsing ${xmlPath}...`)
-      const isCsv = xmlPath.endsWith('.csv')
+      this.logger.log(`Step 2: Parsing ${filePath}...`)
+      const isCsv = filePath.endsWith('.csv')
       const stats = await (isCsv
-        ? this.importFromCsv(xmlPath)
-        : this.importFromXml(xmlPath))
+        ? this.importFromCsv(filePath)
+        : this.importFromXml(filePath))
 
       // 3. Update log
       const durationMs = Date.now() - startTime
