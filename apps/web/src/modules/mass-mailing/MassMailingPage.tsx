@@ -112,7 +112,7 @@ export default function MassMailingPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
         <KpiCard
           label="Kampaní celkem"
-          value={String(stats?.totalCampaigns ?? 0)}
+          value={String(stats?.total ?? 0)}
           color="var(--accent-blue)"
         />
         <KpiCard

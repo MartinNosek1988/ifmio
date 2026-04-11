@@ -3,6 +3,7 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { apiClient } from '../../core/api/client';
+import { useAuthStore } from '../../core/auth/auth.store';
 import { OAuthButtons } from '../../shared/components/OAuthButtons';
 import { AuthLayout } from './AuthLayout';
 import i18n from '../../core/i18n';
@@ -68,6 +69,8 @@ export default function LoginPage() {
     if (remember) localStorage.setItem('ifmio:remember_email', email);
     else localStorage.removeItem('ifmio:remember_email');
     if (user.language && user.language !== i18n.language) i18n.changeLanguage(user.language);
+    // Set Zustand store BEFORE navigation so AppShell sidebar has correct role
+    useAuthStore.setState({ user, isLoggedIn: true, isLoading: false, passwordExpired: !!passwordExpired });
     if (passwordExpired) navigate('/profile?tab=security&expired=1', { replace: true });
     else navigate(returnUrl, { replace: true });
   };

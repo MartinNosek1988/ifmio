@@ -315,16 +315,7 @@ export default function AppShell() {
     }
   }, [uxRole, location.pathname, navigate]);
 
-  // Wait for auth session to be restored before rendering sidebar
-  if (authLoading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-        <LoadingSpinner />
-      </div>
-    );
-  }
-
-  const visibleSections = NAV_SECTIONS
+  const visibleSections = authLoading ? [] : NAV_SECTIONS
     .filter((sec) => !sec.roles || sec.roles.includes(uxRole))
     .map((sec) => ({
       ...sec,
@@ -342,44 +333,57 @@ export default function AppShell() {
 
       <nav className={`sidebar${sidebarOpen ? ' open' : ''}`} aria-label="Hlavní navigace">
         <div className="sidebar__logo">ifmio</div>
-        {visibleSections.map((sec) => (
-          <div key={sec.title} className="sidebar__section">
-            <div className="sidebar__section-title">{sec.title}</div>
-            {sec.items.map((item) => {
-              const hasQuery = item.to.includes('?');
-              const badgeCount = item.to === '/helpdesk' ? openTicketsCount
-                : item.to === '/contracts' ? expiringContracts
-                : item.to === '/workorders' ? openWOCount : 0;
-              return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  data-testid={`sidebar-nav-${item.to.replace(/^\//, '').replace(/[/?=]/g, '-') || 'home'}`}
-                  className={({ isActive }) => {
-                    if (hasQuery) {
-                      const active = location.pathname + location.search === item.to;
-                      return `sidebar__link${active ? ' active' : ''}`;
-                    }
-                    return `sidebar__link${isActive ? ' active' : ''}`;
-                  }}
-                  end={item.to === '/dashboard' || hasQuery}
-                >
-                  {item.icon}
-                  {item.label}
-                  {badgeCount > 0 && (
-                    <span style={{
-                      marginLeft: 'auto', background: 'var(--danger, #ef4444)', color: '#fff',
-                      fontSize: '0.65rem', fontWeight: 700, borderRadius: 10,
-                      padding: '1px 6px', minWidth: 18, textAlign: 'center',
-                    }}>
-                      {badgeCount}
-                    </span>
-                  )}
-                </NavLink>
-              );
-            })}
+        {authLoading ? (
+          <div style={{ padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ height: 10, width: 64, background: 'var(--border, #e5e7eb)', borderRadius: 4, animation: 'skeleton-pulse 1.5s ease-in-out infinite' }} />
+                {[1, 2, 3].map(j => (
+                  <div key={j} style={{ height: 32, width: '100%', background: 'var(--bg-secondary, #f3f4f6)', borderRadius: 8, animation: 'skeleton-pulse 1.5s ease-in-out infinite' }} />
+                ))}
+              </div>
+            ))}
           </div>
-        ))}
+        ) : (
+          visibleSections.map((sec) => (
+            <div key={sec.title} className="sidebar__section">
+              <div className="sidebar__section-title">{sec.title}</div>
+              {sec.items.map((item) => {
+                const hasQuery = item.to.includes('?');
+                const badgeCount = item.to === '/helpdesk' ? openTicketsCount
+                  : item.to === '/contracts' ? expiringContracts
+                  : item.to === '/workorders' ? openWOCount : 0;
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    data-testid={`sidebar-nav-${item.to.replace(/^\//, '').replace(/[/?=]/g, '-') || 'home'}`}
+                    className={({ isActive }) => {
+                      if (hasQuery) {
+                        const active = location.pathname + location.search === item.to;
+                        return `sidebar__link${active ? ' active' : ''}`;
+                      }
+                      return `sidebar__link${isActive ? ' active' : ''}`;
+                    }}
+                    end={item.to === '/dashboard' || hasQuery}
+                  >
+                    {item.icon}
+                    {item.label}
+                    {badgeCount > 0 && (
+                      <span style={{
+                        marginLeft: 'auto', background: 'var(--danger, #ef4444)', color: '#fff',
+                        fontSize: '0.65rem', fontWeight: 700, borderRadius: 10,
+                        padding: '1px 6px', minWidth: 18, textAlign: 'center',
+                      }}>
+                        {badgeCount}
+                      </span>
+                    )}
+                  </NavLink>
+                );
+              })}
+            </div>
+          ))
+        )}
         <div style={{ flex: 1 }} />
         <div style={{ padding: '12px 16px', fontSize: '0.7rem', color: '#5A6578' }}>
           ifmio v1.2

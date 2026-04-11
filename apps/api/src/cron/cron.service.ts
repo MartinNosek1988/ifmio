@@ -17,6 +17,7 @@ import { PvkService } from '../pvk/pvk.service';
 import { CuzkEnrichService } from '../knowledge-base/cuzk-enrich.service';
 import { DataorService } from '../integrations/dataor/dataor.service';
 import { MassMailingService } from '../mass-mailing/mass-mailing.service';
+import { RuianVfrImportService } from '../knowledge-base/ruian-vfr/ruian-vfr-import.service';
 
 const ONE_HOUR = 60 * 60 * 1000;
 const FIVE_MIN = 5 * 60 * 1000;
@@ -40,6 +41,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
   private batchPollInterval: ReturnType<typeof setInterval> | null = null;
   private mioRetentionInterval: ReturnType<typeof setInterval> | null = null;
   private scheduledCampaignInterval: ReturnType<typeof setInterval> | null = null;
+  private ruianVfrInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private readonly config: ConfigService,
@@ -60,6 +62,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     private readonly cuzkEnrich: CuzkEnrichService,
     private readonly dataor: DataorService,
     private readonly massMailing: MassMailingService,
+    private readonly ruianVfrImport: RuianVfrImportService,
   ) {}
 
   onModuleInit() {
@@ -81,6 +84,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     this.initCuzkEnrich();
     this.initDataorImport();
     this.initScheduledCampaigns();
+    this.initRuianVfrUpdate();
   }
 
   onModuleDestroy() {
@@ -139,6 +143,10 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     if (this.scheduledCampaignInterval) {
       clearInterval(this.scheduledCampaignInterval);
       this.scheduledCampaignInterval = null;
+    }
+    if (this.ruianVfrInterval) {
+      clearInterval(this.ruianVfrInterval);
+      this.ruianVfrInterval = null;
     }
     this.logger.log('Cron intervals cleared');
   }
@@ -651,6 +659,32 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
       }
     } catch (err) {
       this.logger.error('Scheduled campaigns check FAILED', (err as Error).stack);
+    }
+  }
+
+  // ── RÚIAN VFR monthly update (2nd of month at 3:00 AM) ─────
+
+  private lastRuianVfrMonth = '';
+
+  private initRuianVfrUpdate() {
+    this.logger.log('RÚIAN VFR monthly update — checking daily at 3:00');
+    this.ruianVfrInterval = setInterval(() => this.maybeRunRuianVfrUpdate(), ONE_HOUR);
+  }
+
+  private async maybeRunRuianVfrUpdate() {
+    const now = new Date();
+    // Run on 2nd of each month at 3:00 — VFR files are published last day of previous month
+    if (now.getDate() !== 2 || now.getHours() !== 3) return;
+    const monthKey = `${now.getFullYear()}-${now.getMonth()}`;
+    if (monthKey === this.lastRuianVfrMonth) return;
+    this.lastRuianVfrMonth = monthKey;
+
+    try {
+      this.logger.log('RÚIAN VFR monthly update started');
+      const result = await this.ruianVfrImport.runFullImport();
+      this.logger.log(`RÚIAN VFR monthly update: ${result.status}`);
+    } catch (err) {
+      this.logger.error('RÚIAN VFR monthly update FAILED', (err as Error).stack);
     }
   }
 }

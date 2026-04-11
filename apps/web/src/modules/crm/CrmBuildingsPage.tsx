@@ -101,6 +101,15 @@ export default function CrmBuildingsPage() {
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; label: string } | null>(null)
   const qc = useQueryClient()
 
+  // Inline column filters
+  const colCity = searchParams.get('colCity') || ''
+  const colDistrict = searchParams.get('colDistrict') || ''
+  const colStreet = searchParams.get('colStreet') || ''
+  const colHouseNumber = searchParams.get('colHouseNumber') || ''
+  const colOrientationNumber = searchParams.get('colOrientationNumber') || ''
+  const colOrgName = searchParams.get('colOrgName') || ''
+  const colIco = searchParams.get('colIco') || ''
+
   // The most specific territory selected (for building queries)
   const activeTerritoryId = kuId || mcId || obecId || okresId || krajId
 
@@ -163,17 +172,23 @@ export default function CrmBuildingsPage() {
   // ── Buildings query ────────────────────────────────
 
   const { data: result, isLoading } = useQuery<BuildingsResponse>({
-    queryKey: ['crm-buildings', activeTerritoryId, street, houseNumber, orientationNumber, q, minQuality, maxQuality, hasOrganization, sort, order, page],
+    queryKey: ['crm-buildings', activeTerritoryId, street, houseNumber, orientationNumber, q, minQuality, maxQuality, hasOrganization, colCity, colDistrict, colStreet, colHouseNumber, colOrientationNumber, colOrgName, colIco, sort, order, page],
     queryFn: () => {
       const params: Record<string, string> = { limit: String(PAGE_SIZE), offset: String(offset) }
       if (activeTerritoryId) params.territoryId = activeTerritoryId
-      if (street) params.street = street
-      if (houseNumber) params.houseNumber = houseNumber
-      if (orientationNumber) params.orientationNumber = orientationNumber
+      // Street-level: cascade filters take precedence, column filters as fallback
+      if (street || colStreet) params.street = street || colStreet
+      if (houseNumber || colHouseNumber) params.houseNumber = houseNumber || colHouseNumber
+      if (orientationNumber || colOrientationNumber) params.orientationNumber = orientationNumber || colOrientationNumber
       if (q) params.q = q
       if (minQuality) params.minQuality = minQuality
       if (maxQuality) params.maxQuality = maxQuality
       if (hasOrganization) params.hasOrganization = hasOrganization
+      // Inline column filters (non-overlapping with cascade)
+      if (colCity) params.city = colCity
+      if (colDistrict) params.district = colDistrict
+      if (colOrgName) params.orgName = colOrgName
+      if (colIco) params.ico = colIco
       if (sort) params.sort = sort
       if (order) params.order = order
       return apiClient.get('/knowledge-base/buildings', { params }).then(r => r.data)
@@ -228,6 +243,14 @@ export default function CrmBuildingsPage() {
       for (let i = sIdx + 1; i < STREET_CASCADE.length; i++) next.delete(STREET_CASCADE[i])
     }
 
+    next.set('page', '1')
+    setSearchParams(next)
+  }
+
+  const setColFilter = (key: string, value: string) => {
+    const next = new URLSearchParams(searchParams)
+    if (value) next.set(key, value)
+    else next.delete(key)
     next.set('page', '1')
     setSearchParams(next)
   }
@@ -392,6 +415,21 @@ export default function CrmBuildingsPage() {
                       Enrichment{sortIcon('lastEnrichedAt')}
                     </th>
                     <th style={{ ...thStyle, width: 32 }}></th>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={tdStyle}></td>
+                    <td style={tdStyle}><ColumnFilter value={colCity} onChange={v => setColFilter('colCity', v)} placeholder="Město" /></td>
+                    <td style={tdStyle}><ColumnFilter value={colDistrict} onChange={v => setColFilter('colDistrict', v)} placeholder="MČ" /></td>
+                    <td style={tdStyle}></td>
+                    <td style={tdStyle}><ColumnFilter value={colStreet} onChange={v => setColFilter('colStreet', v)} placeholder="Ulice" /></td>
+                    <td style={tdStyle}><ColumnFilter value={colHouseNumber} onChange={v => setColFilter('colHouseNumber', v)} placeholder="ČP" /></td>
+                    <td style={tdStyle}><ColumnFilter value={colOrientationNumber} onChange={v => setColFilter('colOrientationNumber', v)} placeholder="ČO" /></td>
+                    <td style={tdStyle}><ColumnFilter value={colOrgName} onChange={v => setColFilter('colOrgName', v)} placeholder="Org" /></td>
+                    <td style={tdStyle}><ColumnFilter value={colIco} onChange={v => setColFilter('colIco', v)} placeholder="IČO" /></td>
+                    <td style={tdStyle}></td>
+                    <td style={tdStyle}></td>
+                    <td style={tdStyle}></td>
+                    <td style={tdStyle}></td>
                   </tr>
                 </thead>
                 <tbody>
@@ -572,6 +610,22 @@ function paginationRange(current: number, total: number): (string | number)[] {
     pages.push(1, '...', current - 1, current, current + 1, '...', total)
   }
   return pages
+}
+
+// Inline column filter input — commits on Enter or blur
+function ColumnFilter({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
+  const [local, setLocal] = useState(value)
+  useEffect(() => setLocal(value), [value])
+  return (
+    <input
+      value={local}
+      onChange={e => setLocal(e.target.value)}
+      onKeyDown={e => { if (e.key === 'Enter') onChange(local) }}
+      onBlur={() => { if (local !== value) onChange(local) }}
+      placeholder={placeholder}
+      style={{ width: '100%', padding: '3px 5px', borderRadius: 4, border: '1px solid var(--border, #d1d5db)', fontSize: '0.72rem', background: 'var(--input-bg, #fff)', boxSizing: 'border-box' }}
+    />
+  )
 }
 
 // Territory cascade select — works with TerritoryOption objects

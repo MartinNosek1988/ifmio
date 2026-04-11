@@ -12,7 +12,7 @@ import { CuzkApiKnService } from '../integrations/cuzk/cuzk-api-kn.service'
 
 export interface BulkImportJob {
   id: string
-  status: 'RUNNING' | 'PAUSED' | 'COMPLETED' | 'FAILED'
+  status: 'RUNNING' | 'PAUSED' | 'COMPLETED' | 'FAILED' | 'CANCELLED'
   step: BulkImportStep
   region: string
   district?: string
@@ -111,9 +111,11 @@ export class BulkImportService {
 
     // Fire-and-forget
     this.runImport(job, params).catch(err => {
-      job.status = 'FAILED'
-      job.error = err instanceof Error ? err.message : String(err)
-      this.logger.error(`Bulk import job ${job.id} failed: ${job.error}`)
+      if (job.status === 'RUNNING' || job.status === 'PAUSED') {
+        job.status = 'FAILED'
+        job.error = err instanceof Error ? err.message : String(err)
+      }
+      this.logger.error(`Bulk import job ${job.id} failed: ${err instanceof Error ? err.message : err}`)
     })
 
     return job
@@ -149,9 +151,22 @@ export class BulkImportService {
         cadastralCode: job.cadastralCode,
         step: job.step,
       }).catch(err => {
-        job.status = 'FAILED'
-        job.error = err instanceof Error ? err.message : String(err)
+        if (job.status === 'RUNNING' || job.status === 'PAUSED') {
+          job.status = 'FAILED'
+          job.error = err instanceof Error ? err.message : String(err)
+        }
       })
+      return true
+    }
+    return false
+  }
+
+  cancelJob(jobId: string): boolean {
+    const job = this.activeJobs.get(jobId)
+    if (job && (job.status === 'RUNNING' || job.status === 'PAUSED')) {
+      job.status = 'CANCELLED'
+      job.error = 'Zrušeno uživatelem'
+      job.completedAt = new Date()
       return true
     }
     return false
@@ -765,7 +780,6 @@ export class BulkImportService {
 
             // Step C: Geo enrichment (risks + POI)
             job.currentStep = 'Enrichment'
-            let qualityBonus = 0
             const enrichCache: Record<string, unknown> = {}
             const sources: Array<{ name: string; fetchedAt: string; status: string }> = []
             // Track RÚIAN source
@@ -774,7 +788,6 @@ export class BulkImportService {
               try {
                 const risks = await this.geoRisk.getRiskProfile(b.lat, b.lng)
                 enrichCache.risks = risks
-                qualityBonus += 5
                 sources.push({ name: 'GeoRisk', fetchedAt: new Date().toISOString(), status: 'ok' })
               } catch (err) {
                 this.logger.warn(`GeoRisk failed for ${building.id}: ${err instanceof Error ? err.message : err}`)
@@ -782,7 +795,7 @@ export class BulkImportService {
               }
               try {
                 const price = await this.iprPrice.getLandPrice(b.lat, b.lng)
-                if (price) { enrichCache.priceEstimate = price; qualityBonus += 10 }
+                if (price) { enrichCache.priceEstimate = price }
                 sources.push({ name: 'IPR', fetchedAt: new Date().toISOString(), status: price ? 'ok' : 'no_data' })
               } catch (err) {
                 this.logger.warn(`IPR price failed for ${building.id}: ${err instanceof Error ? err.message : err}`)
@@ -795,7 +808,7 @@ export class BulkImportService {
                   if (key === 'details') return Array.isArray(value) && value.length > 0
                   return typeof value === 'number' && value > 0
                 })
-                if (hasAnyPoi) { enrichCache.poi = poi; qualityBonus += 5 }
+                if (hasAnyPoi) { enrichCache.poi = poi }
                 sources.push({ name: 'Overpass', fetchedAt: new Date().toISOString(), status: hasAnyPoi ? 'ok' : 'no_data' })
               } catch (err) {
                 this.logger.warn(`POI failed for ${building.id}: ${err instanceof Error ? err.message : err}`)
@@ -808,11 +821,73 @@ export class BulkImportService {
             }
             enrichCache.sources = sources
 
-            // Step D: Justice.cz (if org found)
+            // Step D: ČÚZK — create BuildingUnit records
+            job.currentStep = 'ČÚZK'
+            if (this.cuzkApiKn.isConfigured && (b.ruianId || building.ruianAddressId)) {
+              try {
+                let stavba = building.ruianAddressId
+                  ? await this.cuzkApiKn.getStavbaByAdresniMisto(Number(building.ruianAddressId))
+                  : null
+                if (!stavba && b.ruianId) stavba = await this.cuzkApiKn.getStavbaDetail(Number(b.ruianId))
+                if (stavba?.jednotky?.length) {
+                  for (const jRef of stavba.jednotky) {
+                    try {
+                      const j = await this.cuzkApiKn.getJednotkaDetail(jRef.id)
+                      if (!j) continue
+                      const un = String(j.cisloJednotky)
+                      await this.prisma.buildingUnit.upsert({
+                        where: { buildingId_unitNumber: { buildingId: building.id, unitNumber: un } },
+                        create: {
+                          buildingId: building.id, unitNumber: un,
+                          unitType: j.zpusobVyuziti?.nazev?.includes('byt') ? 'APARTMENT' : 'NON_RESIDENTIAL',
+                          usage: j.zpusobVyuziti?.nazev,
+                          shareNumerator: j.podilNaSpolecnychCastechDomu?.citatel,
+                          shareDenominator: j.podilNaSpolecnychCastechDomu?.jmenovatel,
+                          lvNumber: j.lv?.cislo?.toString(),
+                          cuzkStavbaId: stavba!.id,
+                        },
+                        update: {
+                          unitType: j.zpusobVyuziti?.nazev?.includes('byt') ? 'APARTMENT' : 'NON_RESIDENTIAL',
+                          usage: j.zpusobVyuziti?.nazev,
+                          shareNumerator: j.podilNaSpolecnychCastechDomu?.citatel,
+                          shareDenominator: j.podilNaSpolecnychCastechDomu?.jmenovatel,
+                          lvNumber: j.lv?.cislo?.toString(),
+                          cuzkStavbaId: stavba!.id,
+                        },
+                      })
+                    } catch { /* skip individual unit errors */ }
+                  }
+                  enrichCache.cuzkUnitsCount = stavba.jednotky.length
+                  if (stavba.lv) {
+                    await this.prisma.building.update({
+                      where: { id: building.id },
+                      data: {
+                        landRegistrySheet: stavba.lv.cislo?.toString(),
+                        cadastralTerritoryCode: stavba.lv.katastralniUzemi?.kod?.toString(),
+                        cadastralTerritoryName: stavba.lv.katastralniUzemi?.nazev,
+                      },
+                    })
+                  }
+                  sources.push({ name: 'ČÚZK API', fetchedAt: new Date().toISOString(), status: 'ok' })
+                } else {
+                  sources.push({ name: 'ČÚZK API', fetchedAt: new Date().toISOString(), status: stavba ? 'no_units' : 'no_data' })
+                }
+              } catch (err) {
+                this.logger.warn(`ČÚZK failed for ${building.id}: ${err instanceof Error ? err.message : err}`)
+                sources.push({ name: 'ČÚZK API', fetchedAt: new Date().toISOString(), status: 'error' })
+              }
+              await this.delay(500) // ČÚZK rate limit
+            }
+
+            // Step E: Justice.cz (if org found)
             job.currentStep = 'Justice'
             const updatedBuilding = await this.prisma.building.findUnique({
               where: { id: building.id },
-              select: { managingOrgId: true, dataQualityScore: true },
+              select: {
+                managingOrgId: true, lat: true, lng: true,
+                houseNumber: true, numberOfFloors: true, numberOfUnits: true,
+                builtUpArea: true, ruianAddressId: true, cadastralTerritoryName: true,
+              },
             })
             if (updatedBuilding?.managingOrgId) {
               try {
@@ -831,8 +906,25 @@ export class BulkImportService {
               await this.delay(1000) // Justice rate limit
             }
 
-            // Update quality score + cache enrichment data
-            const finalScore = Math.min((updatedBuilding?.dataQualityScore || 30) + qualityBonus, 100)
+            // Update quality score — component-based (aligned with fullReEnrich)
+            const bData = updatedBuilding
+            let score = 0
+            if (bData?.lat && bData?.lng) score += 5
+            if (bData?.houseNumber) score += 5
+            if (bData?.numberOfFloors) score += 3
+            if (bData?.numberOfUnits) score += 3
+            if (bData?.builtUpArea) score += 2
+            if (bData?.ruianAddressId) score += 3
+            if (bData?.cadastralTerritoryName) score += 2
+            if (bData?.managingOrgId) score += 10
+            if (enrichCache.cuzkUnitsCount) score += 10
+            if (enrichCache.risks) score += 5
+            if (enrichCache.poi) score += 5
+            if (enrichCache.priceEstimate) score += 5
+            if (sources.some(s => s.name === 'ARES' && s.status === 'ok')) score += 5
+            if (sources.some(s => s.name === 'Justice.cz' && s.status === 'ok')) score += 10
+            const finalScore = Math.min(score, 100)
+
             await this.prisma.building.update({
               where: { id: building.id },
               data: {

@@ -36,6 +36,7 @@ export default function CrmImportPage() {
   const isPaused = fullJob?.status === 'PAUSED'
   const isCompleted = fullJob?.status === 'COMPLETED'
   const isFailed = fullJob?.status === 'FAILED'
+  const isCancelled = fullJob?.status === 'CANCELLED'
   const pct = fullJob && fullJob.totalEstimated > 0 ? Math.round((fullJob.processed / fullJob.totalEstimated) * 100) : 0
 
   const startMut = useMutation({
@@ -48,6 +49,10 @@ export default function CrmImportPage() {
   })
   const resumeMut = useMutation({
     mutationFn: (id: string) => apiClient.post(`/knowledge-base/bulk-import/${id}/resume`).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['crm-import-jobs'] }),
+  })
+  const cancelMut = useMutation({
+    mutationFn: (id: string) => apiClient.post(`/knowledge-base/bulk-import/${id}/cancel`).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['crm-import-jobs'] }),
   })
 
@@ -65,7 +70,13 @@ export default function CrmImportPage() {
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
-          <select value={district} onChange={e => setDistrict(e.target.value)} style={inputStyle} disabled={isRunning}>
+          <select value={district} onChange={e => {
+            const prev = district
+            setDistrict(e.target.value)
+            if (prev !== e.target.value && fullJob && (fullJob.status === 'RUNNING' || fullJob.status === 'PAUSED')) {
+              cancelMut.mutate(fullJob.id)
+            }
+          }} style={inputStyle}>
             <option value="">Všechny městské části</option>
             {PRAHA_DISTRICTS.filter(Boolean).map(d => <option key={d} value={d}>{d}</option>)}
           </select>
@@ -76,6 +87,7 @@ export default function CrmImportPage() {
           )}
           {isRunning && <button style={btnSmall} onClick={() => pauseMut.mutate(fullJob!.id)}><Pause size={14} /> Pozastavit</button>}
           {isPaused && <button style={btnSmall} onClick={() => resumeMut.mutate(fullJob!.id)}><Play size={14} /> Pokračovat</button>}
+          {(isRunning || isPaused) && <button style={{ ...btnSmall, color: 'var(--danger, #dc2626)', borderColor: 'var(--danger, #dc2626)' }} onClick={() => cancelMut.mutate(fullJob!.id)}>Zrušit</button>}
         </div>
 
         {fullJob && (
@@ -90,7 +102,7 @@ export default function CrmImportPage() {
             <div style={{ height: 10, background: '#e5e7eb', borderRadius: 5, overflow: 'hidden', marginBottom: 8 }}>
               <div style={{
                 height: '100%', width: `${pct}%`, borderRadius: 5, transition: 'width 0.5s',
-                background: isRunning ? 'var(--primary)' : isPaused ? 'var(--warning)' : isFailed ? 'var(--danger)' : 'var(--success)',
+                background: isRunning ? 'var(--primary)' : isPaused ? 'var(--warning)' : (isFailed || isCancelled) ? 'var(--danger)' : 'var(--success)',
               }} />
             </div>
 
@@ -102,6 +114,7 @@ export default function CrmImportPage() {
             </div>
 
             {isFailed && fullJob.error && <div style={{ marginTop: 8, fontSize: '0.78rem', color: 'var(--danger)' }}>{fullJob.error}</div>}
+            {isCancelled && <div style={{ marginTop: 8, fontSize: '0.78rem', color: 'var(--warning, #d97706)', fontWeight: 600 }}>Import zrušen uživatelem</div>}
             {isCompleted && (
               <div style={{ marginTop: 8, fontSize: '0.82rem', color: 'var(--success)', fontWeight: 600 }}>
                 <CheckCircle2 size={14} style={{ verticalAlign: -2, marginRight: 4 }} /> Import dokončen
