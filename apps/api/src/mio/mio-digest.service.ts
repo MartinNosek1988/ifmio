@@ -600,14 +600,14 @@ export class MioDigestService {
     // Quick links
     const links = frontendUrl ? `
       <div style="margin:20px 0;display:flex;gap:8px;flex-wrap:wrap;">
-        <a href="${encodeURI(frontendUrl)}/mio/insights" style="display:inline-block;background:#6366f1;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;font-size:0.85rem;">Otevřít Mio Insights</a>
+        <a href="${encodeURI(frontendUrl)}/mio/insights" style="display:inline-block;background:#0D9488;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;font-size:0.85rem;">Otevřít Mio Insights</a>
         <a href="${encodeURI(frontendUrl)}/helpdesk" style="display:inline-block;background:#f3f4f6;color:#374151;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;font-size:0.85rem;">Helpdesk</a>
         <a href="${encodeURI(frontendUrl)}/reporting/operations" style="display:inline-block;background:#f3f4f6;color:#374151;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;font-size:0.85rem;">Reporting</a>
       </div>` : ''
 
     return `<!DOCTYPE html><html lang="cs"><head><meta charset="UTF-8"></head>
 <body style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#374151;">
-  <div style="background:#1e1b4b;padding:20px 24px;border-radius:8px 8px 0 0;">
+  <div style="background:#0D9488;padding:20px 24px;border-radius:8px 8px 0 0;">
     <h1 style="color:#fff;margin:0;font-size:20px;">${esc(tenantName)}</h1>
   </div>
   <div style="border:1px solid #e5e7eb;border-top:none;padding:32px;border-radius:0 0 8px 8px;">

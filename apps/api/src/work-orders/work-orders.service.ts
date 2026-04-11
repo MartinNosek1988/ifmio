@@ -571,25 +571,23 @@ export class WorkOrdersService {
     const assetLine = wo.asset?.name ? `<tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Zařízení</td><td style="padding:4px 0;">${esc(wo.asset.name)}</td></tr>` : ''
     const heading = event === 'create' ? 'Nový pracovní úkol' : 'Změna pracovního úkolu'
 
-    const html = `<!DOCTYPE html><html lang="cs"><head><meta charset="UTF-8"></head>
-<body style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#374151;">
-  <div style="background:#1e1b4b;padding:20px 24px;border-radius:8px 8px 0 0;"><h1 style="color:#fff;margin:0;font-size:20px;">ifmio</h1></div>
-  <div style="border:1px solid #e5e7eb;border-top:none;padding:32px;border-radius:0 0 8px 8px;">
-    <h2 style="color:#111827;margin-top:0;">${esc(heading)}</h2>
-    <p style="font-size:1.1rem;font-weight:600;">${esc(title)}</p>
-    <table style="font-size:0.9rem;margin:16px 0;">
-      <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Stav</td><td>${esc(STATUS_LABELS[wo.status] ?? wo.status)}</td></tr>
-      <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Priorita</td><td>${esc(PRIORITY_LABELS[wo.priority] ?? wo.priority)}</td></tr>
-      <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Termín</td><td>${esc(wo.deadline ? new Date(wo.deadline).toLocaleDateString('cs-CZ') : '—')}</td></tr>
-      ${assetLine}${ticketLine}
-      <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Dispečer</td><td>${esc(wo.dispatcherUser?.name ?? '—')}</td></tr>
-      <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Řešitel</td><td>${esc(wo.assigneeUser?.name ?? wo.assignee ?? '—')}</td></tr>
-    </table>
-    ${changesHtml}
-    ${woUrl ? `<a href="${encodeURI(woUrl)}" style="display:inline-block;background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;margin:16px 0;">Otevřít úkol</a>` : ''}
-    <p style="color:#6b7280;font-size:12px;margin-top:32px;border-top:1px solid #f3f4f6;padding-top:16px;">Tento email byl odeslán systémem ifmio.</p>
-  </div>
-</body></html>`
+    const { emailLayout, emailHeading, emailText, emailButton, emailDetailTable } = require('../email/email-templates')
+    const details = [
+      { label: 'Stav', value: esc(STATUS_LABELS[wo.status] ?? wo.status) },
+      { label: 'Priorita', value: esc(PRIORITY_LABELS[wo.priority] ?? wo.priority) },
+      { label: 'Termín', value: esc(wo.deadline ? new Date(wo.deadline).toLocaleDateString('cs-CZ') : '—') },
+      ...(wo.asset?.name ? [{ label: 'Zařízení', value: esc(wo.asset.name) }] : []),
+      ...(wo.helpdeskTicket ? [{ label: 'Požadavek', value: `HD-${String(wo.helpdeskTicket.number).padStart(4, '0')} ${esc(wo.helpdeskTicket.title)}` }] : []),
+      { label: 'Dispečer', value: esc(wo.dispatcherUser?.name ?? '—') },
+      { label: 'Řešitel', value: esc(wo.assigneeUser?.name ?? wo.assignee ?? '—') },
+    ]
+    const html = emailLayout(`
+  ${emailHeading(esc(heading))}
+  ${emailText(`<strong>${esc(title)}</strong>`)}
+  ${emailDetailTable(details)}
+  ${changesHtml}
+  ${woUrl ? emailButton('Otevřít úkol', encodeURI(woUrl)) : ''}
+`)
 
     for (const addr of emails) {
       try { await this.email.send({ to: addr, subject, html }) }

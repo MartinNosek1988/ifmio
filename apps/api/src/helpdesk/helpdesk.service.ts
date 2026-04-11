@@ -888,43 +888,23 @@ export class HelpdeskService {
       ? `<tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Zařízení</td><td style="padding:4px 0;">${esc(ticket.asset.name)}</td></tr>`
       : ''
 
-    return `
-<!DOCTYPE html>
-<html lang="cs">
-<head><meta charset="UTF-8"><title>${esc(heading)}: ${esc(num)}</title></head>
-<body style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#374151;">
-  <div style="background:#1e1b4b;padding:20px 24px;border-radius:8px 8px 0 0;">
-    <h1 style="color:#fff;margin:0;font-size:20px;">ifmio</h1>
-  </div>
-  <div style="border:1px solid #e5e7eb;border-top:none;padding:32px;border-radius:0 0 8px 8px;">
-    <h2 style="color:#111827;margin-top:0;">${esc(heading)}: ${esc(num)}</h2>
-    <p style="font-size:1.1rem;font-weight:600;">${esc(ticket.title)}</p>
-
-    <table style="font-size:0.9rem;margin:16px 0;">
-      <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Stav</td><td style="padding:4px 0;">${esc(statusLabel)}</td></tr>
-      <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Priorita</td><td style="padding:4px 0;">${esc(priorityLabel)}</td></tr>
-      <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Datum zadání</td><td style="padding:4px 0;">${esc(createdDate)} ${esc(createdTime)}</td></tr>
-      <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Vyřešit do</td><td style="padding:4px 0;">${esc(deadline)}</td></tr>
-      ${assetLine}
-      <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Zadavatel</td><td style="padding:4px 0;">${esc(ticket.requester?.name ?? '—')}</td></tr>
-      <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Dispečer</td><td style="padding:4px 0;">${esc(ticket.dispatcher?.name ?? '—')}</td></tr>
-      <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Řešitel</td><td style="padding:4px 0;">${esc(ticket.assignee?.name ?? '—')}</td></tr>
-    </table>
-
-    ${changesHtml}
-
-    ${ticketUrl ? `<a href="${encodeURI(ticketUrl)}"
-       style="display:inline-block;background:#6366f1;color:#fff;
-              padding:12px 24px;border-radius:6px;text-decoration:none;
-              font-weight:600;margin:16px 0;">
-      Otevřít požadavek
-    </a>` : ''}
-
-    <p style="color:#6b7280;font-size:12px;margin-top:32px;border-top:1px solid #f3f4f6;padding-top:16px;">
-      Tento email byl odeslán systémem ifmio. Neodpovídejte na něj.
-    </p>
-  </div>
-</body>
-</html>`
+    const { emailLayout, emailHeading, emailText, emailButton, emailDetailTable } = require('../email/email-templates')
+    const details = [
+      { label: 'Stav', value: esc(statusLabel) },
+      { label: 'Priorita', value: esc(priorityLabel) },
+      { label: 'Datum zadání', value: `${esc(createdDate)} ${esc(createdTime)}` },
+      { label: 'Vyřešit do', value: esc(deadline) },
+      ...(ticket.asset?.name ? [{ label: 'Zařízení', value: esc(ticket.asset.name) }] : []),
+      { label: 'Zadavatel', value: esc(ticket.requester?.name ?? '—') },
+      { label: 'Dispečer', value: esc(ticket.dispatcher?.name ?? '—') },
+      { label: 'Řešitel', value: esc(ticket.assignee?.name ?? '—') },
+    ]
+    return emailLayout(`
+  ${emailHeading(`${esc(heading)}: ${esc(num)}`)}
+  ${emailText(`<strong>${esc(ticket.title)}</strong>`)}
+  ${emailDetailTable(details)}
+  ${changesHtml}
+  ${ticketUrl ? emailButton('Otevřít požadavek', encodeURI(ticketUrl)) : ''}
+`)
   }
 }
