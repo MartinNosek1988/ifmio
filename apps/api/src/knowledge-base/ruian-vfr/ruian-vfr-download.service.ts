@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { createWriteStream, existsSync, mkdirSync, createReadStream } from 'fs'
+import { createWriteStream, existsSync, mkdirSync, createReadStream, readdirSync, renameSync } from 'fs'
 import { join } from 'path'
 import { pipeline } from 'stream/promises'
 import { createUnzip } from 'zlib'
@@ -16,6 +16,11 @@ const VFR_ARCHIVE_CSV = 'https://services.cuzk.gov.cz/vfr/ruian/epsg5514/ad-csv'
 // Source 3: Per-obec CSV z nahlizenidokn.cuzk.cz (fallback — vždy funguje)
 const NAHLIDNI_CSV = 'https://nahlizenidokn.cuzk.cz/StahniAdresniMistaRUIAN.aspx'
 
+export interface VfrDownloadResult {
+  filePath: string
+  dateTag: string
+}
+
 @Injectable()
 export class RuianVfrDownloadService {
   private readonly logger = new Logger(RuianVfrDownloadService.name)
@@ -30,7 +35,7 @@ export class RuianVfrDownloadService {
   }
 
   /** Download VFR data — tries 3 sources in order */
-  async downloadAndExtract(): Promise<{ xmlPath: string; zipPath: string; dateTag: string }> {
+  async downloadAndExtract(): Promise<VfrDownloadResult> {
     if (!existsSync(VFR_DIR)) mkdirSync(VFR_DIR, { recursive: true })
     const dateTag = this.getDateTag()
 
@@ -55,16 +60,19 @@ export class RuianVfrDownloadService {
     return this.tryNahlidniCsv(dateTag)
   }
 
-  /** Source 1: VFR speciální XML — ST_UADS */
-  private async tryVfrXml(dateTag: string): Promise<{ xmlPath: string; zipPath: string; dateTag: string } | null> {
-    const zipPath = join(VFR_DIR, `${dateTag}_ST_UADS.xml.zip`)
-    const xmlPath = join(VFR_DIR, `${dateTag}_ST_UADS.xml`)
+  /** Source 1: VFR speciální XML — ST_UADS. Extracts into per-date subdir. */
+  private async tryVfrXml(dateTag: string): Promise<VfrDownloadResult | null> {
+    const extractDir = join(VFR_DIR, `xml_${dateTag}`)
+    const expectedXml = join(extractDir, `${dateTag}_ST_UADS.xml`)
 
-    if (existsSync(xmlPath)) {
-      this.logger.log(`VFR XML already exists: ${xmlPath}`)
-      return { xmlPath, zipPath, dateTag }
+    if (existsSync(expectedXml)) {
+      this.logger.log(`VFR XML already exists: ${expectedXml}`)
+      return { filePath: expectedXml, dateTag }
     }
 
+    if (!existsSync(extractDir)) mkdirSync(extractDir, { recursive: true })
+
+    const zipPath = join(VFR_DIR, `${dateTag}_ST_UADS.xml.zip`)
     const url = `${VFR_SPECIAL_BASE}/${dateTag}_ST_UADS`
     this.logger.log(`Source 1: downloading VFR XML from ${url}`)
 
@@ -75,33 +83,32 @@ export class RuianVfrDownloadService {
     await this.streamToFile(res.body, zipPath)
     this.logger.log(`VFR ZIP downloaded: ${zipPath}`)
 
-    await this.extractZip(zipPath, VFR_DIR)
+    await this.extractZip(zipPath, extractDir)
 
-    // Find the extracted XML
-    const { readdirSync } = await import('fs')
-    const xmlFiles = readdirSync(VFR_DIR).filter(f => f.endsWith('.xml') && f.includes('UADS'))
+    // Find extracted XML — scoped to per-date dir, filter by dateTag
+    const xmlFiles = readdirSync(extractDir).filter(f => f.endsWith('.xml') && f.includes(dateTag))
     if (xmlFiles.length > 0) {
-      const extracted = join(VFR_DIR, xmlFiles[0])
+      const extracted = join(extractDir, xmlFiles[0])
       this.logger.log(`VFR XML extracted: ${extracted}`)
-      return { xmlPath: extracted, zipPath, dateTag }
+      return { filePath: extracted, dateTag }
     }
 
-    if (existsSync(xmlPath)) return { xmlPath, zipPath, dateTag }
     throw new Error('ZIP extracted but no XML found')
   }
 
   /** Source 2: VFR archiv CSV — services.cuzk.gov.cz/vfr/ruian/epsg5514/ad-csv/ */
-  private async tryArchiveCsv(dateTag: string): Promise<{ xmlPath: string; zipPath: string; dateTag: string } | null> {
-    const csvPath = join(VFR_DIR, `${dateTag}_archive_adresy.csv`)
-    if (existsSync(csvPath)) {
-      this.logger.log(`Archive CSV already exists: ${csvPath}`)
-      return { xmlPath: csvPath, zipPath: '', dateTag }
+  private async tryArchiveCsv(dateTag: string): Promise<VfrDownloadResult | null> {
+    const canonicalPath = join(VFR_DIR, `${dateTag}_archive_adresy.csv`)
+    if (existsSync(canonicalPath)) {
+      this.logger.log(`Archive CSV already exists: ${canonicalPath}`)
+      return { filePath: canonicalPath, dateTag }
     }
 
-    // Try date-tagged ZIP first, then try listing the directory
-    const zipName = `${dateTag}_ST_UADR.csv.zip`
+    const extractDir = join(VFR_DIR, `csv_${dateTag}`)
+    if (!existsSync(extractDir)) mkdirSync(extractDir, { recursive: true })
+
     const urls = [
-      `${VFR_ARCHIVE_CSV}/${zipName}`,
+      `${VFR_ARCHIVE_CSV}/${dateTag}_ST_UADR.csv.zip`,
       `${VFR_ARCHIVE_CSV}/${dateTag}_AD.csv.zip`,
     ]
 
@@ -114,14 +121,15 @@ export class RuianVfrDownloadService {
 
         const zipPath = join(VFR_DIR, `archive_${dateTag}.zip`)
         await this.streamToFile(res.body, zipPath)
-        await this.extractZip(zipPath, VFR_DIR)
+        await this.extractZip(zipPath, extractDir)
 
-        const { readdirSync } = await import('fs')
-        const csvFiles = readdirSync(VFR_DIR).filter(f => f.endsWith('.csv'))
+        const csvFiles = readdirSync(extractDir).filter(f => f.endsWith('.csv'))
         if (csvFiles.length > 0) {
-          const extracted = join(VFR_DIR, csvFiles[0])
-          this.logger.log(`Archive CSV extracted: ${extracted}`)
-          return { xmlPath: extracted, zipPath, dateTag }
+          const extracted = join(extractDir, csvFiles[0])
+          // Rename to canonical path for cache hit on next run
+          renameSync(extracted, canonicalPath)
+          this.logger.log(`Archive CSV extracted and cached: ${canonicalPath}`)
+          return { filePath: canonicalPath, dateTag }
         }
       } catch {
         continue
@@ -132,11 +140,11 @@ export class RuianVfrDownloadService {
   }
 
   /** Source 3: nahlizenidokn.cuzk.cz — per-obec CSV (always available) */
-  private async tryNahlidniCsv(dateTag: string): Promise<{ xmlPath: string; zipPath: string; dateTag: string }> {
+  private async tryNahlidniCsv(dateTag: string): Promise<VfrDownloadResult> {
     const csvPath = join(VFR_DIR, `${dateTag}_nahlidni_adresy.csv`)
     if (existsSync(csvPath)) {
       this.logger.log(`Nahlidni CSV already exists: ${csvPath}`)
-      return { xmlPath: csvPath, zipPath: '', dateTag }
+      return { filePath: csvPath, dateTag }
     }
 
     this.logger.log(`Source 3: downloading from ${NAHLIDNI_CSV}`)
@@ -144,26 +152,43 @@ export class RuianVfrDownloadService {
     if (!res.ok) throw new Error(`Nahlidni download failed: HTTP ${res.status}`)
     if (!res.body) throw new Error('Empty response body')
 
-    // Check content type — might be ZIP or direct CSV
     const contentType = res.headers.get('content-type') || ''
+
     if (contentType.includes('zip') || contentType.includes('octet-stream')) {
+      const extractDir = join(VFR_DIR, `nahlidni_${dateTag}`)
+      if (!existsSync(extractDir)) mkdirSync(extractDir, { recursive: true })
+
       const zipPath = join(VFR_DIR, `nahlidni_${dateTag}.zip`)
       await this.streamToFile(res.body, zipPath)
-      await this.extractZip(zipPath, VFR_DIR)
+      await this.extractZip(zipPath, extractDir)
 
-      const { readdirSync } = await import('fs')
-      const csvFiles = readdirSync(VFR_DIR).filter(f => f.endsWith('.csv'))
+      const csvFiles = readdirSync(extractDir).filter(f => f.endsWith('.csv'))
       if (csvFiles.length === 0) throw new Error('No CSV files found after extraction')
 
-      const extracted = join(VFR_DIR, csvFiles[0])
-      this.logger.log(`Nahlidni CSV extracted: ${extracted}`)
-      return { xmlPath: extracted, zipPath, dateTag }
+      const extracted = join(extractDir, csvFiles[0])
+      renameSync(extracted, csvPath)
+      this.logger.log(`Nahlidni CSV extracted and cached: ${csvPath}`)
+      return { filePath: csvPath, dateTag }
     }
 
-    // Direct CSV response
+    // Direct CSV or HTML response — validate content
+    if (contentType.includes('html')) {
+      throw new Error(`Nahlidni returned HTML instead of CSV (content-type: ${contentType})`)
+    }
+
     await this.streamToFile(res.body, csvPath)
+
+    // Sanity check: first line should contain CSV-like headers
+    const { readFileSync } = await import('fs')
+    const firstLine = readFileSync(csvPath, 'utf-8').split('\n')[0] || ''
+    if (!firstLine.includes(';') && !firstLine.includes(',')) {
+      const { unlinkSync } = await import('fs')
+      unlinkSync(csvPath)
+      throw new Error(`Downloaded file is not CSV (first line: ${firstLine.slice(0, 100)})`)
+    }
+
     this.logger.log(`Nahlidni CSV downloaded: ${csvPath}`)
-    return { xmlPath: csvPath, zipPath: '', dateTag }
+    return { filePath: csvPath, dateTag }
   }
 
   /** Stream response body to file */
