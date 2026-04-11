@@ -543,7 +543,7 @@ function AuditTab() {
 const PHASE_LABELS: Record<string, string> = {
   idle: 'Připraveno',
   downloading: 'Stahování VFR dat...',
-  parsing: 'Parsování XML...',
+  parsing: 'Parsování souboru...',
   flushing_obce: 'Ukládání obcí...',
   flushing_ulice: 'Ukládání ulic...',
   flushing_adresy: 'Ukládání adresních míst...',
@@ -557,7 +557,7 @@ function RuianImportTab() {
   const { data: status } = useQuery({
     queryKey: ['super-admin', 'ruian-status'],
     queryFn: () => apiClient.get('/knowledge-base/admin/ruian-vfr/status').then(r => r.data),
-    refetchInterval: (query) => query.state.data?.progress?.isRunning ? 3000 : 30000,
+    refetchInterval: (query) => query.state.data?.progress?.isRunning ? 15000 : 30000,
   })
 
   const startMut = useMutation({
@@ -654,7 +654,7 @@ function RuianImportTab() {
             </div>
             <div>
               <div style={{ color: '#6b7280', fontSize: '.72rem' }}>Datum souboru</div>
-              <div style={{ color: '#d1d5db' }}>{lastImport.fileDate ? new Date(lastImport.fileDate).toLocaleDateString('cs') : '—'}</div>
+              <div style={{ color: '#d1d5db' }}>{lastImport.fileDate ? new Date(lastImport.fileDate).toLocaleDateString('cs-CZ') : '—'}</div>
             </div>
           </div>
         )}

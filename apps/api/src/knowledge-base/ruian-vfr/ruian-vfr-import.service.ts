@@ -43,11 +43,11 @@ export class RuianVfrImportService {
   private updateProgress(partial: Partial<ImportProgress>) {
     Object.assign(this.progress, partial)
     // Recalculate percent and ETA
+    const isCompleted = this.progress.phase === 'completed'
+      || (this.progress.totalEstimated > 0 && this.progress.recordsFlushed >= this.progress.totalEstimated)
     if (this.progress.totalEstimated > 0) {
-      this.progress.progressPercent = Math.min(
-        Math.round((this.progress.recordsFlushed / this.progress.totalEstimated) * 100),
-        99, // never show 100% until truly done
-      )
+      const calculated = Math.round((this.progress.recordsFlushed / this.progress.totalEstimated) * 100)
+      this.progress.progressPercent = isCompleted ? 100 : Math.min(calculated, 99)
     }
     if (this.progress.startedAt && this.progress.recordsFlushed > 0) {
       const elapsed = (Date.now() - this.progress.startedAt) / 1000
@@ -165,7 +165,7 @@ export class RuianVfrImportService {
         await this.prisma.kbRuianImportLog.update({
           where: { id: logId },
           data: { recordsTotal: stats.total, recordsInserted: stats.inserted },
-        }).catch(() => {})
+        }).catch(err => this.logger.warn(`Failed to persist import progress: ${err instanceof Error ? err.message : err}`))
       }
     }
 
@@ -212,7 +212,7 @@ export class RuianVfrImportService {
         await this.prisma.kbRuianImportLog.update({
           where: { id: logId },
           data: { recordsTotal: stats.total, recordsInserted: stats.inserted },
-        }).catch(() => {})
+        }).catch(err => this.logger.warn(`Failed to persist import progress: ${err instanceof Error ? err.message : err}`))
       }
     }
 
