@@ -7,14 +7,10 @@ import { tmpdir } from 'os'
 
 const VFR_DIR = join(tmpdir(), 'vfr')
 
-// Source 1: VFR speciální — kompletní adresní místa celé ČR (~300 MB ZIP)
-const VFR_SPECIAL_BASE = 'https://vdp.cuzk.gov.cz/vdp/ruian/vymennyformatspecialni/stahni'
-
-// Source 2: VFR archiv na services.cuzk.gov.cz — CSV adresní místa
-const VFR_ARCHIVE_CSV = 'https://services.cuzk.gov.cz/vfr/ruian/epsg5514/ad-csv'
-
-// Source 3: Per-obec CSV z nahlizenidokn.cuzk.cz (fallback — vždy funguje)
-const NAHLIDNI_CSV = 'https://nahlizenidokn.cuzk.cz/StahniAdresniMistaRUIAN.aspx'
+// VFR archive — monthly state files on services.cuzk.gov.cz
+// Structure: /vfr/{YYYYMM}/{dateTag}_ST_UADS.xml.zip
+// dateTag is typically 3rd day of month (e.g. 20260203)
+const VFR_ARCHIVE_BASE = 'https://services.cuzk.gov.cz/vfr'
 
 export interface VfrDownloadResult {
   filePath: string
@@ -25,67 +21,84 @@ export interface VfrDownloadResult {
 export class RuianVfrDownloadService {
   private readonly logger = new Logger(RuianVfrDownloadService.name)
 
-  /** Compute dateTag = last day of previous month, YYYYMMDD */
-  getDateTag(now = new Date()): string {
-    const d = new Date(now.getFullYear(), now.getMonth(), 0) // day 0 = last day of prev month
-    const yyyy = d.getFullYear()
-    const mm = String(d.getMonth() + 1).padStart(2, '0')
-    const dd = String(d.getDate()).padStart(2, '0')
-    return `${yyyy}${mm}${dd}`
+  /** Get YYYYMM for the latest available month (previous month) */
+  getMonthDir(now = new Date()): string {
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const yyyy = prev.getFullYear()
+    const mm = String(prev.getMonth() + 1).padStart(2, '0')
+    return `${yyyy}${mm}`
   }
 
-  /** Download VFR data — tries 3 sources in order */
+  /** Download ST_UADS VFR XML from services.cuzk.gov.cz/vfr/ archive */
   async downloadAndExtract(): Promise<VfrDownloadResult> {
     if (!existsSync(VFR_DIR)) mkdirSync(VFR_DIR, { recursive: true })
-    const dateTag = this.getDateTag()
 
-    // Source 1: VFR XML speciální (ST_UADS)
-    try {
-      const result = await this.tryVfrXml(dateTag)
-      if (result) return result
-    } catch (err) {
-      this.logger.warn(`Source 1 (VFR XML) failed: ${err instanceof Error ? err.message : err}`)
+    const monthDir = this.getMonthDir()
+
+    // Try current month first, then previous month (file may be published late)
+    const now = new Date()
+    const currMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`
+    const months = [monthDir]
+    if (currMonth !== monthDir) months.unshift(currMonth)
+
+    for (const month of months) {
+      try {
+        const result = await this.tryMonth(month)
+        if (result) return result
+      } catch (err) {
+        this.logger.warn(`Month ${month} failed: ${err instanceof Error ? err.message : err}`)
+      }
     }
 
-    // Source 2: VFR archiv CSV (services.cuzk.gov.cz)
-    try {
-      const result = await this.tryArchiveCsv(dateTag)
-      if (result) return result
-    } catch (err) {
-      this.logger.warn(`Source 2 (Archive CSV) failed: ${err instanceof Error ? err.message : err}`)
-    }
-
-    // Source 3: Per-obec CSV z nahlizenidokn.cuzk.cz (always works)
-    this.logger.log('Trying Source 3: nahlizenidokn.cuzk.cz CSV')
-    return this.tryNahlidniCsv(dateTag)
+    throw new Error(`No ST_UADS file found for months: ${months.join(', ')}`)
   }
 
-  /** Source 1: VFR speciální XML — ST_UADS. Extracts into per-date subdir. */
-  private async tryVfrXml(dateTag: string): Promise<VfrDownloadResult | null> {
-    const extractDir = join(VFR_DIR, `xml_${dateTag}`)
-    const expectedXml = join(extractDir, `${dateTag}_ST_UADS.xml`)
+  /** Try to download ST_UADS from a specific month's directory */
+  private async tryMonth(month: string): Promise<VfrDownloadResult | null> {
+    const dirUrl = `${VFR_ARCHIVE_BASE}/${month}/`
+    this.logger.log(`Checking VFR directory: ${dirUrl}`)
 
-    if (existsSync(expectedXml)) {
-      this.logger.log(`VFR XML already exists: ${expectedXml}`)
-      return { filePath: expectedXml, dateTag }
+    // Fetch directory listing and find ST_UADS filename
+    const dirRes = await fetch(dirUrl)
+    if (!dirRes.ok) throw new Error(`Directory listing HTTP ${dirRes.status}`)
+    const html = await dirRes.text()
+
+    // Parse filename from directory listing: 20260203_ST_UADS.xml.zip
+    const match = html.match(/href="([^"]*_ST_UADS\.xml\.zip)"/i)
+    if (!match) {
+      this.logger.warn(`No ST_UADS file found in ${dirUrl}`)
+      return null
+    }
+
+    const zipFileName = match[1]
+    const dateTag = zipFileName.replace('_ST_UADS.xml.zip', '')
+    const extractDir = join(VFR_DIR, `xml_${dateTag}`)
+    const canonicalXml = join(extractDir, `${dateTag}_ST_UADS.xml`)
+
+    // Cache check
+    if (existsSync(canonicalXml)) {
+      this.logger.log(`VFR XML already cached: ${canonicalXml}`)
+      return { filePath: canonicalXml, dateTag }
     }
 
     if (!existsSync(extractDir)) mkdirSync(extractDir, { recursive: true })
 
-    const zipPath = join(VFR_DIR, `${dateTag}_ST_UADS.xml.zip`)
-    const url = `${VFR_SPECIAL_BASE}/${dateTag}_ST_UADS`
-    this.logger.log(`Source 1: downloading VFR XML from ${url}`)
+    // Download
+    const zipUrl = `${VFR_ARCHIVE_BASE}/${month}/${zipFileName}`
+    const zipPath = join(VFR_DIR, zipFileName)
+    this.logger.log(`Downloading VFR: ${zipUrl}`)
 
-    const res = await fetch(url, { headers: { Accept: 'application/zip' } })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const res = await fetch(zipUrl)
+    if (!res.ok) throw new Error(`Download HTTP ${res.status}`)
     if (!res.body) throw new Error('Empty response body')
 
     await this.streamToFile(res.body, zipPath)
-    this.logger.log(`VFR ZIP downloaded: ${zipPath}`)
+    this.logger.log(`VFR ZIP downloaded: ${zipPath} (${Math.round((await import('fs')).statSync(zipPath).size / 1024 / 1024)} MB)`)
 
+    // Extract
     await this.extractZip(zipPath, extractDir)
 
-    // Find extracted XML — scoped to per-date dir, filter by dateTag
+    // Find extracted XML
     const xmlFiles = readdirSync(extractDir).filter(f => f.endsWith('.xml') && f.includes(dateTag))
     if (xmlFiles.length > 0) {
       const extracted = join(extractDir, xmlFiles[0])
@@ -94,104 +107,6 @@ export class RuianVfrDownloadService {
     }
 
     throw new Error('ZIP extracted but no XML found')
-  }
-
-  /** Source 2: VFR archiv CSV — services.cuzk.gov.cz/vfr/ruian/epsg5514/ad-csv/ */
-  private async tryArchiveCsv(dateTag: string): Promise<VfrDownloadResult | null> {
-    const canonicalPath = join(VFR_DIR, `${dateTag}_archive_adresy.csv`)
-    if (existsSync(canonicalPath)) {
-      this.logger.log(`Archive CSV already exists: ${canonicalPath}`)
-      return { filePath: canonicalPath, dateTag }
-    }
-
-    const extractDir = join(VFR_DIR, `csv_${dateTag}`)
-    if (!existsSync(extractDir)) mkdirSync(extractDir, { recursive: true })
-
-    const urls = [
-      `${VFR_ARCHIVE_CSV}/${dateTag}_ST_UADR.csv.zip`,
-      `${VFR_ARCHIVE_CSV}/${dateTag}_AD.csv.zip`,
-    ]
-
-    for (const url of urls) {
-      this.logger.log(`Source 2: trying ${url}`)
-      try {
-        const res = await fetch(url)
-        if (!res.ok) continue
-        if (!res.body) continue
-
-        const zipPath = join(VFR_DIR, `archive_${dateTag}.zip`)
-        await this.streamToFile(res.body, zipPath)
-        await this.extractZip(zipPath, extractDir)
-
-        const csvFiles = readdirSync(extractDir).filter(f => f.endsWith('.csv'))
-        if (csvFiles.length > 0) {
-          const extracted = join(extractDir, csvFiles[0])
-          // Rename to canonical path for cache hit on next run
-          renameSync(extracted, canonicalPath)
-          this.logger.log(`Archive CSV extracted and cached: ${canonicalPath}`)
-          return { filePath: canonicalPath, dateTag }
-        }
-      } catch {
-        continue
-      }
-    }
-
-    throw new Error('No CSV found in VFR archive')
-  }
-
-  /** Source 3: nahlizenidokn.cuzk.cz — per-obec CSV (always available) */
-  private async tryNahlidniCsv(dateTag: string): Promise<VfrDownloadResult> {
-    const csvPath = join(VFR_DIR, `${dateTag}_nahlidni_adresy.csv`)
-    if (existsSync(csvPath)) {
-      this.logger.log(`Nahlidni CSV already exists: ${csvPath}`)
-      return { filePath: csvPath, dateTag }
-    }
-
-    this.logger.log(`Source 3: downloading from ${NAHLIDNI_CSV}`)
-    const res = await fetch(NAHLIDNI_CSV)
-    if (!res.ok) throw new Error(`Nahlidni download failed: HTTP ${res.status}`)
-    if (!res.body) throw new Error('Empty response body')
-
-    const contentType = res.headers.get('content-type') || ''
-
-    if (contentType.includes('zip') || contentType.includes('octet-stream')) {
-      const extractDir = join(VFR_DIR, `nahlidni_${dateTag}`)
-      if (!existsSync(extractDir)) mkdirSync(extractDir, { recursive: true })
-
-      const zipPath = join(VFR_DIR, `nahlidni_${dateTag}.zip`)
-      await this.streamToFile(res.body, zipPath)
-      await this.extractZip(zipPath, extractDir)
-
-      const csvFiles = readdirSync(extractDir).filter(f => f.endsWith('.csv'))
-      if (csvFiles.length === 0) throw new Error('No CSV files found after extraction')
-
-      const extracted = join(extractDir, csvFiles[0])
-      renameSync(extracted, csvPath)
-      this.logger.log(`Nahlidni CSV extracted and cached: ${csvPath}`)
-      return { filePath: csvPath, dateTag }
-    }
-
-    // Direct CSV or HTML response — validate content
-    if (contentType.includes('html')) {
-      throw new Error(`Nahlidni returned HTML instead of CSV (content-type: ${contentType})`)
-    }
-
-    await this.streamToFile(res.body, csvPath)
-
-    // Sanity check: read only first 1KB to validate CSV headers
-    const { openSync, readSync, closeSync, unlinkSync } = await import('fs')
-    const fd = openSync(csvPath, 'r')
-    const buf = Buffer.alloc(1024)
-    const bytesRead = readSync(fd, buf, 0, 1024, 0)
-    closeSync(fd)
-    const firstLine = buf.toString('utf-8', 0, bytesRead).split('\n')[0] || ''
-    if (!firstLine.includes(';') && !firstLine.includes(',')) {
-      unlinkSync(csvPath)
-      throw new Error(`Downloaded file is not CSV (first line: ${firstLine.slice(0, 100)})`)
-    }
-
-    this.logger.log(`Nahlidni CSV downloaded: ${csvPath}`)
-    return { filePath: csvPath, dateTag }
   }
 
   /** Stream response body to file */
