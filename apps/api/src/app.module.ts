@@ -76,6 +76,7 @@ import { CrmPipelineModule } from './crm-pipeline/crm-pipeline.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { TicrModule } from './ticr/ticr.module';
 import { BoardMessagesModule } from './board-messages/board-messages.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
 import { E2eSeedModule } from './e2e-seed/e2e-seed.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -184,6 +185,7 @@ import { FieldEncryptionService } from './common/crypto/field-encryption.service
     ExpensesModule,
     TicrModule,
     BoardMessagesModule,
+    OnboardingModule,
     ...(process.env.NODE_ENV === 'test' || process.env.E2E_SEED_ENABLED === 'true' ? [E2eSeedModule] : []),
   ],
   providers: [
