@@ -13,6 +13,13 @@ export interface AresResult {
   found: boolean
 }
 
+interface AresResponse {
+  ico?: string
+  obchodniJmeno?: string
+  nazev?: string
+  pravniForma?: string
+}
+
 export const wizardApi = {
   getStatus: () =>
     apiClient.get<WizardStatus>('/onboarding/status').then(r => r.data),
@@ -29,11 +36,14 @@ export const wizardApi = {
   step4: (data: { actions: string[] }) =>
     apiClient.post<{ redirectTo: string }>('/onboarding/step/4', data).then(r => r.data),
 
-  aresLookup: (ico: string) =>
-    apiClient.get(`/integrations/ares/ico`, { params: { ico } }).then(r => ({
-      ico,
-      found: !!r.data?.ico,
-      name: r.data?.obchodniJmeno || r.data?.nazev,
-      legalForm: r.data?.pravniForma,
-    } as AresResult)),
+  aresLookup: (ico: string): Promise<AresResult> =>
+    apiClient.get<AresResponse>('/integrations/ares/ico', { params: { ico } }).then(r => {
+      const data = r.data
+      return {
+        ico,
+        found: !!data?.ico,
+        name: data?.obchodniJmeno || data?.nazev,
+        legalForm: data?.pravniForma,
+      }
+    }),
 }
