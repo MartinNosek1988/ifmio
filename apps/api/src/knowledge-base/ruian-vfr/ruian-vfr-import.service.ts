@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
 import { RuianVfrDownloadService } from './ruian-vfr-download.service'
-import { RuianVfrParserService, ParsedObec, ParsedUlice, ParsedAdresniMisto } from './ruian-vfr-parser.service'
+import { RuianVfrParserService, type FlushBatch } from './ruian-vfr-parser.service'
 
 const BATCH_SIZE = 1000
 const ESTIMATED_TOTAL = 2_900_000
@@ -10,7 +10,7 @@ const PERSIST_EVERY = 50_000
 
 export interface ImportProgress {
   isRunning: boolean
-  phase: 'idle' | 'downloading' | 'parsing' | 'flushing_obce' | 'flushing_ulice' | 'completed' | 'failed'
+  phase: 'idle' | 'downloading' | 'parsing' | 'flushing_adresy' | 'completed' | 'failed'
   recordsParsed: number
   recordsFlushed: number
   totalEstimated: number
@@ -82,9 +82,7 @@ export class RuianVfrImportService {
       this.logger.log(`Step 2: Streaming parse + import ${filePath}...`)
 
       const isCsv = filePath.endsWith('.csv')
-      const stats = await (isCsv
-        ? this.streamImport(filePath, log.id, 'csv')
-        : this.streamImport(filePath, log.id, 'xml'))
+      const stats = await this.streamImport(filePath, log.id, isCsv ? 'csv' : 'xml')
 
       const durationMs = Date.now() - (this.progress.startedAt ?? Date.now())
       await this.prisma.kbRuianImportLog.update({
@@ -110,19 +108,50 @@ export class RuianVfrImportService {
 
   /**
    * Streaming import with backpressure.
-   * Obce/Ulice collected in memory (~6k + ~50k = tiny).
-   * Adresní místa flushed via onAdresniMistoBatch callback — parser pauses
-   * the read stream during DB writes so memory stays constant.
+   * Each flush batch contains:
+   *   - New obce (first-seen) — flushed first for FK safety
+   *   - New ulice (first-seen) — flushed second for FK safety
+   *   - Addresses — flushed last, FK references are guaranteed to exist
    */
   private async streamImport(filePath: string, logId: string, format: 'xml' | 'csv'): Promise<ImportStats> {
     const stats: ImportStats = { total: 0, inserted: 0, updated: 0 }
-    const obecBatch: ParsedObec[] = []
-    const uliceBatch: ParsedUlice[] = []
     let lastLogAt = 0
     let lastPersistAt = 0
 
-    const onAdresniMistoBatch = async (batch: ParsedAdresniMisto[]) => {
-      for (const r of batch) {
+    const onFlushBatch = async (batch: FlushBatch) => {
+      // 1. Obce first (FK parent)
+      for (const r of batch.obce) {
+        try {
+          await this.prisma.kbRuianObec.upsert({
+            where: { id: r.id },
+            create: { id: r.id, name: r.name, districtCode: r.districtCode },
+            update: { name: r.name, districtCode: r.districtCode },
+          })
+          stats.inserted++
+        } catch (err) {
+          this.logger.warn(`Obec upsert failed for ${r.id}: ${err instanceof Error ? err.message : err}`)
+        }
+        stats.total++
+      }
+
+      // 2. Ulice second (FK references obec)
+      for (const r of batch.ulice) {
+        try {
+          await this.prisma.kbRuianUlice.upsert({
+            where: { id: r.id },
+            create: { id: r.id, name: r.name, obecId: r.obecId },
+            update: { name: r.name, obecId: r.obecId },
+          })
+          stats.inserted++
+        } catch (err) {
+          this.logger.warn(`Ulice upsert failed for ${r.id}: ${err instanceof Error ? err.message : err}`)
+        }
+        stats.total++
+      }
+
+      // 3. Addresses last (FK references obec + ulice)
+      this.updateProgress({ phase: 'flushing_adresy' })
+      for (const r of batch.adresy) {
         try {
           await this.prisma.kbRuianAdresniMisto.upsert({
             where: { id: r.id },
@@ -146,7 +175,7 @@ export class RuianVfrImportService {
         stats.total++
       }
 
-      // Throttled progress updates
+      // Throttled logging + progress
       if (stats.total - lastLogAt >= LOG_EVERY) {
         lastLogAt = stats.total
         this.updateProgress({ recordsFlushed: stats.total })
@@ -162,9 +191,7 @@ export class RuianVfrImportService {
     }
 
     const callbacks = {
-      onObec: (r: ParsedObec) => obecBatch.push(r),
-      onUlice: (r: ParsedUlice) => uliceBatch.push(r),
-      onAdresniMistoBatch,
+      onFlushBatch,
       batchSize: BATCH_SIZE,
       onProgress: (n: number) => {
         this.updateProgress({ recordsParsed: n })
@@ -172,54 +199,14 @@ export class RuianVfrImportService {
       },
     }
 
-    // Parse — addresses are flushed incrementally via backpressure
     if (format === 'xml') {
       await this.parser.parseXml(filePath, callbacks)
     } else {
       await this.parser.parseCsv(filePath, callbacks)
     }
 
-    this.logger.log(`Parse+flush done: ${obecBatch.length} obcí, ${uliceBatch.length} ulic, ${stats.total} AM flushed`)
-
-    // Flush obce (tiny — ~6k)
-    this.updateProgress({ phase: 'flushing_obce' })
-    this.logger.log(`Flushing ${obecBatch.length} obcí...`)
-    for (let i = 0; i < obecBatch.length; i += BATCH_SIZE) {
-      for (const r of obecBatch.slice(i, i + BATCH_SIZE)) {
-        try {
-          await this.prisma.kbRuianObec.upsert({
-            where: { id: r.id },
-            create: { id: r.id, name: r.name, districtCode: r.districtCode },
-            update: { name: r.name, districtCode: r.districtCode },
-          })
-          stats.inserted++
-        } catch (err) {
-          this.logger.warn(`Obec upsert failed for ${r.id}: ${err instanceof Error ? err.message : err}`)
-        }
-        stats.total++
-      }
-    }
-
-    // Flush ulice (small — ~50k)
-    this.updateProgress({ phase: 'flushing_ulice', recordsFlushed: stats.total })
-    this.logger.log(`Flushing ${uliceBatch.length} ulic...`)
-    for (let i = 0; i < uliceBatch.length; i += BATCH_SIZE) {
-      for (const r of uliceBatch.slice(i, i + BATCH_SIZE)) {
-        try {
-          await this.prisma.kbRuianUlice.upsert({
-            where: { id: r.id },
-            create: { id: r.id, name: r.name, obecId: r.obecId },
-            update: { name: r.name, obecId: r.obecId },
-          })
-          stats.inserted++
-        } catch (err) {
-          this.logger.warn(`Ulice upsert failed for ${r.id}: ${err instanceof Error ? err.message : err}`)
-        }
-        stats.total++
-      }
-    }
-
     this.updateProgress({ recordsFlushed: stats.total })
+    this.logger.log(`Import stream done: ${stats.total} total, ${stats.inserted} inserted`)
     return stats
   }
 
