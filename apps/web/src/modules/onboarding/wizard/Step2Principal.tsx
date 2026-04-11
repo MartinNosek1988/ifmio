@@ -46,8 +46,8 @@ export function Step2Principal({ archetype, onComplete, onBack }: {
         if (cancelled) return
         setAres(result)
         if (result.found) {
-          if (result.name && !name) setName(result.name)
-          if (result.legalForm) setLegalForm(result.legalForm)
+          if (result.name) setName(cur => cur || result.name!)
+          if (result.legalForm) setLegalForm(cur => cur || result.legalForm!)
         }
       })
       .catch(() => { if (!cancelled) setAres({ ico: cleaned, found: false }) })

@@ -77,12 +77,13 @@ export function Step3Property({ archetype, onComplete, onBack }: {
 
         <div>
           <label style={labelStyle}>{t('onboarding.step3.address')} *</label>
-          <AddressAutocomplete
-            data-testid="property-address"
-            onSelect={handleAddressSelect}
-            defaultValue={address}
-            placeholder="Začněte psát adresu..."
-          />
+          <div data-testid="property-address">
+            <AddressAutocomplete
+              onSelect={handleAddressSelect}
+              defaultValue={address}
+              placeholder="Začněte psát adresu..."
+            />
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: 12 }}>
@@ -99,14 +100,25 @@ export function Step3Property({ archetype, onComplete, onBack }: {
         </div>
 
         <div>
-          <label style={labelStyle}>{t('onboarding.step3.type')} *</label>
-          <div style={{ display: 'flex', gap: 10 }}>
-            {availableTypes.map(pt => (
+          <label id="property-type-label" style={labelStyle}>{t('onboarding.step3.type')} *</label>
+          <div role="radiogroup" aria-labelledby="property-type-label" style={{ display: 'flex', gap: 10 }}>
+            {availableTypes.map((pt, index) => (
               <button
                 key={pt.value}
+                type="button"
+                role="radio"
+                tabIndex={propertyType === pt.value ? 0 : -1}
                 data-testid={`property-type-${pt.value}`}
                 aria-checked={propertyType === pt.value}
                 onClick={() => setPropertyType(pt.value)}
+                onKeyDown={e => {
+                  if (!['ArrowRight', 'ArrowLeft'].includes(e.key)) return
+                  e.preventDefault()
+                  const next = e.key === 'ArrowRight'
+                    ? (index + 1) % availableTypes.length
+                    : (index - 1 + availableTypes.length) % availableTypes.length
+                  setPropertyType(availableTypes[next].value)
+                }}
                 style={{
                   flex: 1, padding: '10px 12px', borderRadius: 8, cursor: 'pointer',
                   border: `2px solid ${propertyType === pt.value ? '#0D9488' : 'var(--border, #e5e7eb)'}`,
