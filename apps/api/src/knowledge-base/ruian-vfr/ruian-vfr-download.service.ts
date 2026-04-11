@@ -21,36 +21,33 @@ export interface VfrDownloadResult {
 export class RuianVfrDownloadService {
   private readonly logger = new Logger(RuianVfrDownloadService.name)
 
-  /** Get YYYYMM for the latest available month (previous month) */
-  getMonthDir(now = new Date()): string {
-    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    const yyyy = prev.getFullYear()
-    const mm = String(prev.getMonth() + 1).padStart(2, '0')
-    return `${yyyy}${mm}`
+  /** Scrape https://services.cuzk.gov.cz/vfr/ to find the latest YYYYMM directory */
+  async findLatestMonth(): Promise<string> {
+    const res = await fetch(`${VFR_ARCHIVE_BASE}/`)
+    if (!res.ok) throw new Error(`VFR root listing HTTP ${res.status}`)
+    const html = await res.text()
+
+    // Extract all YYYYMM directory links
+    const months = [...html.matchAll(/href="\/vfr\/(\d{6})"/g)]
+      .map(m => m[1])
+      .sort()
+
+    if (months.length === 0) throw new Error('No month directories found in VFR listing')
+
+    const latest = months[months.length - 1]
+    this.logger.log(`Latest VFR month: ${latest} (of ${months.length} available)`)
+    return latest
   }
 
   /** Download ST_UADS VFR XML from services.cuzk.gov.cz/vfr/ archive */
   async downloadAndExtract(): Promise<VfrDownloadResult> {
     if (!existsSync(VFR_DIR)) mkdirSync(VFR_DIR, { recursive: true })
 
-    const monthDir = this.getMonthDir()
+    const latestMonth = await this.findLatestMonth()
+    const result = await this.tryMonth(latestMonth)
+    if (result) return result
 
-    // Try current month first, then previous month (file may be published late)
-    const now = new Date()
-    const currMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`
-    const months = [monthDir]
-    if (currMonth !== monthDir) months.unshift(currMonth)
-
-    for (const month of months) {
-      try {
-        const result = await this.tryMonth(month)
-        if (result) return result
-      } catch (err) {
-        this.logger.warn(`Month ${month} failed: ${err instanceof Error ? err.message : err}`)
-      }
-    }
-
-    throw new Error(`No ST_UADS file found for months: ${months.join(', ')}`)
+    throw new Error(`No ST_UADS file found in ${latestMonth}`)
   }
 
   /** Try to download ST_UADS from a specific month's directory */
