@@ -13,11 +13,19 @@ export interface AresResult {
   found: boolean
 }
 
-interface AresResponse {
-  ico?: string
-  obchodniJmeno?: string
-  nazev?: string
-  pravniForma?: string
+/** Matches AresSubject from apps/api/src/integrations/ares/ares.service.ts */
+interface AresSubjectResponse {
+  ico: string
+  nazev: string
+  pravniForma: string
+  pravniFormaKod?: number
+  dic?: string
+  datumVzniku?: string
+  adresa?: {
+    ulice?: string
+    obec?: string
+    psc?: string
+  }
 }
 
 export const wizardApi = {
@@ -37,12 +45,12 @@ export const wizardApi = {
     apiClient.post<{ redirectTo: string }>('/onboarding/step/4', data).then(r => r.data),
 
   aresLookup: (ico: string): Promise<AresResult> =>
-    apiClient.get<AresResponse>('/integrations/ares/ico', { params: { ico } }).then(r => {
+    apiClient.get<AresSubjectResponse>('/integrations/ares/ico', { params: { ico } }).then(r => {
       const data = r.data
       return {
         ico,
         found: !!data?.ico,
-        name: data?.obchodniJmeno || data?.nazev,
+        name: data?.nazev,
         legalForm: data?.pravniForma,
       }
     }),

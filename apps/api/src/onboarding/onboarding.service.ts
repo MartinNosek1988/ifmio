@@ -11,11 +11,10 @@ export class OnboardingService {
   constructor(private prisma: PrismaService) {}
 
   async getStatus(tenantId: string) {
-    const tenant = await this.prisma.tenant.findUnique({
+    return this.prisma.tenant.findUnique({
       where: { id: tenantId },
       select: { archetype: true, onboardingCompleted: true, onboardingStep: true },
     })
-    return tenant
   }
 
   async completeStep1(tenantId: string, dto: OnboardingStep1Dto) {
@@ -27,17 +26,19 @@ export class OnboardingService {
   }
 
   async completeStep2(tenantId: string, dto: OnboardingStep2Dto) {
+    // Atomic claim: only advance if currently on step 1
+    const claim = await this.prisma.tenant.updateMany({
+      where: { id: tenantId, onboardingStep: 1 },
+      data: { onboardingStep: 2 },
+    })
+    if (claim.count === 0) {
+      throw new BadRequestException('Krok 2 již byl dokončen nebo nebyl dokončen krok 1')
+    }
+
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { archetype: true, onboardingStep: true },
+      select: { archetype: true },
     })
-
-    if (!tenant?.archetype || (tenant.onboardingStep ?? 0) < 1) {
-      throw new BadRequestException('Nejdřív dokončete krok 1 (typ subjektu)')
-    }
-    if ((tenant.onboardingStep ?? 0) >= 2) {
-      throw new BadRequestException('Krok 2 již byl dokončen')
-    }
 
     const result = await this.prisma.$transaction(async (tx) => {
       const party = await tx.party.create({
@@ -52,7 +53,7 @@ export class OnboardingService {
         },
       })
 
-      const principalType = this.mapArchetypeToPrincipalType(tenant.archetype)
+      const principalType = this.mapArchetypeToPrincipalType(tenant?.archetype)
       const codeSuffix = randomBytes(3).toString('hex')
       const principal = await tx.principal.create({
         data: {
@@ -65,25 +66,21 @@ export class OnboardingService {
         },
       })
 
-      await tx.tenant.update({
-        where: { id: tenantId },
-        data: { onboardingStep: 2 },
-      })
-
       return { principalId: principal.id, partyId: party.id }
     })
 
-    this.logger.log(`Onboarding step 2: created Party ${result.partyId} + Principal ${result.principalId} for tenant ${tenantId}`)
+    this.logger.log(`Onboarding step 2: Party ${result.partyId} + Principal ${result.principalId} for tenant ${tenantId}`)
     return { step: 2, completed: true, ...result }
   }
 
   async completeStep3(tenantId: string, userId: string, dto: OnboardingStep3Dto) {
-    const tenantCheck = await this.prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: { onboardingStep: true },
+    // Atomic claim: only advance if currently on step 2
+    const claim = await this.prisma.tenant.updateMany({
+      where: { id: tenantId, onboardingStep: 2 },
+      data: { onboardingStep: 3 },
     })
-    if ((tenantCheck?.onboardingStep ?? 0) !== 2) {
-      throw new BadRequestException('Krok 3 lze dokončit pouze po kroku 2')
+    if (claim.count === 0) {
+      throw new BadRequestException('Krok 3 již byl dokončen nebo nebyl dokončen krok 2')
     }
 
     const principal = await this.prisma.principal.findFirst({
@@ -142,11 +139,6 @@ export class OnboardingService {
         data: { tenantId, userId, propertyId: property.id, role: 'MANAGER' },
       })
 
-      await tx.tenant.update({
-        where: { id: tenantId },
-        data: { onboardingStep: 3 },
-      })
-
       return { propertyId: property.id, contractId: contract.id, financialContextId: fc.id }
     })
 
@@ -155,10 +147,13 @@ export class OnboardingService {
   }
 
   async completeStep4(tenantId: string, dto: OnboardingStep4Dto) {
-    await this.prisma.tenant.update({
-      where: { id: tenantId },
+    const claim = await this.prisma.tenant.updateMany({
+      where: { id: tenantId, onboardingStep: 3 },
       data: { onboardingStep: 4, onboardingCompleted: true },
     })
+    if (claim.count === 0) {
+      throw new BadRequestException('Krok 4 vyžaduje dokončený krok 3')
+    }
 
     const firstAction = dto.actions?.[0]
     let redirectTo = '/onboarding'
