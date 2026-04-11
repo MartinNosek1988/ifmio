@@ -5,7 +5,7 @@ import { apiClient } from '../../core/api/client';
 import {
   Building2, Users, TrendingUp, Shield, Search,
   ChevronLeft, ExternalLink, ToggleLeft, ToggleRight,
-  Clock, Activity, Eye,
+  Clock, Activity, Eye, Database, Play, CheckCircle2, XCircle, Loader2,
 } from 'lucide-react';
 
 /* ─── types ──────────────────────────────────────────────────────── */
@@ -43,13 +43,14 @@ interface AuditRow {
   tenant: { name: string } | null;
 }
 
-type Tab = 'dashboard' | 'tenants' | 'users' | 'audit';
+type Tab = 'dashboard' | 'tenants' | 'users' | 'audit' | 'ruian';
 
 const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
   { key: 'dashboard', label: 'Přehled', icon: <TrendingUp size={16} /> },
   { key: 'tenants', label: 'Tenanti', icon: <Building2 size={16} /> },
   { key: 'users', label: 'Uživatelé', icon: <Users size={16} /> },
   { key: 'audit', label: 'Audit log', icon: <Activity size={16} /> },
+  { key: 'ruian', label: 'RÚIAN Import', icon: <Database size={16} /> },
 ];
 
 const PLAN_COLORS: Record<string, string> = {
@@ -107,6 +108,7 @@ export default function SuperAdminPage() {
       {tab === 'tenants' && <TenantsTab onSelect={setSelectedTenantId} />}
       {tab === 'users' && <UsersTab />}
       {tab === 'audit' && <AuditTab />}
+      {tab === 'ruian' && <RuianImportTab />}
     </div>
   );
 }
@@ -534,4 +536,137 @@ function AuditTab() {
       </div>
     </div>
   );
+}
+
+/* ─── RÚIAN Import Tab ──────────────────────────────────────────── */
+
+const PHASE_LABELS: Record<string, string> = {
+  idle: 'Připraveno',
+  downloading: 'Stahování VFR dat...',
+  parsing: 'Parsování XML...',
+  flushing_obce: 'Ukládání obcí...',
+  flushing_ulice: 'Ukládání ulic...',
+  flushing_adresy: 'Ukládání adresních míst...',
+  completed: 'Dokončeno',
+  failed: 'Selhalo',
+}
+
+function RuianImportTab() {
+  const qc = useQueryClient()
+
+  const { data: status } = useQuery({
+    queryKey: ['super-admin', 'ruian-status'],
+    queryFn: () => apiClient.get('/knowledge-base/admin/ruian-vfr/status').then(r => r.data),
+    refetchInterval: (query) => query.state.data?.progress?.isRunning ? 3000 : 30000,
+  })
+
+  const startMut = useMutation({
+    mutationFn: () => apiClient.post('/knowledge-base/admin/ruian-vfr/import').then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['super-admin', 'ruian-status'] }),
+  })
+
+  const progress = status?.progress
+  const counts = status?.counts
+  const lastImport = status?.latestImport
+  const isRunning = progress?.isRunning ?? false
+  const phase = progress?.phase ?? 'idle'
+  const pct = progress?.progressPercent ?? 0
+  const eta = progress?.estimatedSecondsRemaining
+
+  const formatEta = (seconds: number | null | undefined) => {
+    if (!seconds || seconds <= 0) return '—'
+    if (seconds < 60) return `${seconds}s`
+    if (seconds < 3600) return `${Math.round(seconds / 60)}min`
+    return `${Math.round(seconds / 3600)}h ${Math.round((seconds % 3600) / 60)}min`
+  }
+
+  const formatNumber = (n: number) => n.toLocaleString('cs-CZ')
+
+  return (
+    <div>
+      {/* Status card */}
+      <div className="sa-card" style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h3 className="sa-card-title" style={{ margin: 0 }}>RÚIAN VFR Import</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {phase === 'completed' && <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#22c55e', fontSize: '.82rem', fontWeight: 600 }}><CheckCircle2 size={14} /> Dokončeno</span>}
+            {phase === 'failed' && <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#ef4444', fontSize: '.82rem', fontWeight: 600 }}><XCircle size={14} /> Selhalo</span>}
+            {isRunning && <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#3b82f6', fontSize: '.82rem', fontWeight: 600 }}><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Běží</span>}
+            <button
+              onClick={() => startMut.mutate()}
+              disabled={isRunning || startMut.isPending}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '6px 14px', borderRadius: 8, border: 'none',
+                background: isRunning ? '#374151' : '#0d9488', color: '#fff',
+                fontSize: '.82rem', fontWeight: 600, cursor: isRunning ? 'not-allowed' : 'pointer',
+              }}
+            >
+              <Play size={13} /> {isRunning ? 'Běží...' : 'Spustit import'}
+            </button>
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        {isRunning && (
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.78rem', color: '#9ca3af', marginBottom: 4 }}>
+              <span>{PHASE_LABELS[phase] ?? phase}</span>
+              <span>{pct}% {eta ? `• zbývá ~${formatEta(eta)}` : ''}</span>
+            </div>
+            <div style={{ height: 8, background: '#1f2937', borderRadius: 4, overflow: 'hidden' }}>
+              <div style={{
+                height: '100%', width: `${pct}%`, borderRadius: 4,
+                background: 'linear-gradient(90deg, #0d9488, #3b82f6)',
+                transition: 'width 0.5s ease',
+              }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.72rem', color: '#6b7280', marginTop: 4 }}>
+              <span>Parsováno: {formatNumber(progress?.recordsParsed ?? 0)}</span>
+              <span>Uloženo: {formatNumber(progress?.recordsFlushed ?? 0)}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Error */}
+        {phase === 'failed' && progress?.error && (
+          <div style={{ background: '#1c1c1c', border: '1px solid #ef4444', borderRadius: 8, padding: '8px 12px', fontSize: '.78rem', color: '#f87171', marginBottom: 12 }}>
+            {progress.error}
+          </div>
+        )}
+
+        {/* Last import info */}
+        {lastImport && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, fontSize: '.82rem' }}>
+            <div>
+              <div style={{ color: '#6b7280', fontSize: '.72rem' }}>Status</div>
+              <div style={{ color: lastImport.status === 'completed' ? '#22c55e' : lastImport.status === 'failed' ? '#ef4444' : '#f59e0b', fontWeight: 600 }}>
+                {lastImport.status}
+              </div>
+            </div>
+            <div>
+              <div style={{ color: '#6b7280', fontSize: '.72rem' }}>Záznamů</div>
+              <div style={{ color: '#d1d5db' }}>{formatNumber(lastImport.recordsTotal)}</div>
+            </div>
+            <div>
+              <div style={{ color: '#6b7280', fontSize: '.72rem' }}>Doba</div>
+              <div style={{ color: '#d1d5db' }}>{lastImport.durationMs ? `${Math.round(lastImport.durationMs / 1000)}s` : '—'}</div>
+            </div>
+            <div>
+              <div style={{ color: '#6b7280', fontSize: '.72rem' }}>Datum souboru</div>
+              <div style={{ color: '#d1d5db' }}>{lastImport.fileDate ? new Date(lastImport.fileDate).toLocaleDateString('cs') : '—'}</div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Table counts */}
+      <div className="sa-kpi-grid">
+        <KpiCard label="Obce" value={counts?.obec ?? 0} color="#22c55e" />
+        <KpiCard label="Ulice" value={counts?.ulice ?? 0} color="#3b82f6" />
+        <KpiCard label="Stavební objekty" value={counts?.stavebniObjekt ?? 0} color="#8b5cf6" />
+        <KpiCard label="Adresní místa" value={counts?.adresniMisto ?? 0} color="#f59e0b" />
+      </div>
+    </div>
+  )
 }
