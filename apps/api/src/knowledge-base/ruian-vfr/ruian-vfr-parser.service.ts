@@ -26,13 +26,16 @@ export interface ParsedAdresniMisto {
   castObceNazev?: string
 }
 
+export interface FlushBatch {
+  obce: ParsedObec[]
+  ulice: ParsedUlice[]
+  adresy: ParsedAdresniMisto[]
+}
+
 export interface ParseCallbacks {
-  onObec?: (rec: ParsedObec) => void
-  onUlice?: (rec: ParsedUlice) => void
-  /** Called with a batch of addresses when buffer reaches batchSize. Must return a Promise. */
-  onAdresniMistoBatch?: (batch: ParsedAdresniMisto[]) => Promise<void>
+  /** Called with a batch when buffer reaches batchSize. Obce/ulice included on first-seen. Must return a Promise. */
+  onFlushBatch: (batch: FlushBatch) => Promise<void>
   onProgress?: (count: number) => void
-  /** How many addresses to buffer before flushing. Default 1000. */
   batchSize?: number
 }
 
@@ -41,18 +44,22 @@ export class RuianVfrParserService {
   private readonly logger = new Logger(RuianVfrParserService.name)
 
   /**
-   * Stream-parse ST_UADS VFR XML with backpressure.
-   * Obce/Ulice are collected synchronously (small sets).
-   * Adresní místa are flushed in batches via async callback — the read stream
-   * is paused during flush to prevent memory accumulation.
+   * Stream-parse ST_UADS VFR XML with backpressure and serialized flushes.
+   * Each batch contains new obce/ulice (first-seen) + addresses.
+   * Obce/ulice are flushed BEFORE addresses to satisfy FK constraints.
    */
   async parseXml(filePath: string, callbacks: ParseCallbacks): Promise<{ counts: Record<string, number> }> {
     const counts = { obec: 0, ulice: 0, adresniMisto: 0 }
     const seenObce = new Set<number>()
     const seenUlice = new Set<string>()
     const batchSize = callbacks.batchSize ?? 1000
+
     let amBuffer: ParsedAdresniMisto[] = []
+    let pendingObce: ParsedObec[] = []
+    let pendingUlice: ParsedUlice[] = []
+    let flushPromise = Promise.resolve()
     let settled = false
+    let fatalError: Error | null = null
 
     return new Promise((resolve, reject) => {
       const settle = (fn: () => void) => { if (!settled) { settled = true; fn() } }
@@ -75,21 +82,28 @@ export class RuianVfrParserService {
       let uliceKod: number | undefined
       let uliceNazev: string | undefined
 
-      const flushBuffer = async () => {
+      const scheduleFlush = () => {
         if (amBuffer.length === 0) return
-        const batch = amBuffer
-        amBuffer = []
-        if (callbacks.onAdresniMistoBatch) {
-          fileStream.pause()
-          try {
-            await callbacks.onAdresniMistoBatch(batch)
-          } catch (err) {
-            settle(() => reject(err))
-            fileStream.destroy()
-            return
-          }
-          fileStream.resume()
+        const batch: FlushBatch = {
+          obce: pendingObce,
+          ulice: pendingUlice,
+          adresy: amBuffer,
         }
+        pendingObce = []
+        pendingUlice = []
+        amBuffer = []
+
+        // Chain onto flushPromise to serialize flushes
+        fileStream.pause()
+        flushPromise = flushPromise
+          .then(() => callbacks.onFlushBatch(batch))
+          .then(() => { fileStream.resume() })
+          .catch(err => {
+            fatalError = err instanceof Error ? err : new Error(String(err))
+            fileStream.unpipe(saxStream)
+            fileStream.destroy()
+            settle(() => reject(fatalError))
+          })
       }
 
       saxStream.on('opentag', (node) => {
@@ -106,6 +120,7 @@ export class RuianVfrParserService {
       saxStream.on('cdata', (text) => { currentText += text })
 
       saxStream.on('closetag', (name) => {
+        if (fatalError) return
         const local = this.localName(name)
         const text = currentText.trim()
 
@@ -124,17 +139,18 @@ export class RuianVfrParserService {
             case 'UliceKod': uliceKod = parseInt(text, 10) || undefined; break
             case 'UliceNazev': uliceNazev = text || undefined; break
             case 'Adresa':
+              // Collect first-seen obce/ulice for FK-safe flush
               if (obecKod && obecNazev && !seenObce.has(obecKod)) {
                 seenObce.add(obecKod)
                 counts.obec++
-                callbacks.onObec?.({ id: obecKod, name: obecNazev, districtCode: okresKod })
+                pendingObce.push({ id: obecKod, name: obecNazev, districtCode: okresKod })
               }
               if (uliceKod && uliceNazev && obecKod) {
                 const key = `${uliceKod}:${obecKod}`
                 if (!seenUlice.has(key)) {
                   seenUlice.add(key)
                   counts.ulice++
-                  callbacks.onUlice?.({ id: uliceKod, name: uliceNazev, obecId: obecKod })
+                  pendingUlice.push({ id: uliceKod, name: uliceNazev, obecId: obecKod })
                 }
               }
               if (adresniMistoKod) {
@@ -145,12 +161,11 @@ export class RuianVfrParserService {
                   postalCode: postaKod, obecId: obecKod, uliceId: uliceKod,
                   stavebniObjektId: stavebniObjektKod, castObceNazev,
                 })
-                if (counts.adresniMisto % 100000 === 0) {
+                if (counts.adresniMisto % 10000 === 0) {
                   callbacks.onProgress?.(counts.adresniMisto)
                 }
-                // Backpressure: when buffer full, pause stream and flush
                 if (amBuffer.length >= batchSize) {
-                  flushBuffer().catch(err => settle(() => reject(err)))
+                  scheduleFlush()
                 }
               }
               inAdresa = false
@@ -162,6 +177,8 @@ export class RuianVfrParserService {
 
       saxStream.on('error', (err) => {
         this.logger.error(`SAX parse error: ${err.message}`)
+        fileStream.unpipe(saxStream)
+        fileStream.destroy()
         settle(() => reject(err))
       })
 
@@ -171,8 +188,9 @@ export class RuianVfrParserService {
       })
 
       saxStream.on('end', () => {
-        // Flush remaining buffer
-        flushBuffer()
+        // Schedule final flush for remaining buffer, then wait for all flushes
+        scheduleFlush()
+        flushPromise
           .then(() => {
             this.logger.log(`VFR parse complete: ${JSON.stringify(counts)}`)
             settle(() => resolve({ counts }))
@@ -184,12 +202,17 @@ export class RuianVfrParserService {
     })
   }
 
-  /** Parse CSV file — line-by-line streaming */
+  /** Parse CSV with batched flush */
   async parseCsv(filePath: string, callbacks: ParseCallbacks): Promise<{ counts: Record<string, number> }> {
     const { createInterface } = await import('readline')
     const counts = { adresniMisto: 0, obec: 0, ulice: 0 }
     const seenObce = new Set<number>()
     const seenUlice = new Set<number>()
+    const batchSize = callbacks.batchSize ?? 1000
+
+    let amBuffer: ParsedAdresniMisto[] = []
+    let pendingObce: ParsedObec[] = []
+    let pendingUlice: ParsedUlice[] = []
 
     const rl = createInterface({
       input: createReadStream(filePath, { encoding: 'utf-8' }),
@@ -217,7 +240,7 @@ export class RuianVfrParserService {
       if (obecId && !seenObce.has(obecId)) {
         seenObce.add(obecId)
         counts.obec++
-        callbacks.onObec?.({ id: obecId, name: obecNazev })
+        pendingObce.push({ id: obecId, name: obecNazev })
       }
 
       const uliceId = parseInt(row['KodUlice'] || row['UliceKod'] || '', 10)
@@ -225,29 +248,38 @@ export class RuianVfrParserService {
       if (uliceId && !seenUlice.has(uliceId)) {
         seenUlice.add(uliceId)
         counts.ulice++
-        callbacks.onUlice?.({ id: uliceId, name: uliceNazev, obecId })
+        pendingUlice.push({ id: uliceId, name: uliceNazev, obecId })
       }
 
       const amId = parseInt(row['KodADM'] || row['Kod'] || row['AdresniMistoKod'] || '', 10)
       if (!amId) continue
 
       counts.adresniMisto++
-      if (callbacks.onAdresniMistoBatch) {
-        // For CSV, collect and flush inline (already async via for-await)
-        await callbacks.onAdresniMistoBatch([{
-          id: amId,
-          houseNumber: parseInt(row['CisloDomovni'] || '', 10) || undefined,
-          orientationNumber: parseInt(row['CisloOrientacni'] || '', 10) || undefined,
-          orientationNumberLetter: row['CisloOrientacniPismeno'] || undefined,
-          postalCode: row['PSC'] || row['Psc'] || row['PostaKod'] || undefined,
-          obecId: obecId || undefined,
-          uliceId: uliceId || undefined,
-          stavebniObjektId: parseInt(row['KodStavebnihoObjektu'] || row['StavebniObjektKod'] || '', 10) || undefined,
-          castObceNazev: row['NazevCastiObce'] || row['CastObceNazev'] || undefined,
-        }])
+      amBuffer.push({
+        id: amId,
+        houseNumber: parseInt(row['CisloDomovni'] || '', 10) || undefined,
+        orientationNumber: parseInt(row['CisloOrientacni'] || '', 10) || undefined,
+        orientationNumberLetter: row['CisloOrientacniPismeno'] || undefined,
+        postalCode: row['PSC'] || row['Psc'] || row['PostaKod'] || undefined,
+        obecId: obecId || undefined,
+        uliceId: uliceId || undefined,
+        stavebniObjektId: parseInt(row['KodStavebnihoObjektu'] || row['StavebniObjektKod'] || '', 10) || undefined,
+        castObceNazev: row['NazevCastiObce'] || row['CastObceNazev'] || undefined,
+      })
+
+      if (amBuffer.length >= batchSize) {
+        await callbacks.onFlushBatch({ obce: pendingObce, ulice: pendingUlice, adresy: amBuffer })
+        pendingObce = []
+        pendingUlice = []
+        amBuffer = []
       }
 
-      if (counts.adresniMisto % 100000 === 0) callbacks.onProgress?.(counts.adresniMisto)
+      if (counts.adresniMisto % 10000 === 0) callbacks.onProgress?.(counts.adresniMisto)
+    }
+
+    // Flush remainder
+    if (amBuffer.length > 0 || pendingObce.length > 0 || pendingUlice.length > 0) {
+      await callbacks.onFlushBatch({ obce: pendingObce, ulice: pendingUlice, adresy: amBuffer })
     }
 
     this.logger.log(`CSV parse complete: ${JSON.stringify(counts)}`)
