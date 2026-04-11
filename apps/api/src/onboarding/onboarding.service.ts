@@ -26,21 +26,21 @@ export class OnboardingService {
   }
 
   async completeStep2(tenantId: string, dto: OnboardingStep2Dto) {
-    // Atomic claim: only advance if currently on step 1
-    const claim = await this.prisma.tenant.updateMany({
-      where: { id: tenantId, onboardingStep: 1 },
-      data: { onboardingStep: 2 },
-    })
-    if (claim.count === 0) {
-      throw new BadRequestException('Krok 2 již byl dokončen nebo nebyl dokončen krok 1')
-    }
-
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: { archetype: true },
-    })
-
     const result = await this.prisma.$transaction(async (tx) => {
+      // Atomic claim inside transaction
+      const claim = await tx.tenant.updateMany({
+        where: { id: tenantId, onboardingStep: 1 },
+        data: { onboardingStep: 2 },
+      })
+      if (claim.count === 0) {
+        throw new BadRequestException('Krok 2 již byl dokončen nebo nebyl dokončen krok 1')
+      }
+
+      const tenant = await tx.tenant.findUnique({
+        where: { id: tenantId },
+        select: { archetype: true },
+      })
+
       const party = await tx.party.create({
         data: {
           tenantId,
@@ -74,27 +74,27 @@ export class OnboardingService {
   }
 
   async completeStep3(tenantId: string, userId: string, dto: OnboardingStep3Dto) {
-    // Atomic claim: only advance if currently on step 2
-    const claim = await this.prisma.tenant.updateMany({
-      where: { id: tenantId, onboardingStep: 2 },
-      data: { onboardingStep: 3 },
-    })
-    if (claim.count === 0) {
-      throw new BadRequestException('Krok 3 již byl dokončen nebo nebyl dokončen krok 2')
-    }
-
-    const principal = await this.prisma.principal.findFirst({
-      where: { tenantId, isActive: true },
-      orderBy: { createdAt: 'desc' },
-    })
-    if (!principal) throw new BadRequestException('Nejdřív dokončete krok 2 (údaje subjektu)')
-
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: { archetype: true },
-    })
-
     const result = await this.prisma.$transaction(async (tx) => {
+      // Atomic claim inside transaction
+      const claim = await tx.tenant.updateMany({
+        where: { id: tenantId, onboardingStep: 2 },
+        data: { onboardingStep: 3 },
+      })
+      if (claim.count === 0) {
+        throw new BadRequestException('Krok 3 již byl dokončen nebo nebyl dokončen krok 2')
+      }
+
+      const tenant = await tx.tenant.findUnique({
+        where: { id: tenantId },
+        select: { archetype: true },
+      })
+
+      const principal = await tx.principal.findFirst({
+        where: { tenantId, isActive: true },
+        orderBy: { createdAt: 'desc' },
+      })
+      if (!principal) throw new BadRequestException('Nejdřív dokončete krok 2 (údaje subjektu)')
+
       const property = await tx.property.create({
         data: {
           tenantId,
@@ -147,14 +147,7 @@ export class OnboardingService {
   }
 
   async completeStep4(tenantId: string, dto: OnboardingStep4Dto) {
-    const claim = await this.prisma.tenant.updateMany({
-      where: { id: tenantId, onboardingStep: 3 },
-      data: { onboardingStep: 4, onboardingCompleted: true },
-    })
-    if (claim.count === 0) {
-      throw new BadRequestException('Krok 4 vyžaduje dokončený krok 3')
-    }
-
+    // Compute redirect BEFORE claim (read-only, no side effects)
     const firstAction = dto.actions?.[0]
     let redirectTo = '/onboarding'
 
@@ -174,6 +167,15 @@ export class OnboardingService {
         case 'setup_prescriptions': redirectTo = '/finance?tab=prescriptions'; break
         default: redirectTo = '/onboarding'
       }
+    }
+
+    // Atomic claim as last operation
+    const claim = await this.prisma.tenant.updateMany({
+      where: { id: tenantId, onboardingStep: 3 },
+      data: { onboardingStep: 4, onboardingCompleted: true },
+    })
+    if (claim.count === 0) {
+      throw new BadRequestException('Krok 4 vyžaduje dokončený krok 3')
     }
 
     this.logger.log(`Onboarding completed for tenant ${tenantId}, redirect: ${redirectTo}`)
