@@ -1011,7 +1011,8 @@ export class KnowledgeBaseController {
       this.ruianVfr.getLatestLog(),
       this.ruianVfr.getCounts(),
     ])
-    return { latestImport: log, counts, isRunning: this.ruianVfr.running }
+    const progress = this.ruianVfr.getProgress()
+    return { latestImport: log, counts, progress }
   }
 
   // ─── Address search (lokální RÚIAN) ──────────────────────
