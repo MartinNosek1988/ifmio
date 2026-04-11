@@ -18,7 +18,7 @@ const labelStyle: React.CSSProperties = {
 const PROPERTY_TYPES = [
   { value: 'SVJ', label: 'SVJ' },
   { value: 'BD', label: 'Bytové družstvo' },
-  { value: 'RENTAL_HOUSE', label: 'Nájemní dům' },
+  { value: 'RENTAL_RESIDENTIAL', label: 'Nájemní dům' },
 ] as const
 
 export function Step3Property({ archetype, onComplete, onBack }: {
@@ -32,12 +32,12 @@ export function Step3Property({ archetype, onComplete, onBack }: {
   const [city, setCity] = useState('')
   const [postalCode, setPostalCode] = useState('')
   const [propertyType, setPropertyType] = useState(
-    archetype === 'RENTAL_OWNER' ? 'RENTAL_HOUSE' : 'SVJ',
+    archetype === 'RENTAL_OWNER' ? 'RENTAL_RESIDENTIAL' : 'SVJ',
   )
   const [ico, setIco] = useState('')
 
   const availableTypes = archetype === 'RENTAL_OWNER'
-    ? PROPERTY_TYPES.filter(t => t.value === 'RENTAL_HOUSE')
+    ? PROPERTY_TYPES.filter(t => t.value === 'RENTAL_RESIDENTIAL')
     : archetype === 'SELF_MANAGED_HOA'
       ? PROPERTY_TYPES.filter(t => t.value === 'SVJ' || t.value === 'BD')
       : PROPERTY_TYPES

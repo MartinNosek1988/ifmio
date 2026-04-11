@@ -37,6 +37,7 @@ export function Step2Principal({ archetype, onComplete, onBack }: {
     const cleaned = ico.replace(/\s/g, '')
     if (cleaned.length !== 8 || !/^\d{8}$/.test(cleaned)) {
       setAres(null)
+      setAresLoading(false)
       return
     }
     let cancelled = false

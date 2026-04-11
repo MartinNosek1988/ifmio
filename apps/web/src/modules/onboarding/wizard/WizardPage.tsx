@@ -50,12 +50,12 @@ export default function WizardPage() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#f9fafb', gap: 16 }}>
         <AlertTriangle size={32} color="#ef4444" />
-        <p style={{ color: '#374151', fontSize: '0.95rem' }}>Nepodařilo se načíst stav onboardingu.</p>
+        <p style={{ color: '#374151', fontSize: '0.95rem' }}>{t('onboarding.error.loadStatus')}</p>
         <button onClick={() => refetch()} style={{
           padding: '8px 20px', borderRadius: 8, border: 'none',
           background: '#0D9488', color: '#fff', fontWeight: 600, cursor: 'pointer',
         }}>
-          Zkusit znovu
+          {t('onboarding.error.retry')}
         </button>
       </div>
     )
