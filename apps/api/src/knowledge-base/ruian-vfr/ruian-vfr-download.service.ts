@@ -1,18 +1,20 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { createWriteStream, existsSync, mkdirSync } from 'fs'
+import { createWriteStream, existsSync, mkdirSync, createReadStream } from 'fs'
 import { join } from 'path'
 import { pipeline } from 'stream/promises'
-import { createReadStream } from 'fs'
 import { createUnzip } from 'zlib'
 import { tmpdir } from 'os'
 
 const VFR_DIR = join(tmpdir(), 'vfr')
 
-// ST_UADS = kompletní adresní místa celé ČR (~300 MB ZIP)
-const VFR_BASE = 'https://vdp.cuzk.gov.cz/vdp/ruian/vymennyformatspecialni/stahni'
+// Source 1: VFR speciální — kompletní adresní místa celé ČR (~300 MB ZIP)
+const VFR_SPECIAL_BASE = 'https://vdp.cuzk.gov.cz/vdp/ruian/vymennyformatspecialni/stahni'
 
-// CSV alternative — simpler, smaller
-const CSV_BASE = 'https://vdp.cuzk.gov.cz/vymenny_format/csv'
+// Source 2: VFR archiv na services.cuzk.gov.cz — CSV adresní místa
+const VFR_ARCHIVE_CSV = 'https://services.cuzk.gov.cz/vfr/ruian/epsg5514/ad-csv'
+
+// Source 3: Per-obec CSV z nahlizenidokn.cuzk.cz (fallback — vždy funguje)
+const NAHLIDNI_CSV = 'https://nahlizenidokn.cuzk.cz/StahniAdresniMistaRUIAN.aspx'
 
 @Injectable()
 export class RuianVfrDownloadService {
@@ -27,97 +29,162 @@ export class RuianVfrDownloadService {
     return `${yyyy}${mm}${dd}`
   }
 
-  /** Download VFR ST_UADS ZIP, extract, return path to XML file */
+  /** Download VFR data — tries 3 sources in order */
   async downloadAndExtract(): Promise<{ xmlPath: string; zipPath: string; dateTag: string }> {
     if (!existsSync(VFR_DIR)) mkdirSync(VFR_DIR, { recursive: true })
-
     const dateTag = this.getDateTag()
-    const zipName = `${dateTag}_ST_UADS.xml.zip`
-    const zipPath = join(VFR_DIR, zipName)
+
+    // Source 1: VFR XML speciální (ST_UADS)
+    try {
+      const result = await this.tryVfrXml(dateTag)
+      if (result) return result
+    } catch (err) {
+      this.logger.warn(`Source 1 (VFR XML) failed: ${err instanceof Error ? err.message : err}`)
+    }
+
+    // Source 2: VFR archiv CSV (services.cuzk.gov.cz)
+    try {
+      const result = await this.tryArchiveCsv(dateTag)
+      if (result) return result
+    } catch (err) {
+      this.logger.warn(`Source 2 (Archive CSV) failed: ${err instanceof Error ? err.message : err}`)
+    }
+
+    // Source 3: Per-obec CSV z nahlizenidokn.cuzk.cz (always works)
+    this.logger.log('Trying Source 3: nahlizenidokn.cuzk.cz CSV')
+    return this.tryNahlidniCsv(dateTag)
+  }
+
+  /** Source 1: VFR speciální XML — ST_UADS */
+  private async tryVfrXml(dateTag: string): Promise<{ xmlPath: string; zipPath: string; dateTag: string } | null> {
+    const zipPath = join(VFR_DIR, `${dateTag}_ST_UADS.xml.zip`)
     const xmlPath = join(VFR_DIR, `${dateTag}_ST_UADS.xml`)
 
-    // If XML already exists (from a previous download), skip
     if (existsSync(xmlPath)) {
       this.logger.log(`VFR XML already exists: ${xmlPath}`)
       return { xmlPath, zipPath, dateTag }
     }
 
-    // Try VFR XML download
-    const url = `${VFR_BASE}/${dateTag}_ST_UADS`
-    this.logger.log(`Downloading VFR from ${url}`)
+    const url = `${VFR_SPECIAL_BASE}/${dateTag}_ST_UADS`
+    this.logger.log(`Source 1: downloading VFR XML from ${url}`)
 
-    try {
-      const res = await fetch(url, { headers: { Accept: 'application/zip' } })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      if (!res.body) throw new Error('Empty response body')
+    const res = await fetch(url, { headers: { Accept: 'application/zip' } })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    if (!res.body) throw new Error('Empty response body')
 
-      // Stream to disk
-      const writer = createWriteStream(zipPath)
-      const { Readable } = await import('stream')
-      await pipeline(Readable.fromWeb(res.body as any), writer)
-      this.logger.log(`VFR ZIP downloaded: ${zipPath}`)
+    await this.streamToFile(res.body, zipPath)
+    this.logger.log(`VFR ZIP downloaded: ${zipPath}`)
 
-      // Extract ZIP
-      await this.extractZip(zipPath, VFR_DIR)
-      this.logger.log(`VFR XML extracted: ${xmlPath}`)
+    await this.extractZip(zipPath, VFR_DIR)
 
-      return { xmlPath, zipPath, dateTag }
-    } catch (err) {
-      this.logger.warn(`VFR XML download failed: ${err instanceof Error ? err.message : err}`)
-      // Fallback: try CSV
-      return this.downloadCsv(dateTag)
-    }
-  }
-
-  /** Fallback: download CSV address data */
-  async downloadCsv(dateTag: string): Promise<{ xmlPath: string; zipPath: string; dateTag: string }> {
-    const csvZipName = `${dateTag}_ST_UADR.csv.zip`
-    const csvUrl = `${CSV_BASE}/${csvZipName}`
-    const csvZipPath = join(VFR_DIR, csvZipName)
-    const csvPath = join(VFR_DIR, `${dateTag}_adresy.csv`)
-
-    if (existsSync(csvPath)) {
-      this.logger.log(`CSV already exists: ${csvPath}`)
-      return { xmlPath: csvPath, zipPath: csvZipPath, dateTag }
-    }
-
-    this.logger.log(`Trying CSV fallback from ${csvUrl}`)
-    const res = await fetch(csvUrl)
-    if (!res.ok) throw new Error(`CSV download failed: HTTP ${res.status} from ${csvUrl}`)
-    if (!res.body) throw new Error('Empty CSV response body')
-
-    const writer = createWriteStream(csvZipPath)
-    const { Readable } = await import('stream')
-    await pipeline(Readable.fromWeb(res.body as any), writer)
-
-    await this.extractZip(csvZipPath, VFR_DIR)
-
-    // Find extracted CSV
+    // Find the extracted XML
     const { readdirSync } = await import('fs')
-    const csvFiles = readdirSync(VFR_DIR).filter(f => f.endsWith('.csv'))
-    if (csvFiles.length === 0) throw new Error('No CSV files found after extraction')
+    const xmlFiles = readdirSync(VFR_DIR).filter(f => f.endsWith('.xml') && f.includes('UADS'))
+    if (xmlFiles.length > 0) {
+      const extracted = join(VFR_DIR, xmlFiles[0])
+      this.logger.log(`VFR XML extracted: ${extracted}`)
+      return { xmlPath: extracted, zipPath, dateTag }
+    }
 
-    const extractedCsv = join(VFR_DIR, csvFiles[0])
-    this.logger.log(`CSV extracted: ${extractedCsv}`)
-    return { xmlPath: extractedCsv, zipPath: csvZipPath, dateTag }
+    if (existsSync(xmlPath)) return { xmlPath, zipPath, dateTag }
+    throw new Error('ZIP extracted but no XML found')
   }
 
-  /** Extract ZIP using Node's built-in zlib for .gz or external unzip for .zip */
+  /** Source 2: VFR archiv CSV — services.cuzk.gov.cz/vfr/ruian/epsg5514/ad-csv/ */
+  private async tryArchiveCsv(dateTag: string): Promise<{ xmlPath: string; zipPath: string; dateTag: string } | null> {
+    const csvPath = join(VFR_DIR, `${dateTag}_archive_adresy.csv`)
+    if (existsSync(csvPath)) {
+      this.logger.log(`Archive CSV already exists: ${csvPath}`)
+      return { xmlPath: csvPath, zipPath: '', dateTag }
+    }
+
+    // Try date-tagged ZIP first, then try listing the directory
+    const zipName = `${dateTag}_ST_UADR.csv.zip`
+    const urls = [
+      `${VFR_ARCHIVE_CSV}/${zipName}`,
+      `${VFR_ARCHIVE_CSV}/${dateTag}_AD.csv.zip`,
+    ]
+
+    for (const url of urls) {
+      this.logger.log(`Source 2: trying ${url}`)
+      try {
+        const res = await fetch(url)
+        if (!res.ok) continue
+        if (!res.body) continue
+
+        const zipPath = join(VFR_DIR, `archive_${dateTag}.zip`)
+        await this.streamToFile(res.body, zipPath)
+        await this.extractZip(zipPath, VFR_DIR)
+
+        const { readdirSync } = await import('fs')
+        const csvFiles = readdirSync(VFR_DIR).filter(f => f.endsWith('.csv'))
+        if (csvFiles.length > 0) {
+          const extracted = join(VFR_DIR, csvFiles[0])
+          this.logger.log(`Archive CSV extracted: ${extracted}`)
+          return { xmlPath: extracted, zipPath, dateTag }
+        }
+      } catch {
+        continue
+      }
+    }
+
+    throw new Error('No CSV found in VFR archive')
+  }
+
+  /** Source 3: nahlizenidokn.cuzk.cz — per-obec CSV (always available) */
+  private async tryNahlidniCsv(dateTag: string): Promise<{ xmlPath: string; zipPath: string; dateTag: string }> {
+    const csvPath = join(VFR_DIR, `${dateTag}_nahlidni_adresy.csv`)
+    if (existsSync(csvPath)) {
+      this.logger.log(`Nahlidni CSV already exists: ${csvPath}`)
+      return { xmlPath: csvPath, zipPath: '', dateTag }
+    }
+
+    this.logger.log(`Source 3: downloading from ${NAHLIDNI_CSV}`)
+    const res = await fetch(NAHLIDNI_CSV)
+    if (!res.ok) throw new Error(`Nahlidni download failed: HTTP ${res.status}`)
+    if (!res.body) throw new Error('Empty response body')
+
+    // Check content type — might be ZIP or direct CSV
+    const contentType = res.headers.get('content-type') || ''
+    if (contentType.includes('zip') || contentType.includes('octet-stream')) {
+      const zipPath = join(VFR_DIR, `nahlidni_${dateTag}.zip`)
+      await this.streamToFile(res.body, zipPath)
+      await this.extractZip(zipPath, VFR_DIR)
+
+      const { readdirSync } = await import('fs')
+      const csvFiles = readdirSync(VFR_DIR).filter(f => f.endsWith('.csv'))
+      if (csvFiles.length === 0) throw new Error('No CSV files found after extraction')
+
+      const extracted = join(VFR_DIR, csvFiles[0])
+      this.logger.log(`Nahlidni CSV extracted: ${extracted}`)
+      return { xmlPath: extracted, zipPath, dateTag }
+    }
+
+    // Direct CSV response
+    await this.streamToFile(res.body, csvPath)
+    this.logger.log(`Nahlidni CSV downloaded: ${csvPath}`)
+    return { xmlPath: csvPath, zipPath: '', dateTag }
+  }
+
+  /** Stream response body to file */
+  private async streamToFile(body: ReadableStream, filePath: string): Promise<void> {
+    const writer = createWriteStream(filePath)
+    const { Readable } = await import('stream')
+    await pipeline(Readable.fromWeb(body as any), writer)
+  }
+
+  /** Extract ZIP using system tools */
   private async extractZip(zipPath: string, destDir: string): Promise<void> {
-    // Use unzipper for proper ZIP extraction
     const { exec } = await import('child_process')
     const { promisify } = await import('util')
     const execAsync = promisify(exec)
 
     try {
-      // Try system unzip first (available on most Linux/Docker)
       await execAsync(`unzip -o "${zipPath}" -d "${destDir}"`)
     } catch {
-      // Fallback: try PowerShell on Windows
       try {
         await execAsync(`powershell -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${destDir}' -Force"`)
       } catch (e2) {
-        // Fallback: try gunzip if it's actually gzipped
         if (zipPath.endsWith('.gz')) {
           const outPath = zipPath.replace('.gz', '')
           await pipeline(
