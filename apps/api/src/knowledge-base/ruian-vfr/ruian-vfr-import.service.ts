@@ -44,7 +44,6 @@ export class RuianVfrImportService {
     Object.assign(this.progress, partial)
     // Recalculate percent and ETA
     const isCompleted = this.progress.phase === 'completed'
-      || (this.progress.totalEstimated > 0 && this.progress.recordsFlushed >= this.progress.totalEstimated)
     if (this.progress.totalEstimated > 0) {
       const calculated = Math.round((this.progress.recordsFlushed / this.progress.totalEstimated) * 100)
       this.progress.progressPercent = isCompleted ? 100 : Math.min(calculated, 99)
