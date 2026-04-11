@@ -61,11 +61,13 @@ jobs:
             echo "Pull latest code"
             git fetch origin main
             git checkout main
+            # Fix file ownership if Docker build left root-owned files
+            sudo chown -R $(whoami):$(whoami) . 2>/dev/null || true
             git reset --hard origin/main
 
             echo "Build and restart"
             docker compose -f docker-compose.prod.yml build --no-cache
-            docker compose -f docker-compose.prod.yml up -d || true
+            docker compose -f docker-compose.prod.yml up -d
 
             echo "Wait for API startup (30s initial)..."
             sleep 30
