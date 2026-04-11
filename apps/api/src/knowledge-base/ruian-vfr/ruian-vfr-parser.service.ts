@@ -170,6 +170,10 @@ export class RuianVfrParserService {
       })
 
       const stream = createReadStream(filePath, { highWaterMark: 64 * 1024 })
+      stream.on('error', (err) => {
+        this.logger.error(`File read error: ${err.message}`)
+        reject(err)
+      })
       stream.pipe(parser)
     })
   }
