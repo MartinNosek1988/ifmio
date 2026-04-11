@@ -1007,11 +1007,12 @@ export class KnowledgeBaseController {
     const isSA = this.superAdmin.isSuperAdmin(user.email)
     if (!isSA) throw new ForbiddenException('Super admin required')
 
+    const progress = this.ruianVfr.getProgress()
     const [log, counts] = await Promise.all([
       this.ruianVfr.getLatestLog(),
-      this.ruianVfr.getCounts(),
+      // Skip expensive COUNT(*) while import is running
+      progress.isRunning ? Promise.resolve(null) : this.ruianVfr.getCounts(),
     ])
-    const progress = this.ruianVfr.getProgress()
     return { latestImport: log, counts, progress }
   }
 
