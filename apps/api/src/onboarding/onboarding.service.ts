@@ -35,6 +35,9 @@ export class OnboardingService {
     if (!tenant?.archetype || (tenant.onboardingStep ?? 0) < 1) {
       throw new BadRequestException('Nejdřív dokončete krok 1 (typ subjektu)')
     }
+    if ((tenant.onboardingStep ?? 0) >= 2) {
+      throw new BadRequestException('Krok 2 již byl dokončen')
+    }
 
     const result = await this.prisma.$transaction(async (tx) => {
       const party = await tx.party.create({
@@ -75,6 +78,14 @@ export class OnboardingService {
   }
 
   async completeStep3(tenantId: string, userId: string, dto: OnboardingStep3Dto) {
+    const tenantCheck = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { onboardingStep: true },
+    })
+    if ((tenantCheck?.onboardingStep ?? 0) !== 2) {
+      throw new BadRequestException('Krok 3 lze dokončit pouze po kroku 2')
+    }
+
     const principal = await this.prisma.principal.findFirst({
       where: { tenantId, isActive: true },
       orderBy: { createdAt: 'desc' },
