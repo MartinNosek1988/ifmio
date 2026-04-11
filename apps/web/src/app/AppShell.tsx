@@ -323,6 +323,16 @@ export default function AppShell() {
     }))
     .filter((sec) => sec.items.length > 0);
 
+  console.log('[SIDEBAR DEBUG]', {
+    authLoading,
+    uxRole,
+    storeRole: useAuthStore.getState().user?.role,
+    storeUser: !!useAuthStore.getState().user,
+    isLoggedIn: useAuthStore.getState().isLoggedIn,
+    sectionsCount: visibleSections.length,
+    sectionNames: visibleSections.map(s => s.title),
+  });
+
   return (
     <div>
       <a href="#main-content" className="sr-only" style={{ position: 'absolute', top: -9999 }} onFocus={e => { e.currentTarget.style.position = 'fixed'; e.currentTarget.style.top = '8px'; e.currentTarget.style.left = '8px'; e.currentTarget.style.zIndex = '10000'; e.currentTarget.style.background = '#fff'; e.currentTarget.style.padding = '8px 16px'; e.currentTarget.style.borderRadius = '6px'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)'; }} onBlur={e => { e.currentTarget.style.position = 'absolute'; e.currentTarget.style.top = '-9999px'; }}>Přeskočit na hlavní obsah</a>
