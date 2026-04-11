@@ -617,6 +617,10 @@
     "title": "Nastavení ifmio",
     "continue": "Pokračovat",
     "back": "Zpět",
+    "error": {
+      "loadStatus": "Nepodařilo se načíst stav onboardingu.",
+      "retry": "Zkusit znovu"
+    },
     "progress": {
       "step1": "Typ subjektu",
       "step2": "Údaje subjektu",

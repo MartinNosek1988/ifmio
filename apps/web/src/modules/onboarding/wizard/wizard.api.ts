@@ -30,5 +30,10 @@ export const wizardApi = {
     apiClient.post<{ redirectTo: string }>('/onboarding/step/4', data).then(r => r.data),
 
   aresLookup: (ico: string) =>
-    apiClient.get<AresResult>(`/onboarding/ares/${ico}`).then(r => r.data),
+    apiClient.get(`/integrations/ares/ico`, { params: { ico } }).then(r => ({
+      ico,
+      found: !!r.data?.ico,
+      name: r.data?.obchodniJmeno || r.data?.nazev,
+      legalForm: r.data?.pravniForma,
+    } as AresResult)),
 }
