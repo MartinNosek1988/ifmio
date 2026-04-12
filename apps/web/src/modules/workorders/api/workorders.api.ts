@@ -123,8 +123,8 @@ export const workOrdersApi = {
     return data;
   },
 
-  stats: async () => {
-    const { data } = await apiClient.get<WOStats>('/work-orders/stats');
+  stats: async (propertyId?: string) => {
+    const { data } = await apiClient.get<WOStats>('/work-orders/stats', { params: propertyId ? { propertyId } : undefined });
     return data;
   },
 

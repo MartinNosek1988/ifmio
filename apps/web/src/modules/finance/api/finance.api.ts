@@ -249,8 +249,8 @@ export const financeApi = {
     apiClient.get<FinanceSummary>('/finance/summary', { params: { propertyId } }).then((r) => r.data),
 
   bankAccounts: {
-    list: () =>
-      apiClient.get<ApiBankAccount[]>('/finance/bank-accounts').then((r) => r.data),
+    list: (params?: Record<string, unknown>) =>
+      apiClient.get<ApiBankAccount[]>('/finance/bank-accounts', { params }).then((r) => r.data),
     get: (id: string) =>
       apiClient.get<ApiBankAccount>(`/finance/bank-accounts/${id}`).then((r) => r.data),
     create: (dto: CreateBankAccountDto) =>
@@ -332,8 +332,8 @@ export const financeApi = {
   invoices: {
     list: (params?: Record<string, unknown>) =>
       apiClient.get<Paginated<ApiInvoice>>('/finance/invoices', { params }).then((r) => r.data),
-    stats: () =>
-      apiClient.get<InvoiceStats>('/finance/invoices/stats').then((r) => r.data),
+    stats: (propertyId?: string) =>
+      apiClient.get<InvoiceStats>('/finance/invoices/stats', { params: propertyId ? { propertyId } : undefined }).then((r) => r.data),
     getOne: (id: string) =>
       apiClient.get<ApiInvoice>(`/finance/invoices/${id}`).then((r) => r.data),
     create: (dto: Record<string, unknown>) =>
