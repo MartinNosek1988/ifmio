@@ -12,13 +12,16 @@ function renderRegister() {
 }
 
 describe('RegisterPage', () => {
-  it('renders step 1 with name, email, and password fields', () => {
+  it('renders step 1 with subject type selection', () => {
     renderRegister()
 
     expect(screen.getByText('ifmio')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('Jan Novák')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('jan@firma.cz')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText(/min\. 8/i)).toBeInTheDocument()
+    expect(screen.getByText(/samosprávné svj/i)).toBeInTheDocument()
+    expect(screen.getByText(/správcovská firma/i)).toBeInTheDocument()
+    expect(screen.getByText(/vlastník nájemního domu/i)).toBeInTheDocument()
+    expect(screen.getByText(/vlastník bytové jednotky/i)).toBeInTheDocument()
+    expect(screen.getByText(/^nájemník$/i)).toBeInTheDocument()
+    expect(screen.getByText(/dodavatel služeb/i)).toBeInTheDocument()
   })
 
   it('has a link to the login page', () => {
@@ -31,10 +34,7 @@ describe('RegisterPage', () => {
   it('shows step progress indicators', () => {
     renderRegister()
 
-    // Progress bar has step labels; heading also contains step text
-    // Use getAllByText and check at least one exists
-    expect(screen.getAllByText(/osobní údaje/i).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText(/organizace/i).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText(/plán/i).length).toBeGreaterThanOrEqual(1)
+    // Před výběrem typu má stepper jen jeden krok "Typ subjektu"
+    expect(screen.getByText(/typ subjektu/i)).toBeInTheDocument()
   })
 })

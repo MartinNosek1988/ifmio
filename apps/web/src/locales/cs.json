@@ -1,4 +1,176 @@
 {
+  "register": {
+    "title": "Registrace",
+    "subtitle": "Pomůže nám přizpůsobit systém vašim potřebám",
+    "question": "Jak ifmio používáte?",
+    "continue": "Pokračovat →",
+    "back": "Zpět",
+    "submit": "Dokončit registraci",
+    "submitting": "Registruji...",
+    "step": {
+      "subjectType": "Typ subjektu",
+      "organization": "Údaje organizace",
+      "personal": "Osobní údaje",
+      "supplier": "Firma / OSVČ",
+      "property": "Nemovitost",
+      "unit": "Byt / dům",
+      "address": "Kde bydlím",
+      "region": "Působnost",
+      "done": "Co dál?"
+    },
+    "subjectType": {
+      "svjBd": "Samosprávné SVJ / BD",
+      "svjBdDesc": "Jsme předseda nebo výbor SVJ / bytového družstva",
+      "spravce": "Správcovská firma",
+      "spravceDesc": "Spravujeme nemovitosti pro klienty",
+      "vlastnikDomu": "Vlastník nájemního domu",
+      "vlastnikDomuDesc": "Vlastním a pronajímám celou nemovitost",
+      "vlastnikJednotky": "Vlastník bytové jednotky",
+      "vlastnikJednotkyDesc": "Vlastním byt a pronajímám ho nájemníkům",
+      "najemnik": "Nájemník",
+      "najemnikDesc": "Bydlím v pronájmu a chci přehled o svém bydlení",
+      "dodavatel": "Dodavatel služeb",
+      "dodavatelDesc": "Řemeslník, účetní, revizní technik a další"
+    },
+    "organization": {
+      "tenantName": "Název organizace *",
+      "ico": "IČO",
+      "icoLookup": "Načíst z ARES",
+      "icoLoading": "Načítám...",
+      "icoNotFound": "IČO nenalezeno",
+      "dic": "DIČ"
+    },
+    "personal": {
+      "name": "Jméno a příjmení *",
+      "email": "E-mail *",
+      "password": "Heslo *",
+      "passwordPlaceholder": "Min. 8 znaků",
+      "phone": "Telefon"
+    },
+    "supplier": {
+      "companyName": "Název firmy / Jméno *",
+      "isOsvc": "Jsem OSVČ",
+      "categories": "Obory *",
+      "categoriesPlaceholder": "Vyberte obory služeb",
+      "description": "Popis služeb",
+      "descriptionPlaceholder": "Stručně popište, co nabízíte (max 500 znaků)",
+      "showAll": "Zobrazit všechny obory",
+      "showLess": "Zobrazit méně",
+      "cat": {
+        "instalater": "Instalatér (voda, topení, plyn)",
+        "elektrikar": "Elektrikář",
+        "zamecnik": "Zámečník",
+        "malirNaterac": "Malíř / Natěrač",
+        "podlahar": "Podlahář",
+        "zednickePrace": "Zednické práce",
+        "pokryvac": "Pokrývač / Klempíř",
+        "zahradnik": "Zahradník",
+        "uklid": "Úklidová firma",
+        "pestControl": "Deratizace, dezinsekce",
+        "revizniTechnik": "Revizní technik",
+        "ucetni": "Účetní / Daňový poradce",
+        "pravnik": "Právník",
+        "projekce": "Projekce / Architektura",
+        "vymahani": "Vymáhání pohledávek",
+        "spravaNemovitosti": "Správa nemovitostí",
+        "zatepleni": "Zateplení / ETICS",
+        "vytahy": "Výtahy — servis, revize",
+        "pozarniOchrana": "Požární ochrana",
+        "jine": "Jiné"
+      }
+    },
+    "property": {
+      "name": "Název nemovitosti",
+      "address": "Ulice a číslo *",
+      "city": "Město *",
+      "postalCode": "PSČ",
+      "type": "Typ nemovitosti",
+      "typeApartment": "Bytový dům",
+      "typeFamily": "Rodinný dům",
+      "typeCommercial": "Komerční objekt",
+      "typeMixed": "Smíšený objekt"
+    },
+    "unit": {
+      "address": "Adresa nemovitosti *",
+      "number": "Číslo jednotky *",
+      "disposition": "Dispozice",
+      "dispositionSelect": "Vyberte dispozici",
+      "modeManual": "Vyplnit ručně",
+      "modeJoinCode": "Mám kód od správce",
+      "joinCode": "Kód pozvánky",
+      "joinCodePlaceholder": "Zadejte kód, který jste obdrželi",
+      "joinCodeDisabled": "Připravujeme — bude brzy k dispozici",
+      "joinCodeComingSoon": "Připojení kódem bude brzy k dispozici"
+    },
+    "address": {
+      "street": "Ulice a číslo *",
+      "city": "Město *",
+      "postalCode": "PSČ *",
+      "modeManual": "Vyplnit ručně",
+      "modeJoinCode": "Mám kód od správce",
+      "joinCode": "Kód pozvánky",
+      "joinCodePlaceholder": "Zadejte kód od správce nebo vlastníka",
+      "joinCodeDisabled": "Připravujeme — bude brzy k dispozici",
+      "joinCodeComingSoon": "Připojení kódem bude brzy k dispozici"
+    },
+    "region": {
+      "city": "Hlavní město / obec *",
+      "cityPlaceholder": "např. Praha, Brno, Ostrava",
+      "radius": "Dojezdová vzdálenost",
+      "radiusValue": "{{value}} km",
+      "districts": "Kraje",
+      "districtsHint": "Vyberte kraje, kde působíte"
+    },
+    "done": {
+      "title": "Registrace dokončena!",
+      "svjBd": {
+        "hint1": "Přidejte jednotky a obyvatele",
+        "hint2": "Nastavte předpisy plateb",
+        "cta": "Přejít do systému"
+      },
+      "spravce": {
+        "hint1": "Přidejte spravované nemovitosti",
+        "hint2": "Importujte data z Domsys",
+        "cta": "Přejít do systému"
+      },
+      "vlastnikDomu": {
+        "hint1": "Pozvěte nájemníky",
+        "hint2": "Nastavte nájemní smlouvy",
+        "cta": "Přejít do systému"
+      },
+      "vlastnikJednotky": {
+        "hint1": "Pozvěte nájemníky",
+        "hint2": "Nahrajte nájemní smlouvu",
+        "cta": "Přejít na portál"
+      },
+      "najemnik": {
+        "hint1": "Nahrajte nájemní smlouvu",
+        "hint2": "Přidejte smlouvy na energie",
+        "hint3": "Zkontrolujte vyúčtování",
+        "cta": "Přejít na portál"
+      },
+      "dodavatel": {
+        "hint1": "Dokončete profil firmy",
+        "hint2": "Prohlédněte si poptávky",
+        "cta": "Přejít do systému"
+      }
+    },
+    "error": {
+      "selectType": "Vyberte typ subjektu",
+      "required": "Toto pole je povinné",
+      "emailFormat": "Neplatný formát e-mailu",
+      "passwordMin": "Heslo musí mít alespoň 8 znaků",
+      "selectCategory": "Vyberte alespoň jeden obor",
+      "consentRequired": "Musíte souhlasit s podmínkami",
+      "submitFailed": "Registrace selhala. Zkuste to prosím znovu."
+    },
+    "consent": "Souhlasím s",
+    "terms": "obchodními podmínkami",
+    "and": "a",
+    "privacy": "zásadami ochrany osobních údajů",
+    "hasAccount": "Už máte účet?",
+    "signIn": "Přihlaste se"
+  },
   "common": {
     "loading": "Načítání...",
     "error": "Chyba",
