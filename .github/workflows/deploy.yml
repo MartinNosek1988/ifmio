@@ -56,11 +56,12 @@ jobs:
           command_timeout: 15m
           script: |
             set -e
-            git config --global --add safe.directory /opt/ifmio
             cd /opt/ifmio
 
-            # Fix ownership FIRST — before any git operations
-            sudo chown -R $(whoami):$(whoami) . 2>/dev/null || true
+            # Fix .git ownership — Docker creates root-owned objects
+            sudo chown -R root:root .git
+            git config --global --add safe.directory /opt/ifmio
+            git config gc.auto 0
 
             echo "Pull latest code"
             git fetch origin main
