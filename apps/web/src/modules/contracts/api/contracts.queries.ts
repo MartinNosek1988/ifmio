@@ -11,18 +11,21 @@ export const contractKeys = {
 
 export function useContracts(params?: { status?: string; propertyId?: string; search?: string }) {
   const pid = usePropertyPickerStore((s) => s.selectedPropertyId);
-  const scoped = pid ? { ...params, propertyId: params?.propertyId ?? pid } : params;
+  const effectivePropertyId = params?.propertyId ?? pid ?? undefined;
+  const scoped = effectivePropertyId
+    ? { ...params, propertyId: effectivePropertyId }
+    : params;
   return useQuery({
-    queryKey: [...contractKeys.list(params as Record<string, unknown>), pid] as const,
+    queryKey: [...contractKeys.list(params as Record<string, unknown>), effectivePropertyId] as const,
     queryFn: () => contractsApi.list(scoped),
   });
 }
 
 export function useContractStats() {
-  const pid = usePropertyPickerStore((s) => s.selectedPropertyId);
+  // TODO: Backend /contracts/stats nepodporuje propertyId filter — needs backend update
   return useQuery({
-    queryKey: [...contractKeys.stats(), pid] as const,
-    queryFn: () => contractsApi.stats(pid ?? undefined),
+    queryKey: contractKeys.stats(),
+    queryFn: () => contractsApi.stats(),
   });
 }
 
