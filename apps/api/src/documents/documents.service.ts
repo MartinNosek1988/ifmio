@@ -28,18 +28,23 @@ export class DocumentsService {
     private scanner:  ScannerService,
   ) {}
 
-  async list(user: AuthUser, query: { category?: string; tag?: string; entityType?: string; entityId?: string; search?: string; page?: number; limit?: number }) {
-    const { category, tag, entityType, entityId, search, page = 1, limit = 20 } = query
+  async list(user: AuthUser, query: { category?: string; tag?: string; entityType?: string; entityId?: string; search?: string; propertyId?: string; page?: number; limit?: number }) {
+    const { category, tag, entityType, entityId, search, propertyId, page = 1, limit = 20 } = query
     const skip = (page - 1) * limit
+
+    // Document je propojen s nemovitostí přes polymorfní DocumentLink
+    // (entityType: 'property', entityId: propertyId). Když přijde propertyId,
+    // mapujeme ho na links filter — pokud user explicitně neposlal entityType/entityId.
+    const linksFilter = (entityType && entityId)
+      ? { some: { entityType, entityId } }
+      : (propertyId ? { some: { entityType: 'property' as const, entityId: propertyId } } : undefined)
 
     const where: Record<string, unknown> = {
       tenantId: user.tenantId,
       ...(category ? { category } : {}),
       ...(search   ? { name: { contains: search, mode: 'insensitive' } } : {}),
       ...(tag      ? { tags:  { some: { tag } } } : {}),
-      ...(entityType && entityId ? {
-        links: { some: { entityType, entityId } },
-      } : {}),
+      ...(linksFilter ? { links: linksFilter } : {}),
     }
 
     const [items, total] = await Promise.all([

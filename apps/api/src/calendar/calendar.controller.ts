@@ -25,8 +25,9 @@ export class CalendarController {
     @Query('to') to?: string,
     @Query('eventType') eventType?: string,
     @Query('search') search?: string,
+    @Query('propertyId') propertyId?: string,
   ): Promise<CalendarEventDto[]> {
-    return this.service.getEvents(user, { from, to, eventType, search })
+    return this.service.getEvents(user, { from, to, eventType, search, propertyId })
   }
 
   @Get('stats')

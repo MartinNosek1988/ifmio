@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { documentsApi } from './documents.api';
+import { usePropertyPickerStore } from '../../../core/stores/property-picker.store';
 
 export const docKeys = {
   all: ['documents'] as const,
@@ -7,10 +8,15 @@ export const docKeys = {
   stats: () => ['documents', 'stats'] as const,
 };
 
-export function useDocuments(params?: { category?: string; search?: string; tag?: string }) {
+export function useDocuments(params?: { category?: string; search?: string; tag?: string; propertyId?: string }) {
+  const pid = usePropertyPickerStore((s) => s.selectedPropertyId);
+  const effectivePropertyId = params?.propertyId ?? pid ?? undefined;
+  const scoped = effectivePropertyId
+    ? { ...params, propertyId: effectivePropertyId }
+    : params;
   return useQuery({
-    queryKey: docKeys.list(params as Record<string, unknown>),
-    queryFn: () => documentsApi.list(params),
+    queryKey: [...docKeys.list(params as Record<string, unknown>), effectivePropertyId] as const,
+    queryFn: () => documentsApi.list(scoped),
   });
 }
 
