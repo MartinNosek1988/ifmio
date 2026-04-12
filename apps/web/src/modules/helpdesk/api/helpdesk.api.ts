@@ -176,11 +176,11 @@ export const helpdeskApi = {
   detail: (id: string) =>
     apiClient.get<ApiTicket>(`/helpdesk/${id}`).then((r) => r.data),
 
-  slaStats: () =>
-    apiClient.get<SlaStats>('/helpdesk/sla-stats').then((r) => r.data),
+  slaStats: (propertyId?: string) =>
+    apiClient.get<SlaStats>('/helpdesk/sla-stats', { params: propertyId ? { propertyId } : undefined }).then((r) => r.data),
 
-  dashboard: (days = 30) =>
-    apiClient.get<DashboardData>('/helpdesk/dashboard', { params: { days } }).then((r) => r.data),
+  dashboard: (days = 30, propertyId?: string) =>
+    apiClient.get<DashboardData>('/helpdesk/dashboard', { params: { days, ...(propertyId && { propertyId }) } }).then((r) => r.data),
 
   create: (dto: CreateTicketPayload) =>
     apiClient.post<ApiTicket>('/helpdesk', dto).then((r) => r.data),

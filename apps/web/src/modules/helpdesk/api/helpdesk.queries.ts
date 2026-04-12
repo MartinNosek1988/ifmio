@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { helpdeskApi } from './helpdesk.api'
 import type { CreateTicketPayload, UpdateTicketPayload, CreateItemPayload, UpsertSlaPolicyPayload } from './helpdesk.api'
+import { usePropertyPickerStore } from '../../../core/stores/property-picker.store'
 
 export const helpdeskKeys = {
   all:      ['helpdesk'] as const,
@@ -14,23 +15,27 @@ export const helpdeskKeys = {
 }
 
 export function useTickets(params?: Record<string, unknown>) {
+  const pid = usePropertyPickerStore((s) => s.selectedPropertyId)
+  const scoped = pid ? { ...params, propertyId: pid } : params
   return useQuery({
-    queryKey: helpdeskKeys.list(params),
-    queryFn:  () => helpdeskApi.list(params),
+    queryKey: [...helpdeskKeys.list(params), pid] as const,
+    queryFn:  () => helpdeskApi.list(scoped),
   })
 }
 
 export function useSlaStats() {
+  const pid = usePropertyPickerStore((s) => s.selectedPropertyId)
   return useQuery({
-    queryKey: helpdeskKeys.slaStats(),
-    queryFn:  () => helpdeskApi.slaStats(),
+    queryKey: [...helpdeskKeys.slaStats(), pid] as const,
+    queryFn:  () => helpdeskApi.slaStats(pid ?? undefined),
   })
 }
 
 export function useDashboard(days = 30) {
+  const pid = usePropertyPickerStore((s) => s.selectedPropertyId)
   return useQuery({
-    queryKey: helpdeskKeys.dashboard(days),
-    queryFn:  () => helpdeskApi.dashboard(days),
+    queryKey: [...helpdeskKeys.dashboard(days), pid] as const,
+    queryFn:  () => helpdeskApi.dashboard(days, pid ?? undefined),
     staleTime: 60_000,
   })
 }
