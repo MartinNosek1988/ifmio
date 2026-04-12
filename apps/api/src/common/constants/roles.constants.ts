@@ -9,6 +9,7 @@ export const ROLE_HIERARCHY: Record<UserRole, number> = {
   viewer: 10,
   unit_owner: 5,
   unit_tenant: 4,
+  supplier: 3,
 };
 
 /** Roles that can write (create/update) general entities */

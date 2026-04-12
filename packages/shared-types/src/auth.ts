@@ -1,6 +1,36 @@
 import type { UUID } from './common';
 
-export type UserRole = 'tenant_owner' | 'tenant_admin' | 'property_manager' | 'finance_manager' | 'operations' | 'viewer' | 'unit_owner' | 'unit_tenant';
+export type UserRole = 'tenant_owner' | 'tenant_admin' | 'property_manager' | 'finance_manager' | 'operations' | 'viewer' | 'unit_owner' | 'unit_tenant' | 'supplier';
+
+export type TenantSubjectType =
+  | 'svj_bd'
+  | 'spravce'
+  | 'vlastnik_domu'
+  | 'vlastnik_jednotky'
+  | 'najemnik'
+  | 'dodavatel';
+
+export type SupplierCategory =
+  | 'instalater'
+  | 'elektrikar'
+  | 'zamecnik'
+  | 'malir_naterac'
+  | 'podlahar'
+  | 'zednicke_prace'
+  | 'pokryvac'
+  | 'zahradnik'
+  | 'uklid'
+  | 'pest_control'
+  | 'revizni_technik'
+  | 'ucetni'
+  | 'pravnik'
+  | 'projekce'
+  | 'vymahani'
+  | 'sprava_nemovitosti'
+  | 'zatepleni'
+  | 'vytahy'
+  | 'pozarni_ochrana'
+  | 'jine';
 export type TenantPlan = 'free' | 'starter' | 'pro' | 'enterprise';
 
 export interface AuthUser {

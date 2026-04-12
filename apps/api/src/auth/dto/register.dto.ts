@@ -1,5 +1,6 @@
-import { IsEmail, IsString, MinLength, MaxLength, IsOptional } from 'class-validator';
+import { IsEmail, IsString, MinLength, MaxLength, IsOptional, IsEnum, IsArray, IsInt, Min, Max, IsBoolean } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { TenantSubjectType, SupplierCategory } from '@prisma/client';
 
 export class RegisterDto {
   @ApiProperty({ example: 'Jan Novák' })
@@ -47,4 +48,53 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   plan?: string;
+
+  // ─── Typ subjektu (krok 1 wizardu) ─────────────────────────────
+  @ApiPropertyOptional({ enum: TenantSubjectType })
+  @IsOptional()
+  @IsEnum(TenantSubjectType)
+  subjectType?: TenantSubjectType;
+
+  // ─── Dodavatel-specifická pole ─────────────────────────────────
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  supplierCompanyName?: string;
+
+  @ApiPropertyOptional({ enum: SupplierCategory, isArray: true })
+  @IsOptional()
+  @IsArray()
+  @IsEnum(SupplierCategory, { each: true })
+  supplierCategories?: SupplierCategory[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  supplierDescription?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  supplierRegionCity?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(500)
+  supplierRegionRadius?: number;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  supplierRegionDistricts?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  supplierIsOsvc?: boolean;
 }
