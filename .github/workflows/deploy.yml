@@ -38,7 +38,8 @@ jobs:
       - name: Run Prisma migrations
         run: cd apps/api && npx prisma migrate deploy
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_DATABASE_URL }}
 
   build-and-push:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
@@ -103,10 +104,10 @@ jobs:
       - name: Copy compose files to server
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_KEY }}
-          port: ${{ secrets.VPS_PORT }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
           source: "docker-compose.prod.yml,Caddyfile"
           target: /opt/ifmio
           overwrite: true
@@ -114,10 +115,10 @@ jobs:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_KEY }}
-          port: ${{ secrets.VPS_PORT }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
           command_timeout: 15m
           script: |
             set -e
