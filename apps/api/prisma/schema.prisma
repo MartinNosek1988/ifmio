@@ -3548,6 +3548,7 @@ model PrincipalOwner {
   sharePercent     Decimal?      @db.Decimal(7, 4)
 
   isManaging Boolean @default(false)
+  isSjm      Boolean @default(false)
 
   validFrom DateTime?
   validTo   DateTime?
