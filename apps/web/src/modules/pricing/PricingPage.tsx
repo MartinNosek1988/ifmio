@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Navigation } from '../landing/components/Navigation'
 import { Footer } from '../landing/components/Footer'
 import { SeoHead } from '../../i18n/SeoHead'
@@ -63,9 +64,9 @@ export default function PricingPage() {
                 )}
                 <div className="pricing-card__note">{tier.note}</div>
                 {tier.cta && (
-                  <a href="#demo" className={`btn ${tier.ctaStyle === 'primary' ? 'btn--primary' : 'btn--ghost'} pricing-card__cta`}>
+                  <Link to="/register" className={`btn ${tier.ctaStyle === 'primary' ? 'btn--primary' : 'btn--ghost'} pricing-card__cta`}>
                     {tier.cta}
-                  </a>
+                  </Link>
                 )}
                 <div className="pricing-card__separator" />
                 <ul className="pricing-card__features">
@@ -100,7 +101,7 @@ export default function PricingPage() {
         <div className="pricing-bottom-cta">
           <h2 className="pricing-bottom-cta__headline">{BOTTOM_CTA.headline}</h2>
           <p className="pricing-bottom-cta__subhead">{BOTTOM_CTA.subhead}</p>
-          <a href="#demo" className="btn btn--white btn--lg">{BOTTOM_CTA.cta}</a>
+          <Link to="/register" className="btn btn--white btn--lg">{BOTTOM_CTA.cta}</Link>
         </div>
       </div>
 

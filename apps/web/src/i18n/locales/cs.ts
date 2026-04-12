@@ -6,6 +6,7 @@ export const cs = {
     partners: 'Partneři',
     contact: 'Kontakt',
     login: 'Přihlásit se',
+    register: 'Registrace zdarma',
     demo: 'Vyzkoušet demo',
     platformCols: { col1: 'SPRÁVA NEMOVITOSTÍ', col2: 'TECHNICKÁ SPRÁVA', col3: 'AI A AUTOMATIZACE' },
     platformItems: {
