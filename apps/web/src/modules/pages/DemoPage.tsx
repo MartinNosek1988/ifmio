@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { Navigation } from '../landing/components/Navigation'
 import { Footer } from '../landing/components/Footer'
 import { SeoHead } from '../../i18n/SeoHead'
@@ -58,6 +59,22 @@ export default function DemoPage() {
                 <div style={{ fontSize: '2.5rem', marginBottom: 16 }}>✅</div>
                 <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, marginBottom: 8 }}>Děkujeme!</h2>
                 <p style={{ color: 'var(--gray-500)' }}>Ozveme se vám do 24 hodin.</p>
+                <p style={{ marginTop: 24, color: 'var(--gray-500)', fontSize: '.9rem' }}>Nechcete čekat? Začněte hned:</p>
+                <Link
+                  to={form.email ? `/register?email=${encodeURIComponent(form.email)}` : '/register'}
+                  style={{
+                    display: 'inline-block',
+                    marginTop: 8,
+                    padding: '12px 24px',
+                    backgroundColor: '#0F6E56',
+                    color: '#fff',
+                    borderRadius: 8,
+                    textDecoration: 'none',
+                    fontWeight: 600,
+                  }}
+                >
+                  Zaregistrovat se zdarma →
+                </Link>
               </div>
             ) : (
               <form onSubmit={handleSubmit}>

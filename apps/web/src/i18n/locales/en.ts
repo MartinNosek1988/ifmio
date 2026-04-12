@@ -6,6 +6,7 @@ export const en = {
     partners: 'Partners',
     contact: 'Contact',
     login: 'Sign in',
+    register: 'Sign up free',
     demo: 'Try demo',
     platformCols: { col1: 'PROPERTY MANAGEMENT', col2: 'TECHNICAL MANAGEMENT', col3: 'AI & AUTOMATION' },
     platformItems: {
