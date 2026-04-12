@@ -1,10 +1,9 @@
 version: '3.8'
+name: ifmio
 
 services:
   api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
+    image: ghcr.io/martinnosek1988/ifmio/api:latest
     restart: unless-stopped
     read_only: true
     tmpfs:
@@ -48,11 +47,7 @@ services:
       start_period: 60s
 
   web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-      args:
-        VITE_API_URL: ${VITE_API_URL:-/api/v1}
+    image: ghcr.io/martinnosek1988/ifmio/web:latest
     restart: unless-stopped
     read_only: true
     tmpfs:
