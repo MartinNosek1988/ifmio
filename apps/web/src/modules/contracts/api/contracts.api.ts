@@ -60,8 +60,8 @@ export const contractsApi = {
     return data;
   },
 
-  stats: async () => {
-    const { data } = await apiClient.get<ContractStats>('/contracts/stats');
+  stats: async (propertyId?: string) => {
+    const { data } = await apiClient.get<ContractStats>('/contracts/stats', { params: propertyId ? { propertyId } : undefined });
     return data;
   },
 
