@@ -12,18 +12,21 @@ export const meterKeys = {
 
 export function useMeters(params?: { meterType?: string; propertyId?: string; search?: string }) {
   const pid = usePropertyPickerStore((s) => s.selectedPropertyId);
-  const scoped = pid ? { ...params, propertyId: params?.propertyId ?? pid } : params;
+  const effectivePropertyId = params?.propertyId ?? pid ?? undefined;
+  const scoped = effectivePropertyId
+    ? { ...params, propertyId: effectivePropertyId }
+    : params;
   return useQuery({
-    queryKey: [...meterKeys.list(params as Record<string, unknown>), pid] as const,
+    queryKey: [...meterKeys.list(params as Record<string, unknown>), effectivePropertyId] as const,
     queryFn: () => metersApi.list(scoped),
   });
 }
 
 export function useMeterStats() {
-  const pid = usePropertyPickerStore((s) => s.selectedPropertyId);
+  // TODO: Backend /meters/stats nepodporuje propertyId filter — needs backend update
   return useQuery({
-    queryKey: [...meterKeys.stats(), pid] as const,
-    queryFn: () => metersApi.stats(pid ?? undefined),
+    queryKey: meterKeys.stats(),
+    queryFn: () => metersApi.stats(),
     staleTime: 30_000,
   });
 }

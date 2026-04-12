@@ -13,9 +13,12 @@ export const residentsKeys = {
 
 export function useResidents(params?: Record<string, unknown>) {
   const pid = usePropertyPickerStore((s) => s.selectedPropertyId);
-  const scoped = pid ? { ...params, propertyId: pid } : params;
+  const effectivePropertyId = (params?.propertyId as string | undefined) ?? pid ?? undefined;
+  const scoped = effectivePropertyId
+    ? { ...params, propertyId: effectivePropertyId }
+    : params;
   return useQuery({
-    queryKey: [...residentsKeys.list(params ?? {}), pid] as const,
+    queryKey: [...residentsKeys.list(params ?? {}), effectivePropertyId] as const,
     queryFn: () => residentsApi.list(scoped),
   });
 }
