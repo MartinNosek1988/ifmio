@@ -80,10 +80,10 @@ export class OwnerDto {
   @IsOptional() @IsString() @MaxLength(10)
   postalCode?: string;
 
-  @IsInt() @Min(1)
+  @Type(() => Number) @IsInt() @Min(1)
   shareNumerator!: number;
 
-  @IsInt() @Min(1)
+  @Type(() => Number) @IsInt() @Min(1)
   shareDenominator!: number;
 
   @IsBoolean()

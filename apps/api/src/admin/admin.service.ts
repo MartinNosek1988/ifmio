@@ -727,7 +727,7 @@ export class AdminService {
       });
 
       // 2. Party[] (+ SJM partner party pokud isSjm)
-      const ownerData: Array<{ partyId: string; sjmPartyId: string | null; owner: OwnerDto }> = [];
+      const ownerData: Array<{ partyId: string; partyDisplayName: string; sjmPartyId: string | null; owner: OwnerDto }> = [];
       for (const owner of dto.owners) {
         const displayName = owner.type === 'company'
           ? owner.companyName!
@@ -764,24 +764,25 @@ export class AdminService {
           sjmPartyId = sjmParty.id;
         }
 
-        ownerData.push({ partyId: party.id, sjmPartyId, owner });
+        ownerData.push({ partyId: party.id, partyDisplayName: party.displayName, sjmPartyId, owner });
       }
 
       // 3. Principal
-      const principalCode = propertyName
+      const codePrefix = propertyName
         .substring(0, 10)
         .toUpperCase()
         .replace(/\s+/g, '')
         .replace(/[^A-Z0-9]/g, '');
-      const primaryParty = await tx.party.findUnique({ where: { id: ownerData[0].partyId } });
+      const codeSuffix = Date.now().toString(36).slice(-4).toUpperCase();
+      const principalCode = codePrefix ? `${codePrefix}-${codeSuffix}` : undefined;
       const principal = await tx.principal.create({
         data: {
           tenantId,
           partyId: ownerData[0].partyId,
           type: principalType,
-          code: principalCode || undefined,
+          code: principalCode,
           displayName: dto.owners.length === 1
-            ? primaryParty!.displayName
+            ? ownerData[0].partyDisplayName
             : `Vlastníci ${propertyName}`,
           isActive: true,
         },
@@ -840,7 +841,7 @@ export class AdminService {
           principalId: principal.id,
           propertyId: property.id,
           scopeType: 'property',
-          code: `FC-${principalCode || property.id.substring(0, 5).toUpperCase()}`,
+          code: `FC-${codePrefix || property.id.substring(0, 5).toUpperCase()}-${codeSuffix}`,
           displayName: propertyName,
           currency: 'CZK',
           vatEnabled: false,
