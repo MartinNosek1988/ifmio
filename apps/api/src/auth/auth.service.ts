@@ -22,7 +22,25 @@ import { validatePassword } from './password-policy';
 import { RiskScoringService } from './risk-scoring.service';
 import { SecurityAlertingService } from '../common/security/security-alerting.service';
 import { EmailTemplateService } from '../email/email-template.service';
+import { TenantSubjectType, UserRole } from '@prisma/client';
 import type { AuthUser } from '@ifmio/shared-types';
+
+function resolveRoleFromSubjectType(subjectType?: TenantSubjectType | null): UserRole {
+  switch (subjectType) {
+    case TenantSubjectType.svj_bd:
+    case TenantSubjectType.spravce:
+    case TenantSubjectType.vlastnik_domu:
+      return UserRole.tenant_owner;
+    case TenantSubjectType.vlastnik_jednotky:
+      return UserRole.unit_owner;
+    case TenantSubjectType.najemnik:
+      return UserRole.unit_tenant;
+    case TenantSubjectType.dodavatel:
+      return UserRole.supplier;
+    default:
+      return UserRole.tenant_owner;
+  }
+}
 
 export interface RequestMeta {
   ip?: string;
@@ -94,6 +112,8 @@ export class AuthService {
       ? dto.plan!
       : 'free';
 
+    const userRole = resolveRoleFromSubjectType(dto.subjectType);
+
     const { user, tenant } = await this.prisma.$transaction(async (tx) => {
       const tenant = await tx.tenant.create({
         data: {
@@ -101,6 +121,7 @@ export class AuthService {
           slug,
           plan: validPlan as any,
           trialEndsAt,
+          subjectType: dto.subjectType ?? null,
         },
       });
 
@@ -122,11 +143,29 @@ export class AuthService {
           email: dto.email,
           name: dto.name,
           passwordHash,
-          role: 'tenant_owner',
+          role: userRole,
           passwordChangedAt: new Date(),
           passwordHistory: [passwordHash],
         },
       });
+
+      if (dto.subjectType === TenantSubjectType.dodavatel) {
+        await tx.supplierProfile.create({
+          data: {
+            tenantId: tenant.id,
+            userId: user.id,
+            companyName: dto.supplierCompanyName ?? dto.tenantName ?? dto.name,
+            ico: dto.companyNumber ?? null,
+            dic: dto.vatNumber ?? null,
+            isOsvc: dto.supplierIsOsvc ?? false,
+            categories: dto.supplierCategories ?? [],
+            description: dto.supplierDescription ?? null,
+            regionCity: dto.supplierRegionCity ?? null,
+            regionRadius: dto.supplierRegionRadius ?? null,
+            regionDistricts: dto.supplierRegionDistricts ?? [],
+          },
+        });
+      }
 
       await tx.auditLog.create({
         data: {

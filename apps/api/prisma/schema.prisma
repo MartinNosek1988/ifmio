@@ -11,27 +11,28 @@ datasource db {
 // ─── TENANT ──────────────────────────────────────────────────────
 
 model Tenant {
-  id                    String     @id @default(uuid())
+  id                    String             @id @default(uuid())
   name                  String
-  slug                  String     @unique
-  plan                  TenantPlan @default(free)
-  isActive              Boolean    @default(true)
+  slug                  String             @unique
+  plan                  TenantPlan         @default(free)
+  isActive              Boolean            @default(true)
   ico                   String? // IČO správcovské firmy
   dic                   String? // DIČ správcovské firmy
-  maxUsers              Int        @default(5)
-  maxProperties         Int        @default(3)
+  maxUsers              Int                @default(5)
+  maxProperties         Int                @default(3)
   trialEndsAt           DateTime?
   notes                 String?
   // Onboarding
   archetype             TenantArchetype?
-  onboardingCompleted   Boolean    @default(false)
-  onboardingStep        Int        @default(0)
+  onboardingCompleted   Boolean            @default(false)
+  onboardingStep        Int                @default(0)
   // Data retention policies (ZT-W5-02)
-  retentionAuditLogDays Int        @default(365)
-  retentionBackupDays   Int        @default(90)
-  retentionSessionDays  Int        @default(30)
-  createdAt             DateTime   @default(now())
-  updatedAt             DateTime   @updatedAt
+  retentionAuditLogDays Int                @default(365)
+  retentionBackupDays   Int                @default(90)
+  retentionSessionDays  Int                @default(30)
+  subjectType           TenantSubjectType?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
 
   users                   User[]
   properties              Property[]
@@ -117,6 +118,7 @@ model Tenant {
   boardMessages              BoardMessage[]
   boardMessageReadReceipts   BoardMessageReadReceipt[]
   userPropertyRoles          UserPropertyRole[]
+  supplierProfiles           SupplierProfile[]
 
   @@map("tenants")
 }
@@ -176,45 +178,46 @@ model User {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  tenant                  Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  party                   Party?                        @relation("UserParty", fields: [partyId], references: [id], onDelete: SetNull)
-  refreshTokens           RefreshToken[]
-  emailVerificationTokens EmailVerificationToken[]
-  sentInvitations         TenantInvitation[]            @relation("InvitedBy")
-  auditLogs               AuditLog[]
-  assignedTickets         HelpdeskTicket[]              @relation("TicketAssignee")
-  requestedTickets        HelpdeskTicket[]              @relation("TicketRequester")
-  dispatchedTickets       HelpdeskTicket[]              @relation("TicketDispatcher")
-  createdDocuments        Document[]
-  notifications           Notification[]
-  propertyAssignments     UserPropertyAssignment[]
-  propertyRoles           UserPropertyRole[]
-  submittedInvoices       Invoice[]                     @relation("InvoiceSubmitter")
-  approvedInvoices        Invoice[]                     @relation("InvoiceApprover")
-  rejectedInvoices        Invoice[]                     @relation("InvoiceRejecter")
-  responsiblePlans        RevisionPlan[]
-  qrScanEvents            AssetQrScanEvent[]
-  fieldCheckExecutions    AssetFieldCheckExecution[]
-  assignedWorkOrders      WorkOrder[]                   @relation("WOAssignee")
-  requestedWorkOrders     WorkOrder[]                   @relation("WORequester")
-  dispatchedWorkOrders    WorkOrder[]                   @relation("WODispatcher")
-  woDispatchedBy          WorkOrder[]                   @relation("WODispatchedBy")
-  reportSubscriptions     ScheduledReportSubscription[]
-  assignedRecurringPlans  RecurringActivityPlan[]       @relation("RecurringPlanAssignee")
-  mioDigestLogs           MioDigestLog[]
-  kanbanTasksAssigned     KanbanTask[]                  @relation("KanbanTaskAssignee")
-  kanbanTasksCreated      KanbanTask[]                  @relation("KanbanTaskCreator")
-  features                UserFeature[]
-  apiKeys                 ApiKey[]
-  paymentOrders           PaymentOrder[]
-  invoiceComments         InvoiceComment[]
-  chatMessages            ChatMessage[]                 @relation("ChatAuthor")
-  chatMentions            ChatMention[]                 @relation("ChatMentioned")
-  assignedActivities      Activity[]                    @relation("ActivityAssigned")
-  doneActivities          Activity[]                    @relation("ActivityDone")
-  boardMessagesAuthored   BoardMessage[]                @relation("BoardMsgAuthor")
-  boardMessagesReviewed   BoardMessage[]                @relation("BoardMsgReviewer")
+  tenant                   Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  party                    Party?                        @relation("UserParty", fields: [partyId], references: [id], onDelete: SetNull)
+  refreshTokens            RefreshToken[]
+  emailVerificationTokens  EmailVerificationToken[]
+  sentInvitations          TenantInvitation[]            @relation("InvitedBy")
+  auditLogs                AuditLog[]
+  assignedTickets          HelpdeskTicket[]              @relation("TicketAssignee")
+  requestedTickets         HelpdeskTicket[]              @relation("TicketRequester")
+  dispatchedTickets        HelpdeskTicket[]              @relation("TicketDispatcher")
+  createdDocuments         Document[]
+  notifications            Notification[]
+  propertyAssignments      UserPropertyAssignment[]
+  propertyRoles            UserPropertyRole[]
+  submittedInvoices        Invoice[]                     @relation("InvoiceSubmitter")
+  approvedInvoices         Invoice[]                     @relation("InvoiceApprover")
+  rejectedInvoices         Invoice[]                     @relation("InvoiceRejecter")
+  responsiblePlans         RevisionPlan[]
+  qrScanEvents             AssetQrScanEvent[]
+  fieldCheckExecutions     AssetFieldCheckExecution[]
+  assignedWorkOrders       WorkOrder[]                   @relation("WOAssignee")
+  requestedWorkOrders      WorkOrder[]                   @relation("WORequester")
+  dispatchedWorkOrders     WorkOrder[]                   @relation("WODispatcher")
+  woDispatchedBy           WorkOrder[]                   @relation("WODispatchedBy")
+  reportSubscriptions      ScheduledReportSubscription[]
+  assignedRecurringPlans   RecurringActivityPlan[]       @relation("RecurringPlanAssignee")
+  mioDigestLogs            MioDigestLog[]
+  kanbanTasksAssigned      KanbanTask[]                  @relation("KanbanTaskAssignee")
+  kanbanTasksCreated       KanbanTask[]                  @relation("KanbanTaskCreator")
+  features                 UserFeature[]
+  apiKeys                  ApiKey[]
+  paymentOrders            PaymentOrder[]
+  invoiceComments          InvoiceComment[]
+  chatMessages             ChatMessage[]                 @relation("ChatAuthor")
+  chatMentions             ChatMention[]                 @relation("ChatMentioned")
+  assignedActivities       Activity[]                    @relation("ActivityAssigned")
+  doneActivities           Activity[]                    @relation("ActivityDone")
+  boardMessagesAuthored    BoardMessage[]                @relation("BoardMsgAuthor")
+  boardMessagesReviewed    BoardMessage[]                @relation("BoardMsgReviewer")
   boardMessageReadReceipts BoardMessageReadReceipt[]
+  supplierProfiles         SupplierProfile[]
 
   @@unique([tenantId, email])
   @@unique([oauthProvider, oauthId])
@@ -231,6 +234,73 @@ enum UserRole {
   viewer
   unit_owner
   unit_tenant
+  supplier
+}
+
+enum TenantSubjectType {
+  svj_bd
+  spravce
+  vlastnik_domu
+  vlastnik_jednotky
+  najemnik
+  dodavatel
+}
+
+enum SupplierCategory {
+  instalater
+  elektrikar
+  zamecnik
+  malir_naterac
+  podlahar
+  zednicke_prace
+  pokryvac
+  zahradnik
+  uklid
+  pest_control
+  revizni_technik
+  ucetni
+  pravnik
+  projekce
+  vymahani
+  sprava_nemovitosti
+  zatepleni
+  vytahy
+  pozarni_ochrana
+  jine
+}
+
+model SupplierProfile {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  companyName String?
+  ico         String? @db.VarChar(8)
+  dic         String?
+  isOsvc      Boolean @default(false)
+
+  categories  SupplierCategory[]
+  description String?            @db.Text
+  website     String?
+
+  regionCity      String?
+  regionRadius    Int?
+  regionDistricts String[]
+
+  logoBase64 String? @db.Text
+  isPublic   Boolean @default(false)
+  isVerified Boolean @default(false)
+  rating     Float?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([tenantId])
+  @@index([regionCity])
+  @@map("supplier_profiles")
 }
 
 model TenantInvitation {
@@ -5607,20 +5677,20 @@ model EmailTemplate {
 // ─── TIČR EVIDENCE OZO + RT ─────────────────────────────────────────
 
 model TicrCredential {
-  id                String    @id @default(cuid())
-  ico               String?
-  name              String
-  address           String?
-  ticrPersonId      String?
-  evidenceNumber    String
-  validUntil        DateTime?
-  deviceType        String
-  activity          String
-  qualificationRef  String?
-  registryType      String
-  sourceUrl         String?
-  importedAt        DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id               String    @id @default(cuid())
+  ico              String?
+  name             String
+  address          String?
+  ticrPersonId     String?
+  evidenceNumber   String
+  validUntil       DateTime?
+  deviceType       String
+  activity         String
+  qualificationRef String?
+  registryType     String
+  sourceUrl        String?
+  importedAt       DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@unique([evidenceNumber, registryType])
   @@index([ico])
@@ -5654,11 +5724,11 @@ model BoardMessage {
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
 
-  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  property      Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  author        User      @relation("BoardMsgAuthor", fields: [authorId], references: [id])
-  reviewer      User?     @relation("BoardMsgReviewer", fields: [reviewedBy], references: [id])
-  readReceipts  BoardMessageReadReceipt[]
+  tenant       Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property     Property                  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  author       User                      @relation("BoardMsgAuthor", fields: [authorId], references: [id])
+  reviewer     User?                     @relation("BoardMsgReviewer", fields: [reviewedBy], references: [id])
+  readReceipts BoardMessageReadReceipt[]
 
   @@index([tenantId])
   @@index([propertyId, status])
@@ -5673,9 +5743,9 @@ model BoardMessageReadReceipt {
   userId    String
   readAt    DateTime @default(now())
 
-  tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  message   BoardMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  user      User         @relation(fields: [userId], references: [id])
+  tenant  Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  message BoardMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User         @relation(fields: [userId], references: [id])
 
   @@unique([messageId, userId])
   @@index([tenantId])
@@ -5719,7 +5789,7 @@ model KbRuianUlice {
 }
 
 model KbRuianStavebniObjekt {
-  id                     Int    @id // RÚIAN kód stavebního objektu
+  id                     Int      @id // RÚIAN kód stavebního objektu
   buildingType           String? // Typ stavebního objektu (č.p., č.ev., bez č.)
   numberOfFloors         Int?
   numberOfUnits          Int? // Počet bytů
@@ -5740,7 +5810,7 @@ model KbRuianStavebniObjekt {
 }
 
 model KbRuianAdresniMisto {
-  id                      Int     @id // RÚIAN kód adresního místa
+  id                      Int      @id // RÚIAN kód adresního místa
   houseNumber             Int? // Číslo domovní
   orientationNumber       Int? // Číslo orientační
   orientationNumberLetter String? // Písmeno orient. čísla
