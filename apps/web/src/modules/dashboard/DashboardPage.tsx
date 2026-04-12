@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Building2, Users, Percent, UserCheck, Headphones, AlertTriangle,
   FileText, Wallet, Wrench, Clock, CheckCircle, Calendar, ClipboardCheck,
-  MessageSquare, Search, Lightbulb, Shield, BarChart3,
+  MessageSquare, Search, Lightbulb, Shield, BarChart3, Plus,
 } from 'lucide-react';
 import { KpiCard, Badge, Button } from '../../shared/components';
 import { LoadingState } from '../../shared/components/LoadingState';
@@ -48,6 +48,16 @@ export default function DashboardPage() {
 
   // Technician: lightweight view
   if (uxRole === 'tech') return <TechDashboard ops={ops} />;
+
+  // New tenant empty state: 0 properties for fm/owner → onboarding nudge
+  if (kpi.propertiesCount === 0 && (uxRole === 'fm' || uxRole === 'owner')) {
+    return <EmptyDashboardFmOwner onAdd={() => navigate('/properties/new')} />;
+  }
+
+  // New tenant empty state: 0 units for client role → waiting-for-assignment
+  if (uxRole === 'client' && kpi.unitsCount === 0) {
+    return <EmptyDashboardClient />;
+  }
 
   return (
     <div>
@@ -552,6 +562,41 @@ function SupplierDashboard() {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function EmptyDashboardFmOwner({ onAdd }: { onAdd: () => void }) {
+  return (
+    <div style={{ textAlign: "center", padding: "4rem 2rem", maxWidth: 560, margin: "0 auto" }}>
+      <div style={{ width: 72, height: 72, margin: "0 auto 20px", borderRadius: 36, background: "#E1F5EE", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Building2 size={32} style={{ color: "#0F6E56" }} />
+      </div>
+      <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1A1A2E", marginBottom: 8 }}>
+        Vítejte v ifmiu!
+      </h2>
+      <p style={{ color: "#6B7280", fontSize: ".95rem", lineHeight: 1.5, marginBottom: 28 }}>
+        Pro začátek přidejte svou první nemovitost. Pak nastavíte jednotky, vlastníky a předpisy plateb.
+      </p>
+      <button onClick={onAdd} className="btn btn--primary btn--lg" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+        <Plus size={18} /> Přidat nemovitost
+      </button>
+    </div>
+  );
+}
+
+function EmptyDashboardClient() {
+  return (
+    <div style={{ textAlign: "center", padding: "4rem 2rem", maxWidth: 560, margin: "0 auto" }}>
+      <div style={{ width: 72, height: 72, margin: "0 auto 20px", borderRadius: 36, background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <UserCheck size={32} style={{ color: "#2563EB" }} />
+      </div>
+      <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1A1A2E", marginBottom: 8 }}>
+        Vítejte v ifmiu!
+      </h2>
+      <p style={{ color: "#6B7280", fontSize: ".95rem", lineHeight: 1.5 }}>
+        Zatím nemáte přiřazenou žádnou jednotku. Požádejte svého správce o přidání — jakmile vás přiřadí, uvidíte zde přehled předpisů, konto a vyúčtování.
+      </p>
     </div>
   );
 }
