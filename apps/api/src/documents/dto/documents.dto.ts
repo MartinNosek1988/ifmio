@@ -12,6 +12,9 @@ export class DocumentListQueryDto {
   entityId?: string;
 
   @IsOptional() @IsString()
+  tag?: string;
+
+  @IsOptional() @IsString()
   search?: string;
 
   @IsOptional() @IsString()

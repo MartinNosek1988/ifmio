@@ -38,10 +38,15 @@ export class CalendarService {
     const from = query.from ? new Date(query.from) : new Date(now.getFullYear(), now.getMonth() - 1, 1)
     const to = query.to ? new Date(query.to) : new Date(now.getFullYear(), now.getMonth() + 2, 0)
 
-    // Explicit propertyId filter má přednost, jinak user-level scope (user property assignment)
-    const scopeWhere = query.propertyId
-      ? { propertyId: query.propertyId }
-      : await this.scope.scopeByPropertyId(user)
+    // Explicit propertyId — ověř že user má přístup, jinak 403.
+    // Bez explicitu: user-level scope (user property assignment).
+    let scopeWhere: Record<string, unknown>
+    if (query.propertyId) {
+      await this.scope.verifyPropertyAccess(user, query.propertyId)
+      scopeWhere = { propertyId: query.propertyId }
+    } else {
+      scopeWhere = await this.scope.scopeByPropertyId(user)
+    }
     const results: CalendarEventDto[] = []
 
     // 1. Custom calendar events

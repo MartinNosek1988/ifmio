@@ -8,7 +8,7 @@ export const docKeys = {
   stats: () => ['documents', 'stats'] as const,
 };
 
-export function useDocuments(params?: { category?: string; search?: string; tag?: string; propertyId?: string }) {
+export function useDocuments(params?: { category?: string; search?: string; tag?: string; propertyId?: string; entityType?: string; entityId?: string }) {
   const pid = usePropertyPickerStore((s) => s.selectedPropertyId);
   const effectivePropertyId = params?.propertyId ?? pid ?? undefined;
   const scoped = effectivePropertyId
