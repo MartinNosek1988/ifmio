@@ -40,6 +40,8 @@ interface NavSection {
   items: NavItem[];
   /** If provided, section is only shown for users whose UXRole is in this list */
   roles?: UXRole[];
+  /** If true, section is only shown to super admins */
+  superAdminOnly?: boolean;
 }
 
 // TODO: Sidebar items should be filtered by PropertyTypeConfig.features
@@ -120,6 +122,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: 'CRM',
     roles: ['fm'],
+    superAdminOnly: true,
     items: [
       { to: '/crm', label: 'Přehled', icon: <LayoutDashboard size={17} /> },
       { to: '/crm/buildings', label: 'Budovy', icon: <Building2 size={17} /> },
@@ -316,6 +319,7 @@ export default function AppShell() {
   }, [uxRole, location.pathname, navigate]);
 
   const visibleSections = authLoading ? [] : NAV_SECTIONS
+    .filter((sec) => !sec.superAdminOnly || isSuperAdmin)
     .filter((sec) => !sec.roles || sec.roles.includes(uxRole))
     .map((sec) => ({
       ...sec,
