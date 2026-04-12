@@ -16,7 +16,9 @@ const SUPPLIER_ROLES = ['supplier'];
  * fm       – FM správce  (tenant_owner / tenant_admin / property_manager)
  * tech     – Technik     (operations)
  * owner    – Vlastník    (viewer / finance_manager)
- * resident – Nájemce     (resident or any unknown role)
+ * client   – Klient portálu (unit_owner / unit_tenant)
+ * supplier – Dodavatel   (supplier)
+ * resident – Nájemce     (any unknown role — fallback)
  */
 export function useRoleUX(): UXRole {
   const role = useAuthStore((s) => s.user?.role ?? '');

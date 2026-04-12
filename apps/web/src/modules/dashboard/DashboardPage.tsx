@@ -27,10 +27,15 @@ const PRIO_COLOR: Record<string, 'muted' | 'blue' | 'yellow' | 'red'> = {
 
 export default function DashboardPage() {
   const uxRole = useRoleUX();
-  const { data, isLoading, isError, refetch } = useDashboardOverview();
-  const { data: ops } = useOperationalDashboard();
+  const isSupplier = uxRole === 'supplier';
+  const { data, isLoading, isError, refetch } = useDashboardOverview({ enabled: !isSupplier });
+  const { data: ops } = useOperationalDashboard({ enabled: !isSupplier });
   const { data: mioConfig } = useMioConfig();
   const navigate = useNavigate();
+
+  // Supplier: stub dashboard (full impl comes with marketplace) — short-circuit
+  // before loading/error gates since supplier doesn't load overview data.
+  if (isSupplier) return <SupplierDashboard />;
 
   const showMioStrip = mioConfig?.dashboard?.showMioStrip !== false;
   const showFindings = mioConfig?.dashboard?.showFindings !== false;
@@ -43,9 +48,6 @@ export default function DashboardPage() {
 
   // Technician: lightweight view
   if (uxRole === 'tech') return <TechDashboard ops={ops} />;
-
-  // Supplier: stub dashboard (full impl comes with marketplace)
-  if (uxRole === 'supplier') return <SupplierDashboard />;
 
   return (
     <div>

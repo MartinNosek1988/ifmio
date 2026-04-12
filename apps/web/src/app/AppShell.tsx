@@ -159,8 +159,8 @@ const NAV_SECTIONS: NavSection[] = [
     roles: ['supplier'],
     items: [
       { to: '/dashboard', label: 'Přehled', icon: <LayoutDashboard size={17} /> },
-      { to: '/work-orders', label: 'Zakázky', icon: <ClipboardList size={17} /> },
-      { to: '/finance/invoices', label: 'Moje faktury', icon: <Receipt size={17} /> },
+      { to: '/workorders', label: 'Zakázky', icon: <ClipboardList size={17} /> },
+      { to: '/finance?tab=doklady', label: 'Moje faktury', icon: <Receipt size={17} /> },
       { to: '/supplier/profile', label: 'Profil firmy', icon: <Building2 size={17} /> },
     ],
   },
