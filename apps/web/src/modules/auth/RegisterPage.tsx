@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { apiClient } from '../../core/api/client';
 import { ArrowRight, ArrowLeft, LayoutGrid, FileText, Home, MapPin, Check } from 'lucide-react';
@@ -8,7 +8,6 @@ import {
   INITIAL_WIZARD_STATE,
   getWizardSteps,
   type RegisterWizardState,
-  type SubjectType,
   type StepSetter,
 } from './register.types';
 import {
@@ -27,7 +26,6 @@ const STEP_ICONS = { LayoutGrid, FileText, Home, MapPin, Check } as const;
 
 export default function RegisterPage() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [form, setForm] = useState<RegisterWizardState>(INITIAL_WIZARD_STATE);
   const [currentStep, setCurrentStep] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
