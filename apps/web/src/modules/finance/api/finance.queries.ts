@@ -5,7 +5,7 @@ import { usePropertyPickerStore } from '../../../core/stores/property-picker.sto
 
 export const financeKeys = {
   summary: (pid?: string) => ['finance', 'summary', pid] as const,
-  bankAccounts: () => ['finance', 'bank-accounts'] as const,
+  bankAccounts: (pid?: string | null) => ['finance', 'bank-accounts', pid] as const,
   transactions: (p?: Record<string, unknown>) => ['finance', 'transactions', p] as const,
   prescriptions: (p?: Record<string, unknown>) => ['finance', 'prescriptions', p] as const,
   billingPeriods: (pid?: string) => ['finance', 'billing-periods', pid] as const,
@@ -24,7 +24,7 @@ export function useBankAccounts() {
   const pid = usePropertyPickerStore((s) => s.selectedPropertyId);
   const scoped = pid ? { propertyId: pid } : undefined;
   return useQuery({
-    queryKey: ['finance', 'bank-accounts', pid] as const,
+    queryKey: financeKeys.bankAccounts(pid),
     queryFn: () => financeApi.bankAccounts.list(scoped),
   });
 }
@@ -59,7 +59,7 @@ export function useCreateBankAccount() {
   return useMutation({
     mutationFn: (dto: { name: string; accountNumber: string; bankCode: string; iban?: string; currency?: string; propertyId?: string; accountType?: string; isDefault?: boolean }) =>
       financeApi.bankAccounts.create(dto),
-    onSuccess: () => qc.invalidateQueries({ queryKey: financeKeys.bankAccounts() }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['finance', 'bank-accounts'] }),
   });
 }
 
@@ -68,7 +68,7 @@ export function useUpdateBankAccount() {
   return useMutation({
     mutationFn: ({ id, dto }: { id: string; dto: { name?: string; accountNumber?: string; bankCode?: string; iban?: string; currency?: string; accountType?: string; isDefault?: boolean; isActive?: boolean } }) =>
       financeApi.bankAccounts.update(id, dto),
-    onSuccess: () => qc.invalidateQueries({ queryKey: financeKeys.bankAccounts() }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['finance', 'bank-accounts'] }),
   });
 }
 
@@ -76,7 +76,7 @@ export function useDeleteBankAccount() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => financeApi.bankAccounts.remove(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: financeKeys.bankAccounts() }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['finance', 'bank-accounts'] }),
   });
 }
 

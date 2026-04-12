@@ -99,7 +99,13 @@ export default function AssetListPage() {
     : assets;
 
   const handleExport = () => {
-    apiClient.get('/assets/export', { responseType: 'blob' }).then((res) => {
+    apiClient.get('/assets/export', {
+      responseType: 'blob',
+      params: {
+        ...(filters.category && { category: filters.category }),
+        ...(selectedPropertyId && { propertyId: selectedPropertyId }),
+      },
+    }).then((res) => {
       const url = URL.createObjectURL(res.data);
       const a = document.createElement('a');
       a.href = url; a.download = 'assets.csv'; a.click();
