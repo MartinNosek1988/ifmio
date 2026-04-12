@@ -11,10 +11,46 @@ export class OnboardingService {
   constructor(private prisma: PrismaService) {}
 
   async getStatus(tenantId: string) {
-    return this.prisma.tenant.findUnique({
+    const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { archetype: true, onboardingCompleted: true, onboardingStep: true },
+      select: {
+        archetype: true,
+        subjectType: true,
+        onboardingCompleted: true,
+        onboardingStep: true,
+      },
     })
+
+    if (!tenant) return null
+
+    // Role, které nepotřebují property onboarding wizard
+    const skipTypes = ['najemnik', 'dodavatel', 'vlastnik_jednotky']
+    if (tenant.subjectType && skipTypes.includes(tenant.subjectType)) {
+      return {
+        archetype: null,
+        onboardingCompleted: true,
+        onboardingStep: tenant.onboardingStep,
+      }
+    }
+
+    // Fallback: explicit archetype má přednost, jinak mapujeme ze subjectType
+    const archetype = tenant.archetype ?? this.resolveArchetype(tenant.subjectType)
+
+    return {
+      archetype,
+      onboardingCompleted: tenant.onboardingCompleted,
+      onboardingStep: tenant.onboardingStep,
+    }
+  }
+
+  private resolveArchetype(subjectType: string | null | undefined): string | null {
+    if (!subjectType) return null
+    const map: Record<string, string> = {
+      svj_bd: 'SELF_MANAGED_HOA',
+      spravce: 'MANAGEMENT_COMPANY',
+      vlastnik_domu: 'RENTAL_OWNER',
+    }
+    return map[subjectType] ?? null
   }
 
   async completeStep1(tenantId: string, dto: OnboardingStep1Dto) {
