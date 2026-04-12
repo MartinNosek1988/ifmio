@@ -62,16 +62,8 @@ export default function DemoPage() {
                 <p style={{ marginTop: 24, color: 'var(--gray-500)', fontSize: '.9rem' }}>Nechcete čekat? Začněte hned:</p>
                 <Link
                   to={form.email ? `/register?email=${encodeURIComponent(form.email)}` : '/register'}
-                  style={{
-                    display: 'inline-block',
-                    marginTop: 8,
-                    padding: '12px 24px',
-                    backgroundColor: '#0F6E56',
-                    color: '#fff',
-                    borderRadius: 8,
-                    textDecoration: 'none',
-                    fontWeight: 600,
-                  }}
+                  className="btn btn--primary"
+                  style={{ marginTop: 8 }}
                 >
                   Zaregistrovat se zdarma →
                 </Link>
