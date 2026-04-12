@@ -201,7 +201,8 @@ export function Navigation() {
         <div className="landing-nav__ctas">
           <LanguageSwitcher />
           <a href="/login" className="btn btn--ghost btn--sm">{t.nav.login}</a>
-          <a href={localePath(`/${ROUTE_SLUGS.demo[locale] ?? 'demo'}`)} className="btn btn--primary btn--sm">{t.nav.demo}</a>
+          <a href="/register" className="btn btn--primary btn--sm">{t.nav.register}</a>
+          <a href={localePath(`/${ROUTE_SLUGS.demo[locale] ?? 'demo'}`)} className="btn btn--ghost btn--sm">{t.nav.demo}</a>
         </div>
       </div>
     </nav>

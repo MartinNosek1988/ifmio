@@ -71,9 +71,17 @@ export default function LoginPage() {
     if (user.language && user.language !== i18n.language) i18n.changeLanguage(user.language);
     // Set Zustand store BEFORE navigation so AppShell sidebar has correct role
     useAuthStore.setState({ user, isLoggedIn: true, isLoading: false, passwordExpired: !!passwordExpired });
-    if (passwordExpired) navigate('/profile?tab=security&expired=1', { replace: true });
-    else if (data.onboardingCompleted === false) navigate('/onboarding/setup', { replace: true });
-    else navigate(returnUrl, { replace: true });
+    if (passwordExpired) {
+      navigate('/profile?tab=security&expired=1', { replace: true });
+    } else if (user.role === 'supplier') {
+      navigate('/dashboard', { replace: true });
+    } else if (user.role === 'unit_tenant' || user.role === 'unit_owner') {
+      navigate('/portal', { replace: true });
+    } else if (data.onboardingCompleted === false) {
+      navigate('/onboarding/setup', { replace: true });
+    } else {
+      navigate(returnUrl, { replace: true });
+    }
   };
 
   const inputStyle = (hasError?: boolean): React.CSSProperties => ({

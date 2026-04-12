@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { apiClient } from '../../core/api/client';
 import { ArrowRight, ArrowLeft, LayoutGrid, FileText, Home, MapPin, Check } from 'lucide-react';
@@ -26,7 +26,12 @@ const STEP_ICONS = { LayoutGrid, FileText, Home, MapPin, Check } as const;
 
 export default function RegisterPage() {
   const { t } = useTranslation();
-  const [form, setForm] = useState<RegisterWizardState>(INITIAL_WIZARD_STATE);
+  const [searchParams] = useSearchParams();
+  const prefillEmail = searchParams.get('email') ?? '';
+  const [form, setForm] = useState<RegisterWizardState>({
+    ...INITIAL_WIZARD_STATE,
+    email: prefillEmail,
+  });
   const [currentStep, setCurrentStep] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
