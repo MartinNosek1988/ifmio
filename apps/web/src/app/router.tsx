@@ -26,6 +26,7 @@ const OAuthCallbackPage = lazy(() => import('../modules/auth/OAuthCallbackPage')
 const PortalPage = lazy(() => import('../modules/portal/PortalPage'));
 const PortalPublicPage = lazy(() => import('../modules/portal/PortalPublicPage'));
 import { ErrorBoundary } from '../shared/components';
+import { SuperAdminGuard } from '../shared/components/SuperAdminGuard';
 
 const DashboardPage = lazy(() => import('../modules/dashboard/DashboardPage'));
 const PropertiesPage = lazy(() => import('../modules/properties/PropertiesPage'));
@@ -273,17 +274,22 @@ export const router = createBrowserRouter([
       { path: 'profile', element: withBoundary('Profil', ProfilePage) },
       { path: 'super-admin', element: withBoundary('Super Admin', SuperAdminPage) },
       { path: 'knowledge-base', element: withBoundary('Knowledge Base', KnowledgeBaseDashboard) },
-      { path: 'crm', element: withBoundary('CRM Přehled', KnowledgeBaseDashboard) },
-      { path: 'crm/buildings', element: withBoundary('CRM Budovy', CrmBuildingsPage) },
-      { path: 'crm/buildings/:id', element: withBoundary('CRM Detail budovy', CrmBuildingDetailPage) },
-      { path: 'crm/buildings/:buildingId/units/:unitId', element: withBoundary('Detail jednotky KB', CrmBuildingUnitDetailPage) },
-      { path: 'crm/organizations', element: withBoundary('CRM Organizace', CrmOrganizationsPage) },
-      { path: 'crm/import', element: withBoundary('CRM Import', CrmImportPage) },
-      { path: 'crm/map', element: withBoundary('CRM Mapa', CrmMapPage) },
-      { path: 'crm/pipeline', element: withBoundary('CRM Pipeline', CrmPipelinePage) },
-      { path: 'crm/kb-candidates', element: withBoundary('KB Kandidati', CrmKbCandidatesPage) },
-      { path: 'crm/registry/persons/:id', element: withBoundary('Profil osoby', PersonProfilePage) },
-      { path: 'crm/registry/organizations/:ico', element: withBoundary('Profil organizace', OrganizationProfilePage) },
+      {
+        element: <SuperAdminGuard />,
+        children: [
+          { path: 'crm', element: withBoundary('CRM Přehled', KnowledgeBaseDashboard) },
+          { path: 'crm/buildings', element: withBoundary('CRM Budovy', CrmBuildingsPage) },
+          { path: 'crm/buildings/:id', element: withBoundary('CRM Detail budovy', CrmBuildingDetailPage) },
+          { path: 'crm/buildings/:buildingId/units/:unitId', element: withBoundary('Detail jednotky KB', CrmBuildingUnitDetailPage) },
+          { path: 'crm/organizations', element: withBoundary('CRM Organizace', CrmOrganizationsPage) },
+          { path: 'crm/import', element: withBoundary('CRM Import', CrmImportPage) },
+          { path: 'crm/map', element: withBoundary('CRM Mapa', CrmMapPage) },
+          { path: 'crm/pipeline', element: withBoundary('CRM Pipeline', CrmPipelinePage) },
+          { path: 'crm/kb-candidates', element: withBoundary('KB Kandidati', CrmKbCandidatesPage) },
+          { path: 'crm/registry/persons/:id', element: withBoundary('Profil osoby', PersonProfilePage) },
+          { path: 'crm/registry/organizations/:ico', element: withBoundary('Profil organizace', OrganizationProfilePage) },
+        ],
+      },
     ],
   },
 ]);
