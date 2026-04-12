@@ -58,11 +58,13 @@ jobs:
             set -e
             git config --global --add safe.directory /opt/ifmio
             cd /opt/ifmio
+
+            # Fix ownership FIRST — before any git operations
+            sudo chown -R $(whoami):$(whoami) . 2>/dev/null || true
+
             echo "Pull latest code"
             git fetch origin main
             git checkout main
-            # Fix file ownership if Docker build left root-owned files
-            sudo chown -R $(whoami):$(whoami) . 2>/dev/null || true
             git reset --hard origin/main
 
             echo "Build and restart"
