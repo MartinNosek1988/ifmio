@@ -8,6 +8,7 @@ import * as bcrypt       from 'bcryptjs'
 import * as crypto       from 'crypto'
 import type { AuthUser } from '@ifmio/shared-types'
 import type { UserRole } from '@prisma/client'
+import type { RentalOwnerOnboardingDto, OwnerDto } from './dto/rental-owner-onboarding.dto'
 import { OffboardingService } from './offboarding.service'
 import { EmailTemplateService } from '../email/email-template.service'
 
@@ -697,5 +698,171 @@ export class AdminService {
         connected: !!process.env.SIGNI_API_KEY,
       },
     }
+  }
+
+  // ─── RENTAL OWNER ONBOARDING ──────────────────────────────────
+
+  async completeRentalOwnerOnboarding(tenantId: string, dto: RentalOwnerOnboardingDto) {
+    const principalType = this.resolvePrincipalType(dto.owners);
+
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Property
+      const propertyName = dto.propertyName?.trim() || dto.address.fullAddress;
+      const addressLine = [dto.address.street, dto.address.houseNumber].filter(Boolean).join(' ');
+      const property = await tx.property.create({
+        data: {
+          tenantId,
+          name: propertyName,
+          address: addressLine,
+          city: dto.address.city,
+          postalCode: dto.address.postalCode ?? '',
+          type: 'RENTAL_RESIDENTIAL',
+          ownership: 'vlastnictvi',
+          legalMode: 'RENTAL',
+          cadastralArea: dto.address.cadastralArea ?? null,
+          latitude: dto.address.lat ?? null,
+          longitude: dto.address.lng ?? null,
+          status: 'active',
+        },
+      });
+
+      // 2. Party[] (+ SJM partner party pokud isSjm)
+      const ownerData: Array<{ partyId: string; partyDisplayName: string; sjmPartyId: string | null; owner: OwnerDto }> = [];
+      for (const owner of dto.owners) {
+        const displayName = owner.type === 'company'
+          ? owner.companyName!
+          : `${owner.lastName ?? ''} ${owner.firstName ?? ''}`.trim();
+        const party = await tx.party.create({
+          data: {
+            tenantId,
+            type: owner.type,
+            displayName,
+            firstName: owner.firstName ?? null,
+            lastName: owner.lastName ?? null,
+            companyName: owner.companyName ?? null,
+            ic: owner.ic ?? null,
+            dic: owner.dic ?? null,
+            email: owner.email ?? null,
+            phone: owner.phone ?? null,
+            street: owner.street ?? null,
+            city: owner.city ?? null,
+            postalCode: owner.postalCode ?? null,
+          },
+        });
+
+        let sjmPartyId: string | null = null;
+        if (owner.isSjm && owner.sjmPartnerFirstName && owner.sjmPartnerLastName) {
+          const sjmParty = await tx.party.create({
+            data: {
+              tenantId,
+              type: 'person',
+              displayName: `${owner.sjmPartnerLastName} ${owner.sjmPartnerFirstName}`,
+              firstName: owner.sjmPartnerFirstName,
+              lastName: owner.sjmPartnerLastName,
+            },
+          });
+          sjmPartyId = sjmParty.id;
+        }
+
+        ownerData.push({ partyId: party.id, partyDisplayName: party.displayName, sjmPartyId, owner });
+      }
+
+      // 3. Principal
+      const codePrefix = propertyName
+        .substring(0, 10)
+        .toUpperCase()
+        .replace(/\s+/g, '')
+        .replace(/[^A-Z0-9]/g, '');
+      const codeSuffix = Date.now().toString(36).slice(-4).toUpperCase();
+      const principalCode = codePrefix ? `${codePrefix}-${codeSuffix}` : undefined;
+      const principal = await tx.principal.create({
+        data: {
+          tenantId,
+          partyId: ownerData[0].partyId,
+          type: principalType,
+          code: principalCode,
+          displayName: dto.owners.length === 1
+            ? ownerData[0].partyDisplayName
+            : `Vlastníci ${propertyName}`,
+          isActive: true,
+        },
+      });
+
+      // 4. PrincipalOwner[] (+ SJM partnery)
+      const now = new Date();
+      for (const { partyId, sjmPartyId, owner } of ownerData) {
+        const sharePercent = (owner.shareNumerator / owner.shareDenominator) * 100;
+        await tx.principalOwner.create({
+          data: {
+            tenantId,
+            principalId: principal.id,
+            partyId,
+            role: 'legal_owner',
+            shareNumerator: owner.shareNumerator,
+            shareDenominator: owner.shareDenominator,
+            sharePercent,
+            isSjm: owner.isSjm,
+            validFrom: now,
+          },
+        });
+        if (sjmPartyId) {
+          await tx.principalOwner.create({
+            data: {
+              tenantId,
+              principalId: principal.id,
+              partyId: sjmPartyId,
+              role: 'legal_owner',
+              shareNumerator: owner.shareNumerator,
+              shareDenominator: owner.shareDenominator,
+              sharePercent,
+              isSjm: true,
+              validFrom: now,
+            },
+          });
+        }
+      }
+
+      // 5. ManagementContract
+      await tx.managementContract.create({
+        data: {
+          tenantId,
+          principalId: principal.id,
+          propertyId: property.id,
+          type: 'rental_management',
+          scope: 'whole_property',
+          isActive: true,
+        },
+      });
+
+      // 6. FinancialContext
+      await tx.financialContext.create({
+        data: {
+          tenantId,
+          principalId: principal.id,
+          propertyId: property.id,
+          scopeType: 'property',
+          code: `FC-${codePrefix || property.id.substring(0, 5).toUpperCase()}-${codeSuffix}`,
+          displayName: propertyName,
+          currency: 'CZK',
+          vatEnabled: false,
+          vatPayer: false,
+        },
+      });
+
+      // 7. Mark tenant onboarding complete
+      await tx.tenant.update({
+        where: { id: tenantId },
+        data: { onboardingCompleted: true },
+      });
+
+      return { propertyId: property.id, principalId: principal.id };
+    });
+  }
+
+  private resolvePrincipalType(owners: OwnerDto[]): 'individual_owner' | 'corporate_owner' | 'mixed_client' {
+    if (owners.length === 1) {
+      return owners[0].type === 'company' ? 'corporate_owner' : 'individual_owner';
+    }
+    return 'mixed_client';
   }
 }
