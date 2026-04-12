@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Eye, EyeOff } from 'lucide-react';
 import { PasswordStrengthIndicator } from '../../../../shared/components/PasswordStrengthIndicator';
+import type { SupplierCategory } from '@ifmio/shared-types';
 import { inputStyle, labelStyle, errorStyle, SUPPLIER_CATEGORY_OPTIONS, type StepProps } from '../../register.types';
 import { AresLookup } from './AresLookup';
 
@@ -14,7 +15,7 @@ export function SupplierStep({ form, set, errors }: StepProps) {
 
   const visibleCats = showAllCats ? SUPPLIER_CATEGORY_OPTIONS : SUPPLIER_CATEGORY_OPTIONS.slice(0, INITIAL_VISIBLE);
 
-  function toggleCategory(value: string) {
+  function toggleCategory(value: SupplierCategory) {
     const next = form.supplierCategories.includes(value)
       ? form.supplierCategories.filter((c) => c !== value)
       : [...form.supplierCategories, value];

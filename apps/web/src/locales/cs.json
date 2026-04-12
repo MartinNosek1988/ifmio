@@ -99,7 +99,8 @@
       "modeJoinCode": "Mám kód od správce",
       "joinCode": "Kód pozvánky",
       "joinCodePlaceholder": "Zadejte kód, který jste obdrželi",
-      "joinCodeDisabled": "Připravujeme — bude brzy k dispozici"
+      "joinCodeDisabled": "Připravujeme — bude brzy k dispozici",
+      "joinCodeComingSoon": "Připojení kódem bude brzy k dispozici"
     },
     "address": {
       "street": "Ulice a číslo *",
@@ -109,7 +110,8 @@
       "modeJoinCode": "Mám kód od správce",
       "joinCode": "Kód pozvánky",
       "joinCodePlaceholder": "Zadejte kód od správce nebo vlastníka",
-      "joinCodeDisabled": "Připravujeme — bude brzy k dispozici"
+      "joinCodeDisabled": "Připravujeme — bude brzy k dispozici",
+      "joinCodeComingSoon": "Připojení kódem bude brzy k dispozici"
     },
     "region": {
       "city": "Hlavní město / obec *",
@@ -150,7 +152,7 @@
       "dodavatel": {
         "hint1": "Dokončete profil firmy",
         "hint2": "Prohlédněte si poptávky",
-        "cta": "Přejít na portál dodavatele"
+        "cta": "Přejít do systému"
       }
     },
     "error": {

@@ -80,10 +80,13 @@ export default function RegisterPage() {
         if (!form.propertyCity.trim()) e.propertyCity = t('register.error.required');
         break;
       case 'unit':
-        if (!form.joinCode && !form.unitAddress.trim()) e.unitAddress = t('register.error.required');
+        if (!form.unitAddress.trim()) e.unitAddress = t('register.error.required');
+        if (!form.unitNumber.trim()) e.unitNumber = t('register.error.required');
         break;
       case 'address':
-        if (!form.tenantJoinCode && !form.residenceAddress.trim()) e.residenceAddress = t('register.error.required');
+        if (!form.residenceAddress.trim()) e.residenceAddress = t('register.error.required');
+        if (!form.residenceCity.trim()) e.residenceCity = t('register.error.required');
+        if (!form.residencePostalCode.trim()) e.residencePostalCode = t('register.error.required');
         break;
       case 'region':
         if (!form.supplierRegionCity.trim()) e.supplierRegionCity = t('register.error.required');

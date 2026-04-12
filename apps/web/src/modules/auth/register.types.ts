@@ -1,10 +1,6 @@
-export type SubjectType =
-  | 'svj_bd'
-  | 'spravce'
-  | 'vlastnik_domu'
-  | 'vlastnik_jednotky'
-  | 'najemnik'
-  | 'dodavatel';
+import type { TenantSubjectType, SupplierCategory } from '@ifmio/shared-types';
+
+export type SubjectType = TenantSubjectType;
 
 export interface SubjectTypeOption {
   value: SubjectType;
@@ -111,7 +107,7 @@ export interface RegisterWizardState {
   tenantJoinCode: string;
   supplierCompanyName: string;
   supplierIsOsvc: boolean;
-  supplierCategories: string[];
+  supplierCategories: SupplierCategory[];
   supplierDescription: string;
   supplierRegionCity: string;
   supplierRegionRadius: number;
