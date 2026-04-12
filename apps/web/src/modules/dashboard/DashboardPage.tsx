@@ -12,6 +12,7 @@ import { useDashboardOverview, useOperationalDashboard } from './api/dashboard.q
 import { useMioConfig } from '../admin/api/admin.queries';
 import { formatKc, formatCzDate } from '../../shared/utils/format';
 import { useRoleUX } from '../../shared/hooks/useRoleUX';
+import { useTranslation } from 'react-i18next';
 import { dashboardApi } from './api/dashboard.api';
 import type { OperationalDashboard, MioFinding } from './api/dashboard.api';
 
@@ -42,6 +43,9 @@ export default function DashboardPage() {
 
   // Technician: lightweight view
   if (uxRole === 'tech') return <TechDashboard ops={ops} />;
+
+  // Supplier: stub dashboard (full impl comes with marketplace)
+  if (uxRole === 'supplier') return <SupplierDashboard />;
 
   return (
     <div>
@@ -516,6 +520,33 @@ function RecommendationsSection() {
               )}
               <Button size="sm" onClick={() => dismissMut.mutate(r.id)} disabled={dismissMut.isPending}>Skrýt</Button>
             </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SupplierDashboard() {
+  const { t } = useTranslation();
+  const cards = [
+    { label: t("supplier.dashboard.activeOrders"), value: "—" },
+    { label: t("supplier.dashboard.pendingInvoices"), value: "—" },
+    { label: t("supplier.dashboard.rating"), value: "—" },
+  ];
+  return (
+    <div>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">{t("supplier.dashboard.title")}</h1>
+          <p className="page-subtitle">{t("supplier.dashboard.subtitle")}</p>
+        </div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginTop: 16 }}>
+        {cards.map((c) => (
+          <div key={c.label} style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 20 }}>
+            <div style={{ fontSize: ".82rem", color: "#6B7280", marginBottom: 8 }}>{c.label}</div>
+            <div style={{ fontSize: "1.6rem", fontWeight: 600, color: "#1A1A2E" }}>{c.value}</div>
           </div>
         ))}
       </div>

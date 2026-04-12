@@ -120,6 +120,9 @@ const PortalESignPage = lazy(() => import('../modules/portal/PortalESignPage'));
 const PortalContactsPage = lazy(() => import('../modules/portal/PortalContactsPage'));
 const PortalMessagesPage = lazy(() => import('../modules/portal/PortalMessagesPage'));
 const PortalBoardPage = lazy(() => import('../modules/portal/PortalBoardPage'));
+const MyContractsPage = lazy(() => import('../modules/portal/MyContractsPage'));
+const MyEnergyPage = lazy(() => import('../modules/portal/MyEnergyPage'));
+const SupplierProfilePage = lazy(() => import('../modules/supplier/SupplierProfilePage'));
 
 function withBoundary(name: string, Component: React.ComponentType) {
   return (
@@ -212,6 +215,9 @@ export const router = createBrowserRouter([
       { path: 'portal/messages', element: withBoundary('Zprávy', PortalMessagesPage) },
       { path: 'portal/nastenka', element: withBoundary('Nástěnka', PortalBoardPage) },
       { path: 'portal/contacts', element: withBoundary('Kontakty', PortalContactsPage) },
+      { path: 'portal/contracts', element: withBoundary('Moje smlouvy', MyContractsPage) },
+      { path: 'portal/energy', element: withBoundary('Energie', MyEnergyPage) },
+      { path: 'supplier/profile', element: withBoundary('Profil firmy', SupplierProfilePage) },
       { path: 'properties', element: withBoundary('Nemovitosti', PropertiesPage) },
       { path: 'properties/new', element: withBoundary('Nová nemovitost', PropertyFormPage) },
       { path: 'properties/:id/edit', element: withBoundary('Upravit nemovitost', PropertyFormPage) },

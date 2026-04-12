@@ -150,6 +150,18 @@ const NAV_SECTIONS: NavSection[] = [
       { to: '/portal/voting', label: 'Hlasování', icon: <Vote size={17} /> },
       { to: '/portal/esign', label: 'Podpisy', icon: <PenLine size={17} /> },
       { to: '/portal/nastenka', label: 'Nástěnka', icon: <Megaphone size={17} /> },
+      { to: '/portal/contracts', label: 'Moje smlouvy', icon: <FileCheck2 size={17} /> },
+      { to: '/portal/energy', label: 'Energie', icon: <Gauge size={17} /> },
+    ],
+  },
+  {
+    title: 'Dodavatel',
+    roles: ['supplier'],
+    items: [
+      { to: '/dashboard', label: 'Přehled', icon: <LayoutDashboard size={17} /> },
+      { to: '/work-orders', label: 'Zakázky', icon: <ClipboardList size={17} /> },
+      { to: '/finance/invoices', label: 'Moje faktury', icon: <Receipt size={17} /> },
+      { to: '/supplier/profile', label: 'Profil firmy', icon: <Building2 size={17} /> },
     ],
   },
 ];
@@ -199,6 +211,9 @@ const PAGE_TITLES: Record<string, string> = {
   '/portal/messages': 'Zprávy',
   '/portal/contacts': 'Kontakty',
   '/portal/nastenka': 'Nástěnka',
+  '/portal/contracts': 'Moje smlouvy',
+  '/portal/energy': 'Energie',
+  '/supplier/profile': 'Profil firmy',
   '/crm/pipeline': 'CRM Pipeline',
   '/crm/kb-candidates': 'KB Kandidati',
   '/kanban': 'Pipeline',
