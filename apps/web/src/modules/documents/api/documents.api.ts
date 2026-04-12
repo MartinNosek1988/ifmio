@@ -55,7 +55,7 @@ export interface DocStats {
 }
 
 export const documentsApi = {
-  list: async (params?: { category?: string; search?: string; tag?: string; page?: number; limit?: number }) => {
+  list: async (params?: { category?: string; search?: string; tag?: string; propertyId?: string; page?: number; limit?: number }) => {
     const { data } = await apiClient.get<DocListResponse>('/documents', { params });
     return data;
   },

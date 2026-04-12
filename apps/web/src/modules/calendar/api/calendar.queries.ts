@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { calendarApi, type CreateCalendarEventDto } from './calendar.api';
+import { usePropertyPickerStore } from '../../../core/stores/property-picker.store';
 
 export const calendarKeys = {
   all: ['calendar'] as const,
@@ -8,10 +9,15 @@ export const calendarKeys = {
   detail: (id: string) => ['calendar', 'detail', id] as const,
 };
 
-export function useCalendarEvents(params?: { from?: string; to?: string; eventType?: string; search?: string }) {
+export function useCalendarEvents(params?: { from?: string; to?: string; eventType?: string; search?: string; propertyId?: string }) {
+  const pid = usePropertyPickerStore((s) => s.selectedPropertyId);
+  const effectivePropertyId = params?.propertyId ?? pid ?? undefined;
+  const scoped = effectivePropertyId
+    ? { ...params, propertyId: effectivePropertyId }
+    : params;
   return useQuery({
-    queryKey: calendarKeys.events(params as Record<string, unknown>),
-    queryFn: () => calendarApi.events(params),
+    queryKey: [...calendarKeys.events(params as Record<string, unknown>), effectivePropertyId] as const,
+    queryFn: () => calendarApi.events(scoped),
   });
 }
 

@@ -31,14 +31,17 @@ export class CalendarService {
   ) {}
 
   async getEvents(user: AuthUser, query: {
-    from?: string; to?: string; eventType?: string; search?: string
+    from?: string; to?: string; eventType?: string; search?: string; propertyId?: string
   }): Promise<CalendarEventDto[]> {
     const tenantId = user.tenantId
     const now = new Date()
     const from = query.from ? new Date(query.from) : new Date(now.getFullYear(), now.getMonth() - 1, 1)
     const to = query.to ? new Date(query.to) : new Date(now.getFullYear(), now.getMonth() + 2, 0)
 
-    const scopeWhere = await this.scope.scopeByPropertyId(user)
+    // Explicit propertyId filter má přednost, jinak user-level scope (user property assignment)
+    const scopeWhere = query.propertyId
+      ? { propertyId: query.propertyId }
+      : await this.scope.scopeByPropertyId(user)
     const results: CalendarEventDto[] = []
 
     // 1. Custom calendar events

@@ -14,6 +14,9 @@ export class DocumentListQueryDto {
   @IsOptional() @IsString()
   search?: string;
 
+  @IsOptional() @IsString()
+  propertyId?: string;
+
   @IsOptional() @Type(() => Number) @IsNumber()
   page?: number;
 
