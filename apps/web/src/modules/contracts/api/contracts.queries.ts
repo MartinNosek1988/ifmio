@@ -11,8 +11,8 @@ export const contractKeys = {
 
 export function useContracts(params?: { status?: string; propertyId?: string; search?: string }) {
   const pid = usePropertyPickerStore((s) => s.selectedPropertyId);
-  const effectivePropertyId = params?.propertyId ?? pid ?? undefined;
-  const scoped = effectivePropertyId
+  const effectivePropertyId = (params?.propertyId ?? pid) || undefined;
+  const scoped = effectivePropertyId !== undefined
     ? { ...params, propertyId: effectivePropertyId }
     : params;
   return useQuery({
