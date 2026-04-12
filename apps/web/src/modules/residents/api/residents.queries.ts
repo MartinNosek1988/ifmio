@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { residentsApi } from './residents.api';
 import type { CreateResidentPayload } from './residents.api';
+import { usePropertyPickerStore } from '../../../core/stores/property-picker.store';
 
 export const residentsKeys = {
   all: ['residents'] as const,
@@ -11,9 +12,11 @@ export const residentsKeys = {
 };
 
 export function useResidents(params?: Record<string, unknown>) {
+  const pid = usePropertyPickerStore((s) => s.selectedPropertyId);
+  const scoped = pid ? { ...params, propertyId: pid } : params;
   return useQuery({
-    queryKey: residentsKeys.list(params ?? {}),
-    queryFn: () => residentsApi.list(params),
+    queryKey: [...residentsKeys.list(params ?? {}), pid] as const,
+    queryFn: () => residentsApi.list(scoped),
   });
 }
 

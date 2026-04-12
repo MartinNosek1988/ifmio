@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { metersApi, type CreateMeterDto } from './meters.api';
+import { usePropertyPickerStore } from '../../../core/stores/property-picker.store';
 
 export const meterKeys = {
   all: ['meters'] as const,
@@ -10,16 +11,19 @@ export const meterKeys = {
 };
 
 export function useMeters(params?: { meterType?: string; propertyId?: string; search?: string }) {
+  const pid = usePropertyPickerStore((s) => s.selectedPropertyId);
+  const scoped = pid ? { ...params, propertyId: params?.propertyId ?? pid } : params;
   return useQuery({
-    queryKey: meterKeys.list(params as Record<string, unknown>),
-    queryFn: () => metersApi.list(params),
+    queryKey: [...meterKeys.list(params as Record<string, unknown>), pid] as const,
+    queryFn: () => metersApi.list(scoped),
   });
 }
 
 export function useMeterStats() {
+  const pid = usePropertyPickerStore((s) => s.selectedPropertyId);
   return useQuery({
-    queryKey: meterKeys.stats(),
-    queryFn: () => metersApi.stats(),
+    queryKey: [...meterKeys.stats(), pid] as const,
+    queryFn: () => metersApi.stats(pid ?? undefined),
     staleTime: 30_000,
   });
 }
