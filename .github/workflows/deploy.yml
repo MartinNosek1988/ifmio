@@ -56,12 +56,11 @@ jobs:
           command_timeout: 15m
           script: |
             set -e
-            chown -R root:root /opt/ifmio/.git 2>/dev/null || true
+            # Fix git permissions (Docker containers create files as uid 1001)
+            chown -R root:root /opt/ifmio 2>/dev/null || true
+            chmod -R u+rwX /opt/ifmio/.git 2>/dev/null || true
             git config --global --add safe.directory /opt/ifmio
             cd /opt/ifmio
-
-            # Fix ownership FIRST — before any git operations
-            sudo chown -R $(whoami):$(whoami) . 2>/dev/null || true
 
             echo "Pull latest code"
             git fetch origin main
