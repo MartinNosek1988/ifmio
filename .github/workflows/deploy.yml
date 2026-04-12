@@ -112,7 +112,7 @@ jobs:
             docker compose -f docker-compose.prod.yml pull api web
 
             echo "Restart services"
-            docker compose -f docker-compose.prod.yml up -d
+            docker compose -f docker-compose.prod.yml up -d --force-recreate api web
 
             echo "Wait for API startup (30s initial)..."
             sleep 30
