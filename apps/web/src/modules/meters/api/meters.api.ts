@@ -69,8 +69,8 @@ export const metersApi = {
     return data;
   },
 
-  stats: async () => {
-    const { data } = await apiClient.get<MeterStats>('/meters/stats');
+  stats: async (propertyId?: string) => {
+    const { data } = await apiClient.get<MeterStats>('/meters/stats', { params: propertyId ? { propertyId } : undefined });
     return data;
   },
 
