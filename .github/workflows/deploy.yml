@@ -93,25 +93,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout (for compose file)
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-          sparse-checkout: |
-            docker-compose.prod.yml
-            Caddyfile
-
-      - name: Copy compose files to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          source: "docker-compose.prod.yml,Caddyfile"
-          target: /opt/ifmio
-          overwrite: true
-
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
