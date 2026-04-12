@@ -29,7 +29,8 @@ export default function DashboardPage() {
   const uxRole = useRoleUX();
   const isSupplier = uxRole === 'supplier';
   const { data, isLoading, isError, refetch } = useDashboardOverview({ enabled: !isSupplier });
-  const { data: ops } = useOperationalDashboard({ enabled: !isSupplier });
+  const hasProperties = (data?.kpi?.propertiesCount ?? 0) > 0;
+  const { data: ops } = useOperationalDashboard({ enabled: !isSupplier && uxRole !== 'client' && hasProperties });
   const { data: mioConfig } = useMioConfig();
   const navigate = useNavigate();
 
@@ -569,18 +570,18 @@ function SupplierDashboard() {
 function EmptyDashboardFmOwner({ onAdd }: { onAdd: () => void }) {
   return (
     <div style={{ textAlign: "center", padding: "4rem 2rem", maxWidth: 560, margin: "0 auto" }}>
-      <div style={{ width: 72, height: 72, margin: "0 auto 20px", borderRadius: 36, background: "#E1F5EE", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <Building2 size={32} style={{ color: "#0F6E56" }} />
+      <div style={{ width: 72, height: 72, margin: "0 auto 20px", borderRadius: 36, background: "var(--primary-50)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Building2 size={32} style={{ color: "var(--primary)" }} />
       </div>
-      <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1A1A2E", marginBottom: 8 }}>
+      <h2 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: 8 }}>
         Vítejte v ifmiu!
       </h2>
-      <p style={{ color: "#6B7280", fontSize: ".95rem", lineHeight: 1.5, marginBottom: 28 }}>
+      <p style={{ color: "var(--text-muted)", fontSize: ".95rem", lineHeight: 1.5, marginBottom: 28 }}>
         Pro začátek přidejte svou první nemovitost. Pak nastavíte jednotky, vlastníky a předpisy plateb.
       </p>
-      <button onClick={onAdd} className="btn btn--primary btn--lg" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+      <Button variant="primary" onClick={onAdd}>
         <Plus size={18} /> Přidat nemovitost
-      </button>
+      </Button>
     </div>
   );
 }
@@ -588,13 +589,13 @@ function EmptyDashboardFmOwner({ onAdd }: { onAdd: () => void }) {
 function EmptyDashboardClient() {
   return (
     <div style={{ textAlign: "center", padding: "4rem 2rem", maxWidth: 560, margin: "0 auto" }}>
-      <div style={{ width: 72, height: 72, margin: "0 auto 20px", borderRadius: 36, background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <UserCheck size={32} style={{ color: "#2563EB" }} />
+      <div style={{ width: 72, height: 72, margin: "0 auto 20px", borderRadius: 36, background: "var(--primary-50)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <UserCheck size={32} style={{ color: "var(--primary)" }} />
       </div>
-      <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1A1A2E", marginBottom: 8 }}>
+      <h2 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: 8 }}>
         Vítejte v ifmiu!
       </h2>
-      <p style={{ color: "#6B7280", fontSize: ".95rem", lineHeight: 1.5 }}>
+      <p style={{ color: "var(--text-muted)", fontSize: ".95rem", lineHeight: 1.5 }}>
         Zatím nemáte přiřazenou žádnou jednotku. Požádejte svého správce o přidání — jakmile vás přiřadí, uvidíte zde přehled předpisů, konto a vyúčtování.
       </p>
     </div>
