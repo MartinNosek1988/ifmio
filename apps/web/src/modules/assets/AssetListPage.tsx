@@ -6,6 +6,7 @@ import { KpiCard, Table, Badge, SearchBar, Button, LoadingSkeleton } from '../..
 import type { Column, BadgeVariant } from '../../shared/components';
 import { apiClient } from '../../core/api/client';
 import { useUrlFilters } from '../../shared/hooks/useUrlFilters';
+import { usePropertyPickerStore } from '../../core/stores/property-picker.store';
 import AssetForm from './AssetForm';
 
 /* ─── types ──────────────────────────────────────────────────────── */
@@ -65,17 +66,23 @@ export default function AssetListPage() {
   const navigate = useNavigate();
   const { filters, setFilter } = useUrlFilters<{ search: string; category: string }>(ASSET_FILTER_CONFIG);
   const [showForm, setShowForm] = useState(false);
+  const selectedPropertyId = usePropertyPickerStore((s) => s.selectedPropertyId);
 
   const { data: assets = [], isLoading, refetch } = useQuery<Asset[]>({
-    queryKey: ['assets', 'list', filters.category],
+    queryKey: ['assets', 'list', filters.category, selectedPropertyId],
     queryFn: () => apiClient.get('/assets', {
-      params: { category: filters.category || undefined },
+      params: {
+        category: filters.category || undefined,
+        ...(selectedPropertyId && { propertyId: selectedPropertyId }),
+      },
     }).then((r) => r.data),
   });
 
   const { data: stats } = useQuery<Stats>({
-    queryKey: ['assets', 'stats'],
-    queryFn: () => apiClient.get('/assets/stats').then((r) => r.data),
+    queryKey: ['assets', 'stats', selectedPropertyId],
+    queryFn: () => apiClient.get('/assets/stats', {
+      params: selectedPropertyId ? { propertyId: selectedPropertyId } : undefined,
+    }).then((r) => r.data),
     staleTime: 30_000,
   });
 

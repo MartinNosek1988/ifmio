@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { financeApi } from './finance.api';
 import type { MatchTarget } from './finance.api';
+import { usePropertyPickerStore } from '../../../core/stores/property-picker.store';
 
 export const financeKeys = {
   summary: (pid?: string) => ['finance', 'summary', pid] as const,
@@ -20,23 +21,29 @@ export function useFinanceSummary(propertyId?: string) {
 }
 
 export function useBankAccounts() {
+  const pid = usePropertyPickerStore((s) => s.selectedPropertyId);
+  const scoped = pid ? { propertyId: pid } : undefined;
   return useQuery({
-    queryKey: financeKeys.bankAccounts(),
-    queryFn: () => financeApi.bankAccounts.list(),
+    queryKey: ['finance', 'bank-accounts', pid] as const,
+    queryFn: () => financeApi.bankAccounts.list(scoped),
   });
 }
 
 export function useTransactions(params?: Record<string, unknown>) {
+  const pid = usePropertyPickerStore((s) => s.selectedPropertyId);
+  const scoped = pid ? { ...params, propertyId: pid } : params;
   return useQuery({
-    queryKey: financeKeys.transactions(params),
-    queryFn: () => financeApi.transactions.list(params),
+    queryKey: [...financeKeys.transactions(params), pid] as const,
+    queryFn: () => financeApi.transactions.list(scoped),
   });
 }
 
 export function usePrescriptions(params?: Record<string, unknown>) {
+  const pid = usePropertyPickerStore((s) => s.selectedPropertyId);
+  const scoped = pid ? { ...params, propertyId: pid } : params;
   return useQuery({
-    queryKey: financeKeys.prescriptions(params),
-    queryFn: () => financeApi.prescriptions.list(params),
+    queryKey: [...financeKeys.prescriptions(params), pid] as const,
+    queryFn: () => financeApi.prescriptions.list(scoped),
   });
 }
 
@@ -241,16 +248,19 @@ export function useInvoice(id: string | undefined) {
 }
 
 export function useInvoices(params?: Record<string, unknown>) {
+  const pid = usePropertyPickerStore((s) => s.selectedPropertyId);
+  const scoped = pid ? { ...params, propertyId: pid } : params;
   return useQuery({
-    queryKey: financeKeys.invoices(params),
-    queryFn: () => financeApi.invoices.list(params),
+    queryKey: [...financeKeys.invoices(params), pid] as const,
+    queryFn: () => financeApi.invoices.list(scoped),
   });
 }
 
 export function useInvoiceStats() {
+  const pid = usePropertyPickerStore((s) => s.selectedPropertyId);
   return useQuery({
-    queryKey: financeKeys.invoiceStats(),
-    queryFn: () => financeApi.invoices.stats(),
+    queryKey: [...financeKeys.invoiceStats(), pid] as const,
+    queryFn: () => financeApi.invoices.stats(pid ?? undefined),
     staleTime: 30_000,
   });
 }

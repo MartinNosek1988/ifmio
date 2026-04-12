@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { workOrdersApi, type CreateWorkOrderDto, type UpdateWorkOrderDto, type CreateFromTicketDto } from './workorders.api';
+import { usePropertyPickerStore } from '../../../core/stores/property-picker.store';
 
 export const woKeys = {
   all: ['workorders'] as const,
@@ -11,16 +12,19 @@ export const woKeys = {
 };
 
 export function useWorkOrders(params?: { status?: string; priority?: string; search?: string }) {
+  const pid = usePropertyPickerStore((s) => s.selectedPropertyId);
+  const scoped = pid ? { ...params, propertyId: pid } : params;
   return useQuery({
-    queryKey: woKeys.list(params as Record<string, unknown>),
-    queryFn: () => workOrdersApi.list(params),
+    queryKey: [...woKeys.list(params as Record<string, unknown>), pid] as const,
+    queryFn: () => workOrdersApi.list(scoped),
   });
 }
 
 export function useWOStats() {
+  const pid = usePropertyPickerStore((s) => s.selectedPropertyId);
   return useQuery({
-    queryKey: woKeys.stats(),
-    queryFn: () => workOrdersApi.stats(),
+    queryKey: [...woKeys.stats(), pid] as const,
+    queryFn: () => workOrdersApi.stats(pid ?? undefined),
     staleTime: 30_000,
   });
 }
