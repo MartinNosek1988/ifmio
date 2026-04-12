@@ -10,6 +10,7 @@ import { CurrentUser }   from '../common/decorators/current-user.decorator'
 import { AuditAction }   from '../common/decorators/audit.decorator'
 import { ROLES_MANAGE }  from '../common/constants/roles.constants'
 import { UpdateSettingsDto, InviteUserDto, SendInvitationDto } from './dto/admin.dto'
+import { RentalOwnerOnboardingDto } from './dto/rental-owner-onboarding.dto'
 import type { AuthUser } from '@ifmio/shared-types'
 
 @ApiTags('Admin')
@@ -39,6 +40,16 @@ export class AdminController {
   @ApiOperation({ summary: 'Zavřít onboarding průvodce' })
   dismissOnboarding(@CurrentUser() user: AuthUser) {
     return this.service.dismissOnboarding(user)
+  }
+
+  @Post('onboarding/rental-owner')
+  @Roles(...ROLES_MANAGE)
+  @ApiOperation({ summary: 'Dokončit onboarding pro vlastníka nájemního domu (Party→Principal→Contract→Context)' })
+  completeRentalOwnerOnboarding(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: RentalOwnerOnboardingDto,
+  ) {
+    return this.service.completeRentalOwnerOnboarding(user.tenantId, dto)
   }
 
   @Get('integrations')
