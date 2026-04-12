@@ -1,4 +1,30 @@
 {
+  "supplier": {
+    "profile": {
+      "title": "Profil firmy",
+      "comingSoon": "Profil firmy bude brzy k dispozici",
+      "comingSoonDesc": "Zde budete moci upravit popis služeb, obory, dojezd a nahrát logo."
+    },
+    "dashboard": {
+      "title": "Přehled dodavatele",
+      "subtitle": "Vaše zakázky a faktury na jednom místě",
+      "activeOrders": "Aktivní zakázky",
+      "pendingInvoices": "Nezaplacené faktury",
+      "rating": "Hodnocení"
+    }
+  },
+  "portal": {
+    "contracts": {
+      "title": "Moje smlouvy",
+      "comingSoon": "Správa smluv bude brzy k dispozici",
+      "comingSoonDesc": "Zde budete moci nahrát a zkontrolovat nájemní smlouvy, smlouvy na energie a další dokumenty."
+    },
+    "energy": {
+      "title": "Energie",
+      "comingSoon": "Přehled energií bude brzy k dispozici",
+      "comingSoonDesc": "Zde budete moci spravovat smlouvy na elektřinu, plyn a další energie."
+    }
+  },
   "register": {
     "title": "Registrace",
     "subtitle": "Pomůže nám přizpůsobit systém vašim potřebám",
