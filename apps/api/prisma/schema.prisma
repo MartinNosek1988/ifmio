@@ -281,13 +281,13 @@ model SupplierProfile {
   dic         String?
   isOsvc      Boolean @default(false)
 
-  categories  SupplierCategory[]
+  categories  SupplierCategory[] @default([])
   description String?            @db.Text
   website     String?
 
   regionCity      String?
   regionRadius    Int?
-  regionDistricts String[]
+  regionDistricts String[]           @default([])
 
   logoBase64 String? @db.Text
   isPublic   Boolean @default(false)
@@ -300,6 +300,7 @@ model SupplierProfile {
 
   @@index([tenantId])
   @@index([regionCity])
+  @@index([userId])
   @@map("supplier_profiles")
 }
 
