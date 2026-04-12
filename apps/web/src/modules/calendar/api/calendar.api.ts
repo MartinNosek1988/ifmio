@@ -43,7 +43,7 @@ export interface CreateCalendarEventDto {
 }
 
 export const calendarApi = {
-  events: async (params?: { from?: string; to?: string; eventType?: string; search?: string }) => {
+  events: async (params?: { from?: string; to?: string; eventType?: string; search?: string; propertyId?: string }) => {
     const { data } = await apiClient.get<ApiCalendarEvent[]>('/calendar/events', { params });
     return data;
   },
