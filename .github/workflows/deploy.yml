@@ -59,7 +59,7 @@ jobs:
             cd /opt/ifmio
 
             # Fix .git ownership — Docker creates root-owned objects
-            sudo chown -R root:root .git
+            sudo chown -R $(id -u):$(id -g) .git
             git config --global --add safe.directory /opt/ifmio
             git config gc.auto 0
 
