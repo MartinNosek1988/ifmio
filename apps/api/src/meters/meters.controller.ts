@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Put, Delete,
-  Body, Param, Query,
+  Body, Param, Query, BadRequestException,
 } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger'
 import { MetersService } from './meters.service'
@@ -48,12 +48,15 @@ export class MetersController {
     @Query('periodFrom') periodFrom: string,
     @Query('periodTo') periodTo: string,
   ) {
-    return this.service.calculateCommonConsumption(
-      user,
-      id,
-      new Date(periodFrom),
-      new Date(periodTo),
-    )
+    const from = new Date(periodFrom)
+    const to = new Date(periodTo)
+    if (isNaN(from.getTime()) || isNaN(to.getTime())) {
+      throw new BadRequestException('periodFrom a periodTo musí být platné datum (ISO 8601)')
+    }
+    if (from > to) {
+      throw new BadRequestException('periodFrom musí být před periodTo')
+    }
+    return this.service.calculateCommonConsumption(user, id, from, to)
   }
 
   @Post()

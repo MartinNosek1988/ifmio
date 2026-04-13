@@ -123,6 +123,7 @@ export class MetersService {
       select: { id: true, propertyId: true, parentMeterId: true, meterType: true },
     })
     if (!parent) throw new NotFoundException('Patní (parent) měřidlo nenalezeno')
+    await this.scope.verifyEntityAccess(user, parent.propertyId)
     if (parent.parentMeterId) {
       throw new BadRequestException('Měřidla lze hierarchizovat jen do jedné úrovně (parent → child)')
     }
@@ -198,6 +199,11 @@ export class MetersService {
     const current = await this.getById(user, id)
 
     if (dto.parentMeterId) {
+      // Měřidlo s vlastními children nesmí být zároveň child (max 1 úroveň hierarchie)
+      const childCount = await this.prisma.meter.count({ where: { parentMeterId: id } })
+      if (childCount > 0) {
+        throw new BadRequestException('Měřidlo s podružnými měřidly nemůže mít nadřazené měřidlo')
+      }
       const targetPropertyId = dto.propertyId !== undefined ? (dto.propertyId || null) : current.propertyId
       const targetMeterType = dto.meterType ?? current.meterType
       await this.validateParentMeter(user, dto.parentMeterId, targetPropertyId, targetMeterType, id)
@@ -407,8 +413,17 @@ export class MetersService {
     if (!parent) throw new NotFoundException('Patní měřidlo nenalezeno')
     await this.scope.verifyEntityAccess(user, parent.propertyId)
 
+    if (parent.parentMeterId != null) {
+      throw new BadRequestException('Zadané měřidlo není patní (má vlastní parent)')
+    }
+    if (parent.childMeters.length === 0) {
+      throw new BadRequestException('Patní měřidlo nemá žádná podružná měřidla')
+    }
+
     const parentConsumption = await this.getConsumptionInPeriod(parentMeterId, periodFrom, periodTo)
 
+    // TODO: Optimize N+1 — batch fetch readings for all meterIds in one query.
+    // Current: 2 queries per child (start + end reading). Acceptable for <50 meters per parent.
     const childrenBreakdown = await Promise.all(
       parent.childMeters.map(async (child) => {
         const consumption = await this.getConsumptionInPeriod(child.id, periodFrom, periodTo)
@@ -453,6 +468,7 @@ export class MetersService {
       orderBy: { readingDate: 'desc' },
     })
     if (!startReading || !endReading || startReading.id === endReading.id) return 0
-    return Number(endReading.value) - Number(startReading.value)
+    // Clamp negative — meter rollover, manuální oprava starého readingu apod.
+    return Math.max(0, Number(endReading.value) - Number(startReading.value))
   }
 }
