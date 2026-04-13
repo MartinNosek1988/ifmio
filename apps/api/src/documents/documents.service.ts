@@ -2,6 +2,7 @@ import {
   Injectable, NotFoundException, BadRequestException, ForbiddenException,
 } from '@nestjs/common'
 import { PrismaService }       from '../prisma/prisma.service'
+import { PropertyScopeService } from '../common/services/property-scope.service'
 import { LocalStorageProvider } from './storage/local.storage'
 import { ScannerService }      from './scanner/scanner.service'
 import * as path               from 'path'
@@ -23,9 +24,10 @@ const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20 MB
 @Injectable()
 export class DocumentsService {
   constructor(
-    private prisma:   PrismaService,
-    private storage:  LocalStorageProvider,
-    private scanner:  ScannerService,
+    private prisma:        PrismaService,
+    private propertyScope: PropertyScopeService,
+    private storage:       LocalStorageProvider,
+    private scanner:       ScannerService,
   ) {}
 
   async list(user: AuthUser, query: { category?: string; tag?: string; entityType?: string; entityId?: string; search?: string; propertyId?: string; page?: number; limit?: number }) {
@@ -76,6 +78,9 @@ export class DocumentsService {
 
   async getStats(user: AuthUser, propertyId?: string) {
     const tenantId = user.tenantId
+    if (propertyId) {
+      await this.propertyScope.verifyPropertyAccess(user, propertyId)
+    }
     // Document → property přes polymorfní DocumentLink (entityType='property')
     const propertyFilter = propertyId
       ? { links: { some: { entityType: 'property' as const, entityId: propertyId } } }
