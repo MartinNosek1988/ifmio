@@ -30,8 +30,8 @@ export class MetersController {
 
   @Get('stats')
   @ApiOperation({ summary: 'Statistiky měřidel' })
-  stats(@CurrentUser() user: AuthUser) {
-    return this.service.getStats(user)
+  stats(@CurrentUser() user: AuthUser, @Query('propertyId') propertyId?: string) {
+    return this.service.getStats(user, propertyId)
   }
 
   @Get(':id')

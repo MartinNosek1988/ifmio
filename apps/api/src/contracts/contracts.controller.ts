@@ -29,8 +29,8 @@ export class ContractsController {
 
   @Get('stats')
   @ApiOperation({ summary: 'Statistiky smluv' })
-  stats(@CurrentUser() user: AuthUser) {
-    return this.service.getStats(user)
+  stats(@CurrentUser() user: AuthUser, @Query('propertyId') propertyId?: string) {
+    return this.service.getStats(user, propertyId)
   }
 
   @Get(':id')

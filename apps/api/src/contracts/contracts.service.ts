@@ -55,9 +55,15 @@ export class ContractsService {
     }))
   }
 
-  async getStats(user: AuthUser) {
+  async getStats(user: AuthUser, propertyId?: string) {
     const tenantId = user.tenantId
-    const scopeWhere = await this.scope.scopeByPropertyId(user)
+    let scopeWhere: Record<string, unknown>
+    if (propertyId) {
+      await this.scope.verifyPropertyAccess(user, propertyId)
+      scopeWhere = { propertyId }
+    } else {
+      scopeWhere = await this.scope.scopeByPropertyId(user)
+    }
     const base = { tenantId, ...scopeWhere }
     const now = new Date()
     const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)

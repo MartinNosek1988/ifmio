@@ -22,9 +22,11 @@ export function useCalendarEvents(params?: { from?: string; to?: string; eventTy
 }
 
 export function useCalendarStats() {
+  const pid = usePropertyPickerStore((s) => s.selectedPropertyId);
+  const effectivePropertyId = pid || undefined;
   return useQuery({
-    queryKey: calendarKeys.stats(),
-    queryFn: () => calendarApi.stats(),
+    queryKey: [...calendarKeys.stats(), effectivePropertyId] as const,
+    queryFn: () => calendarApi.stats(effectivePropertyId),
     staleTime: 30_000,
   });
 }
