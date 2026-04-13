@@ -40,6 +40,36 @@ export class SettlementCalcService {
       return
     }
 
+    // ─── Derive per-unit readings from meter hierarchy (vyhl. 269/2015 Sb.) ───
+    // Pokud existuje patní (parent) měřidlo s podružnými (children), vypočítáme
+    // společnou spotřebu (parent − ∑children) a každé jednotce přiřadíme:
+    //   derived reading = own child consumption + area share of common consumption
+    // Existující flat distribution ((u.reading / totalReadings) × cost) pak
+    // automaticky rozpočítá náklad správně (čitatel obsahuje vlastní + share ztrát).
+    const heatDerived = await this.derivePerUnitReadings(
+      settlement.tenantId, settlement.propertyId, 'teplo',
+      settlement.periodFrom, settlement.periodTo, units, totalHeatedArea,
+    )
+    if (heatDerived) {
+      for (const u of units) {
+        const v = heatDerived.get(u.id)
+        if (v !== undefined) u.meterReading = v
+      }
+      this.logger.log(`Settlement ${settlementId}: heating readings derived from meter hierarchy`)
+    }
+
+    const hotWaterDerived = await this.derivePerUnitReadings(
+      settlement.tenantId, settlement.propertyId, 'voda_tepla',
+      settlement.periodFrom, settlement.periodTo, units, totalHeatedArea,
+    )
+    if (hotWaterDerived) {
+      for (const u of units) {
+        const v = hotWaterDerived.get(u.id)
+        if (v !== undefined) u.waterReading = v
+      }
+      this.logger.log(`Settlement ${settlementId}: hot water readings derived from meter hierarchy`)
+    }
+
     // Accumulate costs per unit
     const unitCosts: Record<string, {
       heatingBasic: number; heatingConsumption: number; heatingCorrected: number
@@ -300,5 +330,96 @@ export class SettlementCalcService {
 
   private round2(value: number): number {
     return Math.round(value * 100) / 100
+  }
+
+  // ─── Meter hierarchy derived readings (vyhl. 269/2015 Sb.) ────────
+
+  /**
+   * Vypočítá per-unit reading derivovaný z hierarchie patní → podružné měřidla.
+   *
+   * Pro každý patní meter (parentMeterId=null, unitId=null, isActive)
+   * spočítá: parent consumption − ∑(children consumptions) = společné ztráty.
+   * Společnou spotřebu rozdistribuuje mezi jednotky podle plochy.
+   * Vrací Map<unitId, ownConsumption + areaShareOfCommon>.
+   *
+   * Vrací null pokud žádný patní meter (s children) pro danou property + type
+   * neexistuje — caller pak nechá flat logiku.
+   *
+   * TODO: Optimize N+1 — batch fetch readings for all meterIds in one query.
+   */
+  private async derivePerUnitReadings(
+    tenantId: string,
+    propertyId: string,
+    meterType: 'teplo' | 'voda_tepla' | 'voda_studena',
+    periodFrom: Date,
+    periodTo: Date,
+    units: UnitData[],
+    totalHeatedArea: number,
+  ): Promise<Map<string, number> | null> {
+    const mainMeters = await this.prisma.meter.findMany({
+      where: {
+        tenantId,
+        propertyId,
+        meterType: meterType as any,
+        unitId: null,
+        parentMeterId: null,
+        isActive: true,
+      },
+      include: {
+        childMeters: {
+          where: { isActive: true },
+          select: { id: true, unitId: true },
+        },
+      },
+    })
+
+    const mainsWithChildren = mainMeters.filter(m => m.childMeters.length > 0)
+    if (mainsWithChildren.length === 0) return null
+
+    let totalCommon = 0
+    const unitOwnConsumption = new Map<string, number>()
+
+    for (const main of mainsWithChildren) {
+      const parentConsumption = await this.getMeterConsumptionInPeriod(main.id, periodFrom, periodTo)
+      let childrenSum = 0
+      for (const child of main.childMeters) {
+        const consumption = await this.getMeterConsumptionInPeriod(child.id, periodFrom, periodTo)
+        childrenSum += consumption
+        if (child.unitId) {
+          unitOwnConsumption.set(child.unitId, (unitOwnConsumption.get(child.unitId) ?? 0) + consumption)
+        }
+      }
+      totalCommon += Math.max(0, parentConsumption - childrenSum)
+    }
+
+    const result = new Map<string, number>()
+    for (const u of units) {
+      const own = unitOwnConsumption.get(u.id) ?? 0
+      const commonShare = totalHeatedArea > 0 ? totalCommon * (u.heatedArea / totalHeatedArea) : 0
+      result.set(u.id, own + commonShare)
+    }
+    return result
+  }
+
+  /**
+   * Spotřeba měřidla za období: end reading − start reading (clamp ≥ 0).
+   * Hledá nejbližší readings ≤ periodFrom a ≤ periodTo.
+   * Vrací 0 pokud chybí readings nebo start/end je tentýž záznam.
+   */
+  private async getMeterConsumptionInPeriod(
+    meterId: string,
+    periodFrom: Date,
+    periodTo: Date,
+  ): Promise<number> {
+    const startReading = await this.prisma.meterReading.findFirst({
+      where: { meterId, readingDate: { lte: periodFrom } },
+      orderBy: { readingDate: 'desc' },
+    })
+    const endReading = await this.prisma.meterReading.findFirst({
+      where: { meterId, readingDate: { lte: periodTo } },
+      orderBy: { readingDate: 'desc' },
+    })
+    if (!startReading || !endReading || startReading.id === endReading.id) return 0
+    return Math.max(0, Number(endReading.value) - Number(startReading.value))
   }
 }

@@ -126,14 +126,20 @@ export class MetersService {
     }
     const parent = await this.prisma.meter.findFirst({
       where: { id: parentMeterId, tenantId: user.tenantId },
-      select: { id: true, propertyId: true, parentMeterId: true, meterType: true },
+      select: { id: true, propertyId: true, parentMeterId: true, meterType: true, unitId: true },
     })
     if (!parent) throw new NotFoundException('Patní (parent) měřidlo nenalezeno')
     await this.scope.verifyEntityAccess(user, parent.propertyId)
     if (parent.parentMeterId) {
       throw new BadRequestException('Měřidla lze hierarchizovat jen do jedné úrovně (parent → child)')
     }
-    if (childPropertyId && parent.propertyId !== childPropertyId) {
+    if (parent.unitId !== null) {
+      throw new BadRequestException('Nadřazené měřidlo musí být patní (bez přiřazení k jednotce)')
+    }
+    if (!childPropertyId) {
+      throw new BadRequestException('Podružné měřidlo musí mít přiřazenou nemovitost')
+    }
+    if (parent.propertyId !== childPropertyId) {
       throw new BadRequestException('Patní měřidlo musí být ve stejné nemovitosti')
     }
     if (parent.meterType !== childMeterType) {
