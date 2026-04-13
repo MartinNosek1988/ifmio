@@ -40,6 +40,22 @@ export class MetersController {
     return this.service.getById(user, id)
   }
 
+  @Get(':id/common-consumption')
+  @ApiOperation({ summary: 'Společná spotřeba (parent − ∑children) za období' })
+  commonConsumption(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Query('periodFrom') periodFrom: string,
+    @Query('periodTo') periodTo: string,
+  ) {
+    return this.service.calculateCommonConsumption(
+      user,
+      id,
+      new Date(periodFrom),
+      new Date(periodTo),
+    )
+  }
+
   @Post()
   @Roles(...ROLES_OPS)
   @AuditAction('meter', 'create')

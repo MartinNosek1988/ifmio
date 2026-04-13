@@ -2887,6 +2887,7 @@ model Meter {
   tenantId        String
   propertyId      String?
   unitId          String?
+  parentMeterId   String?
   name            String
   serialNumber    String
   meterType       MeterType
@@ -2903,12 +2904,15 @@ model Meter {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  tenant   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  property Property?      @relation(fields: [propertyId], references: [id], onDelete: SetNull)
-  unitRel  Unit?          @relation(fields: [unitId], references: [id], onDelete: SetNull)
-  readings MeterReading[]
+  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property     Property?      @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  unitRel      Unit?          @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  parentMeter  Meter?         @relation("MeterHierarchy", fields: [parentMeterId], references: [id], onDelete: SetNull)
+  childMeters  Meter[]        @relation("MeterHierarchy")
+  readings     MeterReading[]
 
   @@index([tenantId])
+  @@index([parentMeterId])
   @@map("meters")
 }
 

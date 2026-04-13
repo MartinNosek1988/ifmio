@@ -35,6 +35,10 @@ export class CreateMeterDto {
   unitId?: string
 
   @IsOptional()
+  @IsString()
+  parentMeterId?: string
+
+  @IsOptional()
   @IsDateString()
   installDate?: string
 
@@ -79,6 +83,10 @@ export class UpdateMeterDto {
   @IsOptional()
   @IsString()
   unitId?: string
+
+  @IsOptional()
+  @IsString()
+  parentMeterId?: string
 
   @IsOptional()
   @IsDateString()
