@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Modal, Button } from '../../shared/components';
-import { useCreateMeter } from './api/meters.queries';
+import { useCreateMeter, useMeters } from './api/meters.queries';
 import { METER_TYPE_LABELS } from '../../constants/labels';
 import { propertiesApi } from '../properties/properties-api';
 
@@ -29,6 +29,7 @@ export default function MeterForm({ onClose }: Props) {
     unit: 'kWh',
     propertyId: '',
     unitId: '',
+    parentMeterId: '',
     installDate: new Date().toISOString().slice(0, 10),
     calibrationDue: '',
     manufacturer: '',
@@ -41,6 +42,16 @@ export default function MeterForm({ onClose }: Props) {
 
   const selectedProp = properties?.find(p => p.id === form.propertyId);
   const availableUnits = useMemo(() => selectedProp?.units ?? [], [selectedProp]);
+
+  // Patní (parent) candidates: stejný property + stejný meterType + unitId=null
+  const { data: propertyMeters } = useMeters(
+    form.propertyId ? { propertyId: form.propertyId, meterType: form.meterType } : undefined,
+  );
+  const parentCandidates = useMemo(
+    () => (propertyMeters ?? []).filter((m) => m.unitId === null && !m.parentMeterId),
+    [propertyMeters],
+  );
+  const isSubmeter = !!form.unitId;
 
   const handleTypeChange = (typ: string) => {
     setForm(f => ({ ...f, meterType: typ, unit: JEDNOTKY[typ] || f.unit }));
@@ -63,6 +74,7 @@ export default function MeterForm({ onClose }: Props) {
       unit: form.unit,
       propertyId: form.propertyId || undefined,
       unitId: form.unitId || undefined,
+      parentMeterId: isSubmeter && form.parentMeterId ? form.parentMeterId : undefined,
       installDate: form.installDate || undefined,
       calibrationDue: form.calibrationDue || undefined,
       manufacturer: form.manufacturer || undefined,
@@ -127,13 +139,37 @@ export default function MeterForm({ onClose }: Props) {
         </div>
         <div>
           <label className="form-label">Jednotka (byt)</label>
-          <select value={form.unitId} onChange={e => set('unitId', e.target.value)}
+          <select value={form.unitId} onChange={e => { set('unitId', e.target.value); if (!e.target.value) set('parentMeterId', ''); }}
             disabled={!form.propertyId || availableUnits.length === 0} style={inputStyle()}>
             <option value="">-- Společné --</option>
             {availableUnits.map(u => <option key={u.id} value={u.id}>{u.name}{u.area ? ` · ${u.area} m²` : ''}</option>)}
           </select>
         </div>
       </div>
+
+      {isSubmeter && (
+        <div style={{ marginBottom: 14 }}>
+          <label className="form-label">Nadřazené (patní) měřidlo</label>
+          <select
+            value={form.parentMeterId}
+            onChange={e => set('parentMeterId', e.target.value)}
+            disabled={parentCandidates.length === 0}
+            style={inputStyle()}
+          >
+            <option value="">-- Bez nadřazeného --</option>
+            {parentCandidates.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name} ({m.serialNumber})
+              </option>
+            ))}
+          </select>
+          <div style={{ fontSize: '.78rem', color: 'var(--text-muted)', marginTop: 4 }}>
+            {parentCandidates.length === 0
+              ? 'Žádné patní měřidlo stejného typu v této nemovitosti'
+              : 'Propojení s patním měřidlem umožní automatický výpočet společné spotřeby'}
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div>

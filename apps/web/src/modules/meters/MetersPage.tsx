@@ -9,6 +9,7 @@ import { useMeters, useMeterStats, useDeleteMeter } from './api/meters.queries';
 import type { ApiMeter } from './api/meters.api';
 import MeterDetailModal from './MeterDetailModal';
 import MeterForm from './MeterForm';
+import { MeterGroupCard } from './components/MeterGroupCard';
 
 const TYP_COLOR: Record<string, BadgeVariant> = {
   elektrina: 'yellow', voda_studena: 'blue', voda_tepla: 'red',
@@ -52,6 +53,21 @@ export default function MetersPage() {
   if (isError) return <ErrorState onRetry={refetch} />;
 
   const items = meters ?? [];
+
+  // Rozdělení na hierarchii: parent (s dětmi), children, standalone
+  const childIds = new Set(items.filter((m) => m.parentMeterId).map((m) => m.id));
+  const parents = items.filter((m) => !m.parentMeterId && (m._count?.childMeters ?? 0) > 0);
+  const standalone = items.filter(
+    (m) => !m.parentMeterId && !childIds.has(m.id) && (m._count?.childMeters ?? 0) === 0,
+  );
+  const childrenByParent = new Map<string, ApiMeter[]>();
+  for (const m of items) {
+    if (m.parentMeterId) {
+      const arr = childrenByParent.get(m.parentMeterId) ?? [];
+      arr.push(m);
+      childrenByParent.set(m.parentMeterId, arr);
+    }
+  }
 
   const columns: Column<ApiMeter>[] = [
     { key: 'name', label: 'Název', render: m => <span style={{ fontWeight: 600 }}>{m.name}</span> },
@@ -104,7 +120,33 @@ export default function MetersPage() {
       {items.length === 0 ? (
         <EmptyState title="Žádná měřidla" description="Přidejte první měřidlo." />
       ) : (
-        <Table data={items} columns={columns} rowKey={m => m.id} onRowClick={m => setSelected(m)} data-testid="meter-list" />
+        <>
+          {parents.length > 0 && (
+            <div style={{ marginBottom: 24 }}>
+              <h3 style={{ fontSize: '.85rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '.04em' }}>
+                Patní měřidla s podružnými
+              </h3>
+              {parents.map((parent) => (
+                <MeterGroupCard
+                  key={parent.id}
+                  mainMeter={parent}
+                  childMeters={childrenByParent.get(parent.id) ?? []}
+                  onSelect={(m) => setSelected(m)}
+                />
+              ))}
+            </div>
+          )}
+          {standalone.length > 0 && (
+            <>
+              {parents.length > 0 && (
+                <h3 style={{ fontSize: '.85rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '.04em' }}>
+                  Samostatná měřidla
+                </h3>
+              )}
+              <Table data={standalone} columns={columns} rowKey={(m) => m.id} onRowClick={(m) => setSelected(m)} data-testid="meter-list" />
+            </>
+          )}
+        </>
       )}
 
       {selected && (
