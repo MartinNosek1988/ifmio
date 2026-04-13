@@ -129,6 +129,32 @@ export default function MeterDetailModal({ meter, onClose, onUpdated }: Props) {
             <InfoCell label="Datum instalace" value={meter.installDate ? formatCzDate(meter.installDate) : undefined} />
             <InfoCell label="Kalibrace do" value={meter.calibrationDue ? formatCzDate(meter.calibrationDue) : undefined} />
           </div>
+          {meter.parentMeter && (
+            <div style={{ background: 'var(--surface-2, var(--surface))', borderRadius: 8, padding: 12, marginBottom: 12 }}>
+              <div className="text-muted" style={{ fontSize: '0.72rem', marginBottom: 4 }}>NADŘAZENÉ (PATNÍ) MĚŘIDLO</div>
+              <div style={{ fontWeight: 600 }}>{meter.parentMeter.name}</div>
+              <div className="text-muted" style={{ fontSize: '0.78rem', fontFamily: 'monospace' }}>{meter.parentMeter.serialNumber}</div>
+            </div>
+          )}
+          {meter.childMeters && meter.childMeters.length > 0 && (
+            <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 12 }}>
+              <div style={{ fontWeight: 600, marginBottom: 8 }}>Podružná měřidla ({meter.childMeters.length})</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {meter.childMeters.map((child) => (
+                  <div key={child.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                    <span>
+                      <span style={{ fontWeight: 500 }}>{child.name}</span>{' '}
+                      <span className="text-muted" style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{child.serialNumber}</span>
+                    </span>
+                    <span className="text-muted">
+                      {child.lastReading != null ? `${child.lastReading.toLocaleString('cs-CZ')} ${meter.unit}` : '—'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {/* TODO: Common consumption widget — needs period picker, calls GET /meters/:id/common-consumption */}
+            </div>
+          )}
           {meter.note && (
             <div style={{ background: 'var(--surface-2, var(--surface))', borderRadius: 8, padding: 12 }}>
               <div className="text-muted" style={{ fontSize: '0.72rem', marginBottom: 4 }}>POZNÁMKA</div>

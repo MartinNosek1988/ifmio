@@ -37,6 +37,17 @@ export interface ApiMeter {
   property?: { id: string; name: string; address?: string } | null;
   unitRel?: { id: string; name: string; area?: number; floor?: number } | null;
   readings: ApiMeterReading[];
+  parentMeterId?: string | null;
+  parentMeter?: { id: string; name: string; serialNumber: string; meterType?: MeterType } | null;
+  childMeters?: Array<{
+    id: string;
+    name: string;
+    serialNumber: string;
+    unitId: string | null;
+    lastReading: number | null;
+    lastReadingDate: string | null;
+  }>;
+  _count?: { childMeters: number };
 }
 
 export interface MeterStats {
@@ -56,6 +67,7 @@ export interface CreateMeterDto {
   unit?: string;
   propertyId?: string;
   unitId?: string;
+  parentMeterId?: string | null;
   installDate?: string;
   calibrationDue?: string;
   manufacturer?: string;
