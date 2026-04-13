@@ -31,8 +31,8 @@ export class DocumentsController {
 
   @Get('stats')
   @ApiOperation({ summary: 'Statistiky dokumentů' })
-  stats(@CurrentUser() user: AuthUser) {
-    return this.service.getStats(user)
+  stats(@CurrentUser() user: AuthUser, @Query('propertyId') propertyId?: string) {
+    return this.service.getStats(user, propertyId)
   }
 
   @Post('upload')

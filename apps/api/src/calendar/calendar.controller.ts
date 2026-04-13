@@ -32,8 +32,8 @@ export class CalendarController {
 
   @Get('stats')
   @ApiOperation({ summary: 'Statistiky kalendáře' })
-  stats(@CurrentUser() user: AuthUser): Promise<CalendarStatsDto> {
-    return this.service.getStats(user)
+  stats(@CurrentUser() user: AuthUser, @Query('propertyId') propertyId?: string): Promise<CalendarStatsDto> {
+    return this.service.getStats(user, propertyId)
   }
 
   @Get('events/:id')

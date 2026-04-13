@@ -21,9 +21,11 @@ export function useDocuments(params?: { category?: string; search?: string; tag?
 }
 
 export function useDocStats() {
+  const pid = usePropertyPickerStore((s) => s.selectedPropertyId);
+  const effectivePropertyId = pid || undefined;
   return useQuery({
-    queryKey: docKeys.stats(),
-    queryFn: () => documentsApi.stats(),
+    queryKey: [...docKeys.stats(), effectivePropertyId] as const,
+    queryFn: () => documentsApi.stats(effectivePropertyId),
     staleTime: 30_000,
   });
 }

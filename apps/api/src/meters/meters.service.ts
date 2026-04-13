@@ -60,9 +60,15 @@ export class MetersService {
     return items.map(serializeMeter)
   }
 
-  async getStats(user: AuthUser) {
+  async getStats(user: AuthUser, propertyId?: string) {
     const tenantId = user.tenantId
-    const scopeWhere = await this.scope.scopeByPropertyId(user)
+    let scopeWhere: Record<string, unknown>
+    if (propertyId) {
+      await this.scope.verifyPropertyAccess(user, propertyId)
+      scopeWhere = { propertyId }
+    } else {
+      scopeWhere = await this.scope.scopeByPropertyId(user)
+    }
     const base = { tenantId, isActive: true, ...scopeWhere }
     const now = new Date()
 
