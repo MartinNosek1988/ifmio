@@ -74,16 +74,21 @@ export class DocumentsService {
     }
   }
 
-  async getStats(user: AuthUser) {
+  async getStats(user: AuthUser, propertyId?: string) {
     const tenantId = user.tenantId
+    // Document → property přes polymorfní DocumentLink (entityType='property')
+    const propertyFilter = propertyId
+      ? { links: { some: { entityType: 'property' as const, entityId: propertyId } } }
+      : {}
+    const base = { tenantId, ...propertyFilter }
     const [total, contract, invoice, protocol, photo, plan, regulation] = await Promise.all([
-      this.prisma.document.count({ where: { tenantId } }),
-      this.prisma.document.count({ where: { tenantId, category: 'contract' } }),
-      this.prisma.document.count({ where: { tenantId, category: 'invoice' } }),
-      this.prisma.document.count({ where: { tenantId, category: 'protocol' } }),
-      this.prisma.document.count({ where: { tenantId, category: 'photo' } }),
-      this.prisma.document.count({ where: { tenantId, category: 'plan' } }),
-      this.prisma.document.count({ where: { tenantId, category: 'regulation' } }),
+      this.prisma.document.count({ where: base }),
+      this.prisma.document.count({ where: { ...base, category: 'contract' } }),
+      this.prisma.document.count({ where: { ...base, category: 'invoice' } }),
+      this.prisma.document.count({ where: { ...base, category: 'protocol' } }),
+      this.prisma.document.count({ where: { ...base, category: 'photo' } }),
+      this.prisma.document.count({ where: { ...base, category: 'plan' } }),
+      this.prisma.document.count({ where: { ...base, category: 'regulation' } }),
     ])
     return { total, contract, invoice, protocol, photo, plan, regulation }
   }

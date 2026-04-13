@@ -5,6 +5,7 @@ import {
   IsNotEmpty,
   IsDateString,
   IsBoolean,
+  ValidateIf,
 } from 'class-validator'
 
 export class CreateMeterDto {
@@ -33,6 +34,10 @@ export class CreateMeterDto {
   @IsOptional()
   @IsString()
   unitId?: string
+
+  @IsOptional()
+  @IsString()
+  parentMeterId?: string
 
   @IsOptional()
   @IsDateString()
@@ -79,6 +84,11 @@ export class UpdateMeterDto {
   @IsOptional()
   @IsString()
   unitId?: string
+
+  @IsOptional()
+  @ValidateIf((o) => o.parentMeterId !== null)
+  @IsString()
+  parentMeterId?: string | null
 
   @IsOptional()
   @IsDateString()

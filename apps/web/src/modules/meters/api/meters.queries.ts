@@ -23,10 +23,11 @@ export function useMeters(params?: { meterType?: string; propertyId?: string; se
 }
 
 export function useMeterStats() {
-  // TODO: Backend /meters/stats nepodporuje propertyId filter — needs backend update
+  const pid = usePropertyPickerStore((s) => s.selectedPropertyId);
+  const effectivePropertyId = pid || undefined;
   return useQuery({
-    queryKey: meterKeys.stats(),
-    queryFn: () => metersApi.stats(),
+    queryKey: [...meterKeys.stats(), effectivePropertyId] as const,
+    queryFn: () => metersApi.stats(effectivePropertyId),
     staleTime: 30_000,
   });
 }

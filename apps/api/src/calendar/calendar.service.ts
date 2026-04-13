@@ -219,9 +219,15 @@ export class CalendarService {
     return results
   }
 
-  async getStats(user: AuthUser): Promise<CalendarStatsDto> {
+  async getStats(user: AuthUser, propertyId?: string): Promise<CalendarStatsDto> {
     const tenantId = user.tenantId
-    const scopeWhere = await this.scope.scopeByPropertyId(user)
+    let scopeWhere: Record<string, unknown>
+    if (propertyId) {
+      await this.scope.verifyPropertyAccess(user, propertyId)
+      scopeWhere = { propertyId }
+    } else {
+      scopeWhere = await this.scope.scopeByPropertyId(user)
+    }
     const now = new Date()
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)

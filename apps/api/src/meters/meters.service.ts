@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { PropertyScopeService } from '../common/services/property-scope.service'
 import type { AuthUser } from '@ifmio/shared-types';
@@ -54,15 +54,23 @@ export class MetersService {
         property: { select: { id: true, name: true } },
         unitRel: { select: { id: true, name: true, area: true } },
         readings: { orderBy: { readingDate: 'desc' }, take: 2 },
+        parentMeter: { select: { id: true, name: true, serialNumber: true } },
+        _count: { select: { childMeters: true } },
       },
     })
 
     return items.map(serializeMeter)
   }
 
-  async getStats(user: AuthUser) {
+  async getStats(user: AuthUser, propertyId?: string) {
     const tenantId = user.tenantId
-    const scopeWhere = await this.scope.scopeByPropertyId(user)
+    let scopeWhere: Record<string, unknown>
+    if (propertyId) {
+      await this.scope.verifyPropertyAccess(user, propertyId)
+      scopeWhere = { propertyId }
+    } else {
+      scopeWhere = await this.scope.scopeByPropertyId(user)
+    }
     const base = { tenantId, isActive: true, ...scopeWhere }
     const now = new Date()
 
@@ -88,11 +96,49 @@ export class MetersService {
         property: { select: { id: true, name: true, address: true } },
         unitRel: { select: { id: true, name: true, area: true, floor: true } },
         readings: { orderBy: { readingDate: 'desc' } },
+        parentMeter: { select: { id: true, name: true, serialNumber: true, meterType: true } },
+        childMeters: {
+          select: { id: true, name: true, serialNumber: true, unitId: true, lastReading: true, lastReadingDate: true },
+          orderBy: { name: 'asc' },
+        },
       },
     })
     if (!item) throw new NotFoundException('Měřidlo nenalezeno')
     await this.scope.verifyEntityAccess(user, item.propertyId)
     return serializeMeter(item)
+  }
+
+  /**
+   * Ověří platnost parentMeterId pro create/update.
+   * Pravidla: parent existuje v témž tenantu, ve stejné property,
+   * stejný meterType, max 1 úroveň hloubky (parent nemá vlastního parenta),
+   * při updatu nesmí být parent === sám sobě.
+   */
+  private async validateParentMeter(
+    user: AuthUser,
+    parentMeterId: string,
+    childPropertyId: string | null | undefined,
+    childMeterType: string,
+    childMeterId?: string,
+  ) {
+    if (childMeterId && parentMeterId === childMeterId) {
+      throw new BadRequestException('Měřidlo nemůže být parent samo sobě')
+    }
+    const parent = await this.prisma.meter.findFirst({
+      where: { id: parentMeterId, tenantId: user.tenantId },
+      select: { id: true, propertyId: true, parentMeterId: true, meterType: true },
+    })
+    if (!parent) throw new NotFoundException('Patní (parent) měřidlo nenalezeno')
+    await this.scope.verifyEntityAccess(user, parent.propertyId)
+    if (parent.parentMeterId) {
+      throw new BadRequestException('Měřidla lze hierarchizovat jen do jedné úrovně (parent → child)')
+    }
+    if (childPropertyId && parent.propertyId !== childPropertyId) {
+      throw new BadRequestException('Patní měřidlo musí být ve stejné nemovitosti')
+    }
+    if (parent.meterType !== childMeterType) {
+      throw new BadRequestException('Patní a podružné měřidlo musí mít stejný meterType')
+    }
   }
 
   async create(user: AuthUser, dto: {
@@ -102,6 +148,7 @@ export class MetersService {
     unit?: string
     propertyId?: string
     unitId?: string
+    parentMeterId?: string
     installDate?: string
     calibrationDue?: string
     manufacturer?: string
@@ -111,15 +158,20 @@ export class MetersService {
     if (dto.propertyId) {
       await this.scope.verifyPropertyAccess(user, dto.propertyId)
     }
+    const meterType = (dto.meterType as any) ?? 'elektrina'
+    if (dto.parentMeterId) {
+      await this.validateParentMeter(user, dto.parentMeterId, dto.propertyId ?? null, meterType)
+    }
     const item = await this.prisma.meter.create({
       data: {
         tenantId: user.tenantId,
         name: dto.name,
         serialNumber: dto.serialNumber,
-        meterType: (dto.meterType as any) ?? 'elektrina',
+        meterType,
         unit: dto.unit ?? 'kWh',
         propertyId: dto.propertyId || null,
         unitId: dto.unitId || null,
+        parentMeterId: dto.parentMeterId || null,
         installDate: dto.installDate ? new Date(dto.installDate) : null,
         calibrationDue: dto.calibrationDue ? new Date(dto.calibrationDue) : null,
         manufacturer: dto.manufacturer,
@@ -142,6 +194,7 @@ export class MetersService {
     unit?: string
     propertyId?: string
     unitId?: string
+    parentMeterId?: string | null
     installDate?: string
     calibrationDue?: string
     manufacturer?: string
@@ -149,7 +202,18 @@ export class MetersService {
     isActive?: boolean
     note?: string
   }) {
-    await this.getById(user, id)
+    const current = await this.getById(user, id)
+
+    if (dto.parentMeterId) {
+      // Měřidlo s vlastními children nesmí být zároveň child (max 1 úroveň hierarchie)
+      const childCount = await this.prisma.meter.count({ where: { parentMeterId: id } })
+      if (childCount > 0) {
+        throw new BadRequestException('Měřidlo s podružnými měřidly nemůže mít nadřazené měřidlo')
+      }
+      const targetPropertyId = dto.propertyId !== undefined ? (dto.propertyId || null) : current.propertyId
+      const targetMeterType = dto.meterType ?? current.meterType
+      await this.validateParentMeter(user, dto.parentMeterId, targetPropertyId, targetMeterType, id)
+    }
 
     const data: any = {}
     if (dto.name !== undefined) data.name = dto.name
@@ -158,6 +222,7 @@ export class MetersService {
     if (dto.unit !== undefined) data.unit = dto.unit
     if (dto.propertyId !== undefined) data.propertyId = dto.propertyId || null
     if (dto.unitId !== undefined) data.unitId = dto.unitId || null
+    if (dto.parentMeterId !== undefined) data.parentMeterId = dto.parentMeterId || null
     if (dto.installDate !== undefined) data.installDate = dto.installDate ? new Date(dto.installDate) : null
     if (dto.calibrationDue !== undefined) data.calibrationDue = dto.calibrationDue ? new Date(dto.calibrationDue) : null
     if (dto.manufacturer !== undefined) data.manufacturer = dto.manufacturer
@@ -330,5 +395,86 @@ export class MetersService {
     }
 
     return { set, updated, errors }
+  }
+
+  // ── Common consumption (vyhláška 269/2015 Sb.) ──
+
+  /**
+   * Společná spotřeba pro patní (parent) měřidlo za období.
+   * Vrací odečet patního, součet podružných a rozdíl = společná spotřeba
+   * (rozvody, ztráty), která se distribuuje podle plochy v settlement.
+   */
+  async calculateCommonConsumption(
+    user: AuthUser,
+    parentMeterId: string,
+    periodFrom: Date,
+    periodTo: Date,
+  ) {
+    const parent = await this.prisma.meter.findFirst({
+      where: { id: parentMeterId, tenantId: user.tenantId },
+      include: {
+        childMeters: { select: { id: true, name: true, unitId: true } },
+      },
+    })
+    if (!parent) throw new NotFoundException('Patní měřidlo nenalezeno')
+    await this.scope.verifyEntityAccess(user, parent.propertyId)
+
+    if (parent.parentMeterId != null) {
+      throw new BadRequestException('Zadané měřidlo není patní (má vlastní parent)')
+    }
+    if (parent.childMeters.length === 0) {
+      throw new BadRequestException('Patní měřidlo nemá žádná podružná měřidla')
+    }
+
+    const parentConsumption = await this.getConsumptionInPeriod(parentMeterId, periodFrom, periodTo)
+
+    // TODO: Optimize N+1 — batch fetch readings for all meterIds in one query.
+    // Current: 2 queries per child (start + end reading). Acceptable for <50 meters per parent.
+    const childrenBreakdown = await Promise.all(
+      parent.childMeters.map(async (child) => {
+        const consumption = await this.getConsumptionInPeriod(child.id, periodFrom, periodTo)
+        return {
+          meterId: child.id,
+          meterName: child.name,
+          unitId: child.unitId,
+          consumption,
+        }
+      }),
+    )
+
+    const childrenConsumptionTotal = childrenBreakdown.reduce((s, c) => s + c.consumption, 0)
+    const commonConsumption = Math.max(0, parentConsumption - childrenConsumptionTotal)
+
+    return {
+      parentMeterId,
+      periodFrom: periodFrom.toISOString(),
+      periodTo: periodTo.toISOString(),
+      parentConsumption,
+      childrenConsumptionTotal,
+      commonConsumption,
+      childrenBreakdown,
+    }
+  }
+
+  /**
+   * Spotřeba měřidla za období: end reading − start reading.
+   * Hledá nejbližší readings <= periodFrom (start) a <= periodTo (end).
+   */
+  private async getConsumptionInPeriod(
+    meterId: string,
+    periodFrom: Date,
+    periodTo: Date,
+  ): Promise<number> {
+    const startReading = await this.prisma.meterReading.findFirst({
+      where: { meterId, readingDate: { lte: periodFrom } },
+      orderBy: { readingDate: 'desc' },
+    })
+    const endReading = await this.prisma.meterReading.findFirst({
+      where: { meterId, readingDate: { lte: periodTo } },
+      orderBy: { readingDate: 'desc' },
+    })
+    if (!startReading || !endReading || startReading.id === endReading.id) return 0
+    // Clamp negative — meter rollover, manuální oprava starého readingu apod.
+    return Math.max(0, Number(endReading.value) - Number(startReading.value))
   }
 }
