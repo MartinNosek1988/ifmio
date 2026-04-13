@@ -48,8 +48,8 @@ export const calendarApi = {
     return data;
   },
 
-  stats: async () => {
-    const { data } = await apiClient.get<CalendarStats>('/calendar/stats');
+  stats: async (propertyId?: string) => {
+    const { data } = await apiClient.get<CalendarStats>('/calendar/stats', { params: propertyId ? { propertyId } : undefined });
     return data;
   },
 

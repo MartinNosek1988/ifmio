@@ -22,10 +22,11 @@ export function useContracts(params?: { status?: string; propertyId?: string; se
 }
 
 export function useContractStats() {
-  // TODO: Backend /contracts/stats nepodporuje propertyId filter — needs backend update
+  const pid = usePropertyPickerStore((s) => s.selectedPropertyId);
+  const effectivePropertyId = pid || undefined;
   return useQuery({
-    queryKey: contractKeys.stats(),
-    queryFn: () => contractsApi.stats(),
+    queryKey: [...contractKeys.stats(), effectivePropertyId] as const,
+    queryFn: () => contractsApi.stats(effectivePropertyId),
   });
 }
 
